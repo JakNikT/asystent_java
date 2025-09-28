@@ -1,0 +1,81 @@
+{
+  "figma_token": "YOUR_FIGMA_TOKEN_HERE",
+  "file_key": "YOUR_FIGMA_FILE_KEY_HERE",
+  "components": {
+    "buttons": [
+      "main-button",
+      "secondary-button", 
+      "success-button",
+      "warning-button",
+      "error-button"
+    ],
+    "inputs": [
+      "input-field",
+      "textarea-field",
+      "password-field",
+      "email-field"
+    ],
+    "cards": [
+      "result-card",
+      "info-card",
+      "warning-card",
+      "error-card"
+    ],
+    "labels": [
+      "form-label",
+      "header-title",
+      "subtitle",
+      "description"
+    ],
+    "controls": [
+      "checkbox",
+      "radio-button",
+      "slider",
+      "progress-bar",
+      "combo-box"
+    ],
+    "containers": [
+      "tab-widget",
+      "list-widget",
+      "group-box",
+      "scroll-area"
+    ]
+  },
+  "export_settings": {
+    "auto_convert": true,
+    "create_pyqt5_functions": true,
+    "add_animations": true,
+    "responsive_layout": true,
+    "generate_documentation": true,
+    "create_demo_app": true
+  },
+  "output_directories": {
+    "css": "styl/exported/",
+    "pyqt5": "styl/pyqt5_components/",
+    "templates": "styl/templates/",
+    "demos": "styl/demos/"
+  },
+  "figma_plugins": {
+    "enabled": [
+      "figma_to_html",
+      "figma_to_css", 
+      "figma_to_code"
+    ],
+    "export_formats": [
+      "css",
+      "html",
+      "pyqt5"
+    ]
+  },
+  "styling": {
+    "color_scheme": "figma_blue",
+    "font_family": "Inter",
+    "border_radius": "5px",
+    "spacing": "8px",
+    "animations": {
+      "fade_in_duration": 300,
+      "slide_duration": 250,
+      "hover_transition": 150
+    }
+  }
+}

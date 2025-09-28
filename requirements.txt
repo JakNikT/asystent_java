@@ -1,0 +1,28 @@
+# Asystent Doboru Nart v6.0 - Zależności Python
+
+# GUI Framework
+PyQt5>=5.15.0
+
+# Data Processing
+pandas>=1.3.0
+numpy>=1.21.0
+
+# HTTP Requests (dla integracji z FireSnow)
+requests>=2.25.0
+
+# CSV/Excel handling
+openpyxl>=3.0.0
+
+# Date/Time utilities
+python-dateutil>=2.8.0
+
+# Logging
+colorlog>=6.0.0
+
+# Development tools (opcjonalne)
+pytest>=6.0.0
+black>=21.0.0
+flake8>=3.9.0
+
+# Figma integration (opcjonalne)
+requests-oauthlib>=1.3.0
