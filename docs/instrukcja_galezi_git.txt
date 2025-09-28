@@ -1,0 +1,238 @@
+INSTRUKCJA TWORZENIA GAŁĘZI W CURSORZE I GITHUB
+=====================================================
+
+SPIS TREŚCI:
+1. Tworzenie gałęzi w Cursorze
+2. Przełączanie między gałęziami w Cursorze
+3. Wypychanie gałęzi na GitHub
+4. Tworzenie Pull Request na GitHub
+5. Scalanie gałęzi na GitHub
+6. Usuwanie gałęzi
+7. Przydatne skróty klawiszowe
+
+=====================================================
+1. TWORZENIE GAŁĘZI W CURSORZE
+=====================================================
+
+METODA 1 - Przez Source Control Panel:
+1. Otwórz Source Control panel (Ctrl+Shift+G)
+2. Kliknij na nazwę aktualnej gałęzi (obok ikony Git w dolnym pasku)
+3. Wybierz "Create new branch..." (Utwórz nową gałąź...)
+4. Wpisz nazwę nowej gałęzi (np. "feature-nowa-funkcja")
+5. Naciśnij Enter
+
+METODA 2 - Przez Command Palette:
+1. Naciśnij Ctrl+Shift+P (Command Palette)
+2. Wpisz "Git: Create Branch" (Git: Utwórz gałąź)
+3. Wpisz nazwę nowej gałęzi
+4. Naciśnij Enter
+
+METODA 3 - Przez Terminal:
+1. Otwórz terminal (Ctrl+`)
+2. Wpisz: git checkout -b nazwa-nowej-galezi
+3. Naciśnij Enter
+
+=====================================================
+2. PRZEŁĄCZANIE MIĘDZY GAŁĘZIAMI W CURSORZE
+=====================================================
+
+METODA 1 - Przez Source Control Panel:
+1. Otwórz Source Control panel (Ctrl+Shift+G)
+2. Kliknij na nazwę aktualnej gałęzi (obok ikony Git w dolnym pasku)
+3. Wybierz gałąź z listy dostępnych gałęzi
+4. Kliknij na wybraną gałąź
+
+METODA 2 - Przez Command Palette:
+1. Naciśnij Ctrl+Shift+P (Command Palette)
+2. Wpisz "Git: Checkout to..." (Git: Przełącz na...)
+3. Wybierz gałąź z listy
+4. Naciśnij Enter
+
+METODA 3 - Przez Terminal:
+1. Otwórz terminal (Ctrl+`)
+2. Wpisz: git checkout nazwa-galezi
+3. Naciśnij Enter
+
+=====================================================
+3. WYPYCHANIE GAŁĘZI NA GITHUB
+=====================================================
+
+METODA 1 - Przez Source Control Panel:
+1. Otwórz Source Control panel (Ctrl+Shift+G)
+2. Wpisz commit message (wiadomość zatwierdzenia)
+3. Kliknij "Commit" (Zatwierdź)
+4. Kliknij "Sync Changes" (Synchronizuj zmiany) lub "Push" (Wypchnij)
+
+METODA 2 - Przez Command Palette:
+1. Naciśnij Ctrl+Shift+P (Command Palette)
+2. Wpisz "Git: Push" (Git: Wypchnij)
+3. Wybierz remote (zazwyczaj "origin")
+4. Wpisz nazwę gałęzi
+
+METODA 3 - Przez Terminal:
+1. Otwórz terminal (Ctrl+`)
+2. Wpisz: git add .
+3. Wpisz: git commit -m "Twoja wiadomość"
+4. Wpisz: git push origin nazwa-galezi
+5. Naciśnij Enter
+
+=====================================================
+4. TWORZENIE PULL REQUEST NA GITHUB
+=====================================================
+
+1. Przejdź na stronę swojego repozytorium na GitHub
+2. Kliknij przycisk "Compare & pull request" (Porównaj i utwórz pull request)
+3. Wypełnij formularz:
+   - Title (Tytuł): Opisz co robi Twoja zmiana
+   - Description (Opis): Szczegółowy opis zmian
+4. Wybierz:
+   - Base branch (Gałąź bazowa): zazwyczaj "main"
+   - Compare branch (Gałąź porównawcza): Twoja gałąź
+5. Kliknij "Create pull request" (Utwórz pull request)
+
+=====================================================
+5. SCALANIE GAŁĘZI NA GITHUB
+=====================================================
+
+METODA 1 - Przez Pull Request:
+1. Otwórz utworzony Pull Request
+2. Przejrzyj zmiany w zakładce "Files changed"
+3. Kliknij "Merge pull request" (Scal pull request)
+4. Wybierz typ scalenia:
+   - "Create a merge commit" (Utwórz commit scalenia)
+   - "Squash and merge" (Zgnieć i scal)
+   - "Rebase and merge" (Przebuduj i scal)
+5. Kliknij "Confirm merge" (Potwierdź scalenie)
+
+METODA 2 - Przez Cursor (lokalnie):
+1. Przełącz się na gałąź main: git checkout main
+2. Scal gałąź: git merge nazwa-galezi
+3. Wypchnij zmiany: git push origin main
+
+=====================================================
+6. USUWANIE GAŁĘZI
+=====================================================
+
+USUWANIE LOKALNE (w Cursorze):
+1. Przełącz się na inną gałąź (nie możesz usunąć aktualnej)
+2. Otwórz terminal (Ctrl+`)
+3. Wpisz: git branch -d nazwa-galezi
+4. Naciśnij Enter
+
+USUWANIE ZDALNE (na GitHub):
+1. Przejdź na stronę repozytorium na GitHub
+2. Kliknij "Branches" (Gałęzie) w menu
+3. Znajdź gałąź do usunięcia
+4. Kliknij ikonę kosza obok nazwy gałęzi
+5. Potwierdź usunięcie
+
+LUB przez terminal:
+1. Wpisz: git push origin --delete nazwa-galezi
+2. Naciśnij Enter
+
+=====================================================
+7. PRZYDATNE SKRÓTY KLAWIATUROWE
+=====================================================
+
+CURSOR:
+- Ctrl+Shift+G - Otwórz Source Control
+- Ctrl+Shift+P - Otwórz Command Palette
+- Ctrl+` - Otwórz/Zamknij terminal
+- Ctrl+S - Zapisz plik
+- Ctrl+Z - Cofnij
+- Ctrl+Y - Ponów
+
+GIT (w terminalu):
+- git status - Sprawdź status
+- git log --oneline - Pokaż historię commitów
+- git branch -a - Pokaż wszystkie gałęzie
+- git checkout -b nazwa - Utwórz i przełącz na nową gałąź
+- git add . - Dodaj wszystkie zmiany
+- git commit -m "wiadomość" - Zatwierdź zmiany
+- git push origin nazwa - Wypchnij gałąź
+
+=====================================================
+8. NAJLEPSZE PRAKTYKI
+=====================================================
+
+NAZEWNICTWO GAŁĘZI:
+- feature/nazwa-funkcji (np. feature/dodaj-logowanie)
+- bugfix/nazwa-bledu (np. bugfix/napraw-walidacje)
+- hotfix/krytyczny-blad (np. hotfix/napraw-crash)
+- refactor/nazwa-refaktoryzacji (np. refactor/optymalizuj-kod)
+
+COMMIT MESSAGES:
+- Używaj angielskiego
+- Zacznij od czasownika w trybie rozkazującym
+- Bądź konkretny i zwięzły
+- Przykłady:
+  * "Add user authentication"
+  * "Fix validation error in form"
+  * "Update documentation"
+  * "Remove unused imports"
+
+PRZED PRACĄ:
+1. Zawsze sprawdź na jakiej gałęzi jesteś: git status
+2. Pobierz najnowsze zmiany: git pull origin main
+3. Utwórz nową gałąź dla każdej funkcji/błedu
+4. Często commituj zmiany (małe, logiczne części)
+
+=====================================================
+9. ROZWIĄZYWANIE PROBLEMÓW
+=====================================================
+
+KONFLIKTY SCALANIA:
+1. Otwórz terminal
+2. Wpisz: git status
+3. Sprawdź które pliki mają konflikty
+4. Otwórz pliki w Cursorze i rozwiąż konflikty ręcznie
+5. Usuń znaczniki konfliktów (<<<<<<<, =======, >>>>>>>)
+6. Wpisz: git add nazwa-pliku
+7. Wpisz: git commit -m "Resolve merge conflicts"
+
+ZAPOMNIANE COMMITY:
+1. Sprawdź status: git status
+2. Dodaj pliki: git add .
+3. Zatwierdź: git commit -m "Wiadomość"
+4. Wypchnij: git push origin nazwa-galezi
+
+COFANIE ZMIAN:
+1. Cofnij ostatni commit (zachowując zmiany): git reset --soft HEAD~1
+2. Cofnij ostatni commit (usuwając zmiany): git reset --hard HEAD~1
+3. Cofnij konkretny commit: git revert commit-hash
+
+=====================================================
+10. PRZYKŁADOWY WORKFLOW
+=====================================================
+
+1. Pobierz najnowsze zmiany:
+   git checkout main
+   git pull origin main
+
+2. Utwórz nową gałąź:
+   git checkout -b feature/dodaj-walidacje
+
+3. Pracuj nad kodem w Cursorze
+
+4. Zatwierdź zmiany:
+   git add .
+   git commit -m "Add form validation"
+
+5. Wypchnij gałąź:
+   git push origin feature/dodaj-walidacje
+
+6. Utwórz Pull Request na GitHub
+
+7. Po scaleniu, usuń gałąź:
+   git checkout main
+   git pull origin main
+   git branch -d feature/dodaj-walidacje
+   git push origin --delete feature/dodaj-walidacje
+
+=====================================================
+KONIEC INSTRUKCJI
+=====================================================
+
+Ta instrukcja powinna pokryć wszystkie podstawowe operacje z gałęziami Git
+w Cursorze i na GitHub. W razie problemów, zawsze możesz sprawdzić status
+przez: git status

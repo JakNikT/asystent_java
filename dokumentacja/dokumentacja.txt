@@ -1,0 +1,340 @@
+================================================================================
+                    OPIS FUNKCJI DOBIERANIA I WYŚWIETLANIA NART
+================================================================================
+
+CEL SYSTEMU:
+System pomaga w doborze odpowiednich nart dla klientów na podstawie ich danych 
+fizycznych i umiejętności. Program sprawdza dostępność nart i wyświetla wyniki 
+w czytelny sposób.
+
+================================================================================
+                        GŁÓWNE FUNKCJE DOBIERANIA NART
+================================================================================
+
+1. dobierz_narty(wzrost, waga, poziom, plec, styl_jazdy)
+   Co robi: To jest główna funkcja, która znajduje odpowiednie narty dla klienta.
+
+   Jak działa:
+   - Bierze dane klienta (wzrost, wagę, poziom umiejętności, płeć, styl jazdy)
+   - Wczytuje wszystkie narty z bazy danych
+   - Sprawdza każdą nartę pod kątem dopasowania
+   - Dzieli wyniki na 4 kategorie (w kolejności wyświetlania):
+     * IDEALNE - wszystkie kryteria spełnione
+     * ALTERNATYWY - narta odpowiednia, ale inne problemy (poziom musi pasować)
+     * POZIOM ZA NISKO - narta za łatwa, ale reszta OK
+     * INNA PŁEĆ - narta dla innej płci, ale reszta OK (działa dla obydwu płci)
+
+   Zwraca: 4 listy z nartami posortowane od najlepszych do najgorszych
+
+2. sprawdz_dopasowanie_narty(row, wzrost, waga, poziom, plec, styl_jazdy)
+   Co robi: Sprawdza czy pojedyncza narta pasuje do klienta.
+
+   Co to jest "row"?
+   row = jeden wiersz z bazy danych CSV zawierający wszystkie dane o narcie:
+   - row['MARKA'] - marka narty (np. "ATOMIC")
+   - row['MODEL'] - model narty (np. "VANTAGE 86 TI")
+   - row['DLUGOSC'] - długość narty (np. "170")
+   - row['PLEC'] - płeć narty (np. "M", "K", "U" lub " U" ze spacją)
+   - row['WAGA_MIN'], row['WAGA_MAX'] - zakres wagi
+   - row['WZROST_MIN'], row['WZROST_MAX'] - zakres wzrostu
+   - row['POZIOM'] - poziom umiejętności
+   - row['PRZEZNACZENIE'] - styl jazdy
+
+   Jak sprawdza:
+   - POZIOM - czy narta nie jest za trudna (w idealnych i innej płci poziom musi pasować, 
+     tylko w "poziom za nisko" może być 1 poziom niżej)
+   - PŁEĆ - czy narta jest odpowiednia dla płci klienta (POPRAWKA: usuwa spacje)
+   - WAGA - czy waga klienta mieści się w zakresie narty (±5kg tolerancja)
+   - WZROST - czy wzrost klienta mieści się w zakresie narty (±5cm tolerancja)
+   - PRZEZNACZENIE - czy styl jazdy pasuje (po wyborze "Wszystkie" wszystkie narty 
+     niezależnie od swojego przeznaczenia będą uznawane jako pasujące)
+
+   Zwraca: Informacje o dopasowaniu lub None jeśli narta nie pasuje
+
+3. znajdz_idealne_dopasowania(narty, wzrost, waga, poziom, plec, styl_jazdy)
+   Co robi: Znajduje narty, które idealnie pasują do klienta.
+
+   Kryteria idealnego dopasowania:
+   - Wszystkie 5 kryteriów spełnione (poziom, płeć, waga, wzrost, przeznaczenie)
+   - Płeć MUSI być OK (nie może być problemów z płcią)
+
+4. znajdz_poziom_za_nisko(narty, wzrost, waga, poziom, plec, styl_jazdy)
+   Co robi: Znajduje narty, które są o 1 poziom za łatwe, ale reszta kryteriów OK.
+
+   Kiedy używać: Dla początkujących narciarzy lub gdy brak idealnych dopasowań.
+
+5. znajdz_alternatywy(narty, wzrost, waga, poziom, plec, styl_jazdy)
+   Co robi: Znajduje narty z problemami (ale nie z płcią), które można rozważyć.
+
+   Przykłady problemów (mogą to być tylko narty z 1 niepasującym kryterium + poziom musi pasować):
+   - Waga klienta poza zakresem (ale w tolerancji)
+   - Wzrost klienta poza zakresem (ale w tolerancji)
+   - Inne przeznaczenie niż wybrane
+
+6. znajdz_inna_plec(narty, wzrost, waga, poziom, plec, styl_jazdy)
+   Co robi: Znajduje narty dla innej płci, ale z resztą kryteriów OK.
+
+   Kiedy pokazywać: Gdy brak innych opcji i klient może rozważyć nartę dla innej płci.
+
+PROPOZYCJA NOWEJ KATEGORII "NA SIŁĘ":
+Można by dodać jeszcze jedną kategorię np. "NA SIŁĘ" gdzie mogłyby się pojawić narty:
+- Alternatywy, ale z tolerancjami 10± zamiast 5
+- Poziom za nisko, ale prócz poziomu niżej jedna z kryteriów jest w tolerancji 5±
+
+================================================================================
+                        SYSTEM OCENY DOPASOWANIA
+================================================================================
+
+CompatibilityScorer - Klasa obliczająca współczynnik idealności
+
+Co robi: Oblicza procent dopasowania narty do klienta (0-100%).
+
+Wagi kryteriów:
+- POZIOM - 35% (najważniejsze - bezpieczeństwo)
+- WAGA - 25% (bardzo ważne - kontrola nart)
+- WZROST - 20% (ważne - stabilność)
+- PŁEĆ - 15% (mniej ważne - ergonomia)
+- PRZEZNACZENIE - 5% (najmniej ważne - styl jazdy)
+
+Jak oblicza:
+- Używa funkcji gaussowskich dla wagi i wzrostu
+- Im bliżej środka zakresu, tym lepszy wynik
+- Dla poziomu: 1.0 za idealne, 0.7 za 1 poziom różnicy
+- Dla płci: 1.0 za idealne, 0.6 za inną płeć
+
+================================================================================
+                          FUNKCJE WYŚWIETLANIA
+================================================================================
+
+1. znajdz_i_wyswietl()
+   Co robi: Główna funkcja wyszukiwania z interfejsu użytkownika.
+
+   Kroki:
+   1. Sprawdza czy wszystkie pola są wypełnione
+   2. Waliduje dane (wzrost 100-250cm, waga 20-200kg, poziom 1-6)
+   3. Sprawdza daty rezerwacji
+   4. Wywołuje dobierz_narty()
+   5. Wyświetla wyniki w 4 kategoriach (plus ewentualnie nowa kategoria)
+
+   Walidacja danych:
+   - Wzrost: 100-250 cm
+   - Waga: 20-200 kg  
+   - Poziom: 1-6
+   - Płeć: M/K/U
+   - Daty: data od < data do
+
+2. wyswietl_jedna_narte(narta_info, wzrost, waga, poziom, plec, data_od, data_do)
+   Co robi: Wyświetla szczegółowe informacje o jednej narcie.
+
+   Co pokazuje:
+   - Nazwa i długość z współczynnikiem idealności (95%, 85%, itd.)
+   - Dostępność - które sztuki są wolne (🟩) a które zajęte (🔴)
+   - Informacje o rezerwacji - po kliknięciu w czerwone kółko otwiera się okno 
+     funkcji "rezerwacje" pokazujące wszystkie rezerwacje tej konkretnej sztuki narty
+   - Szczegóły dopasowania - status każdego kryterium
+   - Dodatkowe info - promień, pod butem, uwagi
+
+   Przykład wyświetlania:
+   ► ATOMIC VANTAGE 86 TI (170 cm) 🎯 95%
+      📦 Dostępność: 🟩1 🟩2 🔴3 
+      🚫 Zarezerwowana: 2024-01-15 - 2024-01-20 (Nr: //03)
+      📊 Dopasowanie: 🟢 P:4(4)→OK | 🟢 Pł:M(M)→OK | 🟢 W:75kg(70-85)→OK | 
+                      🟢 Wz:175cm(170-180)→OK | 🟢 Pr:SL→OK
+      ℹ️ Promień: 15.5 | Pod butem: 86mm
+      📝 Uwagi: Nowy model 2024
+
+   UWAGA: Każdy kwadracik/kółeczko to osobna sztuka/numerek narty. 
+   Kliknięcie w czerwony kwadracik pokazuje szczegóły rezerwacji.
+
+3. pokaz_wszystkie_narty()
+   Co robi: Otwiera okno z tabelą wszystkich nart w bazie.
+
+   Funkcje:
+   - Tabela sortowalna z wszystkimi nartami
+   - Filtry - po marce, poziomie, płci
+   - Wyszukiwanie - po marce i modelu
+   - Edycja - można edytować dane w tabeli
+
+   Kolumny tabeli:
+   ID, Marka, Model, Długość, Szt., Poziom, Płeć, Waga Min/Max, 
+   Wzrost Min/Max, Przeznaczenie, Rok, Uwagi
+
+   UWAGA FILTROWANIA:
+   - Sortowanie po płci: tylko 4M, 5M, 6M i 4D, 5D, 6D
+   - Filtrowanie musi uwzględniać narty z podwójnym poziomem (np. 4M/5D)
+   - Przy filtrowaniu 4M lub 5D ta narta się pokaże
+   - Kategoria "U" jest niepotrzebna, ale niektóre narty w bazie mają spację przed U
+
+================================================================================
+                          FUNKCJE REZERWACJI
+================================================================================
+
+1. sprawdz_czy_narta_zarezerwowana(marka, model, dlugosc, data_od, data_do)
+   Co robi: Sprawdza czy konkretna narta jest zarezerwowana w danym terminie.
+
+   Jak działa:
+   1. Wczytuje rezerwacje z pliku rez.csv
+   2. Szuka narty o podanych parametrach
+   3. Sprawdza czy terminy się nakładają
+   4. Zwraca informacje o rezerwacji
+
+   Zwraca:
+   - True/False - czy zarezerwowana
+   - okres_rezerwacji - kiedy zarezerwowana
+   - numer_narty - numer konkretnej sztuki
+
+2. odswiez_rezerwacje()
+   Co robi: Wyświetla wszystkie aktualne rezerwacje z systemu FireSnow.
+
+   Co pokazuje:
+   - Lista wszystkich zarezerwowanych nart
+   - Okres rezerwacji
+   - Dane klienta
+   - Numer narty
+
+   Format wyświetlania:
+   🔄 REZERWACJE Z FIRESNOW
+   ==================================================
+   📊 Znaleziono 15 rezerwacji nart
+
+   1. 🎿 ATOMIC VANTAGE 86 TI (170 cm)
+      📅 Okres: 2024-01-15 - 2024-01-20
+      👤 Klient: Jan Kowalski
+      🔢 Numer: //01
+
+3. wczytaj_rezerwacje_firesnow()
+   Co robi: Wczytuje dane rezerwacji z pliku CSV/Excel.
+
+   Obsługuje formaty:
+   - rez.csv - główny plik z FireSnow
+   - rez.xlsx - backup w Excel
+   - Różne nagłówki kolumn (Od/Do vs Data_Od/Data_Do)
+
+   Przetwarza dane:
+   - Wyciąga markę, model, długość z opisu sprzętu
+   - Znajduje numer narty (//01, //02, itd.)
+   - Konwertuje daty do porównania
+
+================================================================================
+                        FUNKCJE WCZYTYWANIA DANYCH
+================================================================================
+
+1. wczytaj_narty()
+   Co robi: Wczytuje wszystkie narty z bazy danych NOWABAZA_final.csv.
+
+   Zwraca: Lista słowników z danymi nart
+
+2. parsuj_poziom(poziom_text, plec)
+   Co robi: Parsuje poziom umiejętności z różnych formatów.
+
+   Obsługuje formaty:
+   - 5M/6D - unisex z ukośnikiem
+   - 5M 6D - unisex ze spacją  
+   - 5M - tylko męski
+   - 5D - tylko damski
+   - 5 - prosty format
+
+   Zwraca: Poziom minimalny i tekst do wyświetlenia
+
+================================================================================
+                          INTERFEJS UŻYTKOWNIKA
+================================================================================
+
+Główne okno (SkiApp)
+Elementy:
+- Formularz danych - wzrost, waga, poziom, płeć, daty
+- Przeznaczenie - radio buttony (Wszystkie, SL, G, SLG, C, OFF)
+- Przyciski - Znajdź, Wyczyść, Przeglądaj, Rezerwacje
+- Pole wyników - wyświetla znalezione narty
+
+Walidacja pól:
+- Daty - format DD/MM/RR z kalendarzem
+- Wzrost - 3 cyfry, auto-przejście
+- Waga - 2-3 cyfry, auto-przejście  
+- Poziom - 1 cyfra (1-6)
+- Płeć - 1 litera (M/K/U)
+
+Automatyczne funkcje:
+- Auto-przejście między polami
+- Auto-uzupełnianie roku (24 → 2024)
+- Walidacja w czasie rzeczywistym
+
+================================================================================
+                            JAK UŻYWAĆ SYSTEMU
+================================================================================
+
+Krok 1: Wprowadź dane klienta
+1. Wpisz daty rezerwacji (od - do)
+2. Wpisz wzrost w cm (100-250)
+3. Wpisz wagę w kg (20-200)
+4. Wpisz poziom umiejętności (1-6)
+5. Wpisz płeć (M/K/U)
+6. Wybierz przeznaczenie nart (na starcie zaznaczone "Wszystkie" chyba że ktoś wybierze inne)
+
+Krok 2: Znajdź narty
+1. Kliknij "🔍 Znajdź"
+2. System sprawdzi wszystkie narty
+3. Wyniki pojawią się w 4 kategoriach (plus ewentualnie nowa kategoria)
+
+Krok 3: Sprawdź dostępność
+- 🟩 = narta wolna
+- 🔴 = narta zarezerwowana (poprzez kliknięcie w czerwony kwadracik)
+- Sprawdź numer narty i okres rezerwacji
+
+Krok 4: Wybierz nartę
+- Najlepsze dopasowanie = najwyższy współczynnik %
+- Sprawdź szczegóły dopasowania
+- Uwzględnij dostępność
+
+================================================================================
+                              WAŻNE UWAGI
+================================================================================
+
+Tolerancje:
+- Waga: ±5kg poza zakresem
+- Wzrost: ±5cm poza zakresem  
+- Poziom: maksymalnie 1 poziom za niski
+
+Wykluczenia:
+- Narty z czerwonymi kryteriami (poza tolerancją)
+- Narty o 2+ poziomy za trudne
+- Narty bez podstawowych danych
+
+Sortowanie:
+- Wszystkie kategorie sortowane według współczynnika idealności
+- Od najwyższego do najniższego
+- W ramach kategorii - od najlepszych do najgorszych
+
+POPRAWKA PŁCI:
+- System teraz poprawnie usuwa spacje przed "U" w bazie danych
+- Jeśli w bazie jest " U" (ze spacją), zostanie "U"
+- Jeśli w bazie jest " " (tylko spacja), zostanie "U"
+- Jeśli w bazie jest "", zostanie "U"
+
+================================================================================
+                         ROZWIĄZYWANIE PROBLEMÓW
+================================================================================
+
+Brak wyników:
+- Sprawdź czy dane są poprawne
+- Spróbuj zmienić poziom (niższy)
+- Sprawdź inne przeznaczenie
+
+Błąd wczytywania:
+- Sprawdź czy plik NOWABAZA_final.csv istnieje
+- Sprawdź czy plik rez.csv istnieje
+- Sprawdź logi aplikacji
+
+Problemy z datami:
+- Użyj kalendarza (przycisk 📅)
+- Sprawdź format daty
+- Upewnij się że data od < data do
+
+Problemy z płcią:
+- Sprawdź czy w bazie danych nie ma spacji przed "U"
+- System automatycznie usuwa spacje, ale sprawdź dane źródłowe
+
+================================================================================
+
+Dokumentacja stworzona dla systemu doboru nart v6.0
+POPRAWKI: Wprowadzono wszystkie poprawki oznaczone przez użytkownika
