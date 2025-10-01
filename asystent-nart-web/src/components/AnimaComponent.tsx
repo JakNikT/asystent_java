@@ -1,83 +1,93 @@
-const skiData = {
-  name: "Narty knaissl xc 144 cm",
-  weight: "65-120 / 75 kg",
-  height: "155-170/165 cm",
-  level: "5D/5D",
-  gender: "Damksa/Kobieta",
-  purpose: "Slalom/Pomiędzy",
-  match: "95,5%",
-};
+import React from 'react';
 
-export const Frame = (): React.JSX.Element => {
+const AnimaComponent: React.FC = () => {
   return (
-    <div className="relative w-[1046px] h-[343px] bg-[#a5c1ef] rounded-[20px] overflow-hidden">
-      <div className="absolute top-8 left-[543px] w-[467px] h-[131px] bg-[#194476] rounded-[20px]" />
-
-      <div className="absolute top-8 left-9 w-[467px] h-[131px] bg-[#194476] rounded-[20px] overflow-hidden">
-        <div className="absolute top-[7px] left-8 w-[404px] h-[30px] flex bg-[#a5c1ef] rounded-[20px] overflow-hidden border border-solid border-white">
-          <p className="flex items-center justify-center mt-[-5px] w-72 h-[35px] ml-[61px] font-adlam font-normal text-black text-[25px] tracking-[0] leading-[35.0px]">
-            {skiData.name}
-          </p>
+    <div className="w-[1100px] h-[650px] relative bg-white overflow-hidden">
+  <div className="w-[1100px] h-96 left-0 top-[200px] absolute bg-blue-800 overflow-hidden">
+    <div className="w-[1062px] p-2 left-[19px] top-[44px] absolute bg-sky-900 rounded-tr-[20px] rounded-bl-[20px] rounded-br-[20px] inline-flex justify-start items-start gap-2.5 overflow-hidden">
+      <div className="flex-1 h-80 relative bg-indigo-300 rounded-[20px]" />
             </div>
-
-        <div className="absolute top-[43px] left-8 w-[147px] h-[19px] bg-[#a5c1ef] rounded-[20px] border border-solid border-white" />
-
-        <div className="absolute top-[60px] left-[254px] w-[77px] h-[18px] flex bg-[#a5c1ef] rounded-[20px] overflow-hidden border border-solid border-white">
-          <div className="flex items-center justify-center mt-0.5 w-[68px] h-3.5 ml-[5px] font-adlam font-normal text-black text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-            {skiData.weight}
+    <div className="w-[1081px] h-14 left-[10px] top-[-150px] absolute" />
+    <div className="w-80 h-12 left-[19px] top-0 absolute bg-sky-900 rounded-tl-[20px] rounded-tr-[20px] overflow-hidden">
+      <div className="left-[8px] top-[4px] absolute justify-center text-white text-3xl font-normal font-adlam underline leading-10">🔍 Wyniki Doboru Nart</div>
                 </div>
               </div>
-
-        <div className="absolute top-10 left-[277px] h-3.5 flex items-center justify-center font-adlam font-normal text-white text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-          Waga:
+  <div className="w-[1100px] h-48 left-0 top-0 absolute bg-blue-800 overflow-hidden">
+    <div className="w-[890px] h-44 left-[201px] top-[10px] absolute bg-sky-900 rounded-[20px] overflow-hidden">
+      <div className="w-80 h-40 left-[573px] top-[10px] absolute bg-cyan-700 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white overflow-hidden">
+        <div className="w-36 h-9 left-[156px] top-[120px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="left-[173px] top-[127px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">🔄 Rezerwacje             </div>
+        <div className="w-36 h-9 left-[156px] top-[80px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="left-[182px] top-[87px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">🗑️ Wyczyść</div>
+        <div className="w-36 h-9 left-[4px] top-[120px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="left-[25px] top-[127px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">📋 Przeglądaj</div>
+        <div className="w-36 h-9 left-[4px] top-[80px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="left-[40px] top-[87px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">🔍 Znajdź</div>
+        <div className="w-14 h-5 left-[119px] top-[36px] absolute inline-flex justify-start items-center gap-[3px]">
+          <div className="w-2 h-2 rounded-full border border-neutral-700" />
+          <div className="text-center justify-center text-white text-base font-black font-inter underline leading-tight">Slalom</div>
               </div>
-
-        <div className="absolute top-[100px] left-[252px] w-[77px] h-[18px] flex bg-[#a5c1ef] rounded-[20px] overflow-hidden border border-solid border-white">
-          <div className="flex items-center justify-center mt-0.5 w-[73px] h-3.5 ml-0.5 font-adlam font-normal text-black text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-            {skiData.height}
+        <div className="w-20 h-5 left-[5px] top-[34px] absolute inline-flex justify-start items-center gap-[3px]">
+          <div className="w-2 h-2 rounded-full border border-neutral-700" />
+          <div className="text-center justify-center text-white text-base font-black font-inter underline leading-tight">Wszystkie</div>
                 </div>
+        <div className="w-16 h-5 left-[119px] top-[53px] absolute inline-flex justify-start items-center gap-[3px]">
+          <div className="w-2 h-2 rounded-full border border-neutral-700" />
+          <div className="text-center justify-center text-white text-base font-black font-inter underline leading-tight">Gigant</div>
               </div>
-
-        <div className="absolute top-[81px] left-[271px] h-3.5 flex items-center justify-center font-adlam font-normal text-white text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-          Wzrost:
+        <div className="w-20 h-5 left-[5px] top-[53px] absolute inline-flex justify-start items-center gap-[3px]">
+          <div className="w-2 h-2 rounded-full border border-neutral-700" />
+          <div className="text-center justify-center text-white text-base font-black font-inter underline leading-tight">Cały dzień</div>
               </div>
-
-        <div className="absolute top-[60px] left-[357px] w-[65px] h-[18px] flex bg-[#a5c1ef] rounded-[20px] overflow-hidden border border-solid border-white">
-          <div className="flex items-center justify-center mt-0.5 w-[31px] h-3.5 ml-[19px] font-adlam font-normal text-black text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-            {skiData.level}
+        <div className="w-20 h-5 left-[207px] top-[36px] absolute inline-flex justify-start items-center gap-[3px]">
+          <div className="w-2 h-2 rounded-full border border-neutral-700" />
+          <div className="text-center justify-center text-white text-base font-black font-inter underline leading-tight">Poza trase</div>
                 </div>
+        <div className="w-16 h-5 left-[207.07px] top-[53px] absolute inline-flex justify-start items-center gap-[3px]">
+          <div className="w-2 h-2 rounded-full border border-neutral-700" />
+          <div className="text-center justify-center text-white text-base font-black font-inter underline leading-tight">Pomiędzy</div>
               </div>
-
-        <div className="absolute top-10 left-[370px] h-3.5 flex items-center justify-center font-adlam font-normal text-white text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-          Poziom:
+        <div className="w-36 h-6 left-[84px] top-[8px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="left-[94px] top-[5px] absolute text-center justify-center text-white text-xl font-black font-inter underline leading-7">Preferencje:</div>
             </div>
-
-        <div className="absolute top-[101px] left-[344px] w-[92px] h-[18px] flex bg-[#a5c1ef] rounded-[20px] overflow-hidden border border-solid border-white">
-          <div className="flex items-center justify-center mt-px w-20 h-3.5 ml-1.5 font-adlam font-normal text-black text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-            {skiData.gender}
+      <div className="w-56 h-24 left-[330px] top-[74px] absolute bg-cyan-700 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white overflow-hidden">
+        <div className="w-14 h-9 left-[160px] top-[51px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-36 h-9 left-[10px] top-[51px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-24 h-5 left-[31px] top-[59px] absolute text-center justify-center text-white text-lg font-black font-inter underline leading-relaxed">👤 Płeć:</div>
+        <div className="w-14 h-9 left-[160px] top-[10px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-36 h-9 left-[10px] top-[10px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-24 h-5 left-[31px] top-[18px] absolute text-center justify-center text-white text-lg font-black font-inter underline leading-relaxed">Poziom:</div>
             </div>
+      <div className="w-56 h-12 left-[330px] top-[10px] absolute bg-cyan-700 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white overflow-hidden">
+        <div className="w-40 h-5 left-[33px] top-[15px] absolute text-center justify-center text-white text-xl font-black font-inter underline leading-7">Dane klienta</div>
           </div>
-
-        <div className="absolute top-[81px] left-[378px] h-3.5 flex items-center justify-center font-adlam font-normal text-white text-[10px] tracking-[0] leading-[14.0px] whitespace-nowrap">
-          Płeć:
-            </div>
-
-        <p className="absolute top-[77px] left-3 h-[21px] flex items-center justify-center font-adlam font-bold text-white text-[12px] tracking-[0] leading-[21.0px] whitespace-nowrap">
-          <span className="text-[#b3b0b0]">Przeznaczenie:</span>
-          <span className="text-white text-[12px] leading-[14.0px] ml-1">
-            {skiData.purpose}
-          </span>
-        </p>
-
-        <p className="absolute top-[101px] left-3 h-[21px] flex items-center justify-center font-adlam font-bold text-white text-[12px] tracking-[0] leading-[21.0px] whitespace-nowrap">
-          <span className="text-[#6a86ec]">Dopasowanie:</span>
-          <span className="text-white text-[12px] leading-[14.0px] ml-1">
-            {skiData.match}
-          </span>
-        </p>
+      <div className="w-80 h-40 left-[10px] top-[10px] absolute bg-cyan-700 rounded-[10px] outline outline-1 outline-offset-[-1px] outline-white overflow-hidden">
+        <div className="w-12 h-8 left-[190px] top-[122px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-28 h-8 left-[70px] top-[122px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-24 h-5 left-[77px] top-[126px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">⚖️ Waga:</div>
+        <div className="w-12 h-8 left-[190px] top-[84px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-28 h-8 left-[70px] top-[84px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-24 h-5 left-[77px] top-[89px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">📏 Wzrost:</div>
+        <div className="w-2 h-5 left-[223.58px] top-[51.70px] absolute text-center justify-center text-white text-xs font-black font-inter underline leading-none">/</div>
+        <div className="w-2 h-5 left-[170.19px] top-[51.70px] absolute text-center justify-center text-white text-xs font-black font-inter underline leading-none">/</div>
+        <div className="w-16 h-7 left-[235.82px] top-[46.80px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-9 h-7 left-[182.42px] top-[46.80px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-9 h-7 left-[129.03px] top-[46.80px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-28 h-7 left-[10px] top-[46.80px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-24 h-5 left-[16px] top-[50px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">📅 Data do:</div>
+        <div className="w-16 h-7 left-[235.82px] top-[10px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-2 h-5 left-[223.58px] top-[14.91px] absolute text-center justify-center text-white text-xs font-black font-inter underline leading-none">/</div>
+        <div className="w-9 h-7 left-[182.42px] top-[10px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-2 h-5 left-[170.19px] top-[14.91px] absolute text-center justify-center text-white text-xs font-black font-inter underline leading-none">/</div>
+        <div className="w-9 h-7 left-[129.03px] top-[10px] absolute bg-sky-900 rounded-[5px]" />
+        <div className="w-28 h-7 left-[10px] top-[10px] absolute bg-sky-900 rounded-[5px] border border-white" />
+        <div className="w-24 h-5 left-[16px] top-[14px] absolute text-center justify-center text-white text-base font-black font-inter underline leading-snug">📅 Data od:</div>
+      </div>
+    </div>
+    <div className="w-44 h-44 left-[10px] top-[10px] absolute bg-zinc-300 rounded-full" />
       </div>
     </div>
   );
 };
 
-export default Frame;
+export default AnimaComponent;
