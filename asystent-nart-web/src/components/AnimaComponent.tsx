@@ -62,18 +62,16 @@ export const Frame = (): React.JSX.Element => {
           Płeć:
             </div>
 
-        <p className="absolute top-[77px] left-3 h-[21px] flex items-center justify-center [-webkit-text-stroke:1px_#000000] font-adlam font-normal text-transparent text-[15px] tracking-[0] leading-[21.0px] whitespace-nowrap">
+        <p className="absolute top-[77px] left-3 h-[21px] flex items-center justify-center font-adlam font-bold text-white text-[12px] tracking-[0] leading-[21.0px] whitespace-nowrap">
           <span className="text-[#b3b0b0]">Przeznaczenie:</span>
-          <span className="text-white text-[10px] leading-[14.0px]">
-            {" "}
+          <span className="text-white text-[12px] leading-[14.0px] ml-1">
             {skiData.purpose}
           </span>
         </p>
 
-        <p className="absolute top-[101px] left-3 h-[21px] flex items-center justify-center [-webkit-text-stroke:1px_#000000] font-adlam font-normal text-transparent text-[15px] tracking-[0] leading-[21.0px] whitespace-nowrap">
+        <p className="absolute top-[101px] left-3 h-[21px] flex items-center justify-center font-adlam font-bold text-white text-[12px] tracking-[0] leading-[21.0px] whitespace-nowrap">
           <span className="text-[#6a86ec]">Dopasowanie:</span>
-          <span className="text-white text-[10px] leading-[14.0px]">
-            {" "}
+          <span className="text-white text-[12px] leading-[14.0px] ml-1">
             {skiData.match}
           </span>
         </p>
