@@ -5,6 +5,37 @@
   text-align: center;
 }
 
+/* Custom radio buttons */
+input[type="radio"] {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  width: 8px;
+  height: 8px;
+  border: 1px solid #464444;
+  border-radius: 50%;
+  background-color: transparent;
+  cursor: pointer;
+  position: relative;
+}
+
+input[type="radio"]:checked {
+  background-color: white;
+  border-color: #464444;
+}
+
+input[type="radio"]:checked::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background-color: #194576;
+}
+
 .logo {
   height: 6em;
   padding: 1.5em;
