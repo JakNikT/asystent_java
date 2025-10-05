@@ -13,9 +13,25 @@ interface MatchIndicatorsProps {
     wzrost: string;
     przeznaczenie: string;
   };
+  ski: {
+    WAGA_MIN: number;
+    WAGA_MAX: number;
+    WZROST_MIN: number;
+    WZROST_MAX: number;
+    POZIOM: string;
+    PLEC: string;
+    PRZEZNACZENIE: string;
+  };
+  userCriteria: {
+    wzrost: number;
+    waga: number;
+    poziom: number;
+    plec: string;
+    styl_jazdy: string;
+  };
 }
 
-export const MatchIndicators: React.FC<MatchIndicatorsProps> = ({ dopasowanie }) => {
+export const MatchIndicators: React.FC<MatchIndicatorsProps> = ({ dopasowanie, ski: _ski, userCriteria: _userCriteria }) => {
   console.log('src/components/MatchIndicators.tsx: Wyświetlanie wskaźników dopasowania:', dopasowanie);
 
   /**
@@ -23,19 +39,33 @@ export const MatchIndicators: React.FC<MatchIndicatorsProps> = ({ dopasowanie })
    */
   const getIndicatorColor = (status: string): string => {
     if (status.includes('✅ zielony')) {
-      return 'text-green-400 bg-green-400/20 border-green-400';
+      return 'text-white bg-green-500/30 border-green-400 shadow-green-400/20';
     } else if (status.includes('🟡 żółty')) {
-      return 'text-yellow-400 bg-yellow-400/20 border-yellow-400';
+      return 'text-white bg-yellow-500/30 border-yellow-400 shadow-yellow-400/20';
     } else if (status.includes('🔴 czerwony')) {
-      return 'text-red-400 bg-red-400/20 border-red-400';
+      return 'text-white bg-red-500/30 border-red-400 shadow-red-400/20';
     }
-    return 'text-gray-400 bg-gray-400/20 border-gray-400';
+    return 'text-white bg-gray-500/30 border-gray-400 shadow-gray-400/20';
   };
 
   /**
    * Określa ikonę na podstawie statusu dopasowania
    */
-  const getIndicatorIcon = (status: string): string => {
+  // const getIndicatorIcon = (status: string): string => {
+  //   if (status.includes('✅ zielony')) {
+  //     return '✅';
+  //   } else if (status.includes('🟡 żółty')) {
+  //     return '⚠️';
+  //   } else if (status.includes('🔴 czerwony')) {
+  //     return '❌';
+  //   }
+  //   return '❓';
+  // };
+
+  /**
+   * Skraca tekst statusu dla lepszej czytelności - teraz tylko ikony i nazwy
+   */
+  const getShortStatus = (_criterion: string, status: string): string => {
     if (status.includes('✅ zielony')) {
       return '✅';
     } else if (status.includes('🟡 żółty')) {
@@ -44,27 +74,6 @@ export const MatchIndicators: React.FC<MatchIndicatorsProps> = ({ dopasowanie })
       return '❌';
     }
     return '❓';
-  };
-
-  /**
-   * Skraca tekst statusu dla lepszej czytelności
-   */
-  const getShortStatus = (status: string): string => {
-    if (status.includes('✅ zielony')) {
-      return 'Idealne';
-    } else if (status.includes('🟡 żółty')) {
-      if (status.includes('poziom niżej')) return 'Poziom niżej';
-      if (status.includes('Narta kobieca')) return 'Narta kobieca';
-      if (status.includes('Narta męska')) return 'Narta męska';
-      if (status.includes('tolerancja')) return 'Z tolerancją';
-      return 'Akceptowalne';
-    } else if (status.includes('🔴 czerwony')) {
-      if (status.includes('2 poziomy niżej')) return '2 poziomy niżej';
-      if (status.includes('niezgodna płeć')) return 'Niezgodna płeć';
-      if (status.includes('niedopasowany')) return 'Niedopasowany';
-      return 'Niedopasowane';
-    }
-    return 'Nieznane';
   };
 
   const criteria = [
@@ -79,8 +88,7 @@ export const MatchIndicators: React.FC<MatchIndicatorsProps> = ({ dopasowanie })
     <div className="flex flex-wrap gap-2 mt-2">
       {criteria.map((criterion) => {
         const colorClass = getIndicatorColor(criterion.status);
-        const icon = getIndicatorIcon(criterion.status);
-        const shortStatus = getShortStatus(criterion.status);
+        const icon = getShortStatus(criterion.key, criterion.status);
         
         return (
           <div
@@ -89,8 +97,7 @@ export const MatchIndicators: React.FC<MatchIndicatorsProps> = ({ dopasowanie })
             title={criterion.status} // Pełny tekst w tooltip
           >
             <span className="mr-1">{icon}</span>
-            <span className="font-bold">{criterion.label}:</span>
-            <span className="ml-1">{shortStatus}</span>
+            <span className="font-bold">{criterion.label}</span>
           </div>
         );
       })}

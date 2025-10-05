@@ -68,12 +68,19 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - [x] **2.1.1**: Kolorowy system wskaźników dopasowania ✅ UKOŃCZONE
   - Success criteria: Zielony/pomarańczowy/czerwony dla każdego kryterium
   - Estimated time: 3 godziny
+  - ✅ **POPRAWKI DODATKOWE**: Naprawiono kolory czcionki (biały tekst na kolorowym tle), zmieniono układ na 2 rzędy
 
-- [ ] **2.1.2**: Szczegółowe informacje o dopasowaniu
+- [x] **2.1.2**: Szczegółowe informacje o dopasowaniu ✅ UKOŃCZONE
   - Success criteria: Wyświetlanie współczynnika idealności (0-100%)
   - Estimated time: 2 godziny
+  - ✅ **DODATKOWE FUNKCJE**: Szczegółowa ocena każdego kryterium z procentami, paski postępu, kategoryzacja wyników
 
-- [ ] **2.1.3**: Opisy problemów z dopasowaniem
+- [x] **2.1.3**: Rozwijane szczegóły kompatybilności ✅ UKOŃCZONE
+  - Success criteria: Zwięzłe wyświetlanie z możliwością rozwinięcia szczegółów
+  - Estimated time: 2 godziny
+  - ✅ **DODATKOWE FUNKCJE**: Rozwijane okno z szczegółową oceną, usunięcie duplikowania kompatybilności, sortowanie według średniej kompatybilności
+
+- [ ] **2.1.4**: Opisy problemów z dopasowaniem
   - Success criteria: Czytelne komunikaty o niedopasowaniach
   - Estimated time: 2 godziny
 
@@ -141,7 +148,11 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## Current Status / Progress Tracking
 
-**Obecny stan**: ✅ **ETAP 1 - WALIDACJA FORMULARZA UKOŃCZONA**:
+**Obecny stan**: ✅ **ETAP 2 - ULEPSZENIE INTERFEJSU W TOKU**:
+- ✅ **Task 2.1.1**: Kolorowy system wskaźników dopasowania
+- ✅ **Task 2.1.2**: Szczegółowe informacje o dopasowaniu  
+- ✅ **Task 2.1.3**: Rozwijane szczegóły kompatybilności
+- ✅ **DODATKOWE**: Sortowanie według średniej kompatybilności, usunięcie duplikowania kompatybilności
 - ✅ Walidacja dat (DD/MM/YYYY)
 - ✅ Walidacja wzrostu (100-250 cm) 
 - ✅ Walidacja wagi (20-200 kg)

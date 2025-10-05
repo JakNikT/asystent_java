@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Frame from './components/AnimaComponent'
 import './App.css'
 
