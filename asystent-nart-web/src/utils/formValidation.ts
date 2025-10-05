@@ -136,17 +136,28 @@ export function validateYear(year: string): ValidationResult {
  * console.log(src/utils/formValidation.ts: Walidacja daty - format DD/MM/YYYY)
  */
 export function validateDate(day: string, month: string, year: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja daty - dzień: ${day}, miesiąc: ${month}, rok: ${year}`);
+  console.log(`src/utils/formValidation.ts: Walidacja daty - dzień: "${day}", miesiąc: "${month}", rok: "${year}"`);
+  console.log(`src/utils/formValidation.ts: Sprawdzanie pustych pól - day empty: ${!day || day.trim() === ''}, month empty: ${!month || month.trim() === ''}, year empty: ${!year || year.trim() === ''}`);
   
-  // Sprawdź czy wszystkie pola są wypełnione
-  if (!day || !month || !year) {
+  // Jeśli wszystkie pola są puste, data jest opcjonalna
+  if ((!day || day.trim() === '') && (!month || month.trim() === '') && (!year || year.trim() === '')) {
+    console.log(`src/utils/formValidation.ts: Data opcjonalna - wszystkie pola puste`);
+    return { isValid: true, message: '' };
+  }
+  
+  // Jeśli tylko niektóre pola są wypełnione, to błąd
+  const hasDay = day && day.trim() !== '';
+  const hasMonth = month && month.trim() !== '';
+  const hasYear = year && year.trim() !== '';
+  
+  if ((hasDay && !hasMonth) || (hasDay && !hasYear) || (hasMonth && !hasDay) || (hasMonth && !hasYear) || (hasYear && !hasDay) || (hasYear && !hasMonth)) {
     return {
       isValid: false,
-      message: 'Wszystkie pola daty muszą być wypełnione'
+      message: 'Jeśli wypełniasz datę, wszystkie pola muszą być wypełnione'
     };
   }
 
-  // Sprawdź format liczbowy
+  // Sprawdź format liczbowy (tylko jeśli pola nie są puste)
   const dayNum = parseInt(day);
   const monthNum = parseInt(month);
   const yearNum = parseInt(year);
@@ -489,7 +500,9 @@ export function validateForm(formData: any): { isValid: boolean; errors: FormErr
   let isValid = true;
 
   // Waliduj datę od
+  console.log(`src/utils/formValidation.ts: Walidacja daty od - day: "${formData.dateFrom.day}", month: "${formData.dateFrom.month}", year: "${formData.dateFrom.year}"`);
   const dateFromResult = validateDate(formData.dateFrom.day, formData.dateFrom.month, formData.dateFrom.year);
+  console.log(`src/utils/formValidation.ts: Wynik walidacji daty od - isValid: ${dateFromResult.isValid}, message: "${dateFromResult.message}"`);
   if (!dateFromResult.isValid) {
     errors.dateFrom.day = dateFromResult.message;
     errors.dateFrom.month = dateFromResult.message;
@@ -498,7 +511,9 @@ export function validateForm(formData: any): { isValid: boolean; errors: FormErr
   }
 
   // Waliduj datę do
+  console.log(`src/utils/formValidation.ts: Walidacja daty do - day: "${formData.dateTo.day}", month: "${formData.dateTo.month}", year: "${formData.dateTo.year}"`);
   const dateToResult = validateDate(formData.dateTo.day, formData.dateTo.month, formData.dateTo.year);
+  console.log(`src/utils/formValidation.ts: Wynik walidacji daty do - isValid: ${dateToResult.isValid}, message: "${dateToResult.message}"`);
   if (!dateToResult.isValid) {
     errors.dateTo.day = dateToResult.message;
     errors.dateTo.month = dateToResult.message;
