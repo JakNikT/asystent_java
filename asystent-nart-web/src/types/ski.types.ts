@@ -35,17 +35,18 @@ export interface SkiMatch {
     wzrost: string;
     przeznaczenie: string;
   };
-  kategoria: 'idealne' | 'bardzo_dobre' | 'dobre' | 'akceptowalne';
+  kategoria: 'idealne' | 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile';
   zielone_punkty: number;
 }
 
-export type MatchCategory = 'idealne' | 'bardzo_dobre' | 'dobre' | 'akceptowalne';
+export type MatchCategory = 'idealne' | 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile';
 
 export interface SearchResults {
   idealne: SkiMatch[];
-  bardzo_dobre: SkiMatch[];
-  dobre: SkiMatch[];
-  akceptowalne: SkiMatch[];
+  alternatywy: SkiMatch[];
+  poziom_za_nisko: SkiMatch[];
+  inna_plec: SkiMatch[];
+  na_sile: SkiMatch[];
   wszystkie: SkiMatch[];
 }
 

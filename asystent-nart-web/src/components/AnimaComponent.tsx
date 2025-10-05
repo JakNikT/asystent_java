@@ -127,9 +127,10 @@ const AnimaComponent: React.FC = () => {
 
       console.log('Znaleziono wyników:', {
         idealne: results.idealne.length,
-        bardzo_dobre: results.bardzo_dobre.length,
-        dobre: results.dobre.length,
-        akceptowalne: results.akceptowalne.length,
+        alternatywy: results.alternatywy.length,
+        poziom_za_nisko: results.poziom_za_nisko.length,
+        inna_plec: results.inna_plec.length,
+        na_sile: results.na_sile.length,
         wszystkie: results.wszystkie.length
       });
     } catch (err) {
@@ -440,12 +441,12 @@ const AnimaComponent: React.FC = () => {
                     </div>
                   )}
 
-                  {searchResults.bardzo_dobre.length > 0 && (
+                  {searchResults.alternatywy.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        ⭐ BARDZO DOBRE ({searchResults.bardzo_dobre.length})
+                        ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
                       </h3>
-                      {searchResults.bardzo_dobre.slice(0, 5).map((match, idx) => (
+                      {searchResults.alternatywy.slice(0, 5).map((match, idx) => (
                         <div key={idx} className="bg-white/15 p-3 rounded-lg mb-2">
                           <div className="text-white font-black text-base">
                             {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
@@ -461,18 +462,63 @@ const AnimaComponent: React.FC = () => {
                     </div>
                   )}
 
-                  {searchResults.dobre.length > 0 && searchResults.idealne.length === 0 && searchResults.bardzo_dobre.length === 0 && (
+                  {searchResults.poziom_za_nisko.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        👍 DOBRE ({searchResults.dobre.length})
+                        📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
-                      {searchResults.dobre.slice(0, 5).map((match, idx) => (
-                        <div key={idx} className="bg-white/10 p-3 rounded-lg mb-2">
+                      {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
+                        <div key={idx} className="bg-orange-500/20 p-3 rounded-lg mb-2">
                           <div className="text-white font-black text-base">
                             {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
                           </div>
-                          <div className="text-white/70 text-sm">
-                            Kompatybilność: {match.compatibility}%
+                          <div className="text-white/80 text-sm">
+                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
+                          </div>
+                          <div className="text-orange-300 text-sm font-bold">
+                            📉 Kompatybilność: {match.compatibility}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.inna_plec.length > 0 && (
+                    <div>
+                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                        👤 INNA PŁEĆ ({searchResults.inna_plec.length})
+                      </h3>
+                      {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
+                        <div key={idx} className="bg-blue-500/20 p-3 rounded-lg mb-2">
+                          <div className="text-white font-black text-base">
+                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                          </div>
+                          <div className="text-white/80 text-sm">
+                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
+                          </div>
+                          <div className="text-blue-300 text-sm font-bold">
+                            👤 Kompatybilność: {match.compatibility}%
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {searchResults.na_sile.length > 0 && (
+                    <div>
+                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                        💪 NA SIŁĘ ({searchResults.na_sile.length})
+                      </h3>
+                      {searchResults.na_sile.slice(0, 5).map((match, idx) => (
+                        <div key={idx} className="bg-red-500/20 p-3 rounded-lg mb-2">
+                          <div className="text-white font-black text-base">
+                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                          </div>
+                          <div className="text-white/80 text-sm">
+                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
+                          </div>
+                          <div className="text-red-300 text-sm font-bold">
+                            💪 Kompatybilność: {match.compatibility}%
                           </div>
                         </div>
                       ))}
