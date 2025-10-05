@@ -1,1 +1,0 @@
-# Moduł logiki dobierania nart
