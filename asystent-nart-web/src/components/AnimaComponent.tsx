@@ -14,7 +14,7 @@ import {
   type FormErrors 
 } from '../utils/formValidation';
 import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
-import { MatchIndicators } from './MatchIndicators';
+import { DetailedCompatibility } from './DetailedCompatibility';
 import type { SkiData, SearchResults } from '../types/ski.types';
 
 interface FormData {
@@ -57,6 +57,40 @@ const AnimaComponent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
+  const [currentCriteria, setCurrentCriteria] = useState<{
+    wzrost: number;
+    waga: number;
+    poziom: number;
+    plec: string;
+    styl_jazdy: string;
+  } | null>(null);
+
+  /**
+   * Konwertuje preferencje stylu jazdy na skróconą formę
+   */
+  const getStyleShortcut = (style: string): string => {
+    const shortcuts: { [key: string]: string } = {
+      'Slalom': 'SL',
+      'Gigant': 'G',
+      'Cały dzień': 'C',
+      'Poza trase': 'OFF',
+      'Pomiędzy': 'SLG',
+      'Wszystkie': 'ALL'
+    };
+    return shortcuts[style] || style;
+  };
+
+  /**
+   * Konwertuje preferencje użytkownika na skróconą formę
+   */
+  const getShortPreferences = (criteria: typeof currentCriteria): string => {
+    if (!criteria) return '';
+    
+    const styleShort = getStyleShortcut(criteria.styl_jazdy);
+    const genderShort = criteria.plec === 'Mężczyzna' ? 'M' : 'K';
+    
+    return `${styleShort} | Poziom ${criteria.poziom} | ${genderShort} | ${criteria.wzrost}cm | ${criteria.waga}kg`;
+  };
 
   // Wczytaj dane sesji przy starcie aplikacji
   useEffect(() => {
@@ -383,6 +417,9 @@ const AnimaComponent: React.FC = () => {
       };
 
       console.log('src/components/AnimaComponent.tsx: Kryteria wyszukiwania:', criteria);
+
+      // Zapisz kryteria dla MatchIndicators
+      setCurrentCriteria(criteria);
 
       // Wyszukaj pasujące narty
       const results = SkiMatchingService.findMatchingSkis(skisDatabase, criteria);
@@ -752,20 +789,19 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         🏆 IDEALNE DOPASOWANIE ({searchResults.idealne.length})
                       </h3>
-                      {searchResults.idealne.map((match, idx) => (
-                        <div key={idx} className="bg-white/20 p-3 rounded-lg mb-2">
-                          <div className="text-white font-black text-base">
-                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {searchResults.idealne.map((match, idx) => (
+                          <div key={idx} className="bg-white/20 p-3 rounded-lg">
+                            <div className="text-white font-black text-base">
+                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            </div>
+                            <DetailedCompatibility 
+                              match={match}
+                              userCriteria={currentCriteria!}
+                            />
                           </div>
-                          <div className="text-white/90 text-sm">
-                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM} | Płeć: {match.ski.PLEC}
-                          </div>
-                          <div className="text-green-300 text-sm font-bold">
-                            ✅ Kompatybilność: {match.compatibility}%
-                          </div>
-                          <MatchIndicators dopasowanie={match.dopasowanie} />
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -774,20 +810,19 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
                       </h3>
-                      {searchResults.alternatywy.slice(0, 5).map((match, idx) => (
-                        <div key={idx} className="bg-white/15 p-3 rounded-lg mb-2">
-                          <div className="text-white font-black text-base">
-                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {searchResults.alternatywy.slice(0, 5).map((match, idx) => (
+                          <div key={idx} className="bg-white/15 p-3 rounded-lg">
+                            <div className="text-white font-black text-base">
+                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            </div>
+                            <DetailedCompatibility 
+                              match={match}
+                              userCriteria={currentCriteria!}
+                            />
                           </div>
-                          <div className="text-white/80 text-sm">
-                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
-                          </div>
-                          <div className="text-yellow-300 text-sm font-bold">
-                            ⭐ Kompatybilność: {match.compatibility}%
-                          </div>
-                          <MatchIndicators dopasowanie={match.dopasowanie} />
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -796,20 +831,19 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
-                      {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
-                        <div key={idx} className="bg-orange-500/20 p-3 rounded-lg mb-2">
-                          <div className="text-white font-black text-base">
-                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
+                          <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
+                            <div className="text-white font-black text-base">
+                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            </div>
+                            <DetailedCompatibility 
+                              match={match}
+                              userCriteria={currentCriteria!}
+                            />
                           </div>
-                          <div className="text-white/80 text-sm">
-                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
-                          </div>
-                          <div className="text-orange-300 text-sm font-bold">
-                            📉 Kompatybilność: {match.compatibility}%
-                          </div>
-                          <MatchIndicators dopasowanie={match.dopasowanie} />
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -818,20 +852,19 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         👤 INNA PŁEĆ ({searchResults.inna_plec.length})
                       </h3>
-                      {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
-                        <div key={idx} className="bg-blue-500/20 p-3 rounded-lg mb-2">
-                          <div className="text-white font-black text-base">
-                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
+                          <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
+                            <div className="text-white font-black text-base">
+                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            </div>
+                            <DetailedCompatibility 
+                              match={match}
+                              userCriteria={currentCriteria!}
+                            />
                           </div>
-                          <div className="text-white/80 text-sm">
-                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
-                          </div>
-                          <div className="text-blue-300 text-sm font-bold">
-                            👤 Kompatybilność: {match.compatibility}%
-                          </div>
-                          <MatchIndicators dopasowanie={match.dopasowanie} />
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
 
@@ -840,20 +873,19 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         💪 NA SIŁĘ ({searchResults.na_sile.length})
                       </h3>
-                      {searchResults.na_sile.slice(0, 5).map((match, idx) => (
-                        <div key={idx} className="bg-red-500/20 p-3 rounded-lg mb-2">
-                          <div className="text-white font-black text-base">
-                            {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {searchResults.na_sile.slice(0, 5).map((match, idx) => (
+                          <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
+                            <div className="text-white font-black text-base">
+                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            </div>
+                            <DetailedCompatibility 
+                              match={match}
+                              userCriteria={currentCriteria!}
+                            />
                           </div>
-                          <div className="text-white/80 text-sm">
-                            {match.ski.PRZEZNACZENIE} | Poziom: {match.ski.POZIOM}
-                          </div>
-                          <div className="text-red-300 text-sm font-bold">
-                            💪 Kompatybilność: {match.compatibility}%
-                          </div>
-                          <MatchIndicators dopasowanie={match.dopasowanie} />
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>

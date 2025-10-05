@@ -30,20 +30,33 @@ export class SkiMatchingService {
     
     const naSile = this.findNaSile(skis, criteria, juzWybrane);
 
+    // Sortuj każdą kategorię według średniej kompatybilności
+    const sortByCompatibility = (matches: SkiMatch[]) => {
+      return matches.sort((a, b) => {
+        const avgA = this.calculateAverageCompatibility(a, criteria);
+        const avgB = this.calculateAverageCompatibility(b, criteria);
+        return avgB - avgA;
+      });
+    };
+
+    // Sortuj wszystkie kategorie
+    const sortedIdealne = sortByCompatibility(idealne);
+    const sortedAlternatywy = sortByCompatibility(alternatywy);
+    const sortedPoziomZaNisko = sortByCompatibility(poziomZaNisko);
+    const sortedInnaPlec = sortByCompatibility(innaPlec);
+    const sortedNaSile = sortByCompatibility(naSile);
+
     // Połącz wszystkie wyniki
-    const wszystkie = [...idealne, ...alternatywy, ...poziomZaNisko, ...innaPlec, ...naSile];
-    
-    // Sortuj według kompatybilności
-    wszystkie.sort((a, b) => b.compatibility - a.compatibility);
+    const wszystkie = [...sortedIdealne, ...sortedAlternatywy, ...sortedPoziomZaNisko, ...sortedInnaPlec, ...sortedNaSile];
 
     console.log(`SkiMatchingService: Znaleziono: ${idealne.length} idealnych, ${alternatywy.length} alternatyw, ${poziomZaNisko.length} poziom za nisko, ${innaPlec.length} inna płeć, ${naSile.length} na siłę`);
 
     return {
-      idealne,
-      alternatywy,
-      poziom_za_nisko: poziomZaNisko,
-      inna_plec: innaPlec,
-      na_sile: naSile,
+      idealne: sortedIdealne,
+      alternatywy: sortedAlternatywy,
+      poziom_za_nisko: sortedPoziomZaNisko,
+      inna_plec: sortedInnaPlec,
+      na_sile: sortedNaSile,
       wszystkie
     };
   }
@@ -61,7 +74,7 @@ export class SkiMatchingService {
         const dopasowanie = match.dopasowanie;
         let wszystkieZielone = true;
         
-        for (const [kryterium, status] of Object.entries(dopasowanie)) {
+        for (const [, status] of Object.entries(dopasowanie)) {
           if (!status.includes('✅ zielony')) {
             wszystkieZielone = false;
             break;
@@ -134,7 +147,7 @@ export class SkiMatchingService {
     
     for (const ski of skis) {
       const match = this.checkSkiMatch(ski, criteria);
-      if (match && match.dopasowanie.poziom.includes('🟡 żółty')) {
+      if (match && match.dopasowanie.poziom.includes('🟡 żółty (poziom za nisko)')) {
         // Sprawdź czy WSZYSTKIE inne kryteria są na zielono
         const dopasowanie = match.dopasowanie;
         let wszystkieInneZielone = true;
@@ -495,6 +508,10 @@ export class SkiMatchingService {
    */
   private static checkPoziom(userPoziom: number, skiPoziomMin: number): { status: string; points: number } | null {
     if (userPoziom >= skiPoziomMin) {
+      // Sprawdź czy narta nie jest za łatwa (znacznie niższy poziom)
+      if (userPoziom >= skiPoziomMin + 1) {
+        return { status: '🟡 żółty (poziom za nisko)', points: 0 };
+      }
       return { status: '✅ zielony', points: 1 };
     } else if (userPoziom >= skiPoziomMin - 1) {
       return { status: '🟡 żółty (poziom niżej)', points: 0 };
@@ -592,37 +609,255 @@ export class SkiMatchingService {
   }
 
   /**
-   * Sprawdza dopasowanie przeznaczenia
+   * Sprawdza dopasowanie przeznaczenia z precyzyjnym dopasowaniem
    */
   private static checkPrzeznaczenie(userStyl: string, skiPrzeznaczenie: string): { status: string; points: number } {
-    // Mapowanie stylów jazdy
-    const stylMapping: { [key: string]: string[] } = {
-      'Wszystkie': ['SL', 'SLG', 'G', 'C', 'SL,C', 'SLG,C', 'ALL', 'ALLM', 'UNI'],
-      'Slalom': ['SL', 'SLG', 'SL,C', 'ALL', 'ALLM', 'UNI'],
-      'Gigant': ['G', 'SLG', 'SLG,C', 'ALL', 'ALLM', 'UNI'],
-      'Cały dzień': ['C', 'SL,C', 'SLG,C', 'ALL', 'ALLM', 'UNI'],
-      'Poza trase': ['OFF', 'ALLM', 'UNI'],
-      'Pomiędzy': ['SLG', 'SLG,C', 'ALL', 'ALLM', 'UNI']
-    };
-
-    const acceptedTypes = stylMapping[userStyl] || [];
     const skiTypes = skiPrzeznaczenie.split(',').map(t => t.trim());
-
-    const matches = skiTypes.some(type => acceptedTypes.includes(type));
-
-    if (matches) {
+    
+    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
+    if (userStyl === 'Wszystkie') {
       return { status: '✅ zielony', points: 1 };
-    } else {
-      return { status: '🟡 żółty', points: 0 };
+    }
+    
+    // Sprawdź dokładne dopasowanie dla każdego stylu
+    switch (userStyl) {
+      case 'Slalom':
+        if (skiTypes.includes('SL')) {
+          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
+        } else if (skiTypes.includes('SLG')) {
+          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
+        } else {
+          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
+        }
+        
+      case 'Gigant':
+        if (skiTypes.includes('G')) {
+          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
+        } else if (skiTypes.includes('SLG')) {
+          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
+        } else {
+          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
+        }
+        
+      case 'Cały dzień':
+        if (skiTypes.includes('C')) {
+          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
+        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
+          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
+        } else {
+          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
+        }
+        
+      case 'Poza trase':
+        if (skiTypes.includes('OFF')) {
+          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
+        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
+        } else {
+          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
+        }
+        
+      case 'Pomiędzy':
+        if (skiTypes.includes('SLG')) {
+          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
+        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
+          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
+        } else {
+          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
+        }
+        
+      default:
+        return { status: '🔴 czerwony', points: 0 };
     }
   }
 
   /**
-   * Oblicza kompatybilność (0-100)
+   * Oblicza kompatybilność (0-100) - stara metoda na podstawie zielonych punktów
    */
   private static calculateCompatibility(zielonePunkty: number): number {
     const maxPunkty = 5; // poziom, płeć, waga, wzrost, przeznaczenie
     return Math.round((zielonePunkty / maxPunkty) * 100);
+  }
+
+  /**
+   * Oblicza średnią kompatybilność z wszystkich 5 parametrów dla sortowania
+   */
+  public static calculateAverageCompatibility(match: SkiMatch, criteria: SearchCriteria): number {
+    const scores = [
+      this.calculateCriteriaScore('poziom', match.dopasowanie.poziom, criteria, match.ski),
+      this.calculateCriteriaScore('plec', match.dopasowanie.plec, criteria, match.ski),
+      this.calculateCriteriaScore('waga', match.dopasowanie.waga, criteria, match.ski),
+      this.calculateCriteriaScore('wzrost', match.dopasowanie.wzrost, criteria, match.ski),
+      this.calculateCriteriaScore('przeznaczenie', match.dopasowanie.przeznaczenie, criteria, match.ski)
+    ];
+    
+    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
+    return Math.round(average);
+  }
+
+  /**
+   * Oblicza procent dla konkretnego kryterium (uproszczona wersja dla sortowania)
+   */
+  private static calculateCriteriaScore(criterion: string, status: string, criteria: SearchCriteria, ski: SkiData): number {
+    if (status.includes('✅ zielony')) {
+      switch (criterion) {
+        case 'wzrost':
+          return this.calculateRangeScore(criteria.wzrost, ski.WZROST_MIN, ski.WZROST_MAX);
+        case 'waga':
+          return this.calculateRangeScore(criteria.waga, ski.WAGA_MIN, ski.WAGA_MAX);
+        case 'poziom':
+          return this.calculateLevelScore(criteria.poziom, criteria.plec, ski.POZIOM);
+        case 'plec':
+          if (ski.POZIOM.includes('/') || ski.POZIOM.includes('U')) return 100;
+          return criteria.plec === ski.PLEC ? 100 : 0;
+        case 'przeznaczenie':
+          return this.calculateStyleScore(criteria.styl_jazdy, ski.PRZEZNACZENIE);
+        default:
+          return 100;
+      }
+    } else if (status.includes('🟡 żółty')) {
+      return 75;
+    } else if (status.includes('🔴 czerwony')) {
+      return 25;
+    }
+    return 0;
+  }
+
+  /**
+   * Oblicza procent na podstawie pozycji w zakresie
+   */
+  private static calculateRangeScore(userValue: number, min: number, max: number): number {
+    const center = (min + max) / 2;
+    const range = max - min;
+    const distanceFromCenter = Math.abs(userValue - center);
+    const maxDistance = range / 2;
+    
+    const score = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 20);
+    return Math.round(score);
+  }
+
+  /**
+   * Oblicza procent dla poziomu
+   */
+  private static calculateLevelScore(userLevel: number, userGender: string, skiLevel: string): number {
+    const skiLevelForUser = this.parseSkiLevelForUser(skiLevel, userGender);
+    if (skiLevelForUser === null) return 100;
+    
+    const diff = Math.abs(userLevel - skiLevelForUser);
+    if (diff === 0) return 100;
+    if (diff === 1) return 85;
+    if (diff === 2) return 60;
+    return Math.max(25, 100 - diff * 20);
+  }
+
+  /**
+   * Oblicza procent dopasowania stylu jazdy
+   */
+  private static calculateStyleScore(userStyle: string, skiStyle: string): number {
+    const skiTypes = skiStyle.split(',').map(t => t.trim());
+    
+    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
+    if (userStyle === 'Wszystkie') {
+      return 100;
+    }
+    
+    // Sprawdź dokładne dopasowanie dla każdego stylu
+    switch (userStyle) {
+      case 'Slalom':
+        if (skiTypes.includes('SL')) {
+          return 100; // Idealne dopasowanie
+        } else if (skiTypes.includes('SLG')) {
+          return 75; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return 60; // Uniwersalne narty
+        } else {
+          return 0; // Brak dopasowania
+        }
+        
+      case 'Gigant':
+        if (skiTypes.includes('G')) {
+          return 100; // Idealne dopasowanie
+        } else if (skiTypes.includes('SLG')) {
+          return 75; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return 60; // Uniwersalne narty
+        } else {
+          return 0; // Brak dopasowania
+        }
+        
+      case 'Cały dzień':
+        if (skiTypes.includes('C')) {
+          return 100; // Idealne dopasowanie
+        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
+          return 75; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return 60; // Uniwersalne narty
+        } else {
+          return 0; // Brak dopasowania
+        }
+        
+      case 'Poza trase':
+        if (skiTypes.includes('OFF')) {
+          return 100; // Idealne dopasowanie
+        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return 60; // Uniwersalne narty
+        } else {
+          return 0; // Brak dopasowania
+        }
+        
+      case 'Pomiędzy':
+        if (skiTypes.includes('SLG')) {
+          return 100; // Idealne dopasowanie
+        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
+          return 75; // Częściowe dopasowanie
+        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
+          return 60; // Uniwersalne narty
+        } else {
+          return 0; // Brak dopasowania
+        }
+        
+      default:
+        return 0;
+    }
+  }
+
+  /**
+   * Parsuje poziom narty dla konkretnego użytkownika
+   */
+  private static parseSkiLevelForUser(skiLevel: string, userGender: string): number | null {
+    const cleanLevel = skiLevel.replace(/\s+/g, '').toUpperCase();
+    
+    if (cleanLevel.includes('/')) {
+      const parts = cleanLevel.split('/');
+      for (const part of parts) {
+        if (part.includes(userGender.toUpperCase())) {
+          const level = parseInt(part.replace(/[^\d]/g, ''));
+          if (!isNaN(level)) return level;
+        }
+      }
+      const firstLevel = parseInt(parts[0].replace(/[^\d]/g, ''));
+      return isNaN(firstLevel) ? null : firstLevel;
+    }
+    
+    if (cleanLevel.includes(userGender.toUpperCase())) {
+      const level = parseInt(cleanLevel.replace(/[^\d]/g, ''));
+      return isNaN(level) ? null : level;
+    }
+    
+    if (cleanLevel.includes('U') || !/[MD]/.test(cleanLevel)) {
+      const level = parseInt(cleanLevel.replace(/[^\d]/g, ''));
+      return isNaN(level) ? null : level;
+    }
+    
+    return null;
   }
 
   /**
