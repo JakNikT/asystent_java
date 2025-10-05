@@ -65,7 +65,7 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 ### ETAP 2: ULEPSZENIE INTERFEJSU UŻYTKOWNIKA (PRIORYTET)
 
 #### Task 2.1: Ulepszenie wyświetlania wyników
-- [ ] **2.1.1**: Kolorowy system wskaźników dopasowania
+- [x] **2.1.1**: Kolorowy system wskaźników dopasowania ✅ UKOŃCZONE
   - Success criteria: Zielony/pomarańczowy/czerwony dla każdego kryterium
   - Estimated time: 3 godziny
 

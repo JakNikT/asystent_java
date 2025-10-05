@@ -14,6 +14,7 @@ import {
   type FormErrors 
 } from '../utils/formValidation';
 import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
+import { MatchIndicators } from './MatchIndicators';
 import type { SkiData, SearchResults } from '../types/ski.types';
 
 interface FormData {
@@ -762,6 +763,7 @@ const AnimaComponent: React.FC = () => {
                           <div className="text-green-300 text-sm font-bold">
                             ✅ Kompatybilność: {match.compatibility}%
                           </div>
+                          <MatchIndicators dopasowanie={match.dopasowanie} />
                         </div>
                       ))}
                     </div>
@@ -783,6 +785,7 @@ const AnimaComponent: React.FC = () => {
                           <div className="text-yellow-300 text-sm font-bold">
                             ⭐ Kompatybilność: {match.compatibility}%
                           </div>
+                          <MatchIndicators dopasowanie={match.dopasowanie} />
                         </div>
                       ))}
                     </div>
@@ -804,6 +807,7 @@ const AnimaComponent: React.FC = () => {
                           <div className="text-orange-300 text-sm font-bold">
                             📉 Kompatybilność: {match.compatibility}%
                           </div>
+                          <MatchIndicators dopasowanie={match.dopasowanie} />
                         </div>
                       ))}
                     </div>
@@ -825,6 +829,7 @@ const AnimaComponent: React.FC = () => {
                           <div className="text-blue-300 text-sm font-bold">
                             👤 Kompatybilność: {match.compatibility}%
                           </div>
+                          <MatchIndicators dopasowanie={match.dopasowanie} />
                         </div>
                       ))}
                     </div>
@@ -846,6 +851,7 @@ const AnimaComponent: React.FC = () => {
                           <div className="text-red-300 text-sm font-bold">
                             💪 Kompatybilność: {match.compatibility}%
                           </div>
+                          <MatchIndicators dopasowanie={match.dopasowanie} />
                         </div>
                       ))}
                     </div>
