@@ -23,6 +23,8 @@ export interface SearchCriteria {
   poziom: number;
   plec: 'M' | 'K';
   styl_jazdy: string;
+  dateFrom?: Date; // Data rozpoczęcia rezerwacji
+  dateTo?: Date;   // Data zakończenia rezerwacji
 }
 
 export interface SkiMatch {

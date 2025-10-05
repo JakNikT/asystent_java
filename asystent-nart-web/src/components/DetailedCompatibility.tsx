@@ -16,11 +16,28 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   console.log('src/components/DetailedCompatibility.tsx: Wyświetlanie szczegółowych informacji:', match);
   
   const [isExpanded, setIsExpanded] = useState(false);
-  
-  // Generuj informacje o dostępności (jedyna aktywna funkcja)
-  const availability = SkiMatchingServiceV2.checkAvailability(match.ski);
-  const availabilityMessage = SkiMatchingServiceV2.generateAvailabilityMessage(availability);
 
+  // Proste kwadraciki dostępności (bez async)
+  const generateAvailabilitySquares = () => {
+    const ilosc = parseInt(match.ski.ILOSC || '2');
+    const squares = [];
+    
+    for (let i = 1; i <= ilosc; i++) {
+      squares.push(
+        <span 
+          key={i} 
+          className="inline-block w-5 h-5 bg-green-500 text-white text-xs font-bold rounded flex items-center justify-center"
+          title={`Sztuka ${i} - dostępna`}
+        >
+          {i}
+        </span>
+      );
+    }
+    return squares;
+  };
+
+  const availabilitySquares = generateAvailabilitySquares();
+  
   /**
    * Oblicza procent dopasowania dla konkretnego kryterium - zaawansowany system z uwzględnieniem kategorii
    */
@@ -526,10 +543,10 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          {/* Dostępność */}
-          <span className="text-xs text-white">
-            {availabilityMessage}
-          </span>
+          {/* Kwadraciki dostępności po prawej stronie - w dwóch kolumnach */}
+          <div className="flex flex-wrap w-16 gap-x-3 gap-y-2" title="Dostępność sztuk">
+            {availabilitySquares}
+          </div>
           <span className={`text-lg font-bold ${
             averageCompatibility >= 90 ? 'text-green-400' :
             averageCompatibility >= 70 ? 'text-yellow-400' :
@@ -576,12 +593,17 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
             })}
           </div>
           
-          <div className="mt-3 pt-2 border-t border-white/10">
-            <div className="flex justify-between text-xs text-white/70">
-              <span>Kategoria: {averageCompatibility >= 100 ? 'Idealne' : averageCompatibility >= 80 ? 'Bardzo dobre' : averageCompatibility >= 60 ? 'Dobre' : 'Akceptowalne'}</span>
-              <span>Dostępność: {availabilityMessage}</span>
-            </div>
-          </div>
+                  <div className="mt-3 pt-2 border-t border-white/10">
+                    <div className="flex justify-between items-center text-xs text-white/70">
+                      <span>Kategoria: {averageCompatibility >= 100 ? 'Idealne' : averageCompatibility >= 80 ? 'Bardzo dobre' : averageCompatibility >= 60 ? 'Dobre' : 'Akceptowalne'}</span>
+                      <div className="flex items-center">
+                        <span className="mr-2">Dostępność:</span>
+                        <div className="flex flex-wrap w-16 gap-x-3 gap-y-2">
+                          {availabilitySquares}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
         </div>
       )}
     </div>
