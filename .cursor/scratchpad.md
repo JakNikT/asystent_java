@@ -132,11 +132,21 @@ Celem analizy jest porównanie funkcjonalności obu wersji i stworzenie planu ul
 
 ## Current Status / Progress Tracking
 
-**Obecny stan**: Aplikacja wersji web ma podstawowe funkcjonalności wyszukiwania nart, ale brakuje zaawansowanych funkcji z wersji Python. Główny komponent `AnimaComponent.tsx` zawiera całą logikę w jednym pliku, co utrudnia utrzymanie i rozwijanie.
+**Obecny stan**: ✅ **Task 1.1 UKOŃCZONY** - Zaimplementowano zaawansowany system kategoryzacji nart z 5 kategoriami:
+- Idealne dopasowania (wszystkie kryteria na zielono)
+- Alternatywy (poziom OK, płeć OK, tylko jedno kryterium nie idealne)
+- Poziom za nisko (wszystkie inne kryteria na zielono)
+- Inna płeć (wszystkie inne kryteria na zielono)
+- Na siłę (z tolerancjami 10± lub poziom za nisko + tolerancja 5±)
 
-**Następne kroki**: Rozpoczęcie implementacji zaawansowanego systemu kategoryzacji nart zgodnie z wersją Python.
+**Następne kroki**: Rozpoczęcie implementacji systemu współczynnika idealności (Task 1.2).
 
 ## Executor's Feedback or Assistance Requests
+
+**Wykonane poprawki (po testowaniu użytkownika)**:
+- ✅ Naprawiono funkcję `checkPlec()` - teraz zwraca właściwe opisy "Narta męska" / "Narta kobieca" dla kategorii "INNA PŁEĆ"
+- ✅ Naprawiono funkcje `checkWaga()` i `checkWzrost()` - teraz używają dokładnych zakresów zamiast zbyt szerokiej tolerancji
+- ✅ Dodano statusy 🟡 żółty dla wagi/wzrostu poza zakresem ale w tolerancji ±5
 
 **Potrzebne informacje od użytkownika**:
 1. Czy chcesz zachować obecny design interfejsu czy wprowadzić zmiany?
