@@ -1,6 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { CSVParser } from '../utils/csvParser';
 import { SkiMatchingService } from '../services/skiMatchingService';
+import { 
+  validateForm, 
+  initialFormErrors, 
+  validateDay, 
+  validateMonth, 
+  validateYear, 
+  validateHeightRealtime, 
+  validateWeightRealtime, 
+  validateLevelRealtime, 
+  validateGenderRealtime,
+  type FormErrors 
+} from '../utils/formValidation';
 import type { SkiData, SearchResults } from '../types/ski.types';
 
 interface FormData {
@@ -29,19 +41,30 @@ interface FormData {
 
 const AnimaComponent: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
-    dateFrom: { day: '', month: '', year: '' },
-    dateTo: { day: '', month: '', year: '' },
+    dateFrom: { day: '', month: '', year: '2025' }, // Domyślnie 2025
+    dateTo: { day: '', month: '', year: '2025' }, // Domyślnie 2025
     height: { value: '', unit: 'cm' },
     weight: { value: '', unit: 'kg' },
     level: '',
     gender: '',
-    preferences: []
+    preferences: ['Wszystkie'] // Domyślnie "Wszystkie"
   });
 
   const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
+
+  // Refs dla automatycznego przechodzenia między polami
+  const dayFromRef = React.useRef<HTMLInputElement>(null);
+  const monthFromRef = React.useRef<HTMLInputElement>(null);
+  const dayToRef = React.useRef<HTMLInputElement>(null);
+  const monthToRef = React.useRef<HTMLInputElement>(null);
+  const heightRef = React.useRef<HTMLInputElement>(null);
+  const weightRef = React.useRef<HTMLInputElement>(null);
+  const levelRef = React.useRef<HTMLInputElement>(null);
+  const genderRef = React.useRef<HTMLInputElement>(null);
 
   // Ładowanie bazy danych przy starcie
   useEffect(() => {
@@ -62,7 +85,55 @@ const AnimaComponent: React.FC = () => {
     loadDatabase();
   }, []);
 
-  const handleInputChange = (section: keyof FormData, field: string, value: string) => {
+  const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
+    console.log(`src/components/AnimaComponent.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: ${value}`);
+    
+    // Walidacja w czasie rzeczywistym
+    let isValid = true;
+    let errorMessage = '';
+
+    if (section === 'dateFrom' || section === 'dateTo') {
+      if (field === 'day') {
+        const validation = validateDay(value);
+        isValid = validation.isValid;
+        errorMessage = validation.message;
+      } else if (field === 'month') {
+        const validation = validateMonth(value);
+        isValid = validation.isValid;
+        errorMessage = validation.message;
+      } else if (field === 'year') {
+        const validation = validateYear(value);
+        isValid = validation.isValid;
+        errorMessage = validation.message;
+      }
+    } else if (section === 'height' && field === 'value') {
+      const validation = validateHeightRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+      console.log(`src/components/AnimaComponent.tsx: Walidacja wzrostu - wartość: ${value}, isValid: ${isValid}`);
+    } else if (section === 'weight' && field === 'value') {
+      const validation = validateWeightRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    } else if (section === 'level') {
+      const validation = validateLevelRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    } else if (section === 'gender') {
+      const validation = validateGenderRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    }
+
+    // Jeśli walidacja nie przeszła, nie aktualizuj wartości
+    if (!isValid) {
+      console.log(`src/components/AnimaComponent.tsx: Walidacja nie przeszła - ${errorMessage}`);
+      return;
+    }
+
+    console.log(`src/components/AnimaComponent.tsx: Walidacja przeszła, aktualizuję dane`);
+
+    // Aktualizuj dane formularza (bez formatowania)
     if (section === 'dateFrom' || section === 'dateTo') {
       setFormData(prev => ({
         ...prev,
@@ -80,28 +151,159 @@ const AnimaComponent: React.FC = () => {
         }
       }));
     } else {
+      console.log(`src/components/AnimaComponent.tsx: Aktualizuję ${section} na wartość: ${value}`);
       setFormData(prev => ({
         ...prev,
         [section]: value
       }));
     }
+
+    // Wyczyść błędy dla tego pola
+    setFormErrors(prev => {
+      const newErrors = { ...prev };
+      if (section === 'dateFrom' || section === 'dateTo') {
+        newErrors[section] = { ...newErrors[section], [field]: '' };
+      } else if (section === 'height' || section === 'weight' || section === 'level' || section === 'gender') {
+        newErrors[section] = '';
+      }
+      return newErrors;
+    });
+
+    // Automatyczne przechodzenie do następnego pola
+    console.log(`src/components/AnimaComponent.tsx: Sprawdzanie automatycznego przechodzenia - sekcja: ${section}, pole: ${field}, wartość: "${value}", długość: ${value.length}`);
+    
+    if (inputRef) {
+      // Dzień "od" → Miesiąc "od"
+      if (section === 'dateFrom' && field === 'day' && value.length === 2) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do miesiąca "od"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Miesiąc "od" → Dzień "do"
+      else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do dnia "do"`);
+        const nextInput = dayToRef.current;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Dzień "do" → Miesiąc "do"
+      else if (section === 'dateTo' && field === 'day' && value.length === 2) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do miesiąca "do"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Miesiąc "do" → Wzrost
+      else if (section === 'dateTo' && field === 'month' && value.length === 2) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do wzrostu`);
+        const nextInput = heightRef.current;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Wzrost → Waga (po 3 cyfrach lub gdy wartość >= 100)
+      else if (section === 'height' && field === 'value') {
+        const heightNum = parseInt(value);
+        console.log(`src/components/AnimaComponent.tsx: Sprawdzanie wzrostu - wartość: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
+        console.log(`src/components/AnimaComponent.tsx: Warunek 1 (długość >= 3): ${value.length >= 3}`);
+        console.log(`src/components/AnimaComponent.tsx: Warunek 2 (długość >= 2 && liczba >= 100): ${value.length >= 2 && heightNum >= 100}`);
+        
+        if (value.length >= 3 || (value.length >= 2 && heightNum >= 100)) {
+          console.log(`src/components/AnimaComponent.tsx: Przechodzenie do wagi - wzrost: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
+          const nextInput = weightRef.current;
+          if (nextInput) {
+            console.log(`src/components/AnimaComponent.tsx: Znaleziono pole wagi, przechodzę`);
+            nextInput.focus();
+          } else {
+            console.log(`src/components/AnimaComponent.tsx: Nie znaleziono pola wagi`);
+          }
+        } else {
+          console.log(`src/components/AnimaComponent.tsx: Warunek nie spełniony - nie przechodzę`);
+        }
+      }
+      // Waga → Poziom (po 2 cyfrach lub 3 cyfrach jeśli zaczyna się na 1 lub 2)
+      else if (section === 'weight' && field === 'value') {
+        if (value.length === 2 && !value.startsWith('1') && !value.startsWith('2')) {
+          console.log(`src/components/AnimaComponent.tsx: Przechodzenie do poziomu - waga: ${value} (2 cyfry, nie zaczyna się na 1/2)`);
+          const nextInput = levelRef.current;
+          if (nextInput) {
+            nextInput.focus();
+          }
+        } else if (value.length === 3 && (value.startsWith('1') || value.startsWith('2'))) {
+          console.log(`src/components/AnimaComponent.tsx: Przechodzenie do poziomu - waga: ${value} (3 cyfry, zaczyna się na 1/2)`);
+          const nextInput = levelRef.current;
+          if (nextInput) {
+            nextInput.focus();
+          }
+        }
+      }
+      // Poziom → Płeć (po 1 cyfrze)
+      else if (section === 'level' && value.length >= 1) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do płci - poziom: ${value}`);
+        const nextInput = genderRef.current;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Płeć → Automatyczne wyszukiwanie (po wpisaniu M lub K)
+      else if (section === 'gender' && (value.toUpperCase() === 'M' || value.toUpperCase() === 'K')) {
+        console.log(`src/components/AnimaComponent.tsx: Wypełniono płeć, automatyczne wyszukiwanie`);
+        // Przygotuj aktualne dane z nową płcią
+        const updatedData = { ...formData, gender: value };
+        console.log(`src/components/AnimaComponent.tsx: Zaktualizowane dane przed wyszukiwaniem:`, updatedData);
+        
+        // Aktualizuj stan i od razu wyszukaj z aktualnymi danymi
+        setFormData(updatedData);
+        setTimeout(() => {
+          handleSubmit(updatedData);
+        }, 50);
+      }
+    }
   };
 
   const handlePreferenceChange = (preference: string) => {
+    console.log(`src/components/AnimaComponent.tsx: Zmiana preferencji na: ${preference}`);
     setFormData(prev => ({
       ...prev,
       preferences: [preference] // Tylko jeden wybór (radio button)
     }));
+    
+    // Automatyczne wyszukiwanie po zmianie preferencji
+    setTimeout(() => {
+      console.log(`src/components/AnimaComponent.tsx: Automatyczne wyszukiwanie po zmianie preferencji`);
+      handleSubmit();
+    }, 100);
   };
 
-  const handleSubmit = () => {
-    // Walidacja
-    if (!formData.height.value || !formData.weight.value || !formData.level || !formData.gender) {
-      setError('Proszę wypełnić wszystkie wymagane pola: wzrost, waga, poziom, płeć');
+  const handleSubmit = (customFormData?: FormData, event?: React.MouseEvent) => {
+    // Zapobiegaj domyślnemu zachowaniu jeśli to event handler
+    if (event) {
+      event.preventDefault();
+    }
+    
+    const dataToValidate = customFormData || formData;
+    console.log('src/components/AnimaComponent.tsx: Rozpoczęcie walidacji formularza');
+    console.log('src/components/AnimaComponent.tsx: Aktualne dane formularza:', dataToValidate);
+    
+    // Wyczyść poprzednie błędy
+    setFormErrors(initialFormErrors);
+    setError('');
+
+    // Waliduj formularz
+    const validation = validateForm(dataToValidate);
+    
+    if (!validation.isValid) {
+      console.log('src/components/AnimaComponent.tsx: Formularz zawiera błędy walidacji');
+      setFormErrors(validation.errors);
+      setError('Proszę poprawić błędy w formularzu');
       return;
     }
 
-    if (formData.preferences.length === 0) {
+    if (dataToValidate.preferences.length === 0) {
       setError('Proszę wybrać preferencje stylu jazdy');
       return;
     }
@@ -112,20 +314,20 @@ const AnimaComponent: React.FC = () => {
 
       // Przygotuj kryteria wyszukiwania
       const criteria = {
-        wzrost: parseInt(formData.height.value),
-        waga: parseInt(formData.weight.value),
-        poziom: parseInt(formData.level),
-        plec: formData.gender as 'M' | 'K',
-        styl_jazdy: formData.preferences[0] // Tylko jedna preferencja (radio button)
+        wzrost: parseInt(dataToValidate.height.value),
+        waga: parseInt(dataToValidate.weight.value),
+        poziom: parseInt(dataToValidate.level),
+        plec: dataToValidate.gender.toUpperCase().trim() as 'M' | 'K',
+        styl_jazdy: dataToValidate.preferences[0] // Tylko jedna preferencja (radio button)
       };
 
-      console.log('Kryteria wyszukiwania:', criteria);
+      console.log('src/components/AnimaComponent.tsx: Kryteria wyszukiwania:', criteria);
 
       // Wyszukaj pasujące narty
       const results = SkiMatchingService.findMatchingSkis(skisDatabase, criteria);
       setSearchResults(results);
 
-      console.log('Znaleziono wyników:', {
+      console.log('src/components/AnimaComponent.tsx: Znaleziono wyników:', {
         idealne: results.idealne.length,
         alternatywy: results.alternatywy.length,
         poziom_za_nisko: results.poziom_za_nisko.length,
@@ -134,7 +336,7 @@ const AnimaComponent: React.FC = () => {
         wszystkie: results.wszystkie.length
       });
     } catch (err) {
-      console.error('Błąd wyszukiwania:', err);
+      console.error('src/components/AnimaComponent.tsx: Błąd wyszukiwania:', err);
       setError('Wystąpił błąd podczas wyszukiwania nart');
     } finally {
       setIsLoading(false);
@@ -142,17 +344,19 @@ const AnimaComponent: React.FC = () => {
   };
 
   const handleClear = () => {
+    console.log('src/components/AnimaComponent.tsx: Czyszczenie formularza');
     setFormData({
-      dateFrom: { day: '', month: '', year: '' },
-      dateTo: { day: '', month: '', year: '' },
+      dateFrom: { day: '', month: '', year: '2025' }, // Domyślnie 2025
+      dateTo: { day: '', month: '', year: '2025' }, // Domyślnie 2025
       height: { value: '', unit: 'cm' },
       weight: { value: '', unit: 'kg' },
       level: '',
       gender: '',
-      preferences: []
+      preferences: ['Wszystkie'] // Domyślnie "Wszystkie"
     });
     setSearchResults(null);
     setError('');
+    setFormErrors(initialFormErrors);
   };
 
   return (
@@ -173,28 +377,38 @@ const AnimaComponent: React.FC = () => {
                   <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data od:</span>
                 </div>
                 <input
+                  ref={dayFromRef}
                   type="text"
                   placeholder="DD"
                   value={formData.dateFrom.day}
-                  onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value)}
-                  className="w-[38px] h-[29px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                  onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
+                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
                 />
                 <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <input
+                  ref={monthFromRef}
                   type="text"
                   placeholder="MM"
                   value={formData.dateFrom.month}
-                  onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value)}
-                  className="w-[38px] h-[29px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                  onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
+                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
                 />
                 <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
-                <input
-                  type="text"
-                  placeholder="YYYY"
+                <select
                   value={formData.dateFrom.year}
                   onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value)}
-                  className="w-[61px] h-[29px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
-                />
+                  className={`w-[61px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
+                >
+                  <option value="">Rok</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                </select>
             </div>
 
               {/* Date To */}
@@ -203,28 +417,38 @@ const AnimaComponent: React.FC = () => {
                   <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data do:</span>
                 </div>
                 <input
+                  ref={dayToRef}
                   type="text"
                   placeholder="DD"
                   value={formData.dateTo.day}
-                  onChange={(e) => handleInputChange('dateTo', 'day', e.target.value)}
-                  className="w-[38px] h-[29px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                  onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
+                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
                 />
                 <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <input
+                  ref={monthToRef}
                   type="text"
                   placeholder="MM"
                   value={formData.dateTo.month}
-                  onChange={(e) => handleInputChange('dateTo', 'month', e.target.value)}
-                  className="w-[38px] h-[29px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                  onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
+                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
                 />
                 <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
-                <input
-                  type="text"
-                  placeholder="YYYY"
+                <select
                   value={formData.dateTo.year}
                   onChange={(e) => handleInputChange('dateTo', 'year', e.target.value)}
-                  className="w-[61px] h-[29px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
-                />
+                  className={`w-[61px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
+                >
+                  <option value="">Rok</option>
+                  <option value="2025">2025</option>
+                  <option value="2026">2026</option>
+                </select>
               </div>
 
               {/* Height */}
@@ -233,19 +457,18 @@ const AnimaComponent: React.FC = () => {
                   <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">📏 Wzrost:</span>
                 </div>
                 <input
+                  ref={heightRef}
                   type="text"
                   placeholder="180"
                   value={formData.height.value}
-                  onChange={(e) => handleInputChange('height', 'value', e.target.value)}
-                  className="w-[112px] h-[31px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                  onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
+                  className={`w-[112px] h-[31px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
                 />
-                <input
-                  type="text"
-                  placeholder="cm"
-                  value={formData.height.unit}
-                  onChange={(e) => handleInputChange('height', 'unit', e.target.value)}
-                  className="w-[48px] h-[31px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
-                />
+                <div className="w-[48px] h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">cm</span>
+                </div>
               </div>
 
               {/* Weight */}
@@ -254,19 +477,18 @@ const AnimaComponent: React.FC = () => {
                   <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">⚖️ Waga:</span>
                 </div>
                 <input
+                  ref={weightRef}
                   type="text"
                   placeholder="70"
                   value={formData.weight.value}
-                  onChange={(e) => handleInputChange('weight', 'value', e.target.value)}
-                  className="w-[112px] h-[31px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                  onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
+                  className={`w-[112px] h-[31px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                  }`}
                 />
-                <input
-                  type="text"
-                  placeholder="kg"
-                  value={formData.weight.unit}
-                  onChange={(e) => handleInputChange('weight', 'unit', e.target.value)}
-                  className="w-[48px] h-[31px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
-                />
+                <div className="w-[48px] h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">kg</span>
+                </div>
               </div>
             </div>
 
@@ -285,11 +507,14 @@ const AnimaComponent: React.FC = () => {
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Poziom:</span>
                   </div>
                   <input
+                    ref={levelRef}
                     type="text"
-                    placeholder="1-10"
+                    placeholder="1-6"
                     value={formData.level}
-                    onChange={(e) => handleInputChange('level', 'value', e.target.value)}
-                    className="w-[60px] h-[35px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                    onChange={(e) => handleInputChange('level', 'value', e.target.value, e.target)}
+                    className={`w-[60px] h-[35px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                      formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
                   />
                 </div>
 
@@ -299,11 +524,14 @@ const AnimaComponent: React.FC = () => {
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">👤 Płeć:</span>
                   </div>
                   <input
+                    ref={genderRef}
                     type="text"
                     placeholder="M/K"
                     value={formData.gender}
-                    onChange={(e) => handleInputChange('gender', 'value', e.target.value)}
-                    className="w-[60px] h-[35px] bg-[#194576] rounded-[5px] text-white text-center text-xs font-black font-['Inter']"
+                    onChange={(e) => handleInputChange('gender', 'value', e.target.value, e.target)}
+                    className={`w-[60px] h-[35px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                      formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
                   />
                 </div>
               </div>
@@ -395,10 +623,23 @@ const AnimaComponent: React.FC = () => {
               )}
 
               {error && !isLoading && (
-                <div className="flex items-center justify-center h-full">
+                <div className="flex flex-col items-center justify-center h-full space-y-2">
                   <span className="text-red-600 text-lg font-black font-['Inter'] italic">
                     ❌ {error}
                   </span>
+                  
+                  {/* Wyświetl szczegółowe błędy walidacji */}
+                  {(formErrors.height || formErrors.weight || formErrors.level || formErrors.gender || 
+                    formErrors.dateFrom.day || formErrors.dateTo.day) && (
+                    <div className="text-red-400 text-sm font-bold space-y-1">
+                      {formErrors.height && <div>• Wzrost: {formErrors.height}</div>}
+                      {formErrors.weight && <div>• Waga: {formErrors.weight}</div>}
+                      {formErrors.level && <div>• Poziom: {formErrors.level}</div>}
+                      {formErrors.gender && <div>• Płeć: {formErrors.gender}</div>}
+                      {formErrors.dateFrom.day && <div>• Data od: {formErrors.dateFrom.day}</div>}
+                      {formErrors.dateTo.day && <div>• Data do: {formErrors.dateTo.day}</div>}
+                    </div>
+                  )}
                 </div>
               )}
 
