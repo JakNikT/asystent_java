@@ -1,1 +1,0 @@
-# Moduł obsługi danych
