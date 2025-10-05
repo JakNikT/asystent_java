@@ -15,7 +15,28 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - ✅ **ETAP 1 UKOŃCZONY**: Walidacja formularza, obsługa błędów, automatyczne przechodzenie pól, LocalStorage dla sesji użytkownika, opcjonalne daty
 - 🚀 **ETAP 2 W TOKU**: Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI)
 
+**NOWY ZADANIE**: PLANOWANIE COMMITÓW - Uporządkowanie zmian w repozytorium po długim okresie bez commitów.
+
 ## Key Challenges and Analysis
+
+### ANALIZA STANU REPOZYTORIUM - PLANOWANIE COMMITÓW
+
+**Status Git:**
+- **Branch**: v8-5 (HEAD)
+- **Ostatni commit**: c9de584 "1" 
+- **Zmiany**: Ogromna ilość usuniętych plików node_modules (prawdopodobnie czyszczenie)
+- **Nowe pliki**: `asystent-nart-web/src/components/DetailedCompatibility.tsx` (untracked)
+
+**Analiza zmian:**
+1. **Usunięte pliki node_modules**: Tysiące plików zależności - prawdopodobnie czyszczenie po npm install/update
+2. **Usunięte pliki Python**: Cała struktura src/ z kodem Python (src/dane/, src/interfejs/, src/logika/, src/narzedzia/, src/styl/)
+3. **Usunięte pliki konfiguracyjne**: package.json, package-lock.json, requirements.txt
+4. **Nowy plik**: DetailedCompatibility.tsx - nowy komponent React
+
+**Identyfikowane problemy:**
+- Brak commitów przez długi okres
+- Mieszane zmiany (czyszczenie + nowe funkcje)
+- Potencjalna utrata historii zmian
 
 ### Analiza obecnego stanu wersji TypeScript:
 
@@ -59,6 +80,30 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
     - Obsługi różnych formatów danych
 
 ## High-level Task Breakdown
+
+### PLAN COMMITÓW - Uporządkowanie zmian w repozytorium
+
+#### Commit 1: Czyszczenie projektu - usunięcie niepotrzebnych plików
+- **Opis**: Usunięcie całej struktury Python i plików konfiguracyjnych
+- **Pliki**: 
+  - Usunięcie src/ (cała struktura Python)
+  - Usunięcie package.json, package-lock.json, requirements.txt
+- **Powód**: Projekt przeszedł na TypeScript, stara struktura Python nie jest potrzebna
+- **Success criteria**: Repozytorium zawiera tylko pliki TypeScript/React
+
+#### Commit 2: Dodanie nowego komponentu DetailedCompatibility
+- **Opis**: Implementacja nowego komponentu do szczegółowego wyświetlania kompatybilności
+- **Pliki**: 
+  - Dodanie `asystent-nart-web/src/components/DetailedCompatibility.tsx`
+- **Powód**: Rozszerzenie funkcjonalności interfejsu użytkownika
+- **Success criteria**: Nowy komponent jest dodany i gotowy do użycia
+
+#### Commit 3: Czyszczenie node_modules (jeśli potrzebne)
+- **Opis**: Usunięcie plików node_modules jeśli są niepotrzebne
+- **Pliki**: 
+  - Usunięcie node_modules/ (jeśli nie są potrzebne w repo)
+- **Powód**: node_modules nie powinny być w repozytorium
+- **Success criteria**: Repozytorium nie zawiera node_modules
 
 ### ETAP 1: FUNKCJONALNOŚĆ FORMULARZA ✅ UKOŃCZONY
 
@@ -122,6 +167,11 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## Project Status Board
 
+### PLANOWANIE COMMITÓW - Status
+- [ ] **Commit 1**: Czyszczenie projektu - usunięcie niepotrzebnych plików Python
+- [ ] **Commit 2**: Dodanie nowego komponentu DetailedCompatibility  
+- [ ] **Commit 3**: Czyszczenie node_modules (jeśli potrzebne)
+
 ### Do zrobienia (ETAP 1 - FORMULARZ)
 - [ ] **1.3.1**: LocalStorage dla sesji użytkownika
 - [ ] **1.3.2**: Historia wyszukiwań (opcjonalna)
@@ -147,6 +197,27 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - [x] **1.2.3**: Tooltips z pomocą
 
 ## Current Status / Progress Tracking
+
+**PLANNER MODE - Analiza stanu repozytorium**:
+
+**Obecny stan Git**:
+- ✅ Analiza git status wykonana
+- ✅ Analiza git log wykonana  
+- ✅ Identyfikacja zmian wykonana
+- ✅ Plan commitów stworzony
+
+**Zidentyfikowane zmiany**:
+1. **Usunięte pliki Python**: Cała struktura src/ (src/dane/, src/interfejs/, src/logika/, src/narzedzia/, src/styl/)
+2. **Usunięte pliki konfiguracyjne**: package.json, package-lock.json, requirements.txt
+3. **Usunięte node_modules**: Tysiące plików zależności
+4. **Nowy plik**: DetailedCompatibility.tsx (untracked)
+
+**Plan commitów**:
+1. **Commit 1**: Czyszczenie - usunięcie niepotrzebnych plików Python i konfiguracyjnych
+2. **Commit 2**: Dodanie nowego komponentu DetailedCompatibility
+3. **Commit 3**: Czyszczenie node_modules (jeśli potrzebne)
+
+**Gotowość do wykonania**: ✅ TAK - plan jest jasny i można przejść do trybu Executor.
 
 **Obecny stan**: ✅ **ETAP 2 - ULEPSZENIE INTERFEJSU W TOKU**:
 - ✅ **Task 2.1.1**: Kolorowy system wskaźników dopasowania
@@ -190,6 +261,21 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 **Następne kroki**: Implementacja LocalStorage dla sesji użytkownika (Task 1.3.1).
 
 ## Executor's Feedback or Assistance Requests
+
+**PLANNER MODE - Analiza stanu repozytorium i planowanie commitów**:
+
+**Wykonana analiza**:
+- ✅ Sprawdzono git status - zidentyfikowano ogromną ilość usuniętych plików
+- ✅ Sprawdzono git log - ostatni commit to "1" na branchu v8-5
+- ✅ Zidentyfikowano nowy plik DetailedCompatibility.tsx jako untracked
+- ✅ Przeanalizowano strukturę zmian
+
+**Stworzony plan commitów**:
+1. **Commit 1**: Czyszczenie projektu - usunięcie niepotrzebnych plików Python i konfiguracyjnych
+2. **Commit 2**: Dodanie nowego komponentu DetailedCompatibility
+3. **Commit 3**: Czyszczenie node_modules (jeśli potrzebne)
+
+**Rekomendacja**: Przejść do trybu Executor i wykonać commity po kolei zgodnie z planem.
 
 **PLANNER MODE - Analiza wymagań ETAP 1**:
 
