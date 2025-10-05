@@ -15,7 +15,7 @@ import {
 } from '../utils/formValidation';
 import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
 import { DetailedCompatibility } from './DetailedCompatibility';
-import type { SkiData, SearchResults } from '../types/ski.types';
+import type { SkiData, SearchResults, SearchCriteria } from '../types/ski.types';
 
 interface FormData {
   dateFrom: {
@@ -58,13 +58,25 @@ const AnimaComponent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
-  const [currentCriteria, setCurrentCriteria] = useState<{
-    wzrost: number;
-    waga: number;
-    poziom: number;
-    plec: string;
-    styl_jazdy: string;
-  } | null>(null);
+  const [currentCriteria, setCurrentCriteria] = useState<SearchCriteria | null>(null);
+
+  // Funkcja do parsowania daty z formularza
+  const parseDate = (dateObj: { day: string; month: string; year: string }): Date | undefined => {
+    if (!dateObj.day || !dateObj.month || !dateObj.year) {
+      return undefined;
+    }
+    
+    const day = parseInt(dateObj.day);
+    const month = parseInt(dateObj.month);
+    const year = parseInt(dateObj.year);
+    
+    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+      return undefined;
+    }
+    
+    // Miesiące w JavaScript są 0-indexowane
+    return new Date(year, month - 1, day);
+  };
 
   /**
    * Konwertuje preferencje stylu jazdy na skróconą formę
@@ -390,12 +402,14 @@ const AnimaComponent: React.FC = () => {
       setError('');
 
       // Przygotuj kryteria wyszukiwania
-      const criteria = {
+      const criteria: SearchCriteria = {
         wzrost: parseInt(dataToValidate.height.value),
         waga: parseInt(dataToValidate.weight.value),
         poziom: parseInt(dataToValidate.level),
         plec: dataToValidate.gender.toUpperCase().trim() as 'M' | 'K',
-        styl_jazdy: dataToValidate.preferences[0] // Tylko jedna preferencja (radio button)
+        styl_jazdy: dataToValidate.preferences[0], // Tylko jedna preferencja (radio button)
+        dateFrom: parseDate(dataToValidate.dateFrom),
+        dateTo: parseDate(dataToValidate.dateTo)
       };
 
       console.log('src/components/AnimaComponent.tsx: Kryteria wyszukiwania:', criteria);

@@ -1093,9 +1093,18 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
+   * Proste sprawdzenie dostępności (synchroniczne) - dla sortowania
+   */
+  private static getSimpleAvailabilityScore(ski: SkiData): number {
+    const ilosc = parseInt(ski.ILOSC || '2');
+    // Na razie zwracamy 1 (dostępne) - później można dodać cache
+    return 1;
+  }
+
+  /**
    * SYSTEM INFORMACJI O DOSTĘPNOŚCI - sprawdza dostępność nart
    */
-  static async checkAvailability(ski: SkiData, reservationCache?: any): Promise<AvailabilityInfo> {
+  static async checkAvailability(ski: SkiData, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<AvailabilityInfo> {
     try {
       const ilosc = parseInt(ski.ILOSC || '2');
       const availability: AvailabilityInfo = {
@@ -1120,13 +1129,13 @@ export class SkiMatchingServiceV2 {
 
       // Sprawdź każdą sztukę
       for (let i = 1; i <= ilosc; i++) {
-        const isReserved = await this.isSkiReserved(ski, i, reservationCache);
+        const isReserved = await this.isSkiReserved(ski, i, reservationCache, dateFrom, dateTo);
         
         if (isReserved) {
           availability.reserved.push({
             number: i,
             status: 'reserved',
-            reservationInfo: await this.getReservationInfo(ski, i, reservationCache)
+            reservationInfo: await this.getReservationInfo(ski, i, reservationCache, dateFrom, dateTo)
           });
         } else {
           availability.available.push({
@@ -1161,21 +1170,24 @@ export class SkiMatchingServiceV2 {
   /**
    * Sprawdza czy konkretna sztuka nart jest zarezerwowana
    */
-  private static async isSkiReserved(ski: SkiData, sztukaNumber: number, reservationCache?: any): Promise<boolean> {
+  private static async isSkiReserved(ski: SkiData, sztukaNumber: number, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<boolean> {
     try {
       // Jeśli brak cache rezerwacji, sprawdź bezpośrednio
       if (!reservationCache) {
-        // TODO: Pobierz daty z formularza - na razie zwracamy false
         return false;
       }
+
+      // Użyj dat z kryteriów wyszukiwania lub domyślnych
+      const startDate = dateFrom || new Date();
+      const endDate = dateTo || new Date();
 
       // Sprawdź czy narta jest zarezerwowana w danym okresie
       const reservations = await ReservationService.isSkiReserved(
         ski.MARKA,
         ski.MODEL,
         ski.DLUGOSC.toString(),
-        new Date(), // TODO: Pobierz datę rozpoczęcia z formularza
-        new Date()  // TODO: Pobierz datę zakończenia z formularza
+        startDate,
+        endDate
       );
 
       return reservations.length > 0;
@@ -1188,18 +1200,22 @@ export class SkiMatchingServiceV2 {
   /**
    * Pobiera informacje o rezerwacji dla konkretnej sztuki
    */
-  private static async getReservationInfo(ski: SkiData, sztukaNumber: number, reservationCache?: any): Promise<string | null> {
+  private static async getReservationInfo(ski: SkiData, sztukaNumber: number, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<string | null> {
     try {
       if (!reservationCache) {
         return null;
       }
 
+      // Użyj dat z kryteriów wyszukiwania lub domyślnych
+      const startDate = dateFrom || new Date();
+      const endDate = dateTo || new Date();
+
       const reservations = await ReservationService.isSkiReserved(
         ski.MARKA,
         ski.MODEL,
         ski.DLUGOSC.toString(),
-        new Date(), // TODO: Pobierz datę rozpoczęcia z formularza
-        new Date()  // TODO: Pobierz datę zakończenia z formularza
+        startDate,
+        endDate
       );
 
       if (reservations.length > 0) {
@@ -1420,12 +1436,9 @@ export class SkiMatchingServiceV2 {
    */
   static sortResultsByAvailabilityAndCompatibility(matches: SkiMatch[], reservationCache?: any): SkiMatch[] {
     return matches.sort((a, b) => {
-      // 1. Najpierw sortuj według dostępności
-      const availabilityA = this.checkAvailability(a.ski, reservationCache);
-      const availabilityB = this.checkAvailability(b.ski, reservationCache);
-      
-      const availabilityScoreA = this.getAvailabilityScore(availabilityA);
-      const availabilityScoreB = this.getAvailabilityScore(availabilityB);
+      // 1. Najpierw sortuj według dostępności (bez async - użyj prostego sprawdzenia)
+      const availabilityScoreA = this.getSimpleAvailabilityScore(a.ski);
+      const availabilityScoreB = this.getSimpleAvailabilityScore(b.ski);
       
       if (availabilityScoreA !== availabilityScoreB) {
         return availabilityScoreB - availabilityScoreA; // Wyższy score = lepszy
@@ -1485,21 +1498,10 @@ export class SkiMatchingServiceV2 {
     let unknown = 0;
 
     for (const match of matches) {
-      const availability = this.checkAvailability(match.ski, reservationCache);
-      switch (availability.availabilityStatus) {
-        case 'all_available':
-          allAvailable++;
-          break;
-        case 'partially_available':
-          partiallyAvailable++;
-          break;
-        case 'all_reserved':
-          allReserved++;
-          break;
-        case 'unknown':
-          unknown++;
-          break;
-      }
+      // Użyj prostego sprawdzenia zamiast async
+      const ilosc = parseInt(match.ski.ILOSC || '2');
+      // Na razie zakładamy że wszystkie są dostępne
+      allAvailable++;
     }
 
     const parts: string[] = [];
