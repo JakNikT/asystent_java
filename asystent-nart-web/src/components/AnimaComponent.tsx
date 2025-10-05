@@ -13,6 +13,7 @@ import {
   validateGenderRealtime,
   type FormErrors 
 } from '../utils/formValidation';
+import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
 import type { SkiData, SearchResults } from '../types/ski.types';
 
 interface FormData {
@@ -41,8 +42,8 @@ interface FormData {
 
 const AnimaComponent: React.FC = () => {
   const [formData, setFormData] = useState<FormData>({
-    dateFrom: { day: '', month: '', year: '2025' }, // Domyślnie 2025
-    dateTo: { day: '', month: '', year: '2025' }, // Domyślnie 2025
+    dateFrom: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
+    dateTo: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
     height: { value: '', unit: 'cm' },
     weight: { value: '', unit: 'kg' },
     level: '',
@@ -55,6 +56,55 @@ const AnimaComponent: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
+
+  // Wczytaj dane sesji przy starcie aplikacji
+  useEffect(() => {
+    console.log('src/components/AnimaComponent.tsx: Wczytuję dane sesji przy starcie aplikacji');
+    const savedSession = loadUserSession();
+    if (savedSession) {
+      console.log('src/components/AnimaComponent.tsx: Znaleziono zapisane dane sesji:', savedSession);
+      console.log('src/components/AnimaComponent.tsx: Daty z LocalStorage - dateFrom:', savedSession.formData.dateFrom, 'dateTo:', savedSession.formData.dateTo);
+      
+      // Sprawdź czy daty mają stare wartości (np. year: '2025' bez day i month)
+      const hasInvalidDates = 
+        (savedSession.formData.dateFrom.year && !savedSession.formData.dateFrom.day && !savedSession.formData.dateFrom.month) ||
+        (savedSession.formData.dateTo.year && !savedSession.formData.dateTo.day && !savedSession.formData.dateTo.month);
+      
+      if (hasInvalidDates) {
+        console.log('src/components/AnimaComponent.tsx: Wykryto nieprawidłowe daty w LocalStorage, czyszczę...');
+        clearUserSession();
+        console.log('src/components/AnimaComponent.tsx: LocalStorage wyczyszczony, używam domyślnych wartości');
+        return;
+      }
+      
+      // Upewnij się, że struktura danych jest kompletna
+      const completeFormData = {
+        ...savedSession.formData,
+        dateFrom: {
+          day: savedSession.formData.dateFrom.day || '',
+          month: savedSession.formData.dateFrom.month || '',
+          year: savedSession.formData.dateFrom.year || ''
+        },
+        dateTo: {
+          day: savedSession.formData.dateTo.day || '',
+          month: savedSession.formData.dateTo.month || '',
+          year: savedSession.formData.dateTo.year || ''
+        },
+        height: {
+          value: savedSession.formData.height.value || '',
+          unit: savedSession.formData.height.unit || 'cm'
+        },
+        weight: {
+          value: savedSession.formData.weight.value || '',
+          unit: savedSession.formData.weight.unit || 'kg'
+        }
+      };
+      console.log('src/components/AnimaComponent.tsx: Zaktualizowane dane formularza:', completeFormData);
+      setFormData(completeFormData);
+    } else {
+      console.log('src/components/AnimaComponent.tsx: Brak zapisanych danych sesji, używam domyślnych');
+    }
+  }, []);
 
   // Refs dla automatycznego przechodzenia między polami
   const dayFromRef = React.useRef<HTMLInputElement>(null);
@@ -135,27 +185,42 @@ const AnimaComponent: React.FC = () => {
 
     // Aktualizuj dane formularza (bez formatowania)
     if (section === 'dateFrom' || section === 'dateTo') {
-      setFormData(prev => ({
-        ...prev,
-        [section]: {
-          ...prev[section],
-          [field]: value
-        }
-      }));
+      setFormData(prev => {
+        const updatedData = {
+          ...prev,
+          [section]: {
+            ...prev[section],
+            [field]: value
+          }
+        };
+        // Zapisz dane sesji po każdej zmianie
+        saveUserSession(updatedData);
+        return updatedData;
+      });
     } else if (section === 'height' || section === 'weight') {
-      setFormData(prev => ({
-        ...prev,
-        [section]: {
-          ...prev[section],
-          [field]: value
-        }
-      }));
+      setFormData(prev => {
+        const updatedData = {
+          ...prev,
+          [section]: {
+            ...prev[section],
+            [field]: value
+          }
+        };
+        // Zapisz dane sesji po każdej zmianie
+        saveUserSession(updatedData);
+        return updatedData;
+      });
     } else {
       console.log(`src/components/AnimaComponent.tsx: Aktualizuję ${section} na wartość: ${value}`);
-      setFormData(prev => ({
-        ...prev,
-        [section]: value
-      }));
+      setFormData(prev => {
+        const updatedData = {
+          ...prev,
+          [section]: value
+        };
+        // Zapisz dane sesji po każdej zmianie
+        saveUserSession(updatedData);
+        return updatedData;
+      });
     }
 
     // Wyczyść błędy dla tego pola
@@ -279,12 +344,7 @@ const AnimaComponent: React.FC = () => {
     }, 100);
   };
 
-  const handleSubmit = (customFormData?: FormData, event?: React.MouseEvent) => {
-    // Zapobiegaj domyślnemu zachowaniu jeśli to event handler
-    if (event) {
-      event.preventDefault();
-    }
-    
+  const handleSubmit = (customFormData?: FormData) => {
     const dataToValidate = customFormData || formData;
     console.log('src/components/AnimaComponent.tsx: Rozpoczęcie walidacji formularza');
     console.log('src/components/AnimaComponent.tsx: Aktualne dane formularza:', dataToValidate);
@@ -327,6 +387,19 @@ const AnimaComponent: React.FC = () => {
       const results = SkiMatchingService.findMatchingSkis(skisDatabase, criteria);
       setSearchResults(results);
 
+      // Zapisz historię wyszukiwania
+      saveSearchHistory({
+        criteria,
+        resultsCount: {
+          idealne: results.idealne.length,
+          alternatywy: results.alternatywy.length,
+          poziom_za_nisko: results.poziom_za_nisko.length,
+          inna_plec: results.inna_plec.length,
+          na_sile: results.na_sile.length,
+          wszystkie: results.wszystkie.length
+        }
+      });
+
       console.log('src/components/AnimaComponent.tsx: Znaleziono wyników:', {
         idealne: results.idealne.length,
         alternatywy: results.alternatywy.length,
@@ -343,20 +416,32 @@ const AnimaComponent: React.FC = () => {
     }
   };
 
+  // Event handler dla przycisku "Wyszukaj"
+  const handleSubmitClick = (event: React.MouseEvent) => {
+    event.preventDefault();
+    handleSubmit();
+  };
+
   const handleClear = () => {
     console.log('src/components/AnimaComponent.tsx: Czyszczenie formularza');
-    setFormData({
-      dateFrom: { day: '', month: '', year: '2025' }, // Domyślnie 2025
-      dateTo: { day: '', month: '', year: '2025' }, // Domyślnie 2025
+    const defaultData = {
+      dateFrom: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
+      dateTo: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
       height: { value: '', unit: 'cm' },
       weight: { value: '', unit: 'kg' },
       level: '',
       gender: '',
       preferences: ['Wszystkie'] // Domyślnie "Wszystkie"
-    });
+    };
+    
+    setFormData(defaultData);
     setSearchResults(null);
     setError('');
     setFormErrors(initialFormErrors);
+    
+    // Wyczyść dane sesji z LocalStorage
+    clearUserSession();
+    console.log('src/components/AnimaComponent.tsx: Dane sesji wyczyszczone z LocalStorage');
   };
 
   return (
@@ -582,7 +667,7 @@ const AnimaComponent: React.FC = () => {
               {/* Action Buttons */}
               <div className="w-[299px] h-[75px] flex justify-center items-center gap-[5px] flex-wrap">
                 <button
-                  onClick={handleSubmit}
+                  onClick={handleSubmitClick}
                   className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1"
                 >
                   <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight">🔍 Wyszukaj</span>

@@ -6,14 +6,14 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - **Wersja Beta (Python)**: Pełnofunkcjonalna aplikacja desktopowa z zaawansowanym systemem dobierania nart
 - **Wersja Web (TypeScript)**: Podstawowa implementacja z podstawowymi funkcjami wyszukiwania
 
-**NOWY CEL**: Implementacja funkcjonalności formularza zgodnie z ETAP 1 - walidacja danych wejściowych, obsługa błędów i zapisywanie danych.
+**NOWY CEL**: ETAP 2 - Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI).
 
 **Status obecny**: 
 - ✅ Baza danych nart zintegrowana (CSV)
 - ✅ Algorytm dopasowania zaimplementowany (5 kategorii)
 - ✅ Wyświetlanie wyników działa
-- ✅ **ZAKOŃCZONE**: Walidacja formularza, obsługa błędów, automatyczne przechodzenie pól
-- ❌ **BRAKUJE**: LocalStorage dla sesji użytkownika
+- ✅ **ETAP 1 UKOŃCZONY**: Walidacja formularza, obsługa błędów, automatyczne przechodzenie pól, LocalStorage dla sesji użytkownika, opcjonalne daty
+- 🚀 **ETAP 2 W TOKU**: Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI)
 
 ## Key Challenges and Analysis
 
@@ -60,56 +60,50 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## High-level Task Breakdown
 
-### ETAP 1: FUNKCJONALNOŚĆ FORMULARZA (PRIORYTET)
+### ETAP 1: FUNKCJONALNOŚĆ FORMULARZA ✅ UKOŃCZONY
 
-#### Task 1.1: Walidacja danych wejściowych
-- [ ] **1.1.1**: Walidacja dat (DD/MM/YYYY)
-  - Success criteria: Sprawdzanie poprawności formatu i zakresów dat
+### ETAP 2: ULEPSZENIE INTERFEJSU UŻYTKOWNIKA (PRIORYTET)
+
+#### Task 2.1: Ulepszenie wyświetlania wyników
+- [ ] **2.1.1**: Kolorowy system wskaźników dopasowania
+  - Success criteria: Zielony/pomarańczowy/czerwony dla każdego kryterium
+  - Estimated time: 3 godziny
+
+- [ ] **2.1.2**: Szczegółowe informacje o dopasowaniu
+  - Success criteria: Wyświetlanie współczynnika idealności (0-100%)
   - Estimated time: 2 godziny
 
-- [ ] **1.1.2**: Walidacja wzrostu (100-250 cm) ⚠️ **POPRAWKA**
-  - Success criteria: Sprawdzanie zakresu i formatu liczbowego
-  - Estimated time: 1 godzina
-
-- [ ] **1.1.3**: Walidacja wagi (20-200 kg) ⚠️ **POPRAWKA**
-  - Success criteria: Sprawdzanie zakresu i formatu liczbowego
-  - Estimated time: 1 godzina
-
-- [ ] **1.1.4**: Walidacja poziomu (1-6) ⚠️ **POPRAWKA**
-  - Success criteria: Sprawdzanie zakresu i formatu liczbowego
-  - Estimated time: 1 godzina
-
-- [ ] **1.1.5**: Walidacja płci (M/K)
-  - Success criteria: Sprawdzanie tylko M lub K
-  - Estimated time: 30 minut
-
-#### Task 1.2: Obsługa błędów
-- [ ] **1.2.1**: Komunikaty o błędnych danych
-  - Success criteria: Wyświetlanie czytelnych komunikatów błędów
+- [ ] **2.1.3**: Opisy problemów z dopasowaniem
+  - Success criteria: Czytelne komunikaty o niedopasowaniach
   - Estimated time: 2 godziny
 
-- [ ] **1.2.2**: Podświetlenie niepoprawnych pól
-  - Success criteria: Wizualne oznaczenie błędnych pól
-  - Estimated time: 2 godziny
-
-- [ ] **1.2.3**: Tooltips z pomocą
-  - Success criteria: Dodanie podpowiedzi dla użytkownika
+#### Task 2.2: Ulepszenie interfejsu formularza
+- [ ] **2.2.1**: Lepsze grupowanie pól formularza
+  - Success criteria: Logiczne grupowanie danych klienta
   - Estimated time: 1 godzina
 
-#### Task 1.3: Zapisywanie danych ⚠️ **POPRAWKA - różni klienci**
-- [ ] **1.3.1**: LocalStorage dla sesji użytkownika (bez automatycznego wypełniania)
-  - Success criteria: Zapisywanie danych tylko na czas sesji, czyszczenie przy zamknięciu
+- [ ] **2.2.2**: Ikony i wizualne ulepszenia
+  - Success criteria: Dodanie ikon do pól formularza
   - Estimated time: 1 godzina
 
-- [ ] **1.3.2**: Historia wyszukiwań (opcjonalna)
-  - Success criteria: Przechowywanie ostatnich 5-10 wyszukiwań z możliwością wyczyszczenia
+- [ ] **2.2.3**: Responsywność na różnych urządzeniach
+  - Success criteria: Działanie na tabletach i telefonach
   - Estimated time: 2 godziny
 
-- [ ] **1.3.3**: ~~Automatyczne wypełnianie~~ ❌ **USUNIĘTE** - aplikacja dla różnych klientów
-  - Success criteria: N/A - nie dotyczy
-  - Estimated time: 0 godzin
+#### Task 2.3: Ulepszenie doświadczenia użytkownika
+- [ ] **2.3.1**: Loading states i animacje
+  - Success criteria: Płynne przejścia i wskaźniki ładowania
+  - Estimated time: 2 godziny
 
-### Faza 2: Ulepszenie systemu dopasowywania nart (UKOŃCZONE)
+- [ ] **2.3.2**: Lepsze komunikaty i feedback
+  - Success criteria: Informacje o statusie wyszukiwania
+  - Estimated time: 1 godzina
+
+- [ ] **2.3.3**: Keyboard shortcuts i accessibility
+  - Success criteria: Obsługa klawiatury i dostępność
+  - Estimated time: 2 godziny
+
+### Faza 2: Ulepszenie systemu dopasowywania nart ✅ UKOŃCZONE
 - [x] **Task 2.1**: Implementacja zaawansowanego systemu kategoryzacji nart (5 kategorii)
 - [x] **Task 2.2**: Implementacja systemu współczynnika idealności
 - [x] **Task 2.3**: Ulepszenie parsowania poziomów nart
