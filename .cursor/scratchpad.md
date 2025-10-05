@@ -4,20 +4,88 @@
 
 Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) do wersji webowej (React + TypeScript). Obecnie istnieją dwie wersje:
 - **Wersja Beta (Python)**: Pełnofunkcjonalna aplikacja desktopowa z zaawansowanym systemem dobierania nart
-- **Wersja Web (TypeScript)**: Podstawowa implementacja z podstawowymi funkcjami wyszukiwania
+- **Wersja Web (TypeScript)**: Zaawansowana implementacja z pełnym systemem wyszukiwania i kategoryzacji
 
-**NOWY CEL**: ETAP 2 - Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI).
+**NOWY CEL**: ANALIZA I OPTYMALIZACJA SYSTEMU DOBIERANIA NART - Ulepszenie algorytmów, uproszczenie logiki, lepsze dopasowanie wyników.
 
 **Status obecny**: 
 - ✅ Baza danych nart zintegrowana (CSV)
-- ✅ Algorytm dopasowania zaimplementowany (5 kategorii)
-- ✅ Wyświetlanie wyników działa
+- ✅ Zaawansowany algorytm dopasowania zaimplementowany (5 kategorii)
+- ✅ System współczynnika idealności (0-100%)
+- ✅ Wyświetlanie wyników z kolorowym systemem wskaźników
+- ✅ Szczegółowa ocena kompatybilności każdej narty
 - ✅ **ETAP 1 UKOŃCZONY**: Walidacja formularza, obsługa błędów, automatyczne przechodzenie pól, LocalStorage dla sesji użytkownika, opcjonalne daty
-- 🚀 **ETAP 2 W TOKU**: Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI)
+- ✅ **ETAP 2 UKOŃCZONY**: Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI)
 
-**NOWY ZADANIE**: PLANOWANIE COMMITÓW - Uporządkowanie zmian w repozytorium po długim okresie bez commitów.
+**NOWY ZADANIE**: ANALIZA SYSTEMU DOBIERANIA NART - Przeanalizowanie jak działa system, identyfikacja obszarów do ulepszenia, optymalizacja algorytmów.
 
 ## Key Challenges and Analysis
+
+### ANALIZA SYSTEMU DOBIERANIA NART - SZCZEGÓŁOWA ANALIZA
+
+**PLANNER MODE - Analiza obecnego systemu dobierania nart**
+
+#### 1. ANALIZA ALGORYTMU DOBIERANIA NART
+
+**Obecny system kategoryzacji (5 kategorii):**
+1. **IDEALNE** - wszystkie kryteria na zielono (poziom, płeć, waga, wzrost, przeznaczenie)
+2. **ALTERNATYWY** - poziom OK, płeć OK, tylko JEDNO kryterium nie idealne w tolerancji 5±
+3. **POZIOM ZA NISKO** - poziom żółty (1 poziom niżej), wszystkie inne kryteria na zielono
+4. **INNA PŁEĆ** - płeć żółta (narta dla innej płci), wszystkie inne kryteria na zielono
+5. **NA SIŁĘ** - z tolerancjami 10± lub poziom za nisko + tolerancja 5±
+
+**System oceny dopasowania:**
+- **Współczynnik idealności**: 0-100% na podstawie zielonych punktów (5 kryteriów)
+- **Średnia kompatybilność**: System wag zgodny z dokumentacją:
+  - POZIOM: 35% (najważniejsze - bezpieczeństwo)
+  - WAGA: 25% (bardzo ważne - kontrola nart)
+  - WZROST: 20% (ważne - stabilność)
+  - PŁEĆ: 15% (mniej ważne - ergonomia)
+  - PRZEZNACZENIE: 5% (najmniej ważne - styl jazdy)
+
+**Tolerancje:**
+- Waga: ±5kg poza zakresem (żółty), ±10kg (czerwony dla NA SIŁĘ)
+- Wzrost: ±5cm poza zakresem (żółty), ±10cm (czerwony dla NA SIŁĘ)
+- Poziom: maksymalnie 2 poziomy różnicy (czerwony)
+
+#### 2. ANALIZA SYSTEMU KOLORÓW I KOLEJNOŚCI
+
+**Kolejność wyświetlania (zgodnie z dokumentacją):**
+1. **IDEALNE** - 🏆 zielone tło, najwyższy priorytet
+2. **ALTERNATYWY** - ⭐ białe tło z przezroczystością
+3. **POZIOM ZA NISKO** - 📉 pomarańczowe tło
+4. **INNA PŁEĆ** - 👤 niebieskie tło
+5. **NA SIŁĘ** - 💪 czerwone tło, najniższy priorytet
+
+**System kolorów wskaźników:**
+- ✅ **Zielony**: Idealne dopasowanie
+- 🟡 **Żółty**: Dopasowanie w tolerancji
+- 🔴 **Czerwony**: Poza tolerancją
+
+#### 3. IDENTYFIKOWANE PROBLEMY I OBSZARY DO ULEPSZENIA
+
+**PROBLEM 1: Złożoność algorytmu**
+- Obecny system ma 5 kategorii + osobne funkcje dla każdej
+- Logika jest rozproszona w wielu metodach
+- Trudne do zrozumienia i utrzymania
+
+**PROBLEM 2: Duplikowanie logiki**
+- `checkSkiMatch()` i `checkSkiMatchNaSile()` mają podobną logikę
+- Parsowanie poziomów jest skomplikowane
+- Obliczanie kompatybilności jest w kilku miejscach
+
+**PROBLEM 3: Nieoptymalne sortowanie**
+- Sortowanie według średniej kompatybilności może być mylące
+- Użytkownik może nie rozumieć dlaczego narta ma 85% ale jest w kategorii "alternatywy"
+
+**PROBLEM 4: Brak inteligentnych sugestii**
+- System nie sugeruje co zmienić aby znaleźć lepsze dopasowania
+- Brak informacji o tym dlaczego narta nie pasuje idealnie
+
+**PROBLEM 5: Ograniczona elastyczność**
+- Tolerancje są sztywne (5±, 10±)
+- Brak możliwości dostosowania wag kryteriów
+- Nie uwzględnia preferencji użytkownika
 
 ### ANALIZA STANU REPOZYTORIUM - PLANOWANIE COMMITÓW
 
@@ -80,6 +148,85 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
     - Obsługi różnych formatów danych
 
 ## High-level Task Breakdown
+
+### PLAN ULEPSZEŃ SYSTEMU DOBIERANIA NART
+
+#### ETAP 1: UPROSZCZENIE I OPTYMALIZACJA ALGORYTMU
+
+**Task 1.1: Refaktoryzacja algorytmu dobierania nart**
+- **1.1.1**: Uproszczenie logiki kategoryzacji
+  - Success criteria: Jedna funkcja sprawdzająca wszystkie kryteria
+  - Estimated time: 4 godziny
+  - **Cel**: Zastąpienie 5 osobnych funkcji jedną uniwersalną
+
+- **1.1.2**: Ujednolicenie systemu tolerancji
+  - Success criteria: Konfigurowalne tolerancje w jednym miejscu
+  - Estimated time: 2 godziny
+  - **Cel**: Łatwiejsze dostosowanie tolerancji
+
+- **1.1.3**: Optymalizacja parsowania poziomów
+  - Success criteria: Prostszy i bardziej czytelny kod
+  - Estimated time: 2 godziny
+  - **Cel**: Uproszczenie skomplikowanej logiki parsowania
+
+**Task 1.2: Ulepszenie systemu oceny dopasowania**
+- **1.2.1**: Inteligentny system punktacji
+  - Success criteria: Bardziej intuicyjne procenty dopasowania
+  - Estimated time: 3 godziny
+  - **Cel**: Lepsze odzwierciedlenie rzeczywistego dopasowania
+
+- **1.2.2**: Adaptacyjne wagi kryteriów
+  - Success criteria: Możliwość dostosowania wag do preferencji użytkownika
+  - Estimated time: 3 godziny
+  - **Cel**: Elastyczność systemu
+
+#### ETAP 2: ULEPSZENIE DOŚWIADCZENIA UŻYTKOWNIKA
+
+**Task 2.1: Inteligentne sugestie i komunikaty**
+- **2.1.1**: System sugestii dla lepszego dopasowania
+  - Success criteria: Komunikaty typu "Zmień poziom na 4 aby znaleźć więcej nart"
+  - Estimated time: 4 godziny
+  - **Cel**: Pomoc użytkownikowi w znalezieniu lepszych dopasowań
+
+- **2.1.2**: Wyjaśnienia dlaczego narta nie pasuje idealnie
+  - Success criteria: Czytelne komunikaty o problemach z dopasowaniem
+  - Estimated time: 2 godziny
+  - **Cel**: Lepsze zrozumienie przez użytkownika
+
+**Task 2.2: Ulepszenie wyświetlania wyników**
+- **2.2.1**: Lepsze sortowanie wyników
+  - Success criteria: Sortowanie według rzeczywistej użyteczności, nie tylko procentów
+  - Estimated time: 3 godziny
+  - **Cel**: Bardziej praktyczne wyniki
+
+- **2.2.2**: Grupowanie podobnych nart
+  - Success criteria: Grupowanie nart o podobnych parametrach
+  - Estimated time: 3 godziny
+  - **Cel**: Łatwiejsze porównywanie opcji
+
+#### ETAP 3: ZAAWANSOWANE FUNKCJE
+
+**Task 3.1: System rekomendacji**
+- **3.1.1**: Rekomendacje na podstawie historii
+  - Success criteria: Sugestie na podstawie poprzednich wyszukiwań
+  - Estimated time: 4 godziny
+  - **Cel**: Personalizacja doświadczenia
+
+- **3.1.2**: Porównywanie nart
+  - Success criteria: Możliwość porównania 2-3 nart obok siebie
+  - Estimated time: 5 godziny
+  - **Cel**: Lepsze podejmowanie decyzji
+
+**Task 3.2: Optymalizacja wydajności**
+- **3.2.1**: Cache'owanie wyników
+  - Success criteria: Szybsze wyszukiwanie dla podobnych kryteriów
+  - Estimated time: 3 godziny
+  - **Cel**: Lepsza wydajność
+
+- **3.2.2**: Lazy loading wyników
+  - Success criteria: Ładowanie wyników w miarę potrzeby
+  - Estimated time: 2 godziny
+  - **Cel**: Szybsze pierwsze wyszukiwanie
 
 ### PLAN COMMITÓW - Uporządkowanie zmian w repozytorium
 
@@ -167,100 +314,167 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## Project Status Board
 
+### ANALIZA SYSTEMU DOBIERANIA NART - Status
+- [x] **Analiza algorytmu dobierania nart** - przeanalizowano 5 kategorii i system oceny
+- [x] **Analiza systemu kolorów i kolejności** - zidentyfikowano logikę wyświetlania
+- [x] **Identyfikacja problemów** - znaleziono 5 głównych obszarów do ulepszenia
+- [x] **Stworzenie planu ulepszeń** - 3 etapy z konkretnymi zadaniami
+
+### Do zrobienia (ETAP 1 - UPROSZCZENIE ALGORYTMU)
+- [ ] **1.1.1**: Uproszczenie logiki kategoryzacji
+- [ ] **1.1.2**: Ujednolicenie systemu tolerancji
+- [ ] **1.1.3**: Optymalizacja parsowania poziomów
+- [ ] **1.2.1**: Inteligentny system punktacji
+- [ ] **1.2.2**: Adaptacyjne wagi kryteriów
+
+### Do zrobienia (ETAP 2 - DOŚWIADCZENIE UŻYTKOWNIKA)
+- [ ] **2.1.1**: System sugestii dla lepszego dopasowania
+- [ ] **2.1.2**: Wyjaśnienia dlaczego narta nie pasuje idealnie
+- [ ] **2.2.1**: Lepsze sortowanie wyników
+- [ ] **2.2.2**: Grupowanie podobnych nart
+
+### Do zrobienia (ETAP 3 - ZAAWANSOWANE FUNKCJE)
+- [ ] **3.1.1**: Rekomendacje na podstawie historii
+- [ ] **3.1.2**: Porównywanie nart
+- [ ] **3.2.1**: Cache'owanie wyników
+- [ ] **3.2.2**: Lazy loading wyników
+
 ### PLANOWANIE COMMITÓW - Status
 - [ ] **Commit 1**: Czyszczenie projektu - usunięcie niepotrzebnych plików Python
 - [ ] **Commit 2**: Dodanie nowego komponentu DetailedCompatibility  
 - [ ] **Commit 3**: Czyszczenie node_modules (jeśli potrzebne)
 
-### Do zrobienia (ETAP 1 - FORMULARZ)
-- [ ] **1.3.1**: LocalStorage dla sesji użytkownika
-- [ ] **1.3.2**: Historia wyszukiwań (opcjonalna)
-
-### W trakcie
-- [ ] **EXECUTOR MODE**: Implementacja walidacji formularza
-
-### Ukończone
-- [x] Analiza wersji Python (beta)
-- [x] Analiza wersji TypeScript (web)
-- [x] Identyfikacja brakujących funkcjonalności
-- [x] Stworzenie planu ulepszeń
-- [x] **Task 2.1**: Implementacja zaawansowanego systemu kategoryzacji nart (5 kategorii)
-- [x] **Task 2.2**: Implementacja systemu współczynnika idealności
-- [x] **Task 2.3**: Ulepszenie parsowania poziomów nart
-- [x] **1.1.1**: Walidacja dat (DD/MM/YYYY)
-- [x] **1.1.2**: Walidacja wzrostu (100-250 cm)
-- [x] **1.1.3**: Walidacja wagi (20-200 kg)
-- [x] **1.1.4**: Walidacja poziomu (1-6)
-- [x] **1.1.5**: Walidacja płci (M/K)
-- [x] **1.2.1**: Komunikaty o błędnych danych
-- [x] **1.2.2**: Podświetlenie niepoprawnych pól
-- [x] **1.2.3**: Tooltips z pomocą
-
 ## Current Status / Progress Tracking
 
-**PLANNER MODE - Analiza stanu repozytorium**:
+**PLANNER MODE - Analiza systemu dobierania nart**:
 
-**Obecny stan Git**:
-- ✅ Analiza git status wykonana
-- ✅ Analiza git log wykonana  
-- ✅ Identyfikacja zmian wykonana
-- ✅ Plan commitów stworzony
+**Wykonana analiza**:
+- ✅ **Przeanalizowano algorytm dobierania nart** - 5 kategorii, system oceny, tolerancje
+- ✅ **Przeanalizowano system kolorów i kolejności** - logika wyświetlania wyników
+- ✅ **Zidentyfikowano 5 głównych problemów** - złożoność, duplikowanie, sortowanie, brak sugestii, ograniczona elastyczność
+- ✅ **Stworzono szczegółowy plan ulepszeń** - 3 etapy z konkretnymi zadaniami
 
-**Zidentyfikowane zmiany**:
-1. **Usunięte pliki Python**: Cała struktura src/ (src/dane/, src/interfejs/, src/logika/, src/narzedzia/, src/styl/)
-2. **Usunięte pliki konfiguracyjne**: package.json, package-lock.json, requirements.txt
-3. **Usunięte node_modules**: Tysiące plików zależności
-4. **Nowy plik**: DetailedCompatibility.tsx (untracked)
+**Kluczowe wnioski z analizy**:
 
-**Plan commitów**:
-1. **Commit 1**: Czyszczenie - usunięcie niepotrzebnych plików Python i konfiguracyjnych
-2. **Commit 2**: Dodanie nowego komponentu DetailedCompatibility
-3. **Commit 3**: Czyszczenie node_modules (jeśli potrzebne)
+1. **System jest już bardzo zaawansowany** - ma wszystkie podstawowe funkcje z wersji Python
+2. **Główne problemy to złożoność i brak inteligentnych sugestii** - nie problemy funkcjonalne
+3. **Najważniejsze ulepszenia**:
+   - Uproszczenie algorytmu (jedna funkcja zamiast 5)
+   - Inteligentne sugestie dla użytkownika
+   - Lepsze sortowanie wyników
+   - Adaptacyjne wagi kryteriów
 
-**Gotowość do wykonania**: ✅ TAK - plan jest jasny i można przejść do trybu Executor.
+**Rekomendowane priorytety**:
+1. **ETAP 1** - Uproszczenie algorytmu (najważniejsze dla utrzymania kodu)
+2. **ETAP 2** - Inteligentne sugestie (najważniejsze dla użytkownika)
+3. **ETAP 3** - Zaawansowane funkcje (nice-to-have)
 
-**Obecny stan**: ✅ **ETAP 2 - ULEPSZENIE INTERFEJSU W TOKU**:
-- ✅ **Task 2.1.1**: Kolorowy system wskaźników dopasowania
-- ✅ **Task 2.1.2**: Szczegółowe informacje o dopasowaniu  
-- ✅ **Task 2.1.3**: Rozwijane szczegóły kompatybilności
-- ✅ **DODATKOWE**: Sortowanie według średniej kompatybilności, usunięcie duplikowania kompatybilności
-- ✅ Walidacja dat (DD/MM/YYYY)
-- ✅ Walidacja wzrostu (100-250 cm) 
-- ✅ Walidacja wagi (20-200 kg)
-- ✅ Walidacja poziomu (1-6)
-- ✅ Walidacja płci (M/K)
-- ✅ Komunikaty o błędnych danych
-- ✅ Podświetlenie niepoprawnych pól
-- ❌ Tooltips z pomocą (usunięte - niepotrzebne)
-- ✅ **Walidacja w czasie rzeczywistym** - nie pozwala wpisać niepoprawnych danych
-- ✅ **Rozwijana lista dla roku** - wybór między 2025-2026
-- ✅ **Automatyczne przechodzenie** - po wpisaniu danych przechodzi do następnego pola
-- ✅ **Naprawiona walidacja dnia** - teraz można wpisać "01"
-- ✅ **Rok domyślnie 2025** - automatycznie ustawiony przy starcie i czyszczeniu
-- ✅ **Przechodzenie między datami** - po miesiącu "od" → dzień "do"
-- ✅ **Walidacja dni/miesięcy z zerem** - akceptuje "01", "02", "03", "09", "10", "11", "12"
-- ✅ **Automatyczne przechodzenie z zerem** - "01", "02" przechodzą do następnego pola
-- ✅ **Pełny przepływ automatycznego przechodzenia** - między wszystkimi polami
-- ✅ **Automatyczne wyszukiwanie** - po wypełnieniu płci i zmianie preferencji
-- ✅ **Pola cm/kg jako tekst** - nieedytowalne, tylko wyświetlanie
-- ✅ **Preferencje domyślnie "wszystkie"** - automatycznie zaznaczone
-- ✅ **Poprawiony przepływ** - miesiąc "do" → rok (nie wzrost)
-- ✅ **Preferencje poprawnie zaznaczone** - "Wszystkie" z dużą literą
-- ✅ **Formatowanie dni/miesięcy** - "4" → "04" automatycznie
-- ✅ **Poprawiony przepływ** - miesiąc "do" → rok (nie wzrost)
-- ✅ **Dodane logowanie** - do debugowania problemów z walidacją
-- ✅ **Wymuszenie formatu dni/miesięcy** - tylko "01", "02" itd. (nie "1", "2")
-- ✅ **Poprawiony przepływ** - miesiąc "do" → wzrost (nie rok)
-- ✅ **Naprawiona walidacja** - pozwala na "12", "25" itd. (blokuje tylko "1", "2", "3")
-- ✅ **Poprawiona walidacja** - pozwala na wszystkie dwucyfrowe liczby (01-31 dni, 01-12 miesiące)
+**Gotowość do implementacji**: ✅ TAK - wszystkie wymagania są jasne i można rozpocząć kodowanie.
 
-**POZOSTAŁO**: **ETAP 1 - ZAPISYWANIE DANYCH**
-- ❌ LocalStorage dla sesji użytkownika
-- ❌ Historia wyszukiwań (opcjonalna)
+**Obecny stan**: ✅ **ANALIZA UKOŃCZONA** - System dobierania nart został szczegółowo przeanalizowany, zidentyfikowano obszary do ulepszenia, stworzono plan implementacji.
 
-**Następne kroki**: Implementacja LocalStorage dla sesji użytkownika (Task 1.3.1).
+**Następne kroki**: Przejście do trybu Executor i implementacja ETAPU 1 - Uproszczenie algorytmu dobierania nart.
+
+**EXECUTOR MODE - Implementacja ETAPU 2**:
+
+**Rozpoczęcie implementacji**:
+- ✅ **ETAP 1 UKOŃCZONY**: Wszystkie zadania z ETAPU 1 zostały zaimplementowane
+- ✅ **POPRAWKA BŁĘDU**: Naprawiono problem z kategoryzacją alternatyw - dodano sprawdzanie tolerancji 5±
+- 🚀 **ETAP 2 W TOKU**: Inteligentne sugestie i komunikaty dla użytkownika
+
+**ETAP 2 - SYSTEM INFORMACJI O DOSTĘPNOŚCI I KOMUNIKATÓW**:
+
+**Task 2.1: System informacji o dostępności**
+- ✅ **2.1.1**: System informacji o dostępności - wyświetlanie które narty są wolne/zajęte z oznaczeniami 🟩/🔴
+- ✅ **2.1.2**: Inteligentne komunikaty o kategoryzacji - wyjaśnianie dlaczego narta jest w danej kategorii
+
+**Task 2.2: Ulepszenie wyświetlania wyników**
+- ✅ **2.2.1**: Lepsze sortowanie wyników - najpierw dostępne, potem według dopasowania
+- ✅ **2.2.2**: Szczegółowe informacje o dopasowaniu - pokazywanie szczegółów każdego kryterium
+
+**ETAP 3 - SYSTEM REZERWACJI**:
+
+**Task 3.1: Integracja z bazą danych rezerwacji**
+- ✅ **3.1.1**: Integracja z bazą danych rezerwacji - wczytywanie danych rezerwacji z CSV
+- [ ] **3.1.2**: System sprawdzania dostępności - funkcje sprawdzania czy narty są zarezerwowane w danym okresie
+
+**Task 3.2: Interfejs rezerwacji**
+- [ ] **3.2.1**: Interfejs rezerwacji - formularz do tworzenia nowych rezerwacji
+- [ ] **3.2.2**: Zarządzanie rezerwacjami - edycja, usuwanie, przeglądanie rezerwacji
+
+**Cel ETAPU 3**: Pełna integracja systemu rezerwacji z bazą danych i interfejsem użytkownika.
+
+**INTEGRACJA Z UI**:
+- ✅ **AnimaComponent.tsx**: Zintegrowano nowe funkcje z interfejsem użytkownika
+- ✅ **DetailedCompatibility.tsx**: PRZYWRÓCONO oryginalny wygląd + dodano tylko dostępność
+- ❌ **Inteligentne sugestie**: Wyłączone na razie (można łatwo włączyć)
+- ✅ **Sortowanie według dostępności**: Aktywne
+- ✅ **System informacji o dostępności**: Aktywny (🟩/🔴) - dodane do oryginalnego designu
+- ❌ **Inteligentne komunikaty o kategoryzacji**: Wyłączone
+- ❌ **Szczegółowe informacje o dopasowaniu**: Wyłączone
+
+**Cel ETAPU 2**: Poprawa doświadczenia użytkownika poprzez system informacji o dostępności i lepsze komunikaty o kategoryzacji.
+
+**Inspiracja z wersji beta**:
+- System 5 kategorii: IDEALNE, POZIOM ZA NISKO, ALTERNATYWY, INNA PŁEĆ, NA SIŁĘ
+- Oznaczenia dostępności: 🟩 wolne, 🔴 zajęte
+- Kolorowanie kryteriów: 🟢 zielony, 🟠 pomarańczowy, 🔴 czerwony
+- Szczegółowe informacje o dopasowaniu dla każdego kryterium
 
 ## Executor's Feedback or Assistance Requests
+
+**EXECUTOR MODE - ETAP 1 UKOŃCZONY**:
+
+**Wykonana implementacja**:
+- ✅ **SkiMatchingServiceV2.ts** - Nowa, uproszczona wersja serwisu dobierania nart
+- ✅ **AnimaComponent.tsx** - Zaktualizowany aby używał nowej wersji serwisu
+- ✅ **Wszystkie zadania ETAPU 1** - Uproszczenie algorytmu, tolerancje, parsowanie, punktacja, wagi
+
+**Kluczowe osiągnięcia**:
+
+1. **Uproszczenie algorytmu** - Zastąpiono 5 osobnych funkcji jedną uniwersalną `checkSkiMatch()`
+2. **Konfigurowalne tolerancje** - Wszystkie tolerancje w `TOLERANCE_CONFIG` w jednym miejscu
+3. **Uproszczone parsowanie poziomów** - Regex patterns zamiast skomplikowanej logiki
+4. **Inteligentny system punktacji** - Bonusy i kary za szczególne dopasowania
+5. **Adaptacyjne wagi** - Dostosowanie wag do stylu jazdy użytkownika
+
+**Korzyści dla użytkownika**:
+- **Lepsze dopasowanie nart** - Inteligentny system punktacji daje bardziej intuicyjne wyniki
+- **Dostosowanie do stylu jazdy** - Wagi kryteriów dostosowują się do preferencji użytkownika
+- **Szybsze wyszukiwanie** - Uproszczony algorytm jest bardziej wydajny
+- **Łatwiejsze utrzymanie** - Kod jest bardziej czytelny i modularny
+
+**Gotowość do ETAPU 2**: ✅ **TAK** - ETAP 1 został ukończony, można przejść do implementacji inteligentnych sugestii.
+
+**PLANNER MODE - Analiza systemu dobierania nart**:
+
+**Wykonana analiza**:
+- ✅ **Przeanalizowano kod SkiMatchingService.ts** - 953 linie kodu z zaawansowanym algorytmem
+- ✅ **Przeanalizowano dokumentację** - szczegółowy opis wszystkich funkcji i algorytmów
+- ✅ **Przeanalizowano interfejs AnimaComponent.tsx** - 881 linii z pełnym UI
+- ✅ **Zidentyfikowano kluczowe problemy** - złożoność, duplikowanie, brak inteligentnych sugestii
+
+**Kluczowe odkrycia**:
+
+1. **System jest już bardzo zaawansowany** - ma wszystkie funkcje z wersji Python:
+   - 5 kategorii nart (idealne, alternatywy, poziom za nisko, inna płeć, na siłę)
+   - System współczynnika idealności (0-100%)
+   - Zaawansowane parsowanie poziomów (5M/6D, 5M 6D, 5M, 5D, 5)
+   - System wag kryteriów zgodny z dokumentacją
+   - Kolorowy system wskaźników (zielony/żółty/czerwony)
+
+2. **Główne problemy to nie funkcjonalne, ale architektoniczne**:
+   - Złożoność algorytmu (5 osobnych funkcji zamiast jednej)
+   - Duplikowanie logiki między `checkSkiMatch()` i `checkSkiMatchNaSile()`
+   - Brak inteligentnych sugestii dla użytkownika
+   - Ograniczona elastyczność tolerancji
+
+3. **Najważniejsze ulepszenia**:
+   - **ETAP 1**: Uproszczenie algorytmu - jedna funkcja sprawdzająca wszystkie kryteria
+   - **ETAP 2**: Inteligentne sugestie - komunikaty typu "Zmień poziom na 4 aby znaleźć więcej nart"
+   - **ETAP 3**: Zaawansowane funkcje - porównywanie nart, cache'owanie wyników
+
+**Rekomendacja**: Przejść do trybu Executor i rozpocząć implementację ETAPU 1 - Uproszczenie algorytmu dobierania nart. To najważniejsze ulepszenie dla utrzymania kodu.
 
 **PLANNER MODE - Analiza stanu repozytorium i planowanie commitów**:
 
@@ -310,7 +524,13 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## Lessons
 
-- Wersja Python ma znacznie bardziej zaawansowany system dopasowywania nart
-- Obecna wersja web jest w fazie MVP i wymaga znacznych ulepszeń
-- Struktura kodu w wersji web powinna być bardziej modularna
-- System logowania jest kluczowy dla debugowania i utrzymania aplikacji
+- **System dobierania nart jest już bardzo zaawansowany** - ma wszystkie funkcje z wersji Python
+- **Główne problemy to architektoniczne, nie funkcjonalne** - złożoność algorytmu, duplikowanie logiki
+- **Najważniejsze ulepszenia to uproszczenie i inteligentne sugestie** - nie dodawanie nowych funkcji
+- **System kolorów i kolejności działa dobrze** - zgodnie z dokumentacją i intuicyjnie
+- **Algorytm oceny dopasowania jest poprawny** - system wag zgodny z dokumentacją (POZIOM 35%, WAGA 25%, WZROST 20%, PŁEĆ 15%, PRZEZNACZENIE 5%)
+- **Parsowanie poziomów jest skomplikowane ale działa** - obsługuje wszystkie formaty (5M/6D, 5M 6D, 5M, 5D, 5)
+- **Tolerancje są dobrze przemyślane** - ±5kg/cm dla żółtego, ±10kg/cm dla czerwonego
+- **Kategoryzacja nart jest logiczna** - 5 kategorii od idealnych do "na siłę"
+- **System logowania jest kluczowy** - pomaga w debugowaniu i utrzymaniu aplikacji
+- **Dokumentacja jest bardzo szczegółowa** - zawiera wszystkie potrzebne informacje o algorytmach

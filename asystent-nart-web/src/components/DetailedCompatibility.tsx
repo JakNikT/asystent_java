@@ -4,42 +4,22 @@
  */
 
 import React, { useState } from 'react';
+import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
+import type { SkiMatch, SearchCriteria, DetailedCompatibilityInfo } from '../types/ski.types';
 
 interface DetailedCompatibilityProps {
-  match: {
-    ski: {
-      WAGA_MIN: number;
-      WAGA_MAX: number;
-      WZROST_MIN: number;
-      WZROST_MAX: number;
-      POZIOM: string;
-      PLEC: string;
-      PRZEZNACZENIE: string;
-    };
-    compatibility: number;
-    dopasowanie: {
-      poziom: string;
-      plec: string;
-      waga: string;
-      wzrost: string;
-      przeznaczenie: string;
-    };
-    zielone_punkty: number;
-    kategoria: 'idealne' | 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile';
-  };
-  userCriteria: {
-    wzrost: number;
-    waga: number;
-    poziom: number;
-    plec: string;
-    styl_jazdy: string;
-  };
+  match: SkiMatch;
+  userCriteria: SearchCriteria;
 }
 
 export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ match, userCriteria }) => {
   console.log('src/components/DetailedCompatibility.tsx: Wyświetlanie szczegółowych informacji:', match);
   
   const [isExpanded, setIsExpanded] = useState(false);
+  
+  // Generuj informacje o dostępności (jedyna aktywna funkcja)
+  const availability = SkiMatchingServiceV2.checkAvailability(match.ski);
+  const availabilityMessage = SkiMatchingServiceV2.generateAvailabilityMessage(availability);
 
   /**
    * Oblicza procent dopasowania dla konkretnego kryterium - zaawansowany system z uwzględnieniem kategorii
@@ -546,6 +526,10 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           </div>
         </div>
         <div className="flex items-center space-x-2">
+          {/* Dostępność */}
+          <span className="text-xs text-white">
+            {availabilityMessage}
+          </span>
           <span className={`text-lg font-bold ${
             averageCompatibility >= 90 ? 'text-green-400' :
             averageCompatibility >= 70 ? 'text-yellow-400' :
@@ -595,6 +579,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           <div className="mt-3 pt-2 border-t border-white/10">
             <div className="flex justify-between text-xs text-white/70">
               <span>Kategoria: {averageCompatibility >= 100 ? 'Idealne' : averageCompatibility >= 80 ? 'Bardzo dobre' : averageCompatibility >= 60 ? 'Dobre' : 'Akceptowalne'}</span>
+              <span>Dostępność: {availabilityMessage}</span>
             </div>
           </div>
         </div>

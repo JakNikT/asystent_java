@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CSVParser } from '../utils/csvParser';
-import { SkiMatchingService } from '../services/skiMatchingService';
+import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { 
   validateForm, 
   initialFormErrors, 
@@ -54,6 +54,7 @@ const AnimaComponent: React.FC = () => {
 
   const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
@@ -403,8 +404,17 @@ const AnimaComponent: React.FC = () => {
       setCurrentCriteria(criteria);
 
       // Wyszukaj pasujące narty
-      const results = SkiMatchingService.findMatchingSkis(skisDatabase, criteria);
+      const results = SkiMatchingServiceV2.findMatchingSkis(skisDatabase, criteria);
       setSearchResults(results);
+
+      // Generuj inteligentne sugestie (wyłączone na razie)
+      // const smartSuggestions = SkiMatchingServiceV2.generateSuggestions(skisDatabase, criteria, results);
+      // setSuggestions(smartSuggestions);
+      setSuggestions([]); // Wyłączone sugestie
+
+      // Sortuj wyniki według dostępności i dopasowania
+      const sortedResults = SkiMatchingServiceV2.sortAllResultsByAvailabilityAndCompatibility(results);
+      setSearchResults(sortedResults);
 
       // Zapisz historię wyszukiwania
       saveSearchHistory({
@@ -714,6 +724,18 @@ const AnimaComponent: React.FC = () => {
         <div className="w-[344px] h-[50px] bg-[#194576] rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[10px] rounded-br-[10px] flex justify-center items-center">
           <div className="text-white text-[30px] font-normal font-['ADLaM_Display'] underline leading-[42px]">🔍 Wyniki Doboru Nart</div>
         </div>
+
+        {/* Inteligentne sugestie */}
+        {suggestions.length > 0 && (
+          <div className="w-full bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-3 rounded mb-2">
+            <h3 className="font-bold mb-2 text-sm">💡 Inteligentne sugestie:</h3>
+            <ul className="list-disc list-inside space-y-1">
+              {suggestions.map((suggestion, index) => (
+                <li key={index} className="text-xs">{suggestion}</li>
+              ))}
+            </ul>
+          </div>
+        )}
         
           {/* Results Container */}
           <div className="w-[1062px] h-[365px] bg-[#194576] rounded-[20px] flex justify-start items-start gap-2.5 p-2">

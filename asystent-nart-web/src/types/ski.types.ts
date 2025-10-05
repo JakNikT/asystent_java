@@ -50,3 +50,37 @@ export interface SearchResults {
   wszystkie: SkiMatch[];
 }
 
+// ========== SYSTEM DOSTĘPNOŚCI ==========
+
+export interface SkiPiece {
+  number: number;
+  status: 'available' | 'reserved';
+  reservationInfo: string | null;
+}
+
+export interface AvailabilityInfo {
+  total: number;
+  available: SkiPiece[];
+  reserved: SkiPiece[];
+  availabilityStatus: 'all_available' | 'partially_available' | 'all_reserved' | 'unknown';
+}
+
+// ========== SZCZEGÓŁOWE INFORMACJE O DOPASOWANIU ==========
+
+export interface CriteriaDetails {
+  status: 'perfect' | 'good' | 'warning' | 'error';
+  message: string;
+  recommendation: string;
+  details: string;
+  icon: string;
+}
+
+export interface DetailedCompatibilityInfo {
+  poziom: CriteriaDetails;
+  waga: CriteriaDetails;
+  wzrost: CriteriaDetails;
+  plec: CriteriaDetails;
+  przeznaczenie: CriteriaDetails;
+  ogolne: CriteriaDetails;
+}
+
