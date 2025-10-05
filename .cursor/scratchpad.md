@@ -27,36 +27,36 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - Responsywny design z Tailwind CSS
 - TypeScript z typami danych
 
-**❌ Brakujące funkcjonalności w porównaniu do wersji Python:**
-1. **Zaawansowany system kategoryzacji nart** - wersja Python ma 5 kategorii:
-   - Idealne dopasowania
-   - Alternatywy (poziom OK, płeć OK, tylko jedno kryterium nie idealne)
-   - Poziom za nisko (wszystkie inne kryteria na zielono)
-   - Inna płeć (wszystkie inne kryteria na zielono)
-   - Na siłę (z tolerancjami 10± lub poziom za nisko + tolerancja 5±)
+  **❌ Brakujące funkcjonalności w porównaniu do wersji Python:**
+  1. **Zaawansowany system kategoryzacji nart** - wersja Python ma 5 kategorii:
+    - Idealne dopasowania
+    - Alternatywy (poziom OK, płeć OK, tylko jedno kryterium nie idealne)
+    - Poziom za nisko (wszystkie inne kryteria na zielono)
+    - Inna płeć (wszystkie inne kryteria na zielono)
+    - Na siłę (z tolerancjami 10± lub poziom za nisko + tolerancja 5±)
 
-2. **Zaawansowany system oceny dopasowania** - brakuje:
-   - Współczynnika idealności (0-100%)
-   - Systemu wag kryteriów
-   - Funkcji gaussowskich do oceny dopasowania
-   - Szczegółowej oceny każdego kryterium
+  2. **Zaawansowany system oceny dopasowania** - brakuje:
+    - Współczynnika idealności (0-100%)
+    - Systemu wag kryteriów
+    - Funkcji gaussowskich do oceny dopasowania
+    - Szczegółowej oceny każdego kryterium
 
-3. **Zaawansowane funkcje interfejsu** - brakuje:
-   - Szczegółowych informacji o dopasowaniu każdej narty
-   - Kolorowego systemu wskaźników (zielony/pomarańczowy/czerwony)
-   - Opisów problemów z dopasowaniem
-   - Systemu logowania i debugowania
+  3. **Zaawansowane funkcje interfejsu** - brakuje:
+    - Szczegółowych informacji o dopasowaniu każdej narty
+    - Kolorowego systemu wskaźników (zielony/pomarańczowy/czerwony)
+    - Opisów problemów z dopasowaniem
+    - Systemu logowania i debugowania
 
-4. **Funkcjonalności biznesowe** - brakuje:
-   - Systemu rezerwacji
-   - Przeglądania bazy danych
-   - Zarządzania klientami
-   - Eksportu wyników
+  4. **Funkcjonalności biznesowe** - brakuje:
+    - Systemu rezerwacji
+    - Przeglądania bazy danych
+    - Zarządzania klientami
+    - Eksportu wyników
 
-5. **Zaawansowane parsowanie danych** - brakuje:
-   - Parsowania poziomów nart (5M/6D, 5M 6D, 5M, 5D, 5)
-   - Zaawansowanej walidacji danych
-   - Obsługi różnych formatów danych
+  5. **Zaawansowane parsowanie danych** - brakuje:
+    - Parsowania poziomów nart (5M/6D, 5M 6D, 5M, 5D, 5)
+    - Zaawansowanej walidacji danych
+    - Obsługi różnych formatów danych
 
 ## High-level Task Breakdown
 
