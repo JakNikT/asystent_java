@@ -84,6 +84,7 @@ export class SkiMatchingService {
         if (wszystkieZielone) {
           match.kategoria = 'idealne';
           idealne.push(match);
+          console.log(`SkiMatchingService: Znaleziono IDEALNĄ nartę: ${ski.MARKA} ${ski.MODEL}`);
         }
       }
     }
@@ -126,9 +127,35 @@ export class SkiMatchingService {
             
             // Tylko narty z JEDNYM kryterium nie idealnym
             if (nieZieloneKryteria.length === 1) {
-              match.kategoria = 'alternatywy';
-              alternatywy.push(match);
-              console.log(`SkiMatchingService: Znaleziono alternatywę: ${ski.MARKA} ${ski.MODEL} - problem z: ${nieZieloneKryteria[0]}`);
+              const problemKryterium = nieZieloneKryteria[0];
+              const problemStatus = dopasowanie[problemKryterium as keyof typeof dopasowanie];
+              
+              // Sprawdź czy problemowe kryterium mieści się w tolerancji 5±
+              let wTolerancji = false;
+              
+              if (problemKryterium === 'waga' && problemStatus.includes('🟡 żółty')) {
+                // Sprawdź czy różnica nie przekracza 5kg
+                const match = problemStatus.match(/o (\d+)/);
+                if (match && parseInt(match[1]) <= 5) {
+                  wTolerancji = true;
+                }
+              } else if (problemKryterium === 'wzrost' && problemStatus.includes('🟡 żółty')) {
+                // Sprawdź czy różnica nie przekracza 5cm
+                const match = problemStatus.match(/o (\d+)/);
+                if (match && parseInt(match[1]) <= 5) {
+                  wTolerancji = true;
+                }
+              } else if (problemKryterium === 'przeznaczenie' && problemStatus.includes('🟡 żółty')) {
+                // Styl jazdy w tolerancji
+                wTolerancji = true;
+              }
+              
+              // Dodaj do alternatyw tylko jeśli mieści się w tolerancji
+              if (wTolerancji) {
+                match.kategoria = 'alternatywy';
+                alternatywy.push(match);
+                console.log(`SkiMatchingService: Znaleziono alternatywę: ${ski.MARKA} ${ski.MODEL} - problem z: ${problemKryterium}`);
+              }
             }
           }
         }
@@ -294,11 +321,9 @@ export class SkiMatchingService {
     dopasowanie.przeznaczenie = przeznaczenieCheck.status;
     zielone_punkty += przeznaczenieCheck.points;
 
-    // Sprawdź czy to kandydat na "NA SIŁĘ" - tylko 4 opcje:
-    // 1. Poziom za niski + wzrost w tolerancji 5 (TYLKO wzrost, nie waga)
-    // 2. Poziom za niski + waga w tolerancji 5 (TYLKO waga, nie wzrost)
-    // 3. Waga w tolerancji 10 (TYLKO waga, poziom OK)
-    // 4. Wzrost w tolerancji 10 (TYLKO wzrost, poziom OK)
+    // Sprawdź czy to kandydat na "NA SIŁĘ" zgodnie z dokumentacją:
+    // 1. Alternatywy, ale z tolerancjami 10± zamiast 5
+    // 2. Poziom za nisko, ale prócz poziomu niżej jedna z kryteriów jest w tolerancji 5±
     let isNaSile = false;
     
     // PŁEĆ MUSI PASOWAĆ (być zielona) w kategorii NA SIŁĘ
@@ -306,21 +331,14 @@ export class SkiMatchingService {
       const poziomZaNisko = dopasowanie.poziom.includes('🟡 żółty');
       const wzrostWOkresie = dopasowanie.wzrost.includes('✅ zielony') || dopasowanie.wzrost.includes('🟡 żółty');
       const wagaWOkresie = dopasowanie.waga.includes('✅ zielony') || dopasowanie.waga.includes('🟡 żółty');
+      const przeznaczenieOk = dopasowanie.przeznaczenie.includes('✅ zielony') || dopasowanie.przeznaczenie.includes('🟡 żółty');
       
-      // Opcja 1: Poziom za niski + wzrost w tolerancji 5 (TYLKO wzrost)
-      if (poziomZaNisko && wzrostWOkresie && dopasowanie.waga.includes('✅ zielony')) {
+      // Opcja 1: Alternatywy z tolerancjami 10± (waga lub wzrost w tolerancji 10±)
+      if (!poziomZaNisko && (wagaWOkresie || wzrostWOkresie) && przeznaczenieOk) {
         isNaSile = true;
       }
-      // Opcja 2: Poziom za niski + waga w tolerancji 5 (TYLKO waga)
-      else if (poziomZaNisko && wagaWOkresie && dopasowanie.wzrost.includes('✅ zielony')) {
-        isNaSile = true;
-      }
-      // Opcja 3: Waga w tolerancji 10 (TYLKO waga, poziom OK)
-      else if (!poziomZaNisko && wagaWOkresie && dopasowanie.wzrost.includes('✅ zielony')) {
-        isNaSile = true;
-      }
-      // Opcja 4: Wzrost w tolerancji 10 (TYLKO wzrost, poziom OK)
-      else if (!poziomZaNisko && wzrostWOkresie && dopasowanie.waga.includes('✅ zielony')) {
+      // Opcja 2: Poziom za nisko + jedna tolerancja 5± (waga lub wzrost)
+      else if (poziomZaNisko && (wagaWOkresie || wzrostWOkresie) && przeznaczenieOk) {
         isNaSile = true;
       }
     }
@@ -689,18 +707,25 @@ export class SkiMatchingService {
 
   /**
    * Oblicza średnią kompatybilność z wszystkich 5 parametrów dla sortowania
+   * Zgodnie z dokumentacją: POZIOM 35%, WAGA 25%, WZROST 20%, PŁEĆ 15%, PRZEZNACZENIE 5%
    */
   public static calculateAverageCompatibility(match: SkiMatch, criteria: SearchCriteria): number {
-    const scores = [
-      this.calculateCriteriaScore('poziom', match.dopasowanie.poziom, criteria, match.ski),
-      this.calculateCriteriaScore('plec', match.dopasowanie.plec, criteria, match.ski),
-      this.calculateCriteriaScore('waga', match.dopasowanie.waga, criteria, match.ski),
-      this.calculateCriteriaScore('wzrost', match.dopasowanie.wzrost, criteria, match.ski),
-      this.calculateCriteriaScore('przeznaczenie', match.dopasowanie.przeznaczenie, criteria, match.ski)
-    ];
+    const poziomScore = this.calculateCriteriaScore('poziom', match.dopasowanie.poziom, criteria, match.ski);
+    const wagaScore = this.calculateCriteriaScore('waga', match.dopasowanie.waga, criteria, match.ski);
+    const wzrostScore = this.calculateCriteriaScore('wzrost', match.dopasowanie.wzrost, criteria, match.ski);
+    const plecScore = this.calculateCriteriaScore('plec', match.dopasowanie.plec, criteria, match.ski);
+    const przeznaczenieScore = this.calculateCriteriaScore('przeznaczenie', match.dopasowanie.przeznaczenie, criteria, match.ski);
     
-    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    return Math.round(average);
+    // Wagi zgodnie z dokumentacją
+    const weightedAverage = (
+      poziomScore * 0.35 +      // POZIOM - 35% (najważniejsze - bezpieczeństwo)
+      wagaScore * 0.25 +         // WAGA - 25% (bardzo ważne - kontrola nart)
+      wzrostScore * 0.20 +       // WZROST - 20% (ważne - stabilność)
+      plecScore * 0.15 +         // PŁEĆ - 15% (mniej ważne - ergonomia)
+      przeznaczenieScore * 0.05  // PRZEZNACZENIE - 5% (najmniej ważne - styl jazdy)
+    );
+    
+    return Math.round(weightedAverage);
   }
 
   /**
@@ -717,45 +742,86 @@ export class SkiMatchingService {
           return this.calculateLevelScore(criteria.poziom, criteria.plec, ski.POZIOM);
         case 'plec':
           if (ski.POZIOM.includes('/') || ski.POZIOM.includes('U')) return 100;
-          return criteria.plec === ski.PLEC ? 100 : 0;
+          return criteria.plec === ski.PLEC ? 100 : 60; // 1.0 za idealne, 0.6 za inną płeć
         case 'przeznaczenie':
           return this.calculateStyleScore(criteria.styl_jazdy, ski.PRZEZNACZENIE);
         default:
           return 100;
       }
     } else if (status.includes('🟡 żółty')) {
-      return 75;
+      // Poza zakresem ale w tolerancji - niższe wartości
+      switch (criterion) {
+        case 'wzrost':
+          return this.calculateToleranceScore(criteria.wzrost, ski.WZROST_MIN, ski.WZROST_MAX, WZROST_TOLERANCJA);
+        case 'waga':
+          return this.calculateToleranceScore(criteria.waga, ski.WAGA_MIN, ski.WAGA_MAX, WAGA_TOLERANCJA);
+        case 'poziom':
+          return 70; // 1 poziom różnicy = 70%
+        case 'plec':
+          return 60; // Inna płeć ale akceptowalna
+        case 'przeznaczenie':
+          return 50; // Częściowe dopasowanie stylu
+        default:
+          return 75;
+      }
     } else if (status.includes('🔴 czerwony')) {
+      // Znacznie poza zakresem - bardzo niskie wartości
       return 25;
     }
     return 0;
   }
 
   /**
-   * Oblicza procent na podstawie pozycji w zakresie
+   * Oblicza procent na podstawie tolerancji (im dalej od zakresu, tym niższy procent)
+   */
+  private static calculateToleranceScore(userValue: number, min: number, max: number, tolerance: number): number {
+    // Oblicz odległość od zakresu (nie od środka!)
+    let distanceFromRange = 0;
+    
+    if (userValue < min) {
+      distanceFromRange = min - userValue; // Za mały
+    } else if (userValue > max) {
+      distanceFromRange = userValue - max; // Za duży
+    } else {
+      // W zakresie - użyj funkcji gaussowskiej
+      return this.calculateRangeScore(userValue, min, max);
+    }
+    
+    // Im dalej od zakresu, tym niższy procent
+    const score = Math.max(0, 100 - (distanceFromRange / tolerance) * 50);
+    return Math.round(Math.max(25, score));
+  }
+
+  /**
+   * Oblicza procent na podstawie funkcji gaussowskiej - im bliżej środka zakresu, tym lepszy wynik
+   * Zgodnie z dokumentacją: używa funkcji gaussowskich dla wagi i wzrostu
    */
   private static calculateRangeScore(userValue: number, min: number, max: number): number {
     const center = (min + max) / 2;
     const range = max - min;
-    const distanceFromCenter = Math.abs(userValue - center);
-    const maxDistance = range / 2;
+    const sigma = range / 6; // 99.7% wartości w zakresie 3*sigma
     
-    const score = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 20);
-    return Math.round(score);
+    // Funkcja gaussowska: e^(-0.5 * ((x - center) / sigma)^2)
+    const distanceFromCenter = Math.abs(userValue - center);
+    const gaussianScore = Math.exp(-0.5 * Math.pow(distanceFromCenter / sigma, 2));
+    
+    // Konwertuj na procent (0-100%)
+    return Math.round(gaussianScore * 100);
   }
 
   /**
-   * Oblicza procent dla poziomu
+   * Oblicza procent dla poziomu zgodnie z dokumentacją
+   * 1.0 za idealne, 0.7 za 1 poziom różnicy
    */
   private static calculateLevelScore(userLevel: number, userGender: string, skiLevel: string): number {
     const skiLevelForUser = this.parseSkiLevelForUser(skiLevel, userGender);
     if (skiLevelForUser === null) return 100;
     
     const diff = Math.abs(userLevel - skiLevelForUser);
-    if (diff === 0) return 100;
-    if (diff === 1) return 85;
-    if (diff === 2) return 60;
-    return Math.max(25, 100 - diff * 20);
+    if (diff === 0) return 100; // Idealne dopasowanie
+    if (diff === 1) return 70;   // 1 poziom różnicy = 70%
+    if (diff === 2) return 40;   // 2 poziomy różnicy = 40%
+    return Math.max(10, 100 - diff * 30); // Więcej niż 2 poziomy
   }
 
   /**

@@ -68,29 +68,10 @@ const AnimaComponent: React.FC = () => {
   /**
    * Konwertuje preferencje stylu jazdy na skróconą formę
    */
-  const getStyleShortcut = (style: string): string => {
-    const shortcuts: { [key: string]: string } = {
-      'Slalom': 'SL',
-      'Gigant': 'G',
-      'Cały dzień': 'C',
-      'Poza trase': 'OFF',
-      'Pomiędzy': 'SLG',
-      'Wszystkie': 'ALL'
-    };
-    return shortcuts[style] || style;
-  };
 
   /**
    * Konwertuje preferencje użytkownika na skróconą formę
    */
-  const getShortPreferences = (criteria: typeof currentCriteria): string => {
-    if (!criteria) return '';
-    
-    const styleShort = getStyleShortcut(criteria.styl_jazdy);
-    const genderShort = criteria.plec === 'Mężczyzna' ? 'M' : 'K';
-    
-    return `${styleShort} | Poziom ${criteria.poziom} | ${genderShort} | ${criteria.wzrost}cm | ${criteria.waga}kg`;
-  };
 
   // Wczytaj dane sesji przy starcie aplikacji
   useEffect(() => {

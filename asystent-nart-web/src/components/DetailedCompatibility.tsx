@@ -49,16 +49,21 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
     let baseScore = 0;
     
     if (status.includes('✅ zielony')) {
-      // Dla zielonych oblicz procent na podstawie pozycji w zakresie
+      // Dla zielonych - zawsze wysoki procent, ale różnicowany w zależności od pozycji w zakresie
       switch (criterion) {
         case 'wzrost':
           baseScore = calculateRangeScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX);
+          // Zapewnij minimum 80% dla zielonych statusów
+          baseScore = Math.max(80, baseScore);
           break;
         case 'waga':
           baseScore = calculateRangeScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX);
+          // Zapewnij minimum 80% dla zielonych statusów
+          baseScore = Math.max(80, baseScore);
           break;
         case 'poziom':
-          baseScore = calculateLevelScore(userCriteria.poziom, userCriteria.plec, match.ski.POZIOM);
+          // Dla zielonych statusów zawsze 100%
+          baseScore = 100;
           break;
         case 'plec':
           // Sprawdź czy poziom narty ma format M/D lub U (uniwersalny)
@@ -69,19 +74,20 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           }
           break;
         case 'przeznaczenie':
-          baseScore = calculateStyleScore(userCriteria.styl_jazdy, match.ski.PRZEZNACZENIE);
+          // Dla zielonych statusów zawsze 100%
+          baseScore = 100;
           break;
         default:
           baseScore = 100;
       }
     } else if (status.includes('🟡 żółty')) {
-      // Dla żółtych oblicz procent na podstawie tolerancji
+      // Dla żółtych oblicz procent na podstawie rzeczywistej odległości od zakresu
       switch (criterion) {
         case 'wzrost':
-          baseScore = calculateToleranceScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX, 5);
+          baseScore = calculateDistanceScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX);
           break;
         case 'waga':
-          baseScore = calculateToleranceScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX, 5);
+          baseScore = calculateDistanceScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX);
           break;
         case 'poziom':
           baseScore = 75; // Poziom niżej
@@ -128,8 +134,9 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
       }
     }
     
-    // Zastosuj mnożnik kategorii
-    const categoryMultiplier = getCategoryMultiplier(match.kategoria);
+    // Zastosuj mnożnik kategorii tylko do kryteriów, które nie są zielone
+    // Dla zielonych kryteriów zawsze pełne procenty
+    const categoryMultiplier = status.includes('✅ zielony') ? 1.0 : getCategoryMultiplier(match.kategoria);
     return Math.round(baseScore * categoryMultiplier);
   };
 
@@ -225,35 +232,68 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   };
 
   /**
-   * Oblicza procent na podstawie pozycji w zakresie (im bliżej środka, tym wyższy procent)
+   * Oblicza procent na podstawie funkcji gaussowskiej - im bliżej środka zakresu, tym lepszy wynik
+   * Zgodnie z dokumentacją: używa funkcji gaussowskich dla wagi i wzrostu
    */
   const calculateRangeScore = (userValue: number, min: number, max: number): number => {
     const center = (min + max) / 2;
     const range = max - min;
-    const distanceFromCenter = Math.abs(userValue - center);
-    const maxDistance = range / 2;
+    const sigma = range / 6; // 99.7% wartości w zakresie 3*sigma
     
-    // Im bliżej środka, tym wyższy procent (100% w środku, ~80% na krańcach)
-    const score = Math.max(0, 100 - (distanceFromCenter / maxDistance) * 20);
-    return Math.round(score);
+    // Funkcja gaussowska: e^(-0.5 * ((x - center) / sigma)^2)
+    const distanceFromCenter = Math.abs(userValue - center);
+    const gaussianScore = Math.exp(-0.5 * Math.pow(distanceFromCenter / sigma, 2));
+    
+    // Konwertuj na procent (0-100%)
+    return Math.round(gaussianScore * 100);
   };
 
   /**
    * Oblicza procent na podstawie tolerancji (im dalej od zakresu, tym niższy procent)
    */
   const calculateToleranceScore = (userValue: number, min: number, max: number, tolerance: number): number => {
-    const center = (min + max) / 2;
-    const range = max - min;
-    const distanceFromCenter = Math.abs(userValue - center);
-    // const maxDistance = (range / 2) + tolerance;
+    // Oblicz odległość od zakresu (nie od środka!)
+    let distanceFromRange = 0;
     
-    // Im dalej od środka (z tolerancją), tym niższy procent
-    const score = Math.max(0, 100 - ((distanceFromCenter - range / 2) / tolerance) * 50);
+    if (userValue < min) {
+      distanceFromRange = min - userValue; // Za mały
+    } else if (userValue > max) {
+      distanceFromRange = userValue - max; // Za duży
+    } else {
+      // W zakresie - użyj funkcji gaussowskiej
+      return calculateRangeScore(userValue, min, max);
+    }
+    
+    // Im dalej od zakresu, tym niższy procent
+    const score = Math.max(0, 100 - (distanceFromRange / tolerance) * 50);
     return Math.round(Math.max(25, score));
   };
 
   /**
-   * Oblicza procent dla poziomu (specjalna logika z obsługą poziomu U i formatów M/D)
+   * Oblicza procent na podstawie rzeczywistej odległości od zakresu
+   */
+  const calculateDistanceScore = (userValue: number, min: number, max: number): number => {
+    // Oblicz odległość od zakresu
+    let distanceFromRange = 0;
+    
+    if (userValue < min) {
+      distanceFromRange = min - userValue; // Za mały
+    } else if (userValue > max) {
+      distanceFromRange = userValue - max; // Za duży
+    } else {
+      // W zakresie - użyj funkcji gaussowskiej
+      return calculateRangeScore(userValue, min, max);
+    }
+    
+    // Im dalej od zakresu, tym niższy procent
+    // Dla tolerancji 5: 1cm = 10% spadek, 2cm = 20% spadek, itd.
+    const score = Math.max(25, 100 - distanceFromRange * 10);
+    return Math.round(score);
+  };
+
+  /**
+   * Oblicza procent dla poziomu zgodnie z dokumentacją
+   * 1.0 za idealne, 0.7 za 1 poziom różnicy
    */
   const calculateLevelScore = (userLevel: number, userGender: string, skiLevel: string): number => {
     // Parsuj poziom narty - obsługa różnych formatów
@@ -262,10 +302,10 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
     if (skiLevelForUser === null) return 100; // Jeśli nie można sparsować, załóż 100%
     
     const diff = Math.abs(userLevel - skiLevelForUser);
-    if (diff === 0) return 100;
-    if (diff === 1) return 85;
-    if (diff === 2) return 60;
-    return Math.max(25, 100 - diff * 20);
+    if (diff === 0) return 100; // Idealne dopasowanie
+    if (diff === 1) return 70;   // 1 poziom różnicy = 70%
+    if (diff === 2) return 40;   // 2 poziomy różnicy = 40%
+    return Math.max(10, 100 - diff * 30); // Więcej niż 2 poziomy
   };
 
   /**
@@ -324,23 +364,31 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   // };
 
   /**
-   * Określa kolor na podstawie wyniku procentowego
+   * Określa kolor na podstawie statusu dopasowania (nie procentów)
    */
-  const getScoreColor = (score: number): string => {
-    if (score >= 100) return 'text-green-400';
-    if (score >= 75) return 'text-yellow-400';
-    if (score >= 25) return 'text-orange-400';
-    return 'text-red-400';
+  const getScoreColor = (status: string): string => {
+    if (status.includes('✅ zielony')) {
+      return 'text-green-400'; // W zakresie - zawsze zielony
+    } else if (status.includes('🟡 żółty')) {
+      return 'text-yellow-400'; // Poza zakresem ale akceptowalne
+    } else if (status.includes('🔴 czerwony')) {
+      return 'text-red-400'; // Znacznie poza zakresem
+    }
+    return 'text-gray-400'; // Domyślny
   };
 
   /**
-   * Określa ikonę na podstawie wyniku procentowego
+   * Określa ikonę na podstawie statusu dopasowania
    */
-  const getScoreIcon = (score: number): string => {
-    if (score >= 100) return '✅';
-    if (score >= 75) return '⚠️';
-    if (score >= 25) return '🔶';
-    return '❌';
+  const getScoreIcon = (status: string): string => {
+    if (status.includes('✅ zielony')) {
+      return '✅'; // W zakresie
+    } else if (status.includes('🟡 żółty')) {
+      return '⚠️'; // Poza zakresem ale akceptowalne
+    } else if (status.includes('🔴 czerwony')) {
+      return '❌'; // Znacznie poza zakresem
+    }
+    return '❓'; // Domyślny
   };
 
   /**
@@ -358,8 +406,45 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   };
 
   /**
-   * Konwertuje preferencje stylu jazdy na skróconą formę
+   * Formatuje wyświetlanie kryterium zgodnie z dokumentacją
+   * Format: 🟢 P:4(4)→OK | 🟢 Pł:M(M)→OK
+   * Dla wagi i wzrostu: konkretne odchylenie zamiast "→OK"
    */
+  const formatCriterionDisplay = (criterion: any): string => {
+    const icon = getScoreIcon(criterion.status);
+    
+    // Dla wagi i wzrostu - pokaż konkretne odchylenie
+    if (criterion.key === 'waga' || criterion.key === 'wzrost') {
+      if (criterion.status.includes('✅ zielony')) {
+        return `${icon} ${criterion.key === 'waga' ? 'W' : 'Wz'}:${criterion.userValue}(${criterion.skiValue})→OK`;
+      } else {
+        // Wyciągnij odchylenie ze statusu (działa dla żółtych i czerwonych)
+        const match = criterion.status.match(/o (\d+)/);
+        if (match) {
+          const odchylenie = match[1];
+          const kierunek = criterion.status.includes('za duża') || criterion.status.includes('za duży') ? '↑' : '↓';
+          return `${icon} ${criterion.key === 'waga' ? 'W' : 'Wz'}:${criterion.userValue}(${criterion.skiValue})→${odchylenie}${kierunek}`;
+        }
+        // Jeśli nie ma odchylenia w statusie, pokaż "NIE"
+        return `${icon} ${criterion.key === 'waga' ? 'W' : 'Wz'}:${criterion.userValue}(${criterion.skiValue})→NIE`;
+      }
+    }
+    
+    // Dla pozostałych kryteriów - standardowy format
+    const statusText = criterion.status.includes('✅ zielony') ? 'OK' : 
+                      criterion.status.includes('🟡 żółty') ? 'OK' : 'NIE';
+    
+    switch (criterion.key) {
+      case 'poziom':
+        return `${icon} P:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
+      case 'plec':
+        return `${icon} Pł:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
+      case 'przeznaczenie':
+        return `${icon} Pr:${criterion.userValue}/${criterion.skiValue}→${statusText}`;
+      default:
+        return `${icon} ${criterion.label}:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
+    }
+  };
   const getStyleShortcut = (style: string): string => {
     const shortcuts: { [key: string]: string } = {
       'Slalom': 'SL',
@@ -374,13 +459,25 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
 
   /**
    * Oblicza średnią kompatybilność z wszystkich 5 parametrów
+   * Zgodnie z dokumentacją: POZIOM 35%, WAGA 25%, WZROST 20%, PŁEĆ 15%, PRZEZNACZENIE 5%
    */
   const calculateAverageCompatibility = (): number => {
-    const scores = criteria.map(criterion => 
-      getCriteriaScore(criterion.key, criterion.status)
+    const poziomScore = getCriteriaScore('poziom', match.dopasowanie.poziom);
+    const wagaScore = getCriteriaScore('waga', match.dopasowanie.waga);
+    const wzrostScore = getCriteriaScore('wzrost', match.dopasowanie.wzrost);
+    const plecScore = getCriteriaScore('plec', match.dopasowanie.plec);
+    const przeznaczenieScore = getCriteriaScore('przeznaczenie', match.dopasowanie.przeznaczenie);
+    
+    // Wagi zgodnie z dokumentacją
+    const weightedAverage = (
+      poziomScore * 0.35 +      // POZIOM - 35% (najważniejsze - bezpieczeństwo)
+      wagaScore * 0.25 +       // WAGA - 25% (bardzo ważne - kontrola nart)
+      wzrostScore * 0.20 +     // WZROST - 20% (ważne - stabilność)
+      plecScore * 0.15 +       // PŁEĆ - 15% (mniej ważne - ergonomia)
+      przeznaczenieScore * 0.05 // PRZEZNACZENIE - 5% (najmniej ważne - styl jazdy)
     );
-    const average = scores.reduce((sum, score) => sum + score, 0) / scores.length;
-    return Math.round(average);
+    
+    return Math.round(weightedAverage);
   };
 
   const criteria = [
@@ -449,7 +546,11 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           </div>
         </div>
         <div className="flex items-center space-x-2">
-          <span className={`text-lg font-bold ${getScoreColor(averageCompatibility)}`}>
+          <span className={`text-lg font-bold ${
+            averageCompatibility >= 90 ? 'text-green-400' :
+            averageCompatibility >= 70 ? 'text-yellow-400' :
+            averageCompatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+          }`}>
             {averageCompatibility}%
           </span>
           <span className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
@@ -464,23 +565,20 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           <div className="space-y-2">
             {criteria.map((criterion) => {
               const score = getCriteriaScore(criterion.key, criterion.status);
-              const colorClass = getScoreColor(score);
-              const icon = getScoreIcon(score);
+              const colorClass = getScoreColor(criterion.status);
               
               return (
                 <div key={criterion.key} className="flex items-center justify-between text-xs">
                   <div className="flex items-center space-x-2">
-                    <span>{icon}</span>
-                    <span className="text-white font-medium">{criterion.label}:</span>
-                    <span className="text-white/80">{criterion.skiValue} / {criterion.userValue}</span>
+                    <span className="text-white font-medium">{formatCriterionDisplay(criterion)}</span>
                   </div>
                   <div className="flex items-center space-x-1">
-                    <div className="w-16 bg-gray-600 rounded-full h-2">
+                    <div className="w-16 bg-gray-700 rounded-full h-2 border border-gray-600">
                       <div 
                         className={`h-2 rounded-full transition-all duration-300 ${
-                          score >= 100 ? 'bg-green-400' : 
-                          score >= 75 ? 'bg-yellow-400' : 
-                          score >= 25 ? 'bg-orange-400' : 'bg-red-400'
+                          criterion.status.includes('✅ zielony') ? 'bg-green-400 shadow-green-400/50' : 
+                          criterion.status.includes('🟡 żółty') ? 'bg-yellow-400 shadow-yellow-400/50' : 
+                          criterion.status.includes('🔴 czerwony') ? 'bg-red-400 shadow-red-400/50' : 'bg-gray-400'
                         }`}
                         style={{ width: `${score}%` }}
                       ></div>
