@@ -934,7 +934,7 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         🏆 IDEALNE DOPASOWANIE ({searchResults.idealne.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {searchResults.idealne.map((match, idx) => (
                           <div key={idx} className="bg-white/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
@@ -984,7 +984,7 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.alternatywy ? searchResults.alternatywy : searchResults.alternatywy.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
@@ -1042,7 +1042,7 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         👤 INNA PŁEĆ ({searchResults.inna_plec.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.inna_plec ? searchResults.inna_plec : searchResults.inna_plec.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
@@ -1100,7 +1100,7 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.poziom_za_nisko ? searchResults.poziom_za_nisko : searchResults.poziom_za_nisko.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
@@ -1158,7 +1158,7 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         💪 NA SIŁĘ ({searchResults.na_sile.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.na_sile ? searchResults.na_sile : searchResults.na_sile.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">

@@ -263,11 +263,11 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
    * Określa ikonę na podstawie statusu dopasowania (dla przycisku)
    */
   const getShortStatus = (_criterion: string, status: string): string => {
-    if (status.includes('✅ zielony')) {
+    if (status.includes('✅ zielony') || status.includes('OK') || status.includes('idealne')) {
       return '✅';
-    } else if (status.includes('🟡 żółty')) {
+    } else if (status.includes('🟡 żółty') || status.includes('akceptowalne')) {
       return '⚠️';
-    } else if (status.includes('🔴 czerwony')) {
+    } else if (status.includes('🔴 czerwony') || status.includes('NIE') || status.includes('niezgodne')) {
       return '❌';
     }
     return '❓';
@@ -442,26 +442,26 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
 
         {/* Widok rozwinięty - parametry w 1 kolumnie + szczegóły */}
         {isActuallyExpanded && (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {/* Nagłówek z procentem i strzałką */}
-            <div className="flex items-center justify-between">
+            <div className="flex items-center justify-between px-2">
               <span className="text-xs text-white/70">Szczegóły dopasowania</span>
               <div className="flex items-center space-x-2">
-                <span className={`text-lg font-bold ${
+                <span className={`text-sm font-bold ${
                   averageCompatibility >= 90 ? 'text-green-400' :
                   averageCompatibility >= 70 ? 'text-yellow-400' :
                   averageCompatibility >= 50 ? 'text-orange-400' : 'text-red-400'
                 }`}>
                   {averageCompatibility}%
                 </span>
-                <span className="transform rotate-180 transition-transform duration-300 ease-out">
+                <span className="transform rotate-180 transition-transform duration-300 ease-out text-sm">
                   ▼
                 </span>
               </div>
             </div>
 
-            {/* Lista kryteriów - 1 kolumna × 4 wiersze z danymi po prawej */}
-            <div className="space-y-2">
+            {/* Lista kryteriów - kompaktowa wersja */}
+            <div className="space-y-1 px-2">
               {criteria.map((criterion) => {
                 const score = getCriteriaScore(criterion.key, criterion.status);
                 const colorClass = getScoreColor(criterion.status);
@@ -471,18 +471,30 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
                   <div key={criterion.key} className="flex items-center justify-between text-xs">
                     {/* Lewa strona - ikona + etykieta + wartości */}
                     <div className="flex items-center space-x-2">
-                      <span className="text-white font-medium">
-                        {icon} {criterion.label}
+                      <span className="w-4 text-center">
+                        {icon}
                       </span>
-                      <span className="text-white/60 text-[10px]">
-                        {criterion.userValue} → {criterion.skiValue}
+                      <span className="text-white font-medium text-xs">
+                        {criterion.label}
                       </span>
+                    </div>
+                    {/* Środek - wartości */}
+                    <div className="flex-1 text-center">
+                      <div className="flex items-center justify-center space-x-2">
+                        <span className="text-white font-semibold text-xs bg-white/10 px-2 py-1 rounded">
+                          {criterion.userValue}
+                        </span>
+                        <span className="text-white/80 text-xs">➜</span>
+                        <span className="text-white/90 font-medium text-xs bg-blue-500/20 px-2 py-1 rounded">
+                          {criterion.skiValue}
+                        </span>
+                      </div>
                     </div>
                     {/* Prawa strona - pasek postępu + procent */}
                     <div className="flex items-center space-x-1">
-                      <div className="w-16 bg-gray-700 rounded-full h-2 border border-gray-600">
+                      <div className="w-12 bg-gray-700 rounded-full h-1.5 border border-gray-600">
                         <div 
-                          className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                          className={`h-1.5 rounded-full transition-all duration-500 ease-out ${
                             criterion.status.includes('✅ zielony') ? 'bg-green-400 shadow-green-400/50' : 
                             criterion.status.includes('🟡 żółty') ? 'bg-yellow-400 shadow-yellow-400/50' : 
                             criterion.status.includes('🔴 czerwony') ? 'bg-red-400 shadow-red-400/50' : 'bg-gray-400'
@@ -490,7 +502,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
                           style={{ width: `${score}%` }}
                         ></div>
                       </div>
-                      <span className={`font-bold min-w-[32px] text-right ${colorClass}`}>
+                      <span className={`font-bold w-8 text-right text-xs ${colorClass}`}>
                         {score}%
                       </span>
                     </div>
@@ -499,8 +511,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
               })}
             </div>
             
-            {/* Stopka z dostępnością - poziomo w lewo */}
-            <div className="pt-2 border-t border-white/10">
+            {/* Stopka z dostępnością - kompaktowa */}
+            <div className="pt-1 border-t border-white/10 px-2">
               <div className="flex items-center text-xs text-white/70">
                 <span className="mr-2">Dostępność:</span>
                 <div className="flex gap-1">
