@@ -4,8 +4,7 @@
  */
 
 import React, { useState } from 'react';
-import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
-import type { SkiMatch, SearchCriteria, DetailedCompatibilityInfo } from '../types/ski.types';
+import type { SkiMatch, SearchCriteria } from '../types/ski.types';
 
 interface DetailedCompatibilityProps {
   match: SkiMatch;
@@ -19,7 +18,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
 
   // Proste kwadraciki dostępności (bez async)
   const generateAvailabilitySquares = () => {
-    const ilosc = parseInt(match.ski.ILOSC || '2');
+    const ilosc = parseInt(String(match.ski.ILOSC) || '2');
     const squares = [];
     
     for (let i = 1; i <= ilosc; i++) {
@@ -70,10 +69,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
             baseScore = userCriteria.plec === match.ski.PLEC ? 100 : 0;
           }
           break;
-        case 'przeznaczenie':
-          // Dla zielonych statusów zawsze 100%
-          baseScore = 100;
-          break;
         default:
           baseScore = 100;
       }
@@ -97,9 +92,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
             baseScore = 25; // Inna płeć ale akceptowalna
           }
           break;
-        case 'przeznaczenie':
-          baseScore = calculateStyleScore(userCriteria.styl_jazdy, match.ski.PRZEZNACZENIE);
-          break;
         default:
           baseScore = 75;
       }
@@ -122,9 +114,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           } else {
             baseScore = 0; // Niezgodna płeć
           }
-          break;
-        case 'przeznaczenie':
-          baseScore = calculateStyleScore(userCriteria.styl_jazdy, match.ski.PRZEZNACZENIE);
           break;
         default:
           baseScore = 25;
@@ -157,76 +146,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
     }
   };
 
-  /**
-   * Oblicza procent dopasowania stylu jazdy
-   */
-  const calculateStyleScore = (userStyle: string, skiStyle: string): number => {
-    const skiTypes = skiStyle.split(',').map(t => t.trim());
-    
-    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
-    if (userStyle === 'Wszystkie') {
-      return 100;
-    }
-    
-    // Sprawdź dokładne dopasowanie dla każdego stylu
-    switch (userStyle) {
-      case 'Slalom':
-        if (skiTypes.includes('SL')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Gigant':
-        if (skiTypes.includes('G')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Cały dzień':
-        if (skiTypes.includes('C')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Poza trase':
-        if (skiTypes.includes('OFF')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Pomiędzy':
-        if (skiTypes.includes('SLG')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      default:
-        return 0;
-    }
-  };
+
+  // USUNIĘTO: stara logika switch - zastąpiona nową logiką tablicową
 
   /**
    * Oblicza procent na podstawie funkcji gaussowskiej - im bliżej środka zakresu, tym lepszy wynik
@@ -288,60 +209,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
     return Math.round(score);
   };
 
-  /**
-   * Oblicza procent dla poziomu zgodnie z dokumentacją
-   * 1.0 za idealne, 0.7 za 1 poziom różnicy
-   */
-  const calculateLevelScore = (userLevel: number, userGender: string, skiLevel: string): number => {
-    // Parsuj poziom narty - obsługa różnych formatów
-    const skiLevelForUser = parseSkiLevelForUser(skiLevel, userGender);
-    
-    if (skiLevelForUser === null) return 100; // Jeśli nie można sparsować, załóż 100%
-    
-    const diff = Math.abs(userLevel - skiLevelForUser);
-    if (diff === 0) return 100; // Idealne dopasowanie
-    if (diff === 1) return 70;   // 1 poziom różnicy = 70%
-    if (diff === 2) return 40;   // 2 poziomy różnicy = 40%
-    return Math.max(10, 100 - diff * 30); // Więcej niż 2 poziomy
-  };
 
-  /**
-   * Parsuje poziom narty dla konkretnego użytkownika
-   * Obsługuje formaty: "4M", "5D", "4M/5D", "5M/6D", "4U", "4"
-   */
-  const parseSkiLevelForUser = (skiLevel: string, userGender: string): number | null => {
-    // Usuń spacje i przekształć na wielkie litery
-    const cleanLevel = skiLevel.replace(/\s+/g, '').toUpperCase();
-    
-    // Sprawdź czy zawiera format M/D (np. "4M/5D")
-    if (cleanLevel.includes('/')) {
-      const parts = cleanLevel.split('/');
-      for (const part of parts) {
-        if (part.includes(userGender.toUpperCase())) {
-          const level = parseInt(part.replace(/[^\d]/g, ''));
-          if (!isNaN(level)) return level;
-        }
-      }
-      // Jeśli nie znaleziono odpowiedniej płci, zwróć pierwszy poziom
-      const firstLevel = parseInt(parts[0].replace(/[^\d]/g, ''));
-      return isNaN(firstLevel) ? null : firstLevel;
-    }
-    
-    // Sprawdź czy zawiera tylko jedną płć (np. "4M", "5D")
-    if (cleanLevel.includes(userGender.toUpperCase())) {
-      const level = parseInt(cleanLevel.replace(/[^\d]/g, ''));
-      return isNaN(level) ? null : level;
-    }
-    
-    // Sprawdź czy jest uniwersalny (np. "4U", "4")
-    if (cleanLevel.includes('U') || !/[MD]/.test(cleanLevel)) {
-      const level = parseInt(cleanLevel.replace(/[^\d]/g, ''));
-      return isNaN(level) ? null : level;
-    }
-    
-    // Jeśli nie pasuje do żadnego formatu, zwróć null
-    return null;
-  };
 
   /**
    * Sprawdza czy poziom narty pasuje do użytkownika (z obsługą U)
@@ -447,42 +315,27 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
         return `${icon} P:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
       case 'plec':
         return `${icon} Pł:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
-      case 'przeznaczenie':
-        return `${icon} Pr:${criterion.userValue}/${criterion.skiValue}→${statusText}`;
       default:
         return `${icon} ${criterion.label}:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
     }
   };
-  const getStyleShortcut = (style: string): string => {
-    const shortcuts: { [key: string]: string } = {
-      'Slalom': 'SL',
-      'Gigant': 'G',
-      'Cały dzień': 'C',
-      'Poza trase': 'OFF',
-      'Pomiędzy': 'SLG',
-      'Wszystkie': 'ALL'
-    };
-    return shortcuts[style] || style;
-  };
 
   /**
-   * Oblicza średnią kompatybilność z wszystkich 5 parametrów
-   * Zgodnie z dokumentacją: POZIOM 35%, WAGA 25%, WZROST 20%, PŁEĆ 15%, PRZEZNACZENIE 5%
+   * Oblicza średnią kompatybilność z 4 parametrów (bez stylu jazdy)
+   * Zgodnie z dokumentacją: POZIOM 40%, WAGA 30%, WZROST 20%, PŁEĆ 10%
    */
   const calculateAverageCompatibility = (): number => {
     const poziomScore = getCriteriaScore('poziom', match.dopasowanie.poziom);
     const wagaScore = getCriteriaScore('waga', match.dopasowanie.waga);
     const wzrostScore = getCriteriaScore('wzrost', match.dopasowanie.wzrost);
     const plecScore = getCriteriaScore('plec', match.dopasowanie.plec);
-    const przeznaczenieScore = getCriteriaScore('przeznaczenie', match.dopasowanie.przeznaczenie);
     
-    // Wagi zgodnie z dokumentacją
+    // Wagi zgodnie z dokumentacją (bez stylu jazdy - wyświetlany jako badge)
     const weightedAverage = (
-      poziomScore * 0.35 +      // POZIOM - 35% (najważniejsze - bezpieczeństwo)
-      wagaScore * 0.25 +       // WAGA - 25% (bardzo ważne - kontrola nart)
+      poziomScore * 0.40 +      // POZIOM - 40% (najważniejsze - bezpieczeństwo)
+      wagaScore * 0.30 +       // WAGA - 30% (bardzo ważne - kontrola nart)
       wzrostScore * 0.20 +     // WZROST - 20% (ważne - stabilność)
-      plecScore * 0.15 +       // PŁEĆ - 15% (mniej ważne - ergonomia)
-      przeznaczenieScore * 0.05 // PRZEZNACZENIE - 5% (najmniej ważne - styl jazdy)
+      plecScore * 0.10         // PŁEĆ - 10% (mniej ważne - ergonomia)
     );
     
     return Math.round(weightedAverage);
@@ -517,13 +370,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
       skiValue: `${match.ski.WZROST_MIN}-${match.ski.WZROST_MAX}cm`,
       userValue: `${userCriteria.wzrost}cm`
     },
-    { 
-      key: 'przeznaczenie', 
-      label: 'Styl', 
-      status: match.dopasowanie.przeznaczenie,
-      skiValue: match.ski.PRZEZNACZENIE,
-      userValue: getStyleShortcut(userCriteria.styl_jazdy)
-    }
   ];
 
   // Oblicz średnią kompatybilność

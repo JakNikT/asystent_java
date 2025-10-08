@@ -12,7 +12,8 @@ export interface SkiData {
   WAGA_MAX: number;
   WZROST_MIN: number;
   WZROST_MAX: number;
-  PRZEZNACZENIE: string;
+  PRZEZNACZENIE: string; // Teraz tylko: SL, G, SLG, OFF
+  ATUTY: string;         // NOWE: np. "C", "C,premium" lub ""
   ROK: number;
   UWAGI: string;
 }
@@ -22,7 +23,7 @@ export interface SearchCriteria {
   waga: number;
   poziom: number;
   plec: 'M' | 'K' | 'W'; // M = męski, K = kobiecy, W = wszyscy
-  styl_jazdy: string;
+  styl_jazdy?: string[]; // ZMIANA: opcjonalna tablica stylów (może być pusta)
   dateFrom?: Date; // Data rozpoczęcia rezerwacji
   dateTo?: Date;   // Data zakończenia rezerwacji
 }
@@ -39,6 +40,7 @@ export interface SkiMatch {
   };
   kategoria: 'idealne' | 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile';
   zielone_punkty: number;
+  sredniaKompatybilnosc?: number; // Opcjonalne pole dla średniej kompatybilności
 }
 
 export type MatchCategory = 'idealne' | 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile';

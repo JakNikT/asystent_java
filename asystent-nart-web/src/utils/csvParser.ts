@@ -38,27 +38,66 @@ export class CSVParser {
     // Dzieli linię zachowując przecinki w cudzysłowach
     const fields = this.splitCSVLine(line);
     
+    // Sprawdź czy ma nowy format (z ATUTY) czy stary
+    const hasAtuty = fields.length >= 15;
+    
     if (fields.length < 14) {
       return null;
     }
 
     try {
-      return {
-        ID: fields[0].trim(),
-        MARKA: fields[1].trim(),
-        MODEL: fields[2].trim(),
-        DLUGOSC: parseInt(fields[3]) || 0,
-        ILOSC: parseInt(fields[4]) || 0,
-        POZIOM: fields[5].trim(),
-        PLEC: fields[6].trim(),
-        WAGA_MIN: parseInt(fields[7]) || 0,
-        WAGA_MAX: parseInt(fields[8]) || 0,
-        WZROST_MIN: parseInt(fields[9]) || 0,
-        WZROST_MAX: parseInt(fields[10]) || 0,
-        PRZEZNACZENIE: fields[11].trim(),
-        ROK: parseInt(fields[12]) || 2024,
-        UWAGI: fields[13] ? fields[13].trim() : ''
-      };
+      // Nowy format: ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,UWAGI
+      if (hasAtuty) {
+        return {
+          ID: fields[0].trim(),
+          MARKA: fields[1].trim(),
+          MODEL: fields[2].trim(),
+          DLUGOSC: parseInt(fields[3]) || 0,
+          ILOSC: parseInt(fields[4]) || 0,
+          POZIOM: fields[5].trim(),
+          PLEC: fields[6].trim(),
+          WAGA_MIN: parseInt(fields[7]) || 0,
+          WAGA_MAX: parseInt(fields[8]) || 0,
+          WZROST_MIN: parseInt(fields[9]) || 0,
+          WZROST_MAX: parseInt(fields[10]) || 0,
+          PRZEZNACZENIE: fields[11].trim(),
+          ATUTY: fields[12] ? fields[12].trim() : '',
+          ROK: parseInt(fields[13]) || 2024,
+          UWAGI: fields[14] ? fields[14].trim() : ''
+        };
+      } else {
+        // Stary format - kompatybilność wsteczna
+        // Sprawdź czy PRZEZNACZENIE zawiera przecinek (format "SLG,C")
+        const przeznaczenie = fields[11].trim();
+        let newPrzeznaczenie = przeznaczenie;
+        let atuty = '';
+        
+        if (przeznaczenie.includes(',')) {
+          const parts = przeznaczenie.split(',').map(p => p.trim());
+          if (parts.length === 2) {
+            newPrzeznaczenie = parts[0];
+            atuty = parts[1];
+          }
+        }
+        
+        return {
+          ID: fields[0].trim(),
+          MARKA: fields[1].trim(),
+          MODEL: fields[2].trim(),
+          DLUGOSC: parseInt(fields[3]) || 0,
+          ILOSC: parseInt(fields[4]) || 0,
+          POZIOM: fields[5].trim(),
+          PLEC: fields[6].trim(),
+          WAGA_MIN: parseInt(fields[7]) || 0,
+          WAGA_MAX: parseInt(fields[8]) || 0,
+          WZROST_MIN: parseInt(fields[9]) || 0,
+          WZROST_MAX: parseInt(fields[10]) || 0,
+          PRZEZNACZENIE: newPrzeznaczenie,
+          ATUTY: atuty,
+          ROK: parseInt(fields[12]) || 2024,
+          UWAGI: fields[13] ? fields[13].trim() : ''
+        };
+      }
     } catch (error) {
       console.error('Błąd tworzenia obiektu SkiData:', error);
       return null;

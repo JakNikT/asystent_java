@@ -317,7 +317,7 @@ export class SkiMatchingService {
     zielone_punkty += wzrostCheck.points;
 
     // 5. Sprawdź przeznaczenie (styl jazdy)
-    const przeznaczenieCheck = this.checkPrzeznaczenie(criteria.styl_jazdy, ski.PRZEZNACZENIE);
+    const przeznaczenieCheck = this.checkPrzeznaczenie(criteria.styl_jazdy || [], ski.PRZEZNACZENIE);
     dopasowanie.przeznaczenie = przeznaczenieCheck.status;
     zielone_punkty += przeznaczenieCheck.points;
 
@@ -413,7 +413,7 @@ export class SkiMatchingService {
     zielone_punkty += wzrostCheck.points;
 
     // 5. Sprawdź przeznaczenie (styl jazdy)
-    const przeznaczenieCheck = this.checkPrzeznaczenie(criteria.styl_jazdy, ski.PRZEZNACZENIE);
+    const przeznaczenieCheck = this.checkPrzeznaczenie(criteria.styl_jazdy || [], ski.PRZEZNACZENIE);
     dopasowanie.przeznaczenie = przeznaczenieCheck.status;
     zielone_punkty += przeznaczenieCheck.points;
 
@@ -629,73 +629,36 @@ export class SkiMatchingService {
   /**
    * Sprawdza dopasowanie przeznaczenia z precyzyjnym dopasowaniem
    */
-  private static checkPrzeznaczenie(userStyl: string, skiPrzeznaczenie: string): { status: string; points: number } {
-    const skiTypes = skiPrzeznaczenie.split(',').map(t => t.trim());
-    
-    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
-    if (userStyl === 'Wszystkie') {
+  private static checkPrzeznaczenie(userStyles: string[], skiPrzeznaczenie: string): { status: string; points: number } {
+    // Jeśli brak stylów - wszystko pasuje
+    if (!userStyles || userStyles.length === 0) {
       return { status: '✅ zielony', points: 1 };
     }
     
-    // Sprawdź dokładne dopasowanie dla każdego stylu
-    switch (userStyl) {
-      case 'Slalom':
-        if (skiTypes.includes('SL')) {
-          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
-        } else {
-          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
-        }
-        
-      case 'Gigant':
-        if (skiTypes.includes('G')) {
-          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
-        } else {
-          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
-        }
-        
-      case 'Cały dzień':
-        if (skiTypes.includes('C')) {
-          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
-          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
-        } else {
-          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
-        }
-        
-      case 'Poza trase':
-        if (skiTypes.includes('OFF')) {
-          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
-        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
-        } else {
-          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
-        }
-        
-      case 'Pomiędzy':
-        if (skiTypes.includes('SLG')) {
-          return { status: '✅ zielony', points: 1 }; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
-          return { status: '🟡 żółty', points: 0 }; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 }; // Uniwersalne narty
-        } else {
-          return { status: '🔴 czerwony', points: 0 }; // Brak dopasowania
-        }
-        
-      default:
-        return { status: '🔴 czerwony', points: 0 };
+    // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
+    const matches = userStyles.some(style => {
+      switch (style) {
+        case 'SL':
+          return skiPrzeznaczenie === 'SL';
+        case 'G':
+          return skiPrzeznaczenie === 'G';
+        case 'SLG':
+          return skiPrzeznaczenie === 'SLG';
+        case 'OFF':
+          return skiPrzeznaczenie === 'OFF';
+        default:
+          return false;
+      }
+    });
+    
+    if (matches) {
+      return { status: '✅ zielony', points: 1 };
+    } else {
+      return { status: '🔴 czerwony', points: 0 };
     }
-  }
+  };
+
+  // USUNIĘTO: stara logika switch - zastąpiona nową logiką tablicową
 
   /**
    * Oblicza kompatybilność (0-100) - stara metoda na podstawie zielonych punktów
@@ -744,7 +707,7 @@ export class SkiMatchingService {
           if (ski.POZIOM.includes('/') || ski.POZIOM.includes('U')) return 100;
           return criteria.plec === ski.PLEC ? 100 : 60; // 1.0 za idealne, 0.6 za inną płeć
         case 'przeznaczenie':
-          return this.calculateStyleScore(criteria.styl_jazdy, ski.PRZEZNACZENIE);
+          return this.calculateStyleScore(criteria.styl_jazdy || [], ski.PRZEZNACZENIE);
         default:
           return 100;
       }
@@ -827,73 +790,32 @@ export class SkiMatchingService {
   /**
    * Oblicza procent dopasowania stylu jazdy
    */
-  private static calculateStyleScore(userStyle: string, skiStyle: string): number {
-    const skiTypes = skiStyle.split(',').map(t => t.trim());
-    
-    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
-    if (userStyle === 'Wszystkie') {
+  private static calculateStyleScore(userStyles: string[], skiStyle: string): number {
+    // Jeśli brak stylów - wszystko pasuje
+    if (!userStyles || userStyles.length === 0) {
       return 100;
     }
     
-    // Sprawdź dokładne dopasowanie dla każdego stylu
-    switch (userStyle) {
-      case 'Slalom':
-        if (skiTypes.includes('SL')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Gigant':
-        if (skiTypes.includes('G')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Cały dzień':
-        if (skiTypes.includes('C')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Poza trase':
-        if (skiTypes.includes('OFF')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Pomiędzy':
-        if (skiTypes.includes('SLG')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      default:
-        return 0;
-    }
-  }
+    // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
+    const matches = userStyles.some(style => {
+      switch (style) {
+        case 'SL':
+          return skiStyle === 'SL';
+        case 'G':
+          return skiStyle === 'G';
+        case 'SLG':
+          return skiStyle === 'SLG';
+        case 'OFF':
+          return skiStyle === 'OFF';
+        default:
+          return false;
+      }
+    });
+    
+    return matches ? 100 : 0;
+  };
+
+  // USUNIĘTO: stara logika switch - zastąpiona nową logiką tablicową
 
   /**
    * Parsuje poziom narty dla konkretnego użytkownika

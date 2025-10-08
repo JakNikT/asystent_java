@@ -119,8 +119,8 @@ export class ReservationService {
             startDate: new Date(reservation.od),
             endDate: new Date(reservation.do),
             notes: reservation.uwagi,
-            price: parseFloat(reservation.cena) || 0,
-            paid: parseFloat(reservation.zaplacono) || 0,
+            price: parseFloat(String(reservation.cena)) || 0,
+            paid: parseFloat(String(reservation.zaplacono)) || 0,
             status: this.getReservationStatus(reservation)
           });
         }
@@ -199,8 +199,8 @@ export class ReservationService {
             startDate: new Date(reservation.od),
             endDate: new Date(reservation.do),
             notes: reservation.uwagi,
-            price: parseFloat(reservation.cena) || 0,
-            paid: parseFloat(reservation.zaplacono) || 0,
+            price: parseFloat(String(reservation.cena)) || 0,
+            paid: parseFloat(String(reservation.zaplacono)) || 0,
             status: status
           });
         }
@@ -254,8 +254,8 @@ export class ReservationService {
           startDate: new Date(reservation.od),
           endDate: new Date(reservation.do),
           notes: reservation.uwagi,
-          price: parseFloat(reservation.cena) || 0,
-          paid: parseFloat(reservation.zaplacono) || 0,
+          price: parseFloat(String(reservation.cena)) || 0,
+          paid: parseFloat(String(reservation.zaplacono)) || 0,
           status: this.getReservationStatus(reservation)
         });
       }
