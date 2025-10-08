@@ -405,39 +405,35 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       >
         {/* Widok zwinięty - parametry w 2 kolumnach + procent + strzałka */}
         {!isActuallyExpanded && (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              {/* Parametry w 2 kolumnach × 2 wiersze */}
-              <div className="grid grid-cols-2 gap-1">
-                {criteria.map((criterion) => {
-                  const icon = getShortStatus(criterion.key, criterion.status);
-                  return (
-                    <span
-                      key={criterion.key}
-                      className="px-1 py-0.5 rounded text-xs font-medium bg-white/10 text-white"
-                      title={criterion.status}
-                    >
-                      {icon}{criterion.label}
-                    </span>
-                  );
-                })}
+          <div className="flex flex-col justify-between h-full min-h-[70px]">
+            {/* Górny rząd - parametry po lewej, kwadraciki po prawej */}
+            <div className="flex items-center justify-between mb-1 px-2">
+              <div className="flex items-center space-x-2">
+                {/* Parametry w 2 kolumnach × 2 wiersze */}
+                <div className="grid grid-cols-2 gap-2">
+                  {criteria.map((criterion) => {
+                    const icon = getShortStatus(criterion.key, criterion.status);
+                    return (
+                      <span
+                        key={criterion.key}
+                        className="px-2 py-1 rounded text-xs font-medium bg-white/10 text-white whitespace-nowrap"
+                        title={criterion.status}
+                      >
+                        {icon} {criterion.label}
+                      </span>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              {/* Kwadraciki dostępności - układ 3×2 dla większej ilości */}
-              <div className="grid grid-cols-3 gap-1 w-20" title="Dostępność sztuk">
+              {/* Kwadraciki dostępności - prawa strona na wysokości parametrów */}
+              <div className={`grid gap-1 ${availabilitySquares.length <= 3 ? 'grid-cols-1 w-6' : 'grid-cols-2 w-12'}`} title="Dostępność sztuk">
                 {availabilitySquares}
               </div>
-              {/* Procent ogólny */}
-              <span className={`text-lg font-bold ${
-                averageCompatibility >= 90 ? 'text-green-400' :
-                averageCompatibility >= 70 ? 'text-yellow-400' :
-                averageCompatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-              }`}>
-                {averageCompatibility}%
-              </span>
-              {/* Strzałka */}
-              <span className="transform transition-transform duration-300 ease-out">
+            </div>
+            
+            {/* Dolny rząd - strzałka na środku */}
+            <div className="flex justify-center">
+              <span className="transform transition-transform duration-300 ease-out text-sm">
                 ▼
               </span>
             </div>
