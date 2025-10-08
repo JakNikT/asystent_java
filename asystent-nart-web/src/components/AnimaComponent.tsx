@@ -16,6 +16,7 @@ import {
 import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
 import { DetailedCompatibility } from './DetailedCompatibility';
 import { SkiStyleBadge } from './SkiStyleBadge';
+import { BrowseSkisComponent } from './BrowseSkisComponent';
 import type { SkiData, SearchResults, SearchCriteria } from '../types/ski.types';
 
 interface FormData {
@@ -64,6 +65,9 @@ const AnimaComponent: React.FC = () => {
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
   const [currentCriteria, setCurrentCriteria] = useState<SearchCriteria | null>(null);
 
+  // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie)
+  const [appMode, setAppMode] = useState<'search' | 'browse'>('search');
+
   // NOWY STAN: Rozwijanie kategorii (pierwsze 6 lub wszystkie)
   const [expandedCategories, setExpandedCategories] = useState({
     alternatywy: false,
@@ -94,7 +98,7 @@ const AnimaComponent: React.FC = () => {
     return expandedRows[category]?.includes(cardIndex) || false;
   };
 
-  // Funkcja do przełączania konkretnej karty w rzędzie (rozwija wszystkie karty w rzędzie, max 3)
+  // Funkcja do przełączania konkretnej karty w rzędzie (rozwija wszystkie karty w rzędzie)
   const toggleCardInRow = (category: string) => {
     setExpandedRows(prev => {
       const currentExpanded = prev[category] || [];
@@ -106,12 +110,12 @@ const AnimaComponent: React.FC = () => {
           [category]: []
         };
       } else {
-        // Jeśli nie ma rozwiniętych kart - rozwiń maksymalnie 3 karty w tym rzędzie
-        const maxCards = 3;
+        // Jeśli nie ma rozwiniętych kart - rozwiń wszystkie karty w tym rzędzie
         const cardsToExpand = [];
         
-        // Rozwiń pierwsze 3 karty w rzędzie (lub wszystkie jeśli jest mniej niż 3)
-        for (let i = 0; i < maxCards; i++) {
+        // Rozwiń wszystkie karty w rzędzie
+        const totalCards = searchResults?.[category as keyof SearchResults]?.length || 0;
+        for (let i = 0; i < totalCards; i++) {
           cardsToExpand.push(i);
         }
         
@@ -607,9 +611,9 @@ const AnimaComponent: React.FC = () => {
   };
 
   return (
-    <div className="w-[1100px] h-[650px] relative bg-[#386BB2] overflow-hidden">
-      {/* Header Section */}
-      <div className="w-[1100px] h-[200px] absolute top-0 left-0 bg-[#386BB2] flex items-start justify-between p-2">
+    <div className="min-h-screen bg-[#386BB2]">
+      {/* Header Section - stałe wymiary */}
+      <div className="w-[1100px] h-[200px] bg-[#386BB2] flex items-start justify-between p-2 mx-auto">
         {/* Avatar */}
         <div className="w-[180px] h-[180px] bg-[#D9D9D9] rounded-full" />
         
@@ -842,7 +846,10 @@ const AnimaComponent: React.FC = () => {
                 >
                   <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
                 </button>
-                <button className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1">
+                <button 
+                  onClick={() => setAppMode('browse')}
+                  className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1"
+                >
                   <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
                 </button>
                 <button className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1">
@@ -853,8 +860,8 @@ const AnimaComponent: React.FC = () => {
           </div>
         </div>
 
-      {/* Results Section */}
-      <div className="w-[1100px] h-[450px] absolute top-[200px] left-0 bg-[#386BB2] flex flex-col justify-start items-start gap-2.5 p-5">
+      {/* Results Section - pełnoekranowa */}
+      <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-5">
         {/* Results Header */}
         <div className="w-[344px] h-[50px] bg-[#194576] rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[10px] rounded-br-[10px] flex justify-center items-center">
           <div className="text-white text-[30px] font-normal font-['ADLaM_Display'] underline leading-[42px]">🔍 Wyniki Doboru Nart</div>
@@ -872,9 +879,9 @@ const AnimaComponent: React.FC = () => {
           </div>
         )}
         
-          {/* Results Container */}
-          <div className="w-[1062px] h-[365px] bg-[#194576] rounded-[20px] flex justify-start items-start gap-2.5 p-2">
-            <div className="flex-1 h-[343px] bg-[#A6C2EF] rounded-[20px] p-4 overflow-y-auto">
+          {/* Results Container - pełnoekranowy */}
+          <div className="w-full min-h-[400px] bg-[#194576] rounded-[20px] flex justify-center items-start gap-2.5 p-2">
+            <div className="w-full min-h-[380px] bg-[#A6C2EF] rounded-[20px] p-4 overflow-y-auto">
               {isLoading && (
                 <div className="flex items-center justify-center h-full">
                   <span className="text-white text-xl font-black font-['Inter'] italic">
@@ -927,22 +934,37 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         🏆 IDEALNE DOPASOWANIE ({searchResults.idealne.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                         {searchResults.idealne.map((match, idx) => (
                           <div key={idx} className="bg-white/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
-                              {/* Lewy górny róg - Styl */}
-                              <SkiStyleBadge 
-                                przeznaczenie={match.ski.PRZEZNACZENIE}
-                                atuty={match.ski.ATUTY}
-                              />
+                              {/* Lewa strona - badge ze stylem i długość pod nim */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <SkiStyleBadge 
+                                  przeznaczenie={match.ski.PRZEZNACZENIE}
+                                  atuty={match.ski.ATUTY}
+                                />
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                  {match.ski.DLUGOSC}cm
+                                </div>
+                              </div>
+                              
                               {/* Środek - Nazwa narty */}
                               <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
-                              {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
-                                {match.ski.DLUGOSC}cm
+                              
+                              {/* Prawa strona - procent dopasowania */}
+                              <div className="flex flex-col items-center">
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                  <span className={`${
+                                    match.compatibility >= 90 ? 'text-green-400' :
+                                    match.compatibility >= 70 ? 'text-yellow-400' :
+                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                  }`}>
+                                    {match.compatibility}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <DetailedCompatibility 
@@ -962,22 +984,37 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                         {(expandedCategories.alternatywy ? searchResults.alternatywy : searchResults.alternatywy.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
-                              {/* Lewy górny róg - Styl */}
-                              <SkiStyleBadge 
-                                przeznaczenie={match.ski.PRZEZNACZENIE}
-                                atuty={match.ski.ATUTY}
-                              />
+                              {/* Lewa strona - badge ze stylem i długość pod nim */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <SkiStyleBadge 
+                                  przeznaczenie={match.ski.PRZEZNACZENIE}
+                                  atuty={match.ski.ATUTY}
+                                />
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                  {match.ski.DLUGOSC}cm
+                                </div>
+                              </div>
+                              
                               {/* Środek - Nazwa narty */}
                               <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
-                              {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
-                                {match.ski.DLUGOSC}cm
+                              
+                              {/* Prawa strona - procent dopasowania */}
+                              <div className="flex flex-col items-center">
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                  <span className={`${
+                                    match.compatibility >= 90 ? 'text-green-400' :
+                                    match.compatibility >= 70 ? 'text-yellow-400' :
+                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                  }`}>
+                                    {match.compatibility}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <DetailedCompatibility 
@@ -1005,22 +1042,37 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         👤 INNA PŁEĆ ({searchResults.inna_plec.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                         {(expandedCategories.inna_plec ? searchResults.inna_plec : searchResults.inna_plec.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
-                              {/* Lewy górny róg - Styl */}
-                              <SkiStyleBadge 
-                                przeznaczenie={match.ski.PRZEZNACZENIE}
-                                atuty={match.ski.ATUTY}
-                              />
+                              {/* Lewa strona - badge ze stylem i długość pod nim */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <SkiStyleBadge 
+                                  przeznaczenie={match.ski.PRZEZNACZENIE}
+                                  atuty={match.ski.ATUTY}
+                                />
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                  {match.ski.DLUGOSC}cm
+                                </div>
+                              </div>
+                              
                               {/* Środek - Nazwa narty */}
                               <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
-                              {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
-                                {match.ski.DLUGOSC}cm
+                              
+                              {/* Prawa strona - procent dopasowania */}
+                              <div className="flex flex-col items-center">
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                  <span className={`${
+                                    match.compatibility >= 90 ? 'text-green-400' :
+                                    match.compatibility >= 70 ? 'text-yellow-400' :
+                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                  }`}>
+                                    {match.compatibility}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <DetailedCompatibility 
@@ -1048,22 +1100,37 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                         {(expandedCategories.poziom_za_nisko ? searchResults.poziom_za_nisko : searchResults.poziom_za_nisko.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
-                              {/* Lewy górny róg - Styl */}
-                              <SkiStyleBadge 
-                                przeznaczenie={match.ski.PRZEZNACZENIE}
-                                atuty={match.ski.ATUTY}
-                              />
+                              {/* Lewa strona - badge ze stylem i długość pod nim */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <SkiStyleBadge 
+                                  przeznaczenie={match.ski.PRZEZNACZENIE}
+                                  atuty={match.ski.ATUTY}
+                                />
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                  {match.ski.DLUGOSC}cm
+                                </div>
+                              </div>
+                              
                               {/* Środek - Nazwa narty */}
                               <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
-                              {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
-                                {match.ski.DLUGOSC}cm
+                              
+                              {/* Prawa strona - procent dopasowania */}
+                              <div className="flex flex-col items-center">
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                  <span className={`${
+                                    match.compatibility >= 90 ? 'text-green-400' :
+                                    match.compatibility >= 70 ? 'text-yellow-400' :
+                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                  }`}>
+                                    {match.compatibility}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <DetailedCompatibility 
@@ -1091,22 +1158,37 @@ const AnimaComponent: React.FC = () => {
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         💪 NA SIŁĘ ({searchResults.na_sile.length})
                       </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3">
                         {(expandedCategories.na_sile ? searchResults.na_sile : searchResults.na_sile.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
-                              {/* Lewy górny róg - Styl */}
-                              <SkiStyleBadge 
-                                przeznaczenie={match.ski.PRZEZNACZENIE}
-                                atuty={match.ski.ATUTY}
-                              />
+                              {/* Lewa strona - badge ze stylem i długość pod nim */}
+                              <div className="flex flex-col items-center space-y-1">
+                                <SkiStyleBadge 
+                                  przeznaczenie={match.ski.PRZEZNACZENIE}
+                                  atuty={match.ski.ATUTY}
+                                />
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                  {match.ski.DLUGOSC}cm
+                                </div>
+                              </div>
+                              
                               {/* Środek - Nazwa narty */}
                               <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
-                              {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
-                                {match.ski.DLUGOSC}cm
+                              
+                              {/* Prawa strona - procent dopasowania */}
+                              <div className="flex flex-col items-center">
+                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                  <span className={`${
+                                    match.compatibility >= 90 ? 'text-green-400' :
+                                    match.compatibility >= 70 ? 'text-yellow-400' :
+                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                  }`}>
+                                    {match.compatibility}%
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             <DetailedCompatibility 
@@ -1133,6 +1215,16 @@ const AnimaComponent: React.FC = () => {
             </div>
           </div>
       </div>
+      
+      {/* Renderowanie komponentu przeglądania */}
+      {appMode === 'browse' && (
+        <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
+          <BrowseSkisComponent 
+            skisDatabase={skisDatabase}
+            onBackToSearch={() => setAppMode('search')}
+          />
+        </div>
+      )}
     </div>
   );
 };
