@@ -917,14 +917,14 @@ const AnimaComponent: React.FC = () => {
                     </div>
                   )}
 
-                  {searchResults.poziom_za_nisko.length > 0 && (
+                  {searchResults.inna_plec.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
+                        👤 INNA PŁEĆ ({searchResults.inna_plec.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
-                          <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
+                        {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
+                          <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
@@ -944,14 +944,14 @@ const AnimaComponent: React.FC = () => {
                     </div>
                   )}
 
-                  {searchResults.inna_plec.length > 0 && (
+                  {searchResults.poziom_za_nisko.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        👤 INNA PŁEĆ ({searchResults.inna_plec.length})
+                        📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
-                          <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
+                        {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
+                          <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
                             <div className="flex items-center gap-2 mb-2">
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
