@@ -64,6 +64,22 @@ const AnimaComponent: React.FC = () => {
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
   const [currentCriteria, setCurrentCriteria] = useState<SearchCriteria | null>(null);
 
+  // NOWY STAN: Rozwijanie kategorii (pierwsze 6 lub wszystkie)
+  const [expandedCategories, setExpandedCategories] = useState({
+    alternatywy: false,
+    poziom_za_nisko: false,
+    inna_plec: false,
+    na_sile: false
+  });
+
+  // Funkcja do przełączania rozwinięcia kategorii
+  const toggleCategory = (category: 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile') => {
+    setExpandedCategories(prev => ({
+      ...prev,
+      [category]: !prev[category]
+    }));
+  };
+
   // Funkcja do parsowania daty z formularza
   const parseDate = (dateObj: { day: string; month: string; year: string }): Date | undefined => {
     if (!dateObj.day || !dateObj.month || !dateObj.year) {
@@ -871,18 +887,18 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {searchResults.idealne.map((match, idx) => (
                           <div key={idx} className="bg-white/20 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewy górny róg - Styl */}
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
                                 atuty={match.ski.ATUTY}
                               />
                               {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1">
+                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
                               {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
                                 {match.ski.DLUGOSC}cm
                               </div>
                             </div>
@@ -902,20 +918,20 @@ const AnimaComponent: React.FC = () => {
                         ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {searchResults.alternatywy.slice(0, 5).map((match, idx) => (
+                        {(expandedCategories.alternatywy ? searchResults.alternatywy : searchResults.alternatywy.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewy górny róg - Styl */}
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
                                 atuty={match.ski.ATUTY}
                               />
                               {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1">
+                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
                               {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
                                 {match.ski.DLUGOSC}cm
                               </div>
                             </div>
@@ -926,6 +942,14 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
+                      {searchResults.alternatywy.length > 6 && (
+                        <button
+                          onClick={() => toggleCategory('alternatywy')}
+                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                        >
+                          {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.alternatywy.length - 6})`}
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -935,20 +959,20 @@ const AnimaComponent: React.FC = () => {
                         👤 INNA PŁEĆ ({searchResults.inna_plec.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
+                        {(expandedCategories.inna_plec ? searchResults.inna_plec : searchResults.inna_plec.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewy górny róg - Styl */}
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
                                 atuty={match.ski.ATUTY}
                               />
                               {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1">
+                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
                               {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
                                 {match.ski.DLUGOSC}cm
                               </div>
                             </div>
@@ -959,6 +983,14 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
+                      {searchResults.inna_plec.length > 6 && (
+                        <button
+                          onClick={() => toggleCategory('inna_plec')}
+                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                        >
+                          {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.inna_plec.length - 6})`}
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -968,20 +1000,20 @@ const AnimaComponent: React.FC = () => {
                         📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
+                        {(expandedCategories.poziom_za_nisko ? searchResults.poziom_za_nisko : searchResults.poziom_za_nisko.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewy górny róg - Styl */}
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
                                 atuty={match.ski.ATUTY}
                               />
                               {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1">
+                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
                               {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
                                 {match.ski.DLUGOSC}cm
                               </div>
                             </div>
@@ -992,6 +1024,14 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
+                      {searchResults.poziom_za_nisko.length > 6 && (
+                        <button
+                          onClick={() => toggleCategory('poziom_za_nisko')}
+                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                        >
+                          {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.poziom_za_nisko.length - 6})`}
+                        </button>
+                      )}
                     </div>
                   )}
 
@@ -1001,20 +1041,20 @@ const AnimaComponent: React.FC = () => {
                         💪 NA SIŁĘ ({searchResults.na_sile.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                        {searchResults.na_sile.slice(0, 5).map((match, idx) => (
+                        {(expandedCategories.na_sile ? searchResults.na_sile : searchResults.na_sile.slice(0, 6)).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
-                            <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewy górny róg - Styl */}
                               <SkiStyleBadge 
                                 przeznaczenie={match.ski.PRZEZNACZENIE}
                                 atuty={match.ski.ATUTY}
                               />
                               {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1">
+                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
                                 {match.ski.MARKA} {match.ski.MODEL}
                               </div>
                               {/* Prawy górny róg - Długość */}
-                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                              <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm self-center">
                                 {match.ski.DLUGOSC}cm
                               </div>
                             </div>
@@ -1025,6 +1065,14 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
+                      {searchResults.na_sile.length > 6 && (
+                        <button
+                          onClick={() => toggleCategory('na_sile')}
+                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                        >
+                          {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.na_sile.length - 6})`}
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>

@@ -19,7 +19,7 @@ export const SkiStyleBadge: React.FC<SkiStyleBadgeProps> = ({ przeznaczenie, atu
     : przeznaczenie;
     
   return (
-    <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded border border-blue-400 shadow-sm">
+    <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-blue-600 text-white text-xs font-bold rounded border border-blue-400 shadow-sm self-center">
       [{displayText}]
     </div>
   );
