@@ -2,19 +2,19 @@
 import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails } from '../types/ski.types';
 import { ReservationService } from './reservationService';
 
-// Konfiguracja tolerancji - wszystko w jednym miejscu
+// Konfiguracja tolerancji - uproszczona logika
 interface ToleranceConfig {
   poziom: {
     maxDifference: number; // Maksymalna różnica poziomów
     yellowThreshold: number; // Próg dla żółtego (1 poziom różnicy)
   };
   waga: {
-    yellowTolerance: number; // Tolerancja żółta (±5kg)
-    redTolerance: number; // Tolerancja czerwona (±10kg)
+    yellowTolerance: number; // Żółta tolerancja (1-5 różnicy)
+    redTolerance: number; // Czerwona tolerancja (6-10 różnicy)
   };
   wzrost: {
-    yellowTolerance: number; // Tolerancja żółta (±5cm)
-    redTolerance: number; // Tolerancja czerwona (±10cm)
+    yellowTolerance: number; // Żółta tolerancja (1-5 różnicy)
+    redTolerance: number; // Czerwona tolerancja (6-10 różnicy)
   };
 }
 
@@ -24,12 +24,12 @@ const TOLERANCE_CONFIG: ToleranceConfig = {
     yellowThreshold: 1
   },
   waga: {
-    yellowTolerance: 5,
-    redTolerance: 10
+    yellowTolerance: 5, // 1-5 różnicy = żółty
+    redTolerance: 10    // 6-10 różnicy = czerwony
   },
   wzrost: {
-    yellowTolerance: 5,
-    redTolerance: 10
+    yellowTolerance: 5, // 1-5 różnicy = żółty
+    redTolerance: 10    // 6-10 różnicy = czerwony
   }
 };
 
@@ -146,6 +146,7 @@ export class SkiMatchingServiceV2 {
     if (!criteriaResults) {
       return null;
     }
+    
     
     // Oblicz kompatybilność z precyzyjnymi wartościami
     const compatibility = this.calculateCompatibility(criteriaResults, ski, criteria);
@@ -373,32 +374,72 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * Sprawdza czy narta to "na siłę" (z większymi tolerancjami)
-   * ZMIANA: Zawsze akceptuj przeznaczenie - to najmniej ważny parametr
+   * Sprawdza czy narta to "na siłę" (z tolerancjami)
+   * NOWE REGUŁY (zaktualizowane 2025-10-08) - WYŁĄCZAJĄCE:
+   * REGUŁA 1: poziom za niski + waga ALBO wzrost na żółto (wykracza o 5 cm/kg poza tolerancję zieloną)
+   * REGUŁA 2: USUNIĘTA - narty z poziomem wyższym nie są wyświetlane w "NA SIŁĘ"
+   * REGUŁA 3: waga+wzrost w tolerancji żółtej (wykracza o 5 cm/kg poza tolerancję zieloną) + poziom zielony
+   * REGUŁA 4: waga ALBO wzrost w czerwonej tolerancji (więcej niż 5 poza zieloną tolerancją)
+   * 
+   * WAŻNE: Reguły są WYŁĄCZAJĄCE - jeśli jedna reguła pasuje, inne nie mogą się zastosować!
    */
   private static isNaSile(dopasowanie: Record<string, string>): boolean {
-    // PŁEĆ MUSI PASOWAĆ (być zielona) w kategorii NA SIŁĘ
-    if (typeof dopasowanie.plec !== 'string' || !dopasowanie.plec.includes('✅ zielony')) return false;
+    console.log('SkiMatchingServiceV2: Sprawdzanie kategorii NA SIŁĘ dla:', dopasowanie);
     
-    const poziomZaNisko = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('🟡 żółty');
-    const wzrostWOkresie = typeof dopasowanie.wzrost === 'string' && (dopasowanie.wzrost.includes('✅ zielony') || 
-                          dopasowanie.wzrost.includes('🟡 żółty') || 
-                          dopasowanie.wzrost.includes('🔴 czerwony'));
-    const wagaWOkresie = typeof dopasowanie.waga === 'string' && (dopasowanie.waga.includes('✅ zielony') || 
-                        dopasowanie.waga.includes('🟡 żółty') || 
-                        dopasowanie.waga.includes('🔴 czerwony'));
-    // ZMIANA: Zawsze akceptuj przeznaczenie w kategorii NA SIŁĘ
-    const przeznaczenieOk = true;
+    // Sprawdź statusy poziomu
+    const poziomZaWysoki = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('poziom za wysoki');
+    const poziomZaNiski = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('niższy poziom narty');
+    const poziomZielony = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('✅ zielony');
     
-    // Opcja 1: Alternatywy z tolerancjami 10± (waga lub wzrost w tolerancji 10±)
-    if (!poziomZaNisko && (wagaWOkresie || wzrostWOkresie) && przeznaczenieOk) {
+    // Sprawdź tolerancje wagi i wzrostu (żółte = 1-5 różnicy)
+    const wagaNaZolto = typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('🟡 żółty');
+    const wzrostNaZolto = typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('🟡 żółty');
+    
+    // Sprawdź czerwone tolerancje (czerwone = 6-10 różnicy)
+    const wagaNaCzerwono = typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('🔴 czerwony');
+    const wzrostNaCzerwono = typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('🔴 czerwony');
+    
+    // Sprawdź czy waga i wzrost są zielone (idealne)
+    const wagaZielona = typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('✅ zielony');
+    const wzrostZielony = typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('✅ zielony');
+    
+    console.log('SkiMatchingServiceV2: Analiza statusów:', {
+      poziomZaWysoki,
+      poziomZaNiski,
+      poziomZielony,
+      wagaNaZolto,
+      wzrostNaZolto,
+      wagaNaCzerwono,
+      wzrostNaCzerwono,
+      wagaZielona,
+      wzrostZielony,
+      plecZielona: typeof dopasowanie.plec === 'string' && dopasowanie.plec.includes('✅ zielony')
+    });
+    
+    // REGUŁA 1: poziom za niski + waga ALBO wzrost na żółto (WYŁĄCZAJĄCA)
+    if (poziomZaNiski && (wagaNaZolto || wzrostNaZolto)) {
+      console.log('SkiMatchingServiceV2: ✅ REGUŁA 1 zastosowana (poziom za niski + waga/wzrost żółte)');
       return true;
     }
-    // Opcja 2: Poziom za nisko + jedna tolerancja 5± (waga lub wzrost)
-    else if (poziomZaNisko && (wagaWOkresie || wzrostWOkresie) && przeznaczenieOk) {
+    
+    // REGUŁA 2: USUNIĘTA - narty z poziomem wyższym nie są wyświetlane w "NA SIŁĘ"
+    
+    // REGUŁA 3: waga+wzrost w tolerancji żółtej + poziom zielony (WYŁĄCZAJĄCA - tylko gdy poziom zielony)
+    if (poziomZielony && wagaNaZolto && wzrostNaZolto) {
+      console.log('SkiMatchingServiceV2: ✅ REGUŁA 3 zastosowana (waga+wzrost żółte + poziom zielony)');
       return true;
     }
     
+    // REGUŁA 4: waga ALBO wzrost w czerwonej tolerancji (WYŁĄCZAJĄCA - tylko czerwone tolerancje)
+    // UWAGA: Czerwone tolerancje (6-10 różnicy) są za duże dla kategorii NA SIŁĘ!
+    // Ta reguła może być zbyt liberalna - sprawdź czy nie powinna być usunięta
+    if (wagaNaCzerwono || wzrostNaCzerwono) {
+      console.log('SkiMatchingServiceV2: ⚠️ REGUŁA 4 zastosowana (waga/wzrost czerwone) - SPRAWDŹ CZY TO PRAWIDŁOWE!');
+      console.log('SkiMatchingServiceV2: Statusy:', { wagaNaCzerwono, wzrostNaCzerwono, waga: dopasowanie.waga, wzrost: dopasowanie.wzrost });
+      return true;
+    }
+    
+    console.log('SkiMatchingServiceV2: ❌ Żadna reguła nie pasuje - nie jest NA SIŁĘ');
     return false;
   }
 

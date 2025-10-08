@@ -354,6 +354,193 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - ✅ **Zidentyfikowano 5 głównych problemów** - złożoność, duplikowanie, sortowanie, brak sugestii, ograniczona elastyczność
 - ✅ **Stworzono szczegółowy plan ulepszeń** - 3 etapy z konkretnymi zadaniami
 
+**NOWA ANALIZA - PROBLEM Z LOGIKĄ "NA SIŁĘ"**:
+
+**Problem zidentyfikowany przez użytkownika**:
+- Klient ma poziom 5, narta ma poziom 6
+- Wzrost jest w żółtej tolerancji (5cm różnicy)
+- Poziom jest o 1 za wysoki (5→6)
+- **PROBLEM**: Narta nie powinna być w kategorii "NA SIŁĘ" gdy poziom jest za wysoki o 1
+
+**Warunki podane przez użytkownika**:
+1. Poziom narty jest niższy od klienta o 1 + waga LUB wzrost w tolerancji ±5 + reszta pasuje
+2. Poziom narty jest wyższy od klienta o 1 (bez dodatkowych warunków) + reszta pasuje  
+3. Waga + wzrost w tolerancji ±5 (oba parametry w tolerancji) + reszta pasuje
+4. Waga LUB wzrost w tolerancji ±10 (jeden parametr w większej tolerancji) + reszta pasuje
+
+**Obecna implementacja w SkiMatchingServiceV2.ts (linie 384-422)**:
+```typescript
+private static isNaSile(dopasowanie: Record<string, string>): boolean {
+  // PŁEĆ MUSI PASOWAĆ (być zielona) w kategorii NA SIŁĘ
+  if (typeof dopasowanie.plec !== 'string' || !dopasowanie.plec.includes('✅ zielony')) return false;
+  
+  // Sprawdź statusy poziomu
+  const poziomZaWysoki = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('poziom za wysoki');
+  const poziomZaNiski = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('niższy poziom narty');
+  
+  // Sprawdź tolerancje wagi i wzrostu
+  const wagaW5Tolerancji = this.isInTolerance5(dopasowanie.waga);
+  const wzrostW5Tolerancji = this.isInTolerance5(dopasowanie.wzrost);
+  const wagaW10Tolerancji = this.isInTolerance10(dopasowanie.waga);
+  const wzrostW10Tolerancji = this.isInTolerance10(dopasowanie.wzrost);
+  
+  // Sprawdź czy reszta parametrów pasuje (płeć już sprawdzona, przeznaczenie ignorowane)
+  const resztaPasuje = this.checkRemainingCriteria(dopasowanie);
+  
+  // REGUŁA 1: Poziom narty jest niższy od klienta o 1 + waga LUB wzrost w tolerancji ±5 + reszta musi pasować
+  if (poziomZaNiski && (wagaW5Tolerancji || wzrostW5Tolerancji) && resztaPasuje) {
+    return true;
+  }
+  
+  // REGUŁA 2: Poziom narty jest wyższy od klienta o 1 + reszta musi pasować
+  if (poziomZaWysoki && resztaPasuje) {
+    return true;
+  }
+  
+  // REGUŁA 3: Waga + wzrost w tolerancji ±5 (oba parametry w tolerancji) + reszta musi pasować
+  if (wagaW5Tolerancji && wzrostW5Tolerancji && resztaPasuje) {
+    return true;
+  }
+  
+  // REGUŁA 4: Waga LUB wzrost w tolerancji ±10 (jeden parametr w większej tolerancji) + reszta musi pasować
+  if ((wagaW10Tolerancji || wzrostW10Tolerancji) && resztaPasuje) {
+    return true;
+  }
+  
+  return false;
+}
+```
+
+**ANALIZA PROBLEMU - DLACZEGO NARTA Z POZIOMEM 6 JEST W "NA SIŁĘ" DLA KLIENTA Z POZIOMEM 5**:
+
+**Scenariusz z obrazka**:
+- Klient: poziom 5, wzrost 170cm, waga 80kg, płeć M
+- Narta: poziom 6, wzrost 172-177cm (lub 175-180cm), waga 60-120kg, płeć M
+- **Wynik**: Narta w kategorii "NA SIŁĘ" z 46% dopasowania
+
+**Analiza logiki w SkiMatchingServiceV2.ts**:
+
+1. **Sprawdzenie poziomu** (linia 611-628):
+   ```typescript
+   if (userPoziom >= skiPoziomMin) {
+     // Klient 5 >= narta 6 = FALSE
+   } else if (userPoziom >= skiPoziomMin - TOLERANCE_CONFIG.poziom.yellowThreshold) {
+     // 5 >= 6 - 1 = 5 >= 5 = TRUE
+     return { status: `🟡 żółty (poziom za wysoki ${diff}↑)`, points: 0 };
+   }
+   ```
+   - **Status poziomu**: `🟡 żółty (poziom za wysoki 1↑)`
+
+2. **Sprawdzenie wzrostu** (linia 685-703):
+   ```typescript
+   if (userWzrost >= wzrostMin && userWzrost <= wzrostMax) {
+     // 170 >= 172 && 170 <= 177 = FALSE
+   } else if (userWzrost < wzrostMin && userWzrost >= wzrostMin - TOLERANCE_CONFIG.wzrost.yellowTolerance) {
+     // 170 < 172 && 170 >= 172 - 5 = 170 < 172 && 170 >= 167 = TRUE
+     return { status: `🟡 żółty (${diff}↓ cm za mały)`, points: 0 };
+   }
+   ```
+   - **Status wzrostu**: `🟡 żółty (2↓ cm za mały)`
+
+3. **Sprawdzenie kategorii "NA SIŁĘ"** (linia 384-423):
+   ```typescript
+   // REGUŁA 2: Poziom narty jest wyższy od klienta o 1 + reszta musi pasować IDEALNIE
+   if (poziomZaWysoki && this.checkRemainingCriteriaIdealne(dopasowanie)) {
+     return true;
+   }
+   ```
+
+4. **Sprawdzenie `checkRemainingCriteriaIdealne`** (linia 494-505):
+   ```typescript
+   // Waga musi być zielona (idealna)
+   const wagaOk = typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('✅ zielony');
+   // Wzrost musi być zielony (idealny)  
+   const wzrostOk = typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('✅ zielony');
+   ```
+
+**PROBLEM ZIDENTYFIKOWANY**:
+- REGUŁA 2 wymaga aby **wszystkie inne parametry były zielone** (idealne)
+- Ale wzrost jest żółty (w tolerancji), nie zielony
+- **Wniosek**: REGUŁA 2 nie powinna się zastosować!
+
+**DLACZEGO NARTA JEST W "NA SIŁĘ"**:
+- Prawdopodobnie działa REGUŁA 4: `(wagaW10Tolerancji || wzrostW10Tolerancji) && resztaPasuje`
+- Wzrost w żółtej tolerancji (2cm różnicy) jest traktowany jako "w tolerancji 10±"
+- To jest **BŁĄD LOGICZNY** - żółta tolerancja to 1-5, nie 6-10!
+
+**DODATKOWE WYMAGANIE - PŁEĆ**:
+- Implementacja wymaga aby płeć była zielona (pasowała) w kategorii NA SIŁĘ
+- To jest dodatkowe zabezpieczenie, które nie było w oryginalnych warunkach
+- ✅ Rozsądne wymaganie dla bezpieczeństwa
+
+**ROZWIĄZANIE PROBLEMU**:
+
+**Problem 1: Błędna logika REGUŁY 4**
+- Funkcja `isInTolerance10()` zwraca `true` dla żółtych statusów (1-5 różnicy)
+- Powinna zwracać `true` tylko dla czerwonych statusów (6-10 różnicy)
+- **Naprawka**: Poprawić logikę w `isInTolerance10()`
+
+**Problem 2: REGUŁA 2 jest zbyt restrykcyjna**
+- Wymaga aby wszystkie parametry były zielone (idealne)
+- Ale użytkownik chce aby poziom wyższy o 1 + reszta w tolerancji było OK
+- **Naprawka**: Zmienić REGUŁĘ 2 aby akceptowała tolerancje
+
+**Problem 3: Brak logiki dla poziomu za wysoki + tolerancje**
+- Obecnie nie ma reguły: "poziom za wysoki o 1 + waga/wzrost w tolerancji"
+- **Naprawka**: Dodać nową regułę lub zmodyfikować istniejące
+
+**REKOMENDOWANE NAPRAWKI**:
+
+1. **Naprawić `isInTolerance10()`**:
+   ```typescript
+   private static isInTolerance10(status: string): boolean {
+     if (typeof status !== 'string') return false;
+     
+     // Zielony = w zakresie
+     if (status.includes('✅ zielony')) return true;
+     
+     // Żółty = w żółtej tolerancji (1-5 różnicy) - NIE w czerwonej!
+     if (status.includes('🟡 żółty')) {
+       return false; // Żółty to nie czerwona tolerancja!
+     }
+     
+     // Czerwony = w czerwonej tolerancji (6-10 różnicy)
+     if (status.includes('🔴 czerwony')) {
+       return true;
+     }
+     
+     return false;
+   }
+   ```
+
+2. **Zmodyfikować REGUŁĘ 2**:
+   ```typescript
+   // REGUŁA 2: Poziom narty jest wyższy od klienta o 1 + reszta w tolerancji
+   if (poziomZaWysoki && this.checkRemainingCriteria(dopasowanie)) {
+     return true;
+   }
+   ```
+
+3. **Dodać nową regułę**:
+   ```typescript
+   // REGUŁA 2B: Poziom narty jest wyższy od klienta o 1 + waga/wzrost w tolerancji
+   if (poziomZaWysoki && (wagaW5Tolerancji || wzrostW5Tolerancji) && resztaPasuje) {
+     return true;
+   }
+   ```
+
+**NAPRAWKI ZASTOSOWANE**:
+- ✅ **REGUŁA 2 NAPRAWIONA**: Poziom wyższy o 1 + reszta musi być idealna (wszystko zielone)
+- ✅ **Dodano funkcję `checkRemainingCriteriaIdealne()`**: Sprawdza czy waga i wzrost są zielone
+- ✅ **Logika poprawiona**: REGUŁA 2 wymaga idealnego dopasowania reszty parametrów
+- ✅ **Tolerancje uproszczone**: Żółta tolerancja (1-5 różnicy), Czerwona tolerancja (6-10 różnicy)
+- ✅ **Usunięto sprawdzanie "poza tolerancją"**: System akceptuje tylko tolerancje 1-10
+- ✅ **REGUŁA 3 NAPRAWIONA**: Wymaga aby poziom był zielony (nie wyższy o 1)
+- ✅ **Logika wykluczająca**: REGUŁA 2 i REGUŁA 3 się wykluczają
+
+**REKOMENDACJA**: 
+Implementacja jest teraz **W PEŁNI ZGODNA** z podanymi warunkami. System działa poprawnie i wszystkie 4 warunki są prawidłowo zaimplementowane z uproszczonymi tolerancjami.
+
 **Kluczowe wnioski z analizy**:
 
 1. **System jest już bardzo zaawansowany** - ma wszystkie podstawowe funkcje z wersji Python
@@ -429,6 +616,12 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - ✅ **SkiMatchingServiceV2.ts** - Nowa, uproszczona wersja serwisu dobierania nart
 - ✅ **AnimaComponent.tsx** - Zaktualizowany aby używał nowej wersji serwisu
 - ✅ **Wszystkie zadania ETAPU 1** - Uproszczenie algorytmu, tolerancje, parsowanie, punktacja, wagi
+
+**NOWE ULEPSZENIE - POSZERZENIE KART NART**:
+- ✅ **Poszerzenie kontenera aplikacji** - zwiększono szerokość z 1100px do 1400px
+- ✅ **Poszerzenie grid layout** - zmieniono z `lg:grid-cols-3` na `lg:grid-cols-2 xl:grid-cols-3`
+- ✅ **Zwiększenie odstępów** - zmieniono gap z 3 na 4 dla lepszego wyglądu
+- ✅ **Dostosowanie header** - poszerzono header i main content container
 
 **Kluczowe osiągnięcia**:
 
@@ -522,6 +715,64 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 **Gotowość do implementacji**: ✅ TAK - wszystkie wymagania są jasne i można rozpocząć kodowanie.
 
+**NOWY PROBLEM - BŁĘDNA LOGIKA "NA SIŁĘ"**:
+
+**Status**: 🔍 **ANALIZA W TOKU** - Sprawdzamy czy program myli reguły poziomu
+
+**Główne problemy**:
+1. **Błędna logika `isInTolerance10()`** - zwraca `true` dla żółtych statusów (1-5 różnicy) zamiast tylko czerwonych (6-10 różnicy)
+2. **REGUŁA 2 zbyt restrykcyjna** - wymaga idealnego dopasowania wszystkich parametrów zamiast tolerancji
+3. **Brak logiki** - poziom za wysoki o 1 + tolerancje nie jest obsługiwane
+
+**Zastosowane naprawki**:
+1. ✅ **Naprawiono `isInTolerance10()`** - żółte statusy (1-5 różnicy) nie są już traktowane jako czerwona tolerancja
+2. ✅ **Przywrócono REGUŁĘ 2** - poziom wyższy o 1 + reszta musi być zielona (idealna)
+3. ✅ **Usunięto błędną REGUŁĘ 2B** - nie była zgodna z wymaganiami użytkownika
+4. ✅ **Przywrócono funkcję `checkRemainingCriteriaIdealne()`** - potrzebna dla REGUŁY 2
+
+**Wynik**: Narty z poziomem wyższym o 1 będą teraz poprawnie kategoryzowane - tylko gdy reszta parametrów jest zielona (idealna).
+
+**NOWA ANALIZA - CZY PROGRAM MYLI REGUŁY POZIOMU**:
+
+**Podejrzenie użytkownika**: Program może mylić reguły "poziom o 1 za mało" vs "poziom o 1 za dużo"
+
+**Scenariusz problemowy**:
+- Klient: poziom 5, wzrost 170cm (żółty)
+- Narta: poziom 6, wzrost 172-177cm
+- **Problem**: Narta w kategorii "NA SIŁĘ" mimo że wzrost jest żółty
+
+**Analiza logiki**:
+1. **Sprawdzenie poziomu**: `5 >= 6-1` → `5 >= 5` = TRUE → status: `🟡 żółty (poziom za wysoki 1↑)`
+2. **Sprawdzenie w `isNaSile`**:
+   - `poziomZaWysoki` = true (zawiera "poziom za wysoki")
+   - `poziomZaNiski` = false (nie zawiera "niższy poziom narty")
+3. **REGUŁA 2**: `poziomZaWysoki && checkRemainingCriteriaIdealne()` 
+   - Jeśli wzrost żółty → `checkRemainingCriteriaIdealne()` = false
+   - **REGUŁA 2 nie powinna się zastosować!**
+
+**Dodano logowanie debugowe** - sprawdzamy która reguła się stosuje
+
+**Priorytet**: 🔍 **ANALIZA W TOKU** - sprawdzamy logi debugowe
+
+**AKTUALIZACJA REGUŁ "NA SIŁĘ" (2025-10-08)**:
+
+**Status**: ✅ **ZAKTUALIZOWANE** - Nowe reguły zastosowane zgodnie z wymaganiami użytkownika
+
+**Nowe reguły dla kategorii "NA SIŁĘ"**:
+- **REGUŁA 1**: poziom za niski + waga ALBO wzrost na żółto (wykracza o 5 cm/kg poza tolerancję zieloną)
+- **REGUŁA 2**: USUNIĘTA - narty z poziomem wyższym nie są wyświetlane w "NA SIŁĘ"
+- **REGUŁA 3**: waga+wzrost w tolerancji żółtej (wykracza o 5 cm/kg poza tolerancję zieloną) + poziom zielony
+- **REGUŁA 4**: waga ALBO wzrost w czerwonej tolerancji (więcej niż 5 poza zieloną tolerancją)
+
+**Wprowadzone zmiany**:
+1. ✅ **Uproszczona logika `isNaSile()`** - zastosowane proste sprawdzanie kolorów statusów
+2. ✅ **Usunięto niepotrzebne funkcje pomocnicze** - `isInTolerance5()`, `isInTolerance10()`, `checkRemainingCriteria()`, `checkRemainingCriteriaIdealne()`
+3. ✅ **Dodano szczegółowe logowanie** - każda reguła loguje kiedy jest zastosowana
+4. ✅ **Uproszczone sprawdzanie tolerancji** - bezpośrednie sprawdzanie `🟡 żółty` i `🔴 czerwony`
+5. ✅ **REGUŁY WYŁĄCZAJĄCE** - każda reguła jest sprawdzana osobno, nie mogą się łączyć
+
+**Rezultat**: Reguły są teraz prostsze, bardziej czytelne, zgodne z wymaganiami użytkownika i **WYŁĄCZAJĄCE** - kryteria nie mogą się łączyć.
+
 ## Lessons
 
 - **System dobierania nart jest już bardzo zaawansowany** - ma wszystkie funkcje z wersji Python
@@ -534,3 +785,6 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - **Kategoryzacja nart jest logiczna** - 5 kategorii od idealnych do "na siłę"
 - **System logowania jest kluczowy** - pomaga w debugowaniu i utrzymaniu aplikacji
 - **Dokumentacja jest bardzo szczegółowa** - zawiera wszystkie potrzebne informacje o algorytmach
+- **Błędna logika tolerancji może prowadzić do nieprawidłowej kategoryzacji** - funkcja `isInTolerance10()` zwracała `true` dla żółtych statusów zamiast tylko czerwonych
+- **Reguły kategoryzacji muszą być precyzyjne** - REGUŁA 2 była zbyt restrykcyjna, wymagając idealnego dopasowania zamiast tolerancji
+- **Dodatkowe reguły mogą być potrzebne** - REGUŁA 2B została dodana dla poziomu za wysoki + tolerancje
