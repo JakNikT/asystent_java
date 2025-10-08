@@ -9,12 +9,31 @@ import type { SkiMatch, SearchCriteria } from '../types/ski.types';
 interface DetailedCompatibilityProps {
   match: SkiMatch;
   userCriteria: SearchCriteria;
+  isRowExpanded?: boolean;
+  onRowToggle?: () => void;
 }
 
-export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ match, userCriteria }) => {
+export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ 
+  match, 
+  userCriteria, 
+  isRowExpanded = false, 
+  onRowToggle
+}) => {
   console.log('src/components/DetailedCompatibility.tsx: Wyświetlanie szczegółowych informacji:', match);
   
   const [isExpanded, setIsExpanded] = useState(false);
+
+  // Użyj stanu rzędu jeśli jest dostępny, w przeciwnym razie lokalny stan
+  const isActuallyExpanded = isRowExpanded !== undefined ? isRowExpanded : isExpanded;
+  
+  // Funkcja do przełączania - użyj callback rzędu jeśli dostępny
+  const handleToggle = () => {
+    if (onRowToggle) {
+      onRowToggle();
+    } else {
+      setIsExpanded(!isExpanded);
+    }
+  };
 
   // Proste kwadraciki dostępności (bez async)
   const generateAvailabilitySquares = () => {
@@ -379,13 +398,13 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
     <div className="mt-2">
       {/* Główna karta - rozszerza się w dół */}
       <div 
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleToggle}
         className={`bg-black/20 rounded-lg border border-white/10 hover:bg-black/30 cursor-pointer transition-all duration-300 ease-out ${
-          isExpanded ? 'p-3' : 'p-2'
+          isActuallyExpanded ? 'p-3' : 'p-2'
         }`}
       >
         {/* Widok zwinięty - parametry w 2 kolumnach + procent + strzałka */}
-        {!isExpanded && (
+        {!isActuallyExpanded && (
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
               {/* Parametry w 2 kolumnach × 2 wiersze */}
@@ -426,7 +445,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
         )}
 
         {/* Widok rozwinięty - parametry w 1 kolumnie + szczegóły */}
-        {isExpanded && (
+        {isActuallyExpanded && (
           <div className="space-y-3">
             {/* Nagłówek z procentem i strzałką */}
             <div className="flex items-center justify-between">
