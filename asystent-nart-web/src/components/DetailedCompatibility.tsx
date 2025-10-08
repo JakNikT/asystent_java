@@ -377,92 +377,125 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
 
   return (
     <div className="mt-2">
-      {/* Przycisk rozwijania z parametrami */}
-      <button
+      {/* Główna karta - rozszerza się w dół */}
+      <div 
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full flex items-center justify-between p-2 bg-black/20 rounded-lg border border-white/10 hover:bg-black/30 transition-colors duration-200"
+        className={`bg-black/20 rounded-lg border border-white/10 hover:bg-black/30 cursor-pointer transition-all duration-300 ease-out ${
+          isExpanded ? 'p-3' : 'p-2'
+        }`}
       >
-        <div className="flex items-center space-x-2">
-          {/* Parametry dopasowania */}
-          <div className="flex flex-wrap gap-1">
-            {criteria.map((criterion) => {
-              const icon = getShortStatus(criterion.key, criterion.status);
-              return (
-                <span
-                  key={criterion.key}
-                  className="px-1 py-0.5 rounded text-xs font-medium bg-white/10 text-white"
-                  title={criterion.status}
-                >
-                  {icon}{criterion.label}
-                </span>
-              );
-            })}
-          </div>
-        </div>
-        <div className="flex items-center space-x-2">
-          {/* Kwadraciki dostępności po prawej stronie - w dwóch kolumnach */}
-          <div className="flex flex-wrap w-16 gap-x-3 gap-y-2" title="Dostępność sztuk">
-            {availabilitySquares}
-          </div>
-          <span className={`text-lg font-bold ${
-            averageCompatibility >= 90 ? 'text-green-400' :
-            averageCompatibility >= 70 ? 'text-yellow-400' :
-            averageCompatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-          }`}>
-            {averageCompatibility}%
-          </span>
-          <span className={`transform transition-transform duration-200 ${isExpanded ? 'rotate-180' : ''}`}>
-            ▼
-          </span>
-        </div>
-      </button>
-
-      {/* Rozwijane szczegóły */}
-      {isExpanded && (
-        <div className="mt-2 p-3 bg-black/20 rounded-lg border border-white/10 animate-in slide-in-from-top-2 duration-200">
-          <div className="space-y-2">
-            {criteria.map((criterion) => {
-              const score = getCriteriaScore(criterion.key, criterion.status);
-              const colorClass = getScoreColor(criterion.status);
-              
-              return (
-                <div key={criterion.key} className="flex items-center justify-between text-xs">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-white font-medium">{formatCriterionDisplay(criterion)}</span>
-                  </div>
-                  <div className="flex items-center space-x-1">
-                    <div className="w-16 bg-gray-700 rounded-full h-2 border border-gray-600">
-                      <div 
-                        className={`h-2 rounded-full transition-all duration-300 ${
-                          criterion.status.includes('✅ zielony') ? 'bg-green-400 shadow-green-400/50' : 
-                          criterion.status.includes('🟡 żółty') ? 'bg-yellow-400 shadow-yellow-400/50' : 
-                          criterion.status.includes('🔴 czerwony') ? 'bg-red-400 shadow-red-400/50' : 'bg-gray-400'
-                        }`}
-                        style={{ width: `${score}%` }}
-                      ></div>
-                    </div>
-                    <span className={`font-bold ${colorClass}`}>
-                      {score}%
+        {/* Widok zwinięty - parametry w 2 kolumnach + procent + strzałka */}
+        {!isExpanded && (
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              {/* Parametry w 2 kolumnach × 2 wiersze */}
+              <div className="grid grid-cols-2 gap-1">
+                {criteria.map((criterion) => {
+                  const icon = getShortStatus(criterion.key, criterion.status);
+                  return (
+                    <span
+                      key={criterion.key}
+                      className="px-1 py-0.5 rounded text-xs font-medium bg-white/10 text-white"
+                      title={criterion.status}
+                    >
+                      {icon}{criterion.label}
                     </span>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
+            <div className="flex items-center space-x-2">
+              {/* Kwadraciki dostępności - układ 3×2 dla większej ilości */}
+              <div className="grid grid-cols-3 gap-1 w-20" title="Dostępność sztuk">
+                {availabilitySquares}
+              </div>
+              {/* Procent ogólny */}
+              <span className={`text-lg font-bold ${
+                averageCompatibility >= 90 ? 'text-green-400' :
+                averageCompatibility >= 70 ? 'text-yellow-400' :
+                averageCompatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+              }`}>
+                {averageCompatibility}%
+              </span>
+              {/* Strzałka */}
+              <span className="transform transition-transform duration-300 ease-out">
+                ▼
+              </span>
+            </div>
           </div>
-          
-                  <div className="mt-3 pt-2 border-t border-white/10">
-                    <div className="flex justify-between items-center text-xs text-white/70">
-                      <span>Kategoria: {getCategoryLabel(match.kategoria)}</span>
-                      <div className="flex items-center">
-                        <span className="mr-2">Dostępność:</span>
-                        <div className="flex flex-wrap w-16 gap-x-3 gap-y-2">
-                          {availabilitySquares}
-                        </div>
+        )}
+
+        {/* Widok rozwinięty - parametry w 1 kolumnie + szczegóły */}
+        {isExpanded && (
+          <div className="space-y-3">
+            {/* Nagłówek z procentem i strzałką */}
+            <div className="flex items-center justify-between">
+              <span className="text-xs text-white/70">Szczegóły dopasowania</span>
+              <div className="flex items-center space-x-2">
+                <span className={`text-lg font-bold ${
+                  averageCompatibility >= 90 ? 'text-green-400' :
+                  averageCompatibility >= 70 ? 'text-yellow-400' :
+                  averageCompatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                }`}>
+                  {averageCompatibility}%
+                </span>
+                <span className="transform rotate-180 transition-transform duration-300 ease-out">
+                  ▼
+                </span>
+              </div>
+            </div>
+
+            {/* Lista kryteriów - 1 kolumna × 4 wiersze z danymi po prawej */}
+            <div className="space-y-2">
+              {criteria.map((criterion) => {
+                const score = getCriteriaScore(criterion.key, criterion.status);
+                const colorClass = getScoreColor(criterion.status);
+                const icon = getShortStatus(criterion.key, criterion.status);
+                
+                return (
+                  <div key={criterion.key} className="flex items-center justify-between text-xs">
+                    {/* Lewa strona - ikona + etykieta + wartości */}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-white font-medium">
+                        {icon} {criterion.label}
+                      </span>
+                      <span className="text-white/60 text-[10px]">
+                        {criterion.userValue} → {criterion.skiValue}
+                      </span>
+                    </div>
+                    {/* Prawa strona - pasek postępu + procent */}
+                    <div className="flex items-center space-x-1">
+                      <div className="w-16 bg-gray-700 rounded-full h-2 border border-gray-600">
+                        <div 
+                          className={`h-2 rounded-full transition-all duration-500 ease-out ${
+                            criterion.status.includes('✅ zielony') ? 'bg-green-400 shadow-green-400/50' : 
+                            criterion.status.includes('🟡 żółty') ? 'bg-yellow-400 shadow-yellow-400/50' : 
+                            criterion.status.includes('🔴 czerwony') ? 'bg-red-400 shadow-red-400/50' : 'bg-gray-400'
+                          }`}
+                          style={{ width: `${score}%` }}
+                        ></div>
                       </div>
+                      <span className={`font-bold min-w-[32px] text-right ${colorClass}`}>
+                        {score}%
+                      </span>
                     </div>
                   </div>
-        </div>
-      )}
+                );
+              })}
+            </div>
+            
+            {/* Stopka z dostępnością - poziomo w lewo */}
+            <div className="pt-2 border-t border-white/10">
+              <div className="flex items-center text-xs text-white/70">
+                <span className="mr-2">Dostępność:</span>
+                <div className="flex gap-1">
+                  {availabilitySquares}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 };
