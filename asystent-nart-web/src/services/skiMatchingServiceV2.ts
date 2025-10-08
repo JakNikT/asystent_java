@@ -35,10 +35,10 @@ const TOLERANCE_CONFIG: ToleranceConfig = {
 
 // Domyślne wagi kryteriów zgodnie z dokumentacją
 const DEFAULT_CRITERIA_WEIGHTS = {
-  poziom: 0.35,      // 35% - najważniejsze (bezpieczeństwo)
+  poziom: 0.40,      // 40% - najważniejsze (bezpieczeństwo) - ZWIĘKSZONE z 35%
   waga: 0.25,        // 25% - bardzo ważne (kontrola nart)
   wzrost: 0.20,      // 20% - ważne (stabilność)
-  plec: 0.15,        // 15% - mniej ważne (ergonomia)
+  plec: 0.10,        // 10% - mniej ważne (ergonomia) - ZMNIEJSZONE z 15%
   przeznaczenie: 0.05 // 5% - najmniej ważne (styl jazdy)
 };
 
@@ -46,38 +46,38 @@ const DEFAULT_CRITERIA_WEIGHTS = {
 const ADAPTIVE_WEIGHTS: Record<string, Partial<typeof DEFAULT_CRITERIA_WEIGHTS>> = {
   'Slalom': {
     przeznaczenie: 0.15, // Większa waga dla stylu jazdy
-    poziom: 0.30,        // Nieco mniejsza waga dla poziomu
+    poziom: 0.35,        // Nieco mniejsza waga dla poziomu
     waga: 0.25,          // Bez zmian
-    wzrost: 0.20,        // Bez zmian
-    plec: 0.10           // Mniejsza waga dla płci
+    wzrost: 0.15,        // Zmniejszona
+    plec: 0.10           // Bez zmian
   },
   'Gigant': {
     przeznaczenie: 0.15, // Większa waga dla stylu jazdy
-    poziom: 0.30,        // Nieco mniejsza waga dla poziomu
+    poziom: 0.35,        // Nieco mniejsza waga dla poziomu
     waga: 0.25,          // Bez zmian
-    wzrost: 0.20,        // Bez zmian
-    plec: 0.10           // Mniejsza waga dla płci
+    wzrost: 0.15,        // Zmniejszona
+    plec: 0.10           // Bez zmian
   },
   'Cały dzień': {
     przeznaczenie: 0.20, // Największa waga dla stylu jazdy
-    poziom: 0.25,        // Mniejsza waga dla poziomu
+    poziom: 0.30,        // Mniejsza waga dla poziomu
     waga: 0.25,          // Bez zmian
-    wzrost: 0.20,        // Bez zmian
-    plec: 0.10           // Mniejsza waga dla płci
+    wzrost: 0.15,        // Zmniejszona
+    plec: 0.10           // Bez zmian
   },
   'Poza trase': {
     przeznaczenie: 0.25, // Największa waga dla stylu jazdy
-    poziom: 0.20,        // Mniejsza waga dla poziomu
+    poziom: 0.25,        // Mniejsza waga dla poziomu
     waga: 0.25,          // Bez zmian
-    wzrost: 0.20,        // Bez zmian
-    plec: 0.10           // Mniejsza waga dla płci
+    wzrost: 0.15,        // Zmniejszona
+    plec: 0.10           // Bez zmian
   },
   'Pomiędzy': {
     przeznaczenie: 0.15, // Większa waga dla stylu jazdy
-    poziom: 0.30,        // Nieco mniejsza waga dla poziomu
+    poziom: 0.35,        // Nieco mniejsza waga dla poziomu
     waga: 0.25,          // Bez zmian
-    wzrost: 0.20,        // Bez zmian
-    plec: 0.10           // Mniejsza waga dla płci
+    wzrost: 0.15,        // Zmniejszona
+    plec: 0.10           // Bez zmian
   }
 };
 
@@ -246,7 +246,8 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * Sprawdza czy narta to alternatywa (poziom OK, płeć OK, tylko JEDNO kryterium nie idealne W TOLERANCJI 5±)
+   * Sprawdza czy narta to alternatywa (poziom OK, płeć OK, tylko JEDNO kryterium nie idealne)
+   * ZMIANA: Akceptuje też czerwone przeznaczenie - ważniejsze jest dopasowanie fizyczne
    */
   private static isAlternatywy(dopasowanie: any): boolean {
     const poziomOk = dopasowanie.poziom.includes('✅ zielony');
@@ -264,7 +265,12 @@ export class SkiMatchingServiceV2 {
     const problemKryterium = nieZieloneKryteria[0];
     const problemStatus = dopasowanie[problemKryterium];
     
-    // Sprawdź czy problemowe kryterium mieści się w tolerancji 5±
+    // ZMIANA: Jeśli problem to przeznaczenie, akceptuj też czerwone
+    if (problemKryterium === 'przeznaczenie') {
+      return true; // Akceptuj zarówno żółte jak i czerwone przeznaczenie
+    }
+    
+    // Dla innych kryteriów sprawdź tolerancję
     return this.isInTolerance(problemKryterium, problemStatus);
   }
 
@@ -273,13 +279,23 @@ export class SkiMatchingServiceV2 {
    */
   private static isInTolerance(kryterium: string, status: string): boolean {
     if (kryterium === 'waga' && status.includes('🟡 żółty')) {
-      // Sprawdź czy różnica nie przekracza 5kg
-      const match = status.match(/o (\d+)/);
-      return match && parseInt(match[1]) <= TOLERANCE_CONFIG.waga.yellowTolerance;
+      // Sprawdź czy różnica nie przekracza 5kg (nowy format z strzałkami)
+      const match = status.match(/(\d+)[↑↓]/);
+      if (match) {
+        return parseInt(match[1]) <= TOLERANCE_CONFIG.waga.yellowTolerance;
+      }
+      // Fallback dla starych komunikatów
+      const oldMatch = status.match(/o (\d+)/);
+      return oldMatch && parseInt(oldMatch[1]) <= TOLERANCE_CONFIG.waga.yellowTolerance;
     } else if (kryterium === 'wzrost' && status.includes('🟡 żółty')) {
-      // Sprawdź czy różnica nie przekracza 5cm
-      const match = status.match(/o (\d+)/);
-      return match && parseInt(match[1]) <= TOLERANCE_CONFIG.wzrost.yellowTolerance;
+      // Sprawdź czy różnica nie przekracza 5cm (nowy format z strzałkami)
+      const match = status.match(/(\d+)[↑↓]/);
+      if (match) {
+        return parseInt(match[1]) <= TOLERANCE_CONFIG.wzrost.yellowTolerance;
+      }
+      // Fallback dla starych komunikatów
+      const oldMatch = status.match(/o (\d+)/);
+      return oldMatch && parseInt(oldMatch[1]) <= TOLERANCE_CONFIG.wzrost.yellowTolerance;
     } else if (kryterium === 'przeznaczenie' && status.includes('🟡 żółty')) {
       // Styl jazdy w tolerancji
       return true;
@@ -289,20 +305,23 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * Sprawdza czy narta ma poziom za niski (wszystkie inne kryteria na zielono)
+   * Sprawdza czy narta ma niższy poziom (wszystkie inne kryteria na zielono)
+   * ZMIANA: Nazwa "poziom za nisko" → "niższy poziom narty"
+   * ZMIANA: Akceptuje też czerwone przeznaczenie - to może być dobra opcja dla bezpieczeństwa
    */
   private static isPoziomZaNisko(dopasowanie: any): boolean {
-    const poziomZaNisko = dopasowanie.poziom.includes('🟡 żółty (poziom za nisko)');
+    const poziomZaNisko = dopasowanie.poziom.includes('niższy poziom narty');
     if (!poziomZaNisko) return false;
     
-    // Sprawdź czy WSZYSTKIE inne kryteria są na zielono
+    // Sprawdź czy WSZYSTKIE inne kryteria są na zielono (poza przeznaczeniem)
     return Object.entries(dopasowanie)
-      .filter(([kryterium, _]) => kryterium !== 'poziom')
+      .filter(([kryterium, _]) => kryterium !== 'poziom' && kryterium !== 'przeznaczenie')
       .every(([_, status]) => status.includes('✅ zielony'));
   }
 
   /**
    * Sprawdza czy narta ma niepasującą płeć (wszystkie inne kryteria na zielono)
+   * ZMIANA: Akceptuje też czerwone przeznaczenie - różnica w płci jest mniejszym problemem
    */
   private static isInnaPlec(dopasowanie: any): boolean {
     const plecStatus = dopasowanie.plec;
@@ -311,23 +330,29 @@ export class SkiMatchingServiceV2 {
     
     if (!plecZaNisko) return false;
     
-    // Sprawdź czy WSZYSTKIE inne kryteria są na zielono
+    // Sprawdź czy WSZYSTKIE inne kryteria są na zielono (poza przeznaczeniem)
     return Object.entries(dopasowanie)
-      .filter(([kryterium, _]) => kryterium !== 'plec')
+      .filter(([kryterium, _]) => kryterium !== 'plec' && kryterium !== 'przeznaczenie')
       .every(([_, status]) => status.includes('✅ zielony'));
   }
 
   /**
    * Sprawdza czy narta to "na siłę" (z większymi tolerancjami)
+   * ZMIANA: Zawsze akceptuj przeznaczenie - to najmniej ważny parametr
    */
   private static isNaSile(dopasowanie: any): boolean {
     // PŁEĆ MUSI PASOWAĆ (być zielona) w kategorii NA SIŁĘ
     if (!dopasowanie.plec.includes('✅ zielony')) return false;
     
     const poziomZaNisko = dopasowanie.poziom.includes('🟡 żółty');
-    const wzrostWOkresie = dopasowanie.wzrost.includes('✅ zielony') || dopasowanie.wzrost.includes('🟡 żółty');
-    const wagaWOkresie = dopasowanie.waga.includes('✅ zielony') || dopasowanie.waga.includes('🟡 żółty');
-    const przeznaczenieOk = dopasowanie.przeznaczenie.includes('✅ zielony') || dopasowanie.przeznaczenie.includes('🟡 żółty');
+    const wzrostWOkresie = dopasowanie.wzrost.includes('✅ zielony') || 
+                          dopasowanie.wzrost.includes('🟡 żółty') || 
+                          dopasowanie.wzrost.includes('🔴 czerwony');
+    const wagaWOkresie = dopasowanie.waga.includes('✅ zielony') || 
+                        dopasowanie.waga.includes('🟡 żółty') || 
+                        dopasowanie.waga.includes('🔴 czerwony');
+    // ZMIANA: Zawsze akceptuj przeznaczenie w kategorii NA SIŁĘ
+    const przeznaczenieOk = true;
     
     // Opcja 1: Alternatywy z tolerancjami 10± (waga lub wzrost w tolerancji 10±)
     if (!poziomZaNisko && (wagaWOkresie || wzrostWOkresie) && przeznaczenieOk) {
@@ -368,6 +393,7 @@ export class SkiMatchingServiceV2 {
   /**
    * UPROSZCZONA FUNKCJA - parsuje poziom narty
    * Zastępuje skomplikowaną logikę prostszą i bardziej czytelną
+   * OBSŁUGUJE: D (damski - stary format) i K (kobiecy - nowy format)
    */
   private static parsePoziom(poziomText: string, plec: string): [number, string] | null {
     if (!poziomText || !plec) return null;
@@ -377,22 +403,22 @@ export class SkiMatchingServiceV2 {
     
     // Mapowanie formatów do regex patterns
     const patterns = [
-      // Format unisex: "5M/6D" lub "5M/6D"
+      // Format unisex: "5M/6K" lub "5M/6D" (stary format)
       { 
-        regex: /^(\d+)M\/(\d+)D$/i, 
+        regex: /^(\d+)M\/(\d+)[KD]$/i, 
         handler: (match: RegExpMatchArray) => {
           const maleLevel = parseInt(match[1]);
           const femaleLevel = parseInt(match[2]);
-          return isMale ? [maleLevel, `PM${maleLevel}/PD${femaleLevel}`] : [femaleLevel, `PM${maleLevel}/PD${femaleLevel}`];
+          return isMale ? [maleLevel, `PM${maleLevel}/PK${femaleLevel}`] : [femaleLevel, `PM${maleLevel}/PK${femaleLevel}`];
         }
       },
-      // Format unisex ze spacją: "5M 6D"
+      // Format unisex ze spacją: "5M 6K" lub "5M 6D"
       { 
-        regex: /^(\d+)M\s+(\d+)D$/i, 
+        regex: /^(\d+)M\s+(\d+)[KD]$/i, 
         handler: (match: RegExpMatchArray) => {
           const maleLevel = parseInt(match[1]);
           const femaleLevel = parseInt(match[2]);
-          return isMale ? [maleLevel, `PM${maleLevel} PD${femaleLevel}`] : [femaleLevel, `PM${maleLevel} PD${femaleLevel}`];
+          return isMale ? [maleLevel, `PM${maleLevel} PK${femaleLevel}`] : [femaleLevel, `PM${maleLevel} PK${femaleLevel}`];
         }
       },
       // Format męski: "5M"
@@ -403,12 +429,12 @@ export class SkiMatchingServiceV2 {
           return [level, `PM${level}`];
         }
       },
-      // Format damski: "5D"
+      // Format kobiecy: "5K" lub "5D" (stary format)
       { 
-        regex: /^(\d+)D$/i, 
+        regex: /^(\d+)[KD]$/i, 
         handler: (match: RegExpMatchArray) => {
           const level = parseInt(match[1]);
-          return [level, `PD${level}`];
+          return [level, `PK${level}`];
         }
       },
       // Format prosty: tylko cyfra
@@ -440,35 +466,52 @@ export class SkiMatchingServiceV2 {
 
   /**
    * Sprawdza dopasowanie poziomu
+   * Klient poziom 4, narta poziom 3 = narta trudniejsza (poziom narty niżej) ↑
+   * Klient poziom 4, narta poziom 4 = idealne
+   * Klient poziom 4, narta poziom 5 = narta łatwiejsza (niższy poziom narty) ↓
    */
   private static checkPoziom(userPoziom: number, skiPoziomMin: number): { status: string; points: number } | null {
     if (userPoziom >= skiPoziomMin) {
-      // Sprawdź czy narta nie jest za łatwa (znacznie niższy poziom)
+      // Narta jest łatwiejsza (poziom narty jest niżej)
       if (userPoziom >= skiPoziomMin + TOLERANCE_CONFIG.poziom.yellowThreshold) {
-        return { status: '🟡 żółty (poziom za nisko)', points: 0 };
+        const diff = userPoziom - skiPoziomMin;
+        return { status: `🟡 żółty (niższy poziom narty ${diff}↓)`, points: 0 };
       }
       return { status: '✅ zielony', points: 1 };
     } else if (userPoziom >= skiPoziomMin - TOLERANCE_CONFIG.poziom.yellowThreshold) {
-      return { status: '🟡 żółty (poziom niżej)', points: 0 };
+      // Narta jest trudniejsza (poziom narty wyżej)
+      const diff = skiPoziomMin - userPoziom;
+      return { status: `🟡 żółty (poziom za wysoki ${diff}↑)`, points: 0 };
     } else if (userPoziom >= skiPoziomMin - TOLERANCE_CONFIG.poziom.maxDifference) {
-      return { status: '🔴 czerwony (2 poziomy niżej)', points: 0 };
+      const diff = skiPoziomMin - userPoziom;
+      return { status: `🔴 czerwony (poziom za wysoki ${diff}↑)`, points: 0 };
     }
     return null;
   }
 
   /**
    * Sprawdza dopasowanie płci
+   * Obsługuje: M (męski), K (kobiecy), D (damski - stary format), U (unisex), W (wszyscy)
    */
   private static checkPlec(userPlec: string, skiPlec: string): { status: string; points: number } {
-    if (skiPlec === 'U') {
+    // Normalizuj stary format D → K
+    const normalizedSkiPlec = skiPlec === 'D' ? 'K' : skiPlec;
+    const normalizedUserPlec = userPlec === 'D' ? 'K' : userPlec;
+    
+    // Jeśli użytkownik wybrał 'W' (wszyscy) - wszystko pasuje
+    if (normalizedUserPlec === 'W') {
+      return { status: '✅ zielony (wszyscy)', points: 1 };
+    }
+    
+    if (normalizedSkiPlec === 'U' || normalizedSkiPlec === 'W') {
       return { status: '✅ zielony (unisex)', points: 1 };
-    } else if (userPlec === 'M' && skiPlec === 'M') {
+    } else if (normalizedUserPlec === 'M' && normalizedSkiPlec === 'M') {
       return { status: '✅ zielony', points: 1 };
-    } else if (userPlec === 'K' && (skiPlec === 'K' || skiPlec === 'D')) {
+    } else if (normalizedUserPlec === 'K' && normalizedSkiPlec === 'K') {
       return { status: '✅ zielony', points: 1 };
-    } else if (userPlec === 'M' && (skiPlec === 'K' || skiPlec === 'D')) {
+    } else if (normalizedUserPlec === 'M' && normalizedSkiPlec === 'K') {
       return { status: '🟡 żółty - Narta kobieca', points: 0 };
-    } else if (userPlec === 'K' && skiPlec === 'M') {
+    } else if (normalizedUserPlec === 'K' && normalizedSkiPlec === 'M') {
       return { status: '🟡 żółty - Narta męska', points: 0 };
     } else {
       return { status: '🔴 czerwony (niezgodna płeć)', points: 0 };
@@ -482,13 +525,17 @@ export class SkiMatchingServiceV2 {
     if (userWaga >= wagaMin && userWaga <= wagaMax) {
       return { status: '✅ zielony', points: 1 };
     } else if (userWaga > wagaMax && userWaga <= wagaMax + TOLERANCE_CONFIG.waga.yellowTolerance) {
-      return { status: '🟡 żółty (o ' + (userWaga - wagaMax) + ' kg za duża)', points: 0 };
+      const diff = userWaga - wagaMax;
+      return { status: `🟡 żółty (${diff}↑ kg za duża)`, points: 0 };
     } else if (userWaga < wagaMin && userWaga >= wagaMin - TOLERANCE_CONFIG.waga.yellowTolerance) {
-      return { status: '🟡 żółty (o ' + (wagaMin - userWaga) + ' kg za mała)', points: 0 };
+      const diff = wagaMin - userWaga;
+      return { status: `🟡 żółty (${diff}↓ kg za mała)`, points: 0 };
     } else if (userWaga > wagaMax && userWaga <= wagaMax + TOLERANCE_CONFIG.waga.redTolerance) {
-      return { status: '🔴 czerwony (o ' + (userWaga - wagaMax) + ' kg za duża)', points: 0 };
+      const diff = userWaga - wagaMax;
+      return { status: `🔴 czerwony (${diff}↑ kg za duża)`, points: 0 };
     } else if (userWaga < wagaMin && userWaga >= wagaMin - TOLERANCE_CONFIG.waga.redTolerance) {
-      return { status: '🔴 czerwony (o ' + (wagaMin - userWaga) + ' kg za mała)', points: 0 };
+      const diff = wagaMin - userWaga;
+      return { status: `🔴 czerwony (${diff}↓ kg za mała)`, points: 0 };
     } else {
       return { status: '🔴 czerwony (niedopasowana)', points: 0 };
     }
@@ -501,13 +548,17 @@ export class SkiMatchingServiceV2 {
     if (userWzrost >= wzrostMin && userWzrost <= wzrostMax) {
       return { status: '✅ zielony', points: 1 };
     } else if (userWzrost > wzrostMax && userWzrost <= wzrostMax + TOLERANCE_CONFIG.wzrost.yellowTolerance) {
-      return { status: '🟡 żółty (o ' + (userWzrost - wzrostMax) + ' cm za duży)', points: 0 };
+      const diff = userWzrost - wzrostMax;
+      return { status: `🟡 żółty (${diff}↑ cm za duży)`, points: 0 };
     } else if (userWzrost < wzrostMin && userWzrost >= wzrostMin - TOLERANCE_CONFIG.wzrost.yellowTolerance) {
-      return { status: '🟡 żółty (o ' + (wzrostMin - userWzrost) + ' cm za mały)', points: 0 };
+      const diff = wzrostMin - userWzrost;
+      return { status: `🟡 żółty (${diff}↓ cm za mały)`, points: 0 };
     } else if (userWzrost > wzrostMax && userWzrost <= wzrostMax + TOLERANCE_CONFIG.wzrost.redTolerance) {
-      return { status: '🔴 czerwony (o ' + (userWzrost - wzrostMax) + ' cm za duży)', points: 0 };
+      const diff = userWzrost - wzrostMax;
+      return { status: `🔴 czerwony (${diff}↑ cm za duży)`, points: 0 };
     } else if (userWzrost < wzrostMin && userWzrost >= wzrostMin - TOLERANCE_CONFIG.wzrost.redTolerance) {
-      return { status: '🔴 czerwony (o ' + (wzrostMin - userWzrost) + ' cm za mały)', points: 0 };
+      const diff = wzrostMin - userWzrost;
+      return { status: `🔴 czerwony (${diff}↓ cm za mały)`, points: 0 };
     } else {
       return { status: '🔴 czerwony (niedopasowany)', points: 0 };
     }
