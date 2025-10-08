@@ -1,5 +1,5 @@
 // Serwis dopasowywania nart - UPROSZCZONA WERSJA
-import type { SkiData, SearchCriteria, SkiMatch, SearchResults } from '../types/ski.types';
+import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails } from '../types/ski.types';
 import { ReservationService } from './reservationService';
 
 // Konfiguracja tolerancji - wszystko w jednym miejscu
@@ -43,64 +43,41 @@ const DEFAULT_CRITERIA_WEIGHTS = {
 };
 
 // Adaptacyjne wagi na podstawie stylu jazdy użytkownika
-const ADAPTIVE_WEIGHTS: Record<string, Partial<typeof DEFAULT_CRITERIA_WEIGHTS>> = {
-  'Slalom': {
-    przeznaczenie: 0.15, // Większa waga dla stylu jazdy
-    poziom: 0.35,        // Nieco mniejsza waga dla poziomu
-    waga: 0.25,          // Bez zmian
-    wzrost: 0.15,        // Zmniejszona
-    plec: 0.10           // Bez zmian
-  },
-  'Gigant': {
-    przeznaczenie: 0.15, // Większa waga dla stylu jazdy
-    poziom: 0.35,        // Nieco mniejsza waga dla poziomu
-    waga: 0.25,          // Bez zmian
-    wzrost: 0.15,        // Zmniejszona
-    plec: 0.10           // Bez zmian
-  },
-  'Cały dzień': {
-    przeznaczenie: 0.20, // Największa waga dla stylu jazdy
-    poziom: 0.30,        // Mniejsza waga dla poziomu
-    waga: 0.25,          // Bez zmian
-    wzrost: 0.15,        // Zmniejszona
-    plec: 0.10           // Bez zmian
-  },
-  'Poza trase': {
-    przeznaczenie: 0.25, // Największa waga dla stylu jazdy
-    poziom: 0.25,        // Mniejsza waga dla poziomu
-    waga: 0.25,          // Bez zmian
-    wzrost: 0.15,        // Zmniejszona
-    plec: 0.10           // Bez zmian
-  },
-  'Pomiędzy': {
-    przeznaczenie: 0.15, // Większa waga dla stylu jazdy
-    poziom: 0.35,        // Nieco mniejsza waga dla poziomu
-    waga: 0.25,          // Bez zmian
-    wzrost: 0.15,        // Zmniejszona
-    plec: 0.10           // Bez zmian
-  }
-};
+// USUNIĘTO: ADAPTIVE_WEIGHTS - nie używane w nowym systemie
 
 export class SkiMatchingServiceV2 {
   /**
-   * Główna funkcja wyszukiwania nart - UPROSZCZONA WERSJA
-   * Jedna funkcja sprawdzająca wszystkie kryteria i kategoryzująca wyniki
+   * Główna funkcja wyszukiwania nart - DWUETAPOWY SYSTEM
+   * Etap 1: Wyszukiwanie podstawowe (bez filtrów stylu)
+   * Etap 2: Opcjonalne filtrowanie po stylu
    */
   static findMatchingSkis(skis: SkiData[], criteria: SearchCriteria): SearchResults {
     console.log(`SkiMatchingServiceV2: Wyszukiwanie nart dla kryteriów:`, criteria);
     
+    // ETAP 1: Wyszukiwanie podstawowe (ignoruj styl_jazdy)
+    const basicCriteria = {
+      ...criteria,
+      styl_jazdy: undefined // Usuń filtry stylu na tym etapie
+    };
+    
     const results: SkiMatch[] = [];
     
-    // Sprawdź każdą nartę jedną funkcją
+    // Sprawdź każdą nartę jedną funkcją (bez stylu jazdy)
     for (const ski of skis) {
-      const match = this.checkSkiMatch(ski, criteria);
+      const match = this.checkSkiMatch(ski, basicCriteria);
       if (match) {
         results.push(match);
       }
     }
     
+    // ETAP 2: Opcjonalne filtrowanie po stylu (jeśli wybrano)
+    let filteredResults = results;
+    if (criteria.styl_jazdy && criteria.styl_jazdy.length > 0) {
+      filteredResults = this.filterByStyles(results, criteria.styl_jazdy);
+    }
+    
     // Kategoryzuj wyniki
-    const categorized = this.categorizeResults(results);
+    const categorized = this.categorizeResults(filteredResults);
     
     // Sortuj każdą kategorię według średniej kompatybilności
     const sortedResults = this.sortResults(categorized, criteria);
@@ -108,6 +85,36 @@ export class SkiMatchingServiceV2 {
     console.log(`SkiMatchingServiceV2: Znaleziono: ${sortedResults.idealne.length} idealnych, ${sortedResults.alternatywy.length} alternatyw, ${sortedResults.poziom_za_nisko.length} poziom za nisko, ${sortedResults.inna_plec.length} inna płeć, ${sortedResults.na_sile.length} na siłę`);
     
     return sortedResults;
+  }
+
+  /**
+   * ETAP 2: Filtrowanie po stylach jazdy (OPCJONALNE)
+   * Multi-select: pokazuje narty pasujące do KTÓREGOKOLWIEK wybranego stylu
+   */
+  private static filterByStyles(matches: SkiMatch[], selectedStyles: string[]): SkiMatch[] {
+    if (!selectedStyles || selectedStyles.length === 0) {
+      return matches; // Brak filtrów - zwróć wszystkie style
+    }
+
+    return matches.filter(match => {
+      const skiPrzeznaczenie = match.ski.PRZEZNACZENIE;
+      
+      // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
+      return selectedStyles.some(style => {
+        switch (style) {
+          case 'SL':
+            return skiPrzeznaczenie === 'SL';
+          case 'G':
+            return skiPrzeznaczenie === 'G';
+          case 'SLG':
+            return skiPrzeznaczenie === 'SLG';
+          case 'OFF':
+            return skiPrzeznaczenie === 'OFF';
+          default:
+            return false;
+        }
+      });
+    });
   }
 
   /**
@@ -136,11 +143,15 @@ export class SkiMatchingServiceV2 {
     // Sprawdź wszystkie kryteria jedną funkcją
     const criteriaResults = this.checkAllCriteria(ski, criteria, poziom_min);
     
+    if (!criteriaResults) {
+      return null;
+    }
+    
     // Oblicz kompatybilność
     const compatibility = this.calculateCompatibility(criteriaResults);
     
     // Określ kategorię na podstawie wyników
-    const kategoria = this.determineCategory(criteriaResults);
+    const kategoria = this.determineCategory(criteriaResults.zielonePunkty);
 
     return {
       ski,
@@ -186,10 +197,16 @@ export class SkiMatchingServiceV2 {
     dopasowanie.wzrost = wzrostCheck.status;
     zielonePunkty += wzrostCheck.points;
 
-    // 5. Sprawdź przeznaczenie
-    const przeznaczenieCheck = this.checkPrzeznaczenie(criteria.styl_jazdy, ski.PRZEZNACZENIE);
-    dopasowanie.przeznaczenie = przeznaczenieCheck.status;
-    zielonePunkty += przeznaczenieCheck.points;
+    // 5. Sprawdź przeznaczenie (tylko jeśli styl_jazdy jest określony)
+    if (criteria.styl_jazdy && criteria.styl_jazdy.length > 0) {
+      const przeznaczenieCheck = this.checkPrzeznaczenie(criteria.styl_jazdy, ski.PRZEZNACZENIE);
+      dopasowanie.przeznaczenie = przeznaczenieCheck.status;
+      zielonePunkty += przeznaczenieCheck.points;
+    } else {
+      // W podstawowym wyszukiwaniu - zawsze zielone (ignorujemy styl)
+      dopasowanie.przeznaczenie = '✅ zielony (wszystkie style)';
+      zielonePunkty += 1;
+    }
 
     return { dopasowanie, zielonePunkty };
   }
@@ -241,7 +258,7 @@ export class SkiMatchingServiceV2 {
    */
   private static isIdealne(dopasowanie: any): boolean {
     return Object.values(dopasowanie).every(status => 
-      status.includes('✅ zielony')
+      typeof status === 'string' && status.includes('✅ zielony')
     );
   }
 
@@ -250,13 +267,13 @@ export class SkiMatchingServiceV2 {
    * ZMIANA: Akceptuje też czerwone przeznaczenie - ważniejsze jest dopasowanie fizyczne
    */
   private static isAlternatywy(dopasowanie: any): boolean {
-    const poziomOk = dopasowanie.poziom.includes('✅ zielony');
-    const plecOk = dopasowanie.plec.includes('✅ zielony');
+    const poziomOk = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('✅ zielony');
+    const plecOk = typeof dopasowanie.plec === 'string' && dopasowanie.plec.includes('✅ zielony');
     
     if (!poziomOk || !plecOk) return false;
     
     const nieZieloneKryteria = Object.entries(dopasowanie)
-      .filter(([_, status]) => !status.includes('✅ zielony'))
+      .filter(([_, status]) => typeof status === 'string' && !status.includes('✅ zielony'))
       .map(([kryterium, _]) => kryterium);
     
     // Tylko narty z JEDNYM kryterium nie idealnym
@@ -286,7 +303,7 @@ export class SkiMatchingServiceV2 {
       }
       // Fallback dla starych komunikatów
       const oldMatch = status.match(/o (\d+)/);
-      return oldMatch && parseInt(oldMatch[1]) <= TOLERANCE_CONFIG.waga.yellowTolerance;
+      return oldMatch ? parseInt(oldMatch[1]) <= TOLERANCE_CONFIG.waga.yellowTolerance : false;
     } else if (kryterium === 'wzrost' && status.includes('🟡 żółty')) {
       // Sprawdź czy różnica nie przekracza 5cm (nowy format z strzałkami)
       const match = status.match(/(\d+)[↑↓]/);
@@ -295,7 +312,7 @@ export class SkiMatchingServiceV2 {
       }
       // Fallback dla starych komunikatów
       const oldMatch = status.match(/o (\d+)/);
-      return oldMatch && parseInt(oldMatch[1]) <= TOLERANCE_CONFIG.wzrost.yellowTolerance;
+      return oldMatch ? parseInt(oldMatch[1]) <= TOLERANCE_CONFIG.wzrost.yellowTolerance : false;
     } else if (kryterium === 'przeznaczenie' && status.includes('🟡 żółty')) {
       // Styl jazdy w tolerancji
       return true;
@@ -310,13 +327,13 @@ export class SkiMatchingServiceV2 {
    * ZMIANA: Akceptuje też czerwone przeznaczenie - to może być dobra opcja dla bezpieczeństwa
    */
   private static isPoziomZaNisko(dopasowanie: any): boolean {
-    const poziomZaNisko = dopasowanie.poziom.includes('niższy poziom narty');
+    const poziomZaNisko = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('niższy poziom narty');
     if (!poziomZaNisko) return false;
     
     // Sprawdź czy WSZYSTKIE inne kryteria są na zielono (poza przeznaczeniem)
     return Object.entries(dopasowanie)
       .filter(([kryterium, _]) => kryterium !== 'poziom' && kryterium !== 'przeznaczenie')
-      .every(([_, status]) => status.includes('✅ zielony'));
+      .every(([_, status]) => typeof status === 'string' && status.includes('✅ zielony'));
   }
 
   /**
@@ -325,7 +342,7 @@ export class SkiMatchingServiceV2 {
    */
   private static isInnaPlec(dopasowanie: any): boolean {
     const plecStatus = dopasowanie.plec;
-    const plecZaNisko = plecStatus.includes('🟡 żółty') && 
+    const plecZaNisko = typeof plecStatus === 'string' && plecStatus.includes('🟡 żółty') && 
       (plecStatus.includes('Narta męska') || plecStatus.includes('Narta kobieca'));
     
     if (!plecZaNisko) return false;
@@ -333,7 +350,7 @@ export class SkiMatchingServiceV2 {
     // Sprawdź czy WSZYSTKIE inne kryteria są na zielono (poza przeznaczeniem)
     return Object.entries(dopasowanie)
       .filter(([kryterium, _]) => kryterium !== 'plec' && kryterium !== 'przeznaczenie')
-      .every(([_, status]) => status.includes('✅ zielony'));
+      .every(([_, status]) => typeof status === 'string' && status.includes('✅ zielony'));
   }
 
   /**
@@ -342,15 +359,15 @@ export class SkiMatchingServiceV2 {
    */
   private static isNaSile(dopasowanie: any): boolean {
     // PŁEĆ MUSI PASOWAĆ (być zielona) w kategorii NA SIŁĘ
-    if (!dopasowanie.plec.includes('✅ zielony')) return false;
+    if (typeof dopasowanie.plec !== 'string' || !dopasowanie.plec.includes('✅ zielony')) return false;
     
-    const poziomZaNisko = dopasowanie.poziom.includes('🟡 żółty');
-    const wzrostWOkresie = dopasowanie.wzrost.includes('✅ zielony') || 
+    const poziomZaNisko = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('🟡 żółty');
+    const wzrostWOkresie = typeof dopasowanie.wzrost === 'string' && (dopasowanie.wzrost.includes('✅ zielony') || 
                           dopasowanie.wzrost.includes('🟡 żółty') || 
-                          dopasowanie.wzrost.includes('🔴 czerwony');
-    const wagaWOkresie = dopasowanie.waga.includes('✅ zielony') || 
+                          dopasowanie.wzrost.includes('🔴 czerwony'));
+    const wagaWOkresie = typeof dopasowanie.waga === 'string' && (dopasowanie.waga.includes('✅ zielony') || 
                         dopasowanie.waga.includes('🟡 żółty') || 
-                        dopasowanie.waga.includes('🔴 czerwony');
+                        dopasowanie.waga.includes('🔴 czerwony'));
     // ZMIANA: Zawsze akceptuj przeznaczenie w kategorii NA SIŁĘ
     const przeznaczenieOk = true;
     
@@ -565,73 +582,34 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * Sprawdza dopasowanie przeznaczenia
+   * Sprawdza dopasowanie przeznaczenia (NOWY FORMAT - tablica stylów)
    */
-  private static checkPrzeznaczenie(userStyl: string, skiPrzeznaczenie: string): { status: string; points: number } {
-    const skiTypes = skiPrzeznaczenie.split(',').map(t => t.trim());
-    
-    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
-    if (userStyl === 'Wszystkie') {
+  private static checkPrzeznaczenie(userStyles: string[], skiPrzeznaczenie: string): { status: string; points: number } {
+    // Jeśli brak stylów - wszystko pasuje
+    if (!userStyles || userStyles.length === 0) {
       return { status: '✅ zielony', points: 1 };
     }
     
-    // Sprawdź dokładne dopasowanie dla każdego stylu
-    switch (userStyl) {
-      case 'Slalom':
-        if (skiTypes.includes('SL')) {
-          return { status: '✅ zielony', points: 1 };
-        } else if (skiTypes.includes('SLG')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else {
-          return { status: '🔴 czerwony', points: 0 };
-        }
-        
-      case 'Gigant':
-        if (skiTypes.includes('G')) {
-          return { status: '✅ zielony', points: 1 };
-        } else if (skiTypes.includes('SLG')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else {
-          return { status: '🔴 czerwony', points: 0 };
-        }
-        
-      case 'Cały dzień':
-        if (skiTypes.includes('C')) {
-          return { status: '✅ zielony', points: 1 };
-        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else {
-          return { status: '🔴 czerwony', points: 0 };
-        }
-        
-      case 'Poza trase':
-        if (skiTypes.includes('OFF')) {
-          return { status: '✅ zielony', points: 1 };
-        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else {
-          return { status: '🔴 czerwony', points: 0 };
-        }
-        
-      case 'Pomiędzy':
-        if (skiTypes.includes('SLG')) {
-          return { status: '✅ zielony', points: 1 };
-        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return { status: '🟡 żółty', points: 0 };
-        } else {
-          return { status: '🔴 czerwony', points: 0 };
-        }
-        
-      default:
-        return { status: '🔴 czerwony', points: 0 };
+    // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
+    const matches = userStyles.some(style => {
+      switch (style) {
+        case 'SL':
+          return skiPrzeznaczenie === 'SL';
+        case 'G':
+          return skiPrzeznaczenie === 'G';
+        case 'SLG':
+          return skiPrzeznaczenie === 'SLG';
+        case 'OFF':
+          return skiPrzeznaczenie === 'OFF';
+        default:
+          return false;
+      }
+    });
+    
+    if (matches) {
+      return { status: '✅ zielony', points: 1 };
+    } else {
+      return { status: '🔴 czerwony', points: 0 };
     }
   }
 
@@ -649,25 +627,25 @@ export class SkiMatchingServiceV2 {
     let bonus = 0;
     
     // Bonus za idealne dopasowanie wagi/wzrostu (w środku zakresu)
-    if (dopasowanie.waga.includes('✅ zielony')) {
+    if (typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('✅ zielony')) {
       bonus += 5; // Bonus za idealną wagę
     }
-    if (dopasowanie.wzrost.includes('✅ zielony')) {
+    if (typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('✅ zielony')) {
       bonus += 5; // Bonus za idealny wzrost
     }
     
     // Bonus za idealne dopasowanie poziomu
-    if (dopasowanie.poziom.includes('✅ zielony')) {
+    if (typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('✅ zielony')) {
       bonus += 10; // Bonus za idealny poziom
     }
     
     // Bonus za idealne dopasowanie płci
-    if (dopasowanie.plec.includes('✅ zielony')) {
+    if (typeof dopasowanie.plec === 'string' && dopasowanie.plec.includes('✅ zielony')) {
       bonus += 3; // Bonus za idealną płeć
     }
     
     // Bonus za idealne dopasowanie przeznaczenia
-    if (dopasowanie.przeznaczenie.includes('✅ zielony')) {
+    if (typeof dopasowanie.przeznaczenie === 'string' && dopasowanie.przeznaczenie.includes('✅ zielony')) {
       bonus += 2; // Bonus za idealne przeznaczenie
     }
     
@@ -675,19 +653,19 @@ export class SkiMatchingServiceV2 {
     let penalty = 0;
     
     // Kara za problemy z poziomem (bezpieczeństwo)
-    if (dopasowanie.poziom.includes('🔴 czerwony')) {
+    if (typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('🔴 czerwony')) {
       penalty += 20; // Duża kara za niebezpieczny poziom
-    } else if (dopasowanie.poziom.includes('🟡 żółty')) {
+    } else if (typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('🟡 żółty')) {
       penalty += 10; // Średnia kara za problemy z poziomem
     }
     
     // Kara za problemy z wagą (kontrola nart)
-    if (dopasowanie.waga.includes('🔴 czerwony')) {
+    if (typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('🔴 czerwony')) {
       penalty += 15; // Kara za problemy z wagą
     }
     
     // Kara za problemy ze wzrostem (stabilność)
-    if (dopasowanie.wzrost.includes('🔴 czerwony')) {
+    if (typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('🔴 czerwony')) {
       penalty += 10; // Kara za problemy ze wzrostem
     }
     
@@ -725,35 +703,24 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * Pobiera adaptacyjne wagi na podstawie stylu jazdy użytkownika
+   * Pobiera adaptacyjne wagi na podstawie stylu jazdy użytkownika (NOWY FORMAT)
    */
-  private static getAdaptiveWeights(stylJazdy: string): typeof DEFAULT_CRITERIA_WEIGHTS {
-    // Jeśli styl jazdy to "Wszystkie", użyj domyślnych wag
-    if (stylJazdy === 'Wszystkie') {
+  private static getAdaptiveWeights(stylJazdy: string[] | undefined): typeof DEFAULT_CRITERIA_WEIGHTS {
+    // Jeśli brak stylów lub puste, użyj domyślnych wag
+    if (!stylJazdy || stylJazdy.length === 0) {
       return DEFAULT_CRITERIA_WEIGHTS;
     }
     
-    // Pobierz adaptacyjne wagi dla danego stylu
-    const adaptiveWeights = ADAPTIVE_WEIGHTS[stylJazdy];
-    if (!adaptiveWeights) {
-      return DEFAULT_CRITERIA_WEIGHTS;
-    }
-    
-    // Połącz domyślne wagi z adaptacyjnymi
-    return {
-      poziom: adaptiveWeights.poziom ?? DEFAULT_CRITERIA_WEIGHTS.poziom,
-      waga: adaptiveWeights.waga ?? DEFAULT_CRITERIA_WEIGHTS.waga,
-      wzrost: adaptiveWeights.wzrost ?? DEFAULT_CRITERIA_WEIGHTS.wzrost,
-      plec: adaptiveWeights.plec ?? DEFAULT_CRITERIA_WEIGHTS.plec,
-      przeznaczenie: adaptiveWeights.przeznaczenie ?? DEFAULT_CRITERIA_WEIGHTS.przeznaczenie
-    };
+    // Użyj domyślnych wag dla nowego systemu
+    // (można dodać logikę adaptacyjną w przyszłości)
+    return DEFAULT_CRITERIA_WEIGHTS;
   }
 
   /**
    * Oblicza procent dla konkretnego kryterium (uproszczona wersja dla sortowania)
    */
   private static calculateCriteriaScore(criterion: string, status: string, criteria: SearchCriteria, ski: SkiData): number {
-    if (status.includes('✅ zielony')) {
+    if (typeof status === 'string' && status.includes('✅ zielony')) {
       switch (criterion) {
         case 'wzrost':
           return this.calculateRangeScore(criteria.wzrost, ski.WZROST_MIN, ski.WZROST_MAX);
@@ -765,11 +732,11 @@ export class SkiMatchingServiceV2 {
           if (ski.POZIOM.includes('/') || ski.POZIOM.includes('U')) return 100;
           return criteria.plec === ski.PLEC ? 100 : 60;
         case 'przeznaczenie':
-          return this.calculateStyleScore(criteria.styl_jazdy, ski.PRZEZNACZENIE);
+          return this.calculateStyleScore(criteria.styl_jazdy || [], ski.PRZEZNACZENIE);
         default:
           return 100;
       }
-    } else if (status.includes('🟡 żółty')) {
+    } else if (typeof status === 'string' && status.includes('🟡 żółty')) {
       // Poza zakresem ale w tolerancji - niższe wartości
       switch (criterion) {
         case 'wzrost':
@@ -785,7 +752,7 @@ export class SkiMatchingServiceV2 {
         default:
           return 75;
       }
-    } else if (status.includes('🔴 czerwony')) {
+    } else if (typeof status === 'string' && status.includes('🔴 czerwony')) {
       // Znacznie poza zakresem - bardzo niskie wartości
       return 25;
     }
@@ -844,74 +811,31 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * Oblicza procent dopasowania stylu jazdy
+   * Oblicza procent dopasowania stylu jazdy (NOWY FORMAT - tablica stylów)
    */
-  private static calculateStyleScore(userStyle: string, skiStyle: string): number {
-    const skiTypes = skiStyle.split(',').map(t => t.trim());
-    
-    // Jeśli użytkownik wybrał "Wszystkie", wszystko pasuje
-    if (userStyle === 'Wszystkie') {
+  private static calculateStyleScore(userStyles: string[], skiStyle: string): number {
+    // Jeśli brak stylów - wszystko pasuje
+    if (!userStyles || userStyles.length === 0) {
       return 100;
     }
     
-    // Sprawdź dokładne dopasowanie dla każdego stylu
-    switch (userStyle) {
-      case 'Slalom':
-        if (skiTypes.includes('SL')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Gigant':
-        if (skiTypes.includes('G')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SLG')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Cały dzień':
-        if (skiTypes.includes('C')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL,C') || skiTypes.includes('SLG,C')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Poza trase':
-        if (skiTypes.includes('OFF')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      case 'Pomiędzy':
-        if (skiTypes.includes('SLG')) {
-          return 100; // Idealne dopasowanie
-        } else if (skiTypes.includes('SL') || skiTypes.includes('G')) {
-          return 75; // Częściowe dopasowanie
-        } else if (skiTypes.includes('ALL') || skiTypes.includes('ALLM') || skiTypes.includes('UNI')) {
-          return 60; // Uniwersalne narty
-        } else {
-          return 0; // Brak dopasowania
-        }
-        
-      default:
-        return 0;
-    }
+    // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
+    const matches = userStyles.some(style => {
+      switch (style) {
+        case 'SL':
+          return skiStyle === 'SL';
+        case 'G':
+          return skiStyle === 'G';
+        case 'SLG':
+          return skiStyle === 'SLG';
+        case 'OFF':
+          return skiStyle === 'OFF';
+        default:
+          return false;
+      }
+    });
+    
+    return matches ? 100 : 0;
   }
 
   /**
@@ -1032,8 +956,8 @@ export class SkiMatchingServiceV2 {
     const suggestions: string[] = [];
     
     // Jeśli styl to nie "Wszystkie", sprawdź czy zmiana na "Wszystkie" da więcej wyników
-    if (criteria.styl_jazdy !== 'Wszystkie') {
-      const allStyleCriteria = { ...criteria, styl_jazdy: 'Wszystkie' };
+    if (criteria.styl_jazdy && criteria.styl_jazdy.length > 0) {
+      const allStyleCriteria = { ...criteria, styl_jazdy: undefined };
       const allStyleResults = this.findMatchingSkis(skis, allStyleCriteria);
       
       if (allStyleResults.wszystkie.length > 0) {
@@ -1097,7 +1021,7 @@ export class SkiMatchingServiceV2 {
     const suggestions: string[] = [];
     
     // Sprawdź czy można rozszerzyć styl jazdy
-    if (criteria.styl_jazdy !== 'Wszystkie') {
+    if (criteria.styl_jazdy && criteria.styl_jazdy.length > 0) {
       suggestions.push(`💡 Zmień styl jazdy na "Wszystkie" aby znaleźć więcej opcji`);
     }
     
@@ -1121,7 +1045,7 @@ export class SkiMatchingServiceV2 {
     }
     
     // Sugeruj zawężenie stylu jazdy
-    if (criteria.styl_jazdy === 'Wszystkie') {
+    if (!criteria.styl_jazdy || criteria.styl_jazdy.length === 0) {
       suggestions.push(`💡 Wybierz konkretny styl jazdy aby znaleźć bardziej dopasowane narty`);
     }
     
@@ -1147,7 +1071,7 @@ export class SkiMatchingServiceV2 {
    * Proste sprawdzenie dostępności (synchroniczne) - dla sortowania
    */
   private static getSimpleAvailabilityScore(ski: SkiData): number {
-    const ilosc = parseInt(ski.ILOSC || '2');
+    const ilosc = parseInt(String(ski.ILOSC) || '2');
     // Na razie zwracamy 1 (dostępne) - później można dodać cache
     return 1;
   }
@@ -1157,7 +1081,7 @@ export class SkiMatchingServiceV2 {
    */
   static async checkAvailability(ski: SkiData, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<AvailabilityInfo> {
     try {
-      const ilosc = parseInt(ski.ILOSC || '2');
+      const ilosc = parseInt(String(ski.ILOSC) || '2');
       const availability: AvailabilityInfo = {
         total: ilosc,
         available: [],
@@ -1210,7 +1134,7 @@ export class SkiMatchingServiceV2 {
     } catch (error) {
       console.error('SkiMatchingServiceV2: Błąd sprawdzania dostępności:', error);
       return {
-        total: parseInt(ski.ILOSC || '2'),
+        total: parseInt(String(ski.ILOSC) || '2'),
         available: [],
         reserved: [],
         availabilityStatus: 'unknown'
@@ -1550,7 +1474,7 @@ export class SkiMatchingServiceV2 {
 
     for (const match of matches) {
       // Użyj prostego sprawdzenia zamiast async
-      const ilosc = parseInt(match.ski.ILOSC || '2');
+      const ilosc = parseInt(String(match.ski.ILOSC) || '2');
       // Na razie zakładamy że wszystkie są dostępne
       allAvailable++;
     }
@@ -1575,7 +1499,7 @@ export class SkiMatchingServiceV2 {
       waga: this.generateWagaDetails(dopasowanie.waga, criteria.waga, ski),
       wzrost: this.generateWzrostDetails(dopasowanie.wzrost, criteria.wzrost, ski),
       plec: this.generatePlecDetails(dopasowanie.plec, criteria.plec, ski),
-      przeznaczenie: this.generatePrzeznaczenieDetails(dopasowanie.przeznaczenie, criteria.styl_jazdy, ski),
+      przeznaczenie: this.generatePrzeznaczenieDetails(dopasowanie.przeznaczenie, criteria.styl_jazdy || [], ski),
       ogolne: this.generateOgolneDetails(match, criteria)
     };
   }
@@ -1738,7 +1662,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje szczegóły dopasowania przeznaczenia
    */
-  private static generatePrzeznaczenieDetails(przeznaczenieStatus: string, userStyl: string, ski: SkiData): CriteriaDetails {
+  private static generatePrzeznaczenieDetails(przeznaczenieStatus: string, userStyles: string[], ski: SkiData): CriteriaDetails {
     const isGreen = przeznaczenieStatus.includes('✅ zielony');
     const isYellow = przeznaczenieStatus.includes('🟡 żółty');
     
@@ -1748,11 +1672,11 @@ export class SkiMatchingServiceV2 {
     
     if (isGreen) {
       status = 'perfect';
-      message = `Styl jazdy ${userStyl} idealnie pasuje do nart`;
+      message = `Styl jazdy ${userStyles.join(', ')} idealnie pasuje do nart`;
       recommendation = 'Idealne dopasowanie stylu jazdy';
     } else if (isYellow) {
       status = 'warning';
-      message = `Styl jazdy ${userStyl} - inne przeznaczenie nart`;
+      message = `Styl jazdy ${userStyles.join(', ')} - inne przeznaczenie nart`;
       recommendation = 'Można używać, ale narty mogą być mniej optymalne';
     } else {
       status = 'error';

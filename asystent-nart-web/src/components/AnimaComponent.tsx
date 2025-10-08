@@ -15,6 +15,7 @@ import {
 } from '../utils/formValidation';
 import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
 import { DetailedCompatibility } from './DetailedCompatibility';
+import { SkiStyleBadge } from './SkiStyleBadge';
 import type { SkiData, SearchResults, SearchCriteria } from '../types/ski.types';
 
 interface FormData {
@@ -38,7 +39,7 @@ interface FormData {
   };
   level: string;
   gender: string;
-  preferences: string[];
+  // USUNIĘTO: preferences - teraz filtry stylu są oddzielne
 }
 
 const AnimaComponent: React.FC = () => {
@@ -48,9 +49,12 @@ const AnimaComponent: React.FC = () => {
     height: { value: '', unit: 'cm' },
     weight: { value: '', unit: 'kg' },
     level: '',
-    gender: '',
-    preferences: ['Wszystkie'] // Domyślnie "Wszystkie"
+    gender: ''
+    // USUNIĘTO: preferences
   });
+
+  // NOWY STAN: Filtry stylu jazdy (oddzielne od formularza)
+  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
 
   const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
   const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
@@ -359,18 +363,76 @@ const AnimaComponent: React.FC = () => {
     }
   };
 
-  const handlePreferenceChange = (preference: string) => {
-    console.log(`src/components/AnimaComponent.tsx: Zmiana preferencji na: ${preference}`);
-    setFormData(prev => ({
-      ...prev,
-      preferences: [preference] // Tylko jeden wybór (radio button)
-    }));
+  // USUNIĘTO: handlePreferenceChange - teraz używamy handleStyleToggle
+
+  /**
+   * Obsługuje zmianę pojedynczego filtra stylu (dla checkboxów)
+   */
+  const handleStyleToggle = (style: string) => {
+    const newStyles = selectedStyles.includes(style)
+      ? selectedStyles.filter(s => s !== style)
+      : [...selectedStyles, style];
     
-    // Automatyczne wyszukiwanie po zmianie preferencji
-    setTimeout(() => {
-      console.log(`src/components/AnimaComponent.tsx: Automatyczne wyszukiwanie po zmianie preferencji`);
-      handleSubmit();
-    }, 100);
+    console.log(`src/components/AnimaComponent.tsx: Przełączenie stylu ${style}, nowe style:`, newStyles);
+    setSelectedStyles(newStyles);
+    
+    // Automatyczne wyszukiwanie po KAŻDEJ zmianie filtrów (jeśli są już wyniki)
+    if (searchResults) {
+      setTimeout(() => {
+        console.log(`src/components/AnimaComponent.tsx: Automatyczne wyszukiwanie po przełączeniu filtra`);
+        handleSubmitWithStyles(newStyles);
+      }, 100);
+    }
+  };
+
+  /**
+   * Wyszukuje narty z określonymi stylami (dla automatycznego wyszukiwania po zmianie filtrów)
+   */
+  const handleSubmitWithStyles = (styles: string[]) => {
+    console.log('src/components/AnimaComponent.tsx: Wyszukiwanie z stylami:', styles);
+    
+    try {
+      setIsLoading(true);
+      setError('');
+
+      // Przygotuj kryteria wyszukiwania z przekazanymi stylami
+      const criteria: SearchCriteria = {
+        wzrost: parseInt(formData.height.value),
+        waga: parseInt(formData.weight.value),
+        poziom: parseInt(formData.level),
+        plec: formData.gender.toUpperCase().trim() as 'M' | 'K',
+        styl_jazdy: styles.length > 0 ? styles : undefined,
+        dateFrom: parseDate(formData.dateFrom),
+        dateTo: parseDate(formData.dateTo)
+      };
+
+      console.log('src/components/AnimaComponent.tsx: Kryteria wyszukiwania z stylami:', criteria);
+
+      // Zapisz kryteria dla MatchIndicators
+      setCurrentCriteria(criteria);
+
+      // Wyszukaj pasujące narty
+      const results = SkiMatchingServiceV2.findMatchingSkis(skisDatabase, criteria);
+      setSearchResults(results);
+
+      // Sortuj wyniki według dostępności i dopasowania
+      const sortedResults = SkiMatchingServiceV2.sortAllResultsByAvailabilityAndCompatibility(results);
+      setSearchResults(sortedResults);
+
+      console.log('src/components/AnimaComponent.tsx: Zaktualizowano wyniki z stylami:', {
+        idealne: results.idealne.length,
+        alternatywy: results.alternatywy.length,
+        poziom_za_nisko: results.poziom_za_nisko.length,
+        inna_plec: results.inna_plec.length,
+        na_sile: results.na_sile.length,
+        wszystkie: results.wszystkie.length
+      });
+    } catch (err) {
+      console.error('src/components/AnimaComponent.tsx: Błąd wyszukiwania z stylami:', err);
+      setError('Wystąpił błąd podczas wyszukiwania nart');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSubmit = (customFormData?: FormData) => {
@@ -392,10 +454,7 @@ const AnimaComponent: React.FC = () => {
       return;
     }
 
-    if (dataToValidate.preferences.length === 0) {
-      setError('Proszę wybrać preferencje stylu jazdy');
-      return;
-    }
+    // USUNIĘTO: walidacja preferencji - teraz filtry stylu są opcjonalne
 
     try {
       setIsLoading(true);
@@ -407,7 +466,7 @@ const AnimaComponent: React.FC = () => {
         waga: parseInt(dataToValidate.weight.value),
         poziom: parseInt(dataToValidate.level),
         plec: dataToValidate.gender.toUpperCase().trim() as 'M' | 'K',
-        styl_jazdy: dataToValidate.preferences[0], // Tylko jedna preferencja (radio button)
+        styl_jazdy: selectedStyles.length > 0 ? selectedStyles : undefined, // NOWY FORMAT: tablica stylów
         dateFrom: parseDate(dataToValidate.dateFrom),
         dateTo: parseDate(dataToValidate.dateTo)
       };
@@ -473,11 +532,12 @@ const AnimaComponent: React.FC = () => {
       height: { value: '', unit: 'cm' },
       weight: { value: '', unit: 'kg' },
       level: '',
-      gender: '',
-      preferences: ['Wszystkie'] // Domyślnie "Wszystkie"
+      gender: ''
+      // USUNIĘTO: preferences
     };
     
     setFormData(defaultData);
+    setSelectedStyles([]); // NOWE: wyczyść filtry stylu
     setSearchResults(null);
     setError('');
     setFormErrors(initialFormErrors);
@@ -665,43 +725,45 @@ const AnimaComponent: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Section - Preferences and Buttons */}
+            {/* Right Section - Style Filters and Action Buttons */}
             <div className="w-[300px] h-[160px] p-1 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-[5px]">
-              {/* Preferences Title */}
-              <div className="w-[140px] h-[25px] bg-[#194576] rounded-[5px] flex items-center justify-center">
-                <div className="text-center justify-center text-white text-[20px] font-black font-['Inter'] italic underline leading-[28px]">Preferencje:</div>
+              {/* Style Filters Title */}
+              <div className="w-[140px] h-[20px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="text-center justify-center text-white text-[14px] font-black font-['Inter'] italic underline leading-[20px]">Style jazdy:</div>
               </div>
 
-              {/* Radio Buttons Grid - 2 rzędy po 3 */}
+              {/* Style Filter Checkboxes - 2 rows */}
               <div className="w-[300px] flex flex-col justify-center items-center gap-1">
-                {/* Pierwszy rząd */}
+                {/* First row */}
                 <div className="w-full flex justify-center items-center gap-3">
-                  {['Wszystkie', 'Slalom', 'Poza trase'].map((pref) => (
-                    <label key={pref} className="flex items-center gap-1 cursor-pointer">
+                  {['SL', 'G'].map((style) => (
+                    <label key={style} className="flex items-center gap-1 cursor-pointer">
                       <input
-                        type="radio"
-                        name="preferences"
-                        checked={formData.preferences.includes(pref)}
-                        onChange={() => handlePreferenceChange(pref)}
+                        type="checkbox"
+                        checked={selectedStyles.includes(style)}
+                        onChange={() => handleStyleToggle(style)}
                         className="flex-shrink-0"
                       />
-                      <span className="text-white text-xs font-extrabold font-['Inter'] italic underline leading-[17px] whitespace-nowrap">{pref}</span>
+                      <span className="text-white text-xs font-extrabold font-['Inter'] italic underline leading-[17px] whitespace-nowrap">
+                        {style === 'SL' ? 'Slalom' : 'Gigant'}
+                      </span>
                     </label>
                   ))}
                 </div>
                 
-                {/* Drugi rząd */}
+                {/* Second row */}
                 <div className="w-full flex justify-center items-center gap-3">
-                  {['Cały dzień', 'Gigant', 'Pomiędzy'].map((pref) => (
-                    <label key={pref} className="flex items-center gap-1 cursor-pointer">
+                  {['SLG', 'OFF'].map((style) => (
+                    <label key={style} className="flex items-center gap-1 cursor-pointer">
                       <input
-                        type="radio"
-                        name="preferences"
-                        checked={formData.preferences.includes(pref)}
-                        onChange={() => handlePreferenceChange(pref)}
+                        type="checkbox"
+                        checked={selectedStyles.includes(style)}
+                        onChange={() => handleStyleToggle(style)}
                         className="flex-shrink-0"
                       />
-                      <span className="text-white text-xs font-extrabold font-['Inter'] italic underline leading-[17px] whitespace-nowrap">{pref}</span>
+                      <span className="text-white text-xs font-extrabold font-['Inter'] italic underline leading-[17px] whitespace-nowrap">
+                        {style === 'SLG' ? 'Pomiędzy' : 'Poza trasę'}
+                      </span>
                     </label>
                   ))}
                 </div>
@@ -809,8 +871,14 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {searchResults.idealne.map((match, idx) => (
                           <div key={idx} className="bg-white/20 p-3 rounded-lg">
-                            <div className="text-white font-black text-base">
-                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            <div className="flex items-center gap-2 mb-2">
+                              <SkiStyleBadge 
+                                przeznaczenie={match.ski.PRZEZNACZENIE}
+                                atuty={match.ski.ATUTY}
+                              />
+                              <div className="text-white font-black text-base">
+                                {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                              </div>
                             </div>
                             <DetailedCompatibility 
                               match={match}
@@ -830,8 +898,14 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {searchResults.alternatywy.slice(0, 5).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
-                            <div className="text-white font-black text-base">
-                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            <div className="flex items-center gap-2 mb-2">
+                              <SkiStyleBadge 
+                                przeznaczenie={match.ski.PRZEZNACZENIE}
+                                atuty={match.ski.ATUTY}
+                              />
+                              <div className="text-white font-black text-base">
+                                {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                              </div>
                             </div>
                             <DetailedCompatibility 
                               match={match}
@@ -851,8 +925,14 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {searchResults.poziom_za_nisko.slice(0, 5).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
-                            <div className="text-white font-black text-base">
-                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            <div className="flex items-center gap-2 mb-2">
+                              <SkiStyleBadge 
+                                przeznaczenie={match.ski.PRZEZNACZENIE}
+                                atuty={match.ski.ATUTY}
+                              />
+                              <div className="text-white font-black text-base">
+                                {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                              </div>
                             </div>
                             <DetailedCompatibility 
                               match={match}
@@ -872,8 +952,14 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {searchResults.inna_plec.slice(0, 5).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
-                            <div className="text-white font-black text-base">
-                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            <div className="flex items-center gap-2 mb-2">
+                              <SkiStyleBadge 
+                                przeznaczenie={match.ski.PRZEZNACZENIE}
+                                atuty={match.ski.ATUTY}
+                              />
+                              <div className="text-white font-black text-base">
+                                {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                              </div>
                             </div>
                             <DetailedCompatibility 
                               match={match}
@@ -893,8 +979,14 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                         {searchResults.na_sile.slice(0, 5).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
-                            <div className="text-white font-black text-base">
-                              {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                            <div className="flex items-center gap-2 mb-2">
+                              <SkiStyleBadge 
+                                przeznaczenie={match.ski.PRZEZNACZENIE}
+                                atuty={match.ski.ATUTY}
+                              />
+                              <div className="text-white font-black text-base">
+                                {match.ski.MARKA} {match.ski.MODEL} - {match.ski.DLUGOSC}cm
+                              </div>
                             </div>
                             <DetailedCompatibility 
                               match={match}
