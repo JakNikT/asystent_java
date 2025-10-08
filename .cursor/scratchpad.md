@@ -17,11 +17,177 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 - ✅ **ETAP 1 UKOŃCZONY**: Walidacja formularza, obsługa błędów, automatyczne przechodzenie pól, LocalStorage dla sesji użytkownika, opcjonalne daty
 - ✅ **ETAP 2 UKOŃCZONY**: Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI)
 
-**NOWY ZADANIE**: ANALIZA SYSTEMU DOBIERANIA NART - Przeanalizowanie jak działa system, identyfikacja obszarów do ulepszenia, optymalizacja algorytmów.
+**NOWY ZADANIE**: IMPLEMENTACJA FUNKCJI "PRZEGLĄDAJ" - Dodanie funkcjonalności przeglądania, edytowania i sortowania nart w bazie danych.
 
-## Key Challenges and Analysis
+**PLANNER MODE - Analiza wymagań funkcji "przeglądaj"**:
 
-### ANALIZA SYSTEMU DOBIERANIA NART - SZCZEGÓŁOWA ANALIZA
+**Wymagania użytkownika**:
+- **Przeglądanie**: Możliwość przeglądania wszystkich nart w bazie danych
+- **Edytowanie**: Możliwość edytowania danych nart (marka, model, parametry, dostępność)
+- **Sortowanie**: Różne opcje sortowania nart (marka, model, długość, poziom, dostępność, itp.)
+
+**PROJEKTOWANIE INTERFEJSU FUNKCJI "PRZEGLĄDAJ"**:
+
+**1. Nawigacja i dostęp**:
+- **Nowa zakładka/sekcja**: "Przeglądaj narty" obok istniejącego formularza wyszukiwania
+- **Przycisk nawigacji**: Dodanie przycisku "Przeglądaj" w głównym menu aplikacji
+- **Routing**: Użycie React Router lub stanu aplikacji do przełączania między trybami
+
+**2. Layout interfejsu przeglądania**:
+- **Header z filtrami**: Górna sekcja z opcjami filtrowania i sortowania
+- **Lista nart**: Główna sekcja z tabelą/listą wszystkich nart
+- **Paginacja**: Podział na strony (np. 20 nart na stronę) dla lepszej wydajności
+- **Szczegóły narty**: Rozwijane szczegóły lub modal z pełnymi informacjami
+
+**3. Funkcje filtrowania**:
+- **Filtry podstawowe**: Marka, model, długość, poziom, płeć, przeznaczenie
+- **Filtry zaawansowane**: Zakres wagi/wzrostu, dostępność (ILOSC > 0), rok produkcji
+- **Wyszukiwanie tekstowe**: Globalne wyszukiwanie po wszystkich polach
+- **Reset filtrów**: Przycisk do czyszczenia wszystkich filtrów
+
+**PLANOWANIE FUNKCJONALNOŚCI EDYTOWANIA**:
+
+**1. Tryby edycji**:
+- **Tryb przeglądania**: Tylko do odczytu, wyświetlanie danych
+- **Tryb edycji**: Kliknięcie "Edytuj" przełącza na tryb edycji inline
+- **Tryb dodawania**: Przycisk "Dodaj nową nartę" otwiera formularz
+
+**2. Walidacja danych**:
+- **Walidacja pól numerycznych**: Długość (100-200cm), waga (20-200kg), wzrost (100-250cm)
+- **Walidacja poziomów**: Format zgodny z istniejącym systemem (1-6, 5M/6K, itp.)
+- **Walidacja płci**: Tylko M/K/U
+- **Walidacja przeznaczenia**: Tylko SL/G/SLG/OFF
+- **Walidacja dostępności**: ILOSC >= 0
+
+**PLANOWANIE OPCJI SORTOWANIA**:
+
+**1. Sortowanie podstawowe**:
+- **Alfabetyczne**: Marka A-Z, Model A-Z
+- **Numeryczne**: Długość (rosnąco/malejąco), Poziom (1-6), Rok produkcji
+- **Dostępność**: ILOSC (rosnąco/malejąco) - najpierw dostępne
+- **Domyślne**: ID (kolejność w bazie danych)
+
+**2. Sortowanie zaawansowane**:
+- **Wielokryteriowe**: Np. Marka + Model + Długość
+- **Kombinowane**: Dostępność + Poziom + Długość
+- **Filtrowane**: Sortowanie tylko wśród przefiltrowanych wyników
+- **Zapisywane**: Zapisywanie preferencji sortowania w LocalStorage
+
+**3. Interfejs sortowania**:
+- **Dropdown**: Wybór kryterium sortowania
+- **Przycisk kierunku**: Rosnąco/malejąco (↑/↓)
+- **Wielokryteriowe**: Dodawanie kolejnych kryteriów sortowania
+- **Reset**: Powrót do domyślnego sortowania
+
+**PLAN IMPLEMENTACJI FUNKCJI "PRZEGLĄDAJ"**:
+
+**ETAP 1: PODSTAWOWA FUNKCJONALNOŚĆ PRZEGLĄDANIA**
+- **Task 1.1**: Stworzenie komponentu BrowseSkisComponent
+  - Success criteria: Wyświetlanie wszystkich nart w tabeli z podstawowymi informacjami
+  - Estimated time: 4 godziny
+  - **Cel**: Podstawowy interfejs przeglądania
+
+- **Task 1.2**: Implementacja podstawowego sortowania
+  - Success criteria: Sortowanie według marki, modelu, długości, dostępności
+  - Estimated time: 2 godziny
+  - **Cel**: Podstawowe opcje sortowania
+
+- **Task 1.3**: Dodanie nawigacji między trybami
+  - Success criteria: Przełączanie między "Wyszukaj" a "Przeglądaj"
+  - Estimated time: 1 godzina
+  - **Cel**: Integracja z istniejącym interfejsem
+
+**ETAP 2: ZAAWANSOWANE FILTROWANIE I SORTOWANIE**
+- **Task 2.1**: Implementacja filtrów
+  - Success criteria: Filtry według marki, poziomu, płci, przeznaczenia, dostępności
+  - Estimated time: 3 godziny
+  - **Cel**: Zaawansowane filtrowanie
+
+- **Task 2.2**: Wyszukiwanie tekstowe
+  - Success criteria: Globalne wyszukiwanie po wszystkich polach
+  - Estimated time: 2 godziny
+  - **Cel**: Szybkie znajdowanie nart
+
+- **Task 2.3**: Paginacja i wydajność
+  - Success criteria: Podział na strony, lazy loading
+  - Estimated time: 2 godziny
+  - **Cel**: Obsługa dużych zbiorów danych
+
+**ETAP 3: FUNKCJONALNOŚĆ EDYTOWANIA**
+- **Task 3.1**: Tryb edycji inline
+  - Success criteria: Edytowanie pól bezpośrednio w tabeli
+  - Estimated time: 4 godziny
+  - **Cel**: Podstawowa edycja danych
+
+- **Task 3.2**: Walidacja i zapisywanie
+  - Success criteria: Walidacja danych, eksport do CSV
+  - Estimated time: 3 godziny
+  - **Cel**: Bezpieczne modyfikowanie danych
+
+- **Task 3.3**: Dodawanie nowych nart
+  - Success criteria: Formularz dodawania nowej narty
+  - Estimated time: 2 godziny
+  - **Cel**: Rozszerzanie bazy danych
+
+**ETAP 4: ULEPSZENIA I OPTYMALIZACJE**
+- **Task 4.1**: Historia zmian i backup
+  - Success criteria: Logowanie zmian, automatyczne kopie zapasowe
+  - Estimated time: 2 godziny
+  - **Cel**: Bezpieczeństwo danych
+
+- **Task 4.2**: Ulepszenia UX/UI
+  - Success criteria: Animacje, tooltips, lepsze komunikaty
+  - Estimated time: 2 godziny
+  - **Cel**: Lepsze doświadczenie użytkownika
+
+- **Task 4.3**: Integracja z systemem rezerwacji
+  - Success criteria: Wyświetlanie statusu rezerwacji w przeglądaniu
+  - Estimated time: 2 godziny
+  - **Cel**: Pełna integracja funkcji
+
+**ANALIZA WYZWAŃ I RYZYK**:
+
+**1. Wyzwania techniczne**:
+- **Integracja z istniejącym kodem**: AnimaComponent.tsx ma 1138 linii - trzeba dodać nową funkcjonalność bez psucia istniejącej
+- **Zarządzanie stanem**: Dodanie nowego stanu dla trybu przeglądania i edycji
+- **Wydajność**: 82 narty to mało, ale paginacja będzie potrzebna przy rozroście bazy
+- **Walidacja**: Zgodność z istniejącym systemem walidacji w SkiMatchingServiceV2
+
+**2. Wyzwania UX/UI**:
+- **Spójność designu**: Nowy interfejs musi pasować do istniejącego stylu Tailwind CSS
+- **Nawigacja**: Intuicyjne przełączanie między trybami wyszukiwania i przeglądania
+- **Responsywność**: Tabela z wieloma kolumnami musi działać na różnych urządzeniach
+- **Dostępność**: Obsługa klawiatury i screen readerów
+
+**3. Wyzwania danych**:
+- **Integracja z CSV**: Zachowanie zgodności z formatem NOWABAZA_final.csv
+- **Backup i bezpieczeństwo**: Nie można stracić danych przy edycji
+- **Synchronizacja**: Zmiany w przeglądaniu muszą być widoczne w wyszukiwaniu
+- **Historia zmian**: Śledzenie kto i kiedy zmienił dane
+
+**REKOMENDOWANE PODEJŚCIE**:
+
+**1. Architektura**:
+- **Nowy komponent**: BrowseSkisComponent.tsx - oddzielny od AnimaComponent.tsx
+- **Wspólny stan**: Użycie Context API lub podniesienie stanu do App.tsx
+- **Serwis**: BrowseService.ts - logika filtrowania, sortowania, edycji
+- **Routing**: Stan aplikacji zamiast React Router (prostsze)
+
+**2. Implementacja etapowa**:
+- **ETAP 1**: Tylko przeglądanie i podstawowe sortowanie (bez edycji)
+- **ETAP 2**: Dodanie filtrów i wyszukiwania tekstowego
+- **ETAP 3**: Funkcjonalność edycji z walidacją
+- **ETAP 4**: Ulepszenia i integracja z rezerwacjami
+
+**3. Bezpieczeństwo**:
+- **Read-only domyślnie**: Tryb edycji tylko po kliknięciu "Edytuj"
+- **Potwierdzenie zmian**: Modal z podsumowaniem zmian przed zapisem
+- **Backup automatyczny**: Kopie zapasowe przed każdym zapisem
+- **Walidacja po stronie klienta**: Sprawdzanie danych przed zapisem
+
+**GOTOWOŚĆ DO IMPLEMENTACJI**: ✅ **TAK** - wszystkie wymagania są jasne, plan jest szczegółowy, architektura przemyślana.
+
+**NASTĘPNE KROKI**: Przejście do trybu Executor i rozpoczęcie implementacji ETAPU 1 - podstawowej funkcjonalności przeglądania.
 
 **PLANNER MODE - Analiza obecnego systemu dobierania nart**
 
@@ -314,39 +480,69 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## Project Status Board
 
-### ANALIZA SYSTEMU DOBIERANIA NART - Status
-- [x] **Analiza algorytmu dobierania nart** - przeanalizowano 5 kategorii i system oceny
-- [x] **Analiza systemu kolorów i kolejności** - zidentyfikowano logikę wyświetlania
-- [x] **Identyfikacja problemów** - znaleziono 5 głównych obszarów do ulepszenia
-- [x] **Stworzenie planu ulepszeń** - 3 etapy z konkretnymi zadaniami
+### NOWY PROJEKT - FUNKCJA "PRZEGLĄDAJ" - Status
+- [x] **Analiza wymagań** - przeanalizowano funkcje przeglądania, edytowania i sortowania
+- [x] **Analiza obecnej struktury** - przeanalizowano bazę danych, interfejs i serwisy
+- [x] **Projektowanie interfejsu** - zaprojektowano layout, nawigację i filtry
+- [x] **Planowanie funkcjonalności edycji** - zaplanowano tryby edycji, walidację i zapisywanie
+- [x] **Planowanie opcji sortowania** - zaplanowano sortowanie podstawowe i zaawansowane
+- [x] **Stworzenie planu implementacji** - 4 etapy z konkretnymi zadaniami
 
-### Do zrobienia (ETAP 1 - UPROSZCZENIE ALGORYTMU)
-- [ ] **1.1.1**: Uproszczenie logiki kategoryzacji
-- [ ] **1.1.2**: Ujednolicenie systemu tolerancji
-- [ ] **1.1.3**: Optymalizacja parsowania poziomów
-- [ ] **1.2.1**: Inteligentny system punktacji
-- [ ] **1.2.2**: Adaptacyjne wagi kryteriów
+### Do zrobienia (ETAP 1 - PODSTAWOWA FUNKCJONALNOŚĆ PRZEGLĄDANIA)
+- [ ] **1.1**: Stworzenie komponentu BrowseSkisComponent
+- [ ] **1.2**: Implementacja podstawowego sortowania
+- [ ] **1.3**: Dodanie nawigacji między trybami
 
-### Do zrobienia (ETAP 2 - DOŚWIADCZENIE UŻYTKOWNIKA)
-- [ ] **2.1.1**: System sugestii dla lepszego dopasowania
-- [ ] **2.1.2**: Wyjaśnienia dlaczego narta nie pasuje idealnie
-- [ ] **2.2.1**: Lepsze sortowanie wyników
-- [ ] **2.2.2**: Grupowanie podobnych nart
+### Do zrobienia (ETAP 2 - ZAAWANSOWANE FILTROWANIE I SORTOWANIE)
+- [ ] **2.1**: Implementacja filtrów
+- [ ] **2.2**: Wyszukiwanie tekstowe
+- [ ] **2.3**: Paginacja i wydajność
 
-### Do zrobienia (ETAP 3 - ZAAWANSOWANE FUNKCJE)
-- [ ] **3.1.1**: Rekomendacje na podstawie historii
-- [ ] **3.1.2**: Porównywanie nart
-- [ ] **3.2.1**: Cache'owanie wyników
-- [ ] **3.2.2**: Lazy loading wyników
+### Do zrobienia (ETAP 3 - FUNKCJONALNOŚĆ EDYTOWANIA)
+- [ ] **3.1**: Tryb edycji inline
+- [ ] **3.2**: Walidacja i zapisywanie
+- [ ] **3.3**: Dodawanie nowych nart
 
-### PLANOWANIE COMMITÓW - Status
-- [ ] **Commit 1**: Czyszczenie projektu - usunięcie niepotrzebnych plików Python
-- [ ] **Commit 2**: Dodanie nowego komponentu DetailedCompatibility  
-- [ ] **Commit 3**: Czyszczenie node_modules (jeśli potrzebne)
+### Do zrobienia (ETAP 4 - ULEPSZENIA I OPTYMALIZACJE)
+- [ ] **4.1**: Historia zmian i backup
+- [ ] **4.2**: Ulepszenia UX/UI
+- [ ] **4.3**: Integracja z systemem rezerwacji
 
 ## Current Status / Progress Tracking
 
-**PLANNER MODE - Analiza systemu dobierania nart**:
+**PLANNER MODE - Analiza wymagań funkcji "przeglądaj"**:
+
+**Wykonana analiza**:
+- ✅ **Przeanalizowano wymagania użytkownika** - przeglądanie, edytowanie i sortowanie nart
+- ✅ **Przeanalizowano obecną strukturę aplikacji** - baza danych CSV, interfejs AnimaComponent.tsx, serwisy
+- ✅ **Zaprojektowano interfejs przeglądania** - layout, nawigacja, filtry, tabela z paginacją
+- ✅ **Zaplanowano funkcjonalność edycji** - tryby edycji, walidacja, zapisywanie, backup
+- ✅ **Zaplanowano opcje sortowania** - podstawowe i zaawansowane, wielokryteriowe
+- ✅ **Stworzono szczegółowy plan implementacji** - 4 etapy z konkretnymi zadaniami i czasami
+
+**Kluczowe odkrycia**:
+
+1. **Aplikacja ma solidne fundamenty** - istniejąca struktura SkiData, CSVParser, serwisy
+2. **Baza danych jest gotowa** - 82 narty w formacie CSV z wszystkimi potrzebnymi polami
+3. **Interfejs jest rozbudowany** - AnimaComponent.tsx ma 1138 linii, trzeba dodać nową funkcjonalność bez psucia istniejącej
+4. **System walidacji istnieje** - można wykorzystać logikę z SkiMatchingServiceV2
+
+**Zidentyfikowane wyzwania**:
+- **Integracja z istniejącym kodem** - dodanie nowej funkcjonalności bez psucia istniejącej
+- **Zarządzanie stanem** - nowy stan dla trybu przeglądania i edycji
+- **Bezpieczeństwo danych** - backup, walidacja, historia zmian
+- **Spójność UX/UI** - nowy interfejs musi pasować do istniejącego stylu
+
+**Rekomendowane podejście**:
+- **Nowy komponent**: BrowseSkisComponent.tsx - oddzielny od AnimaComponent.tsx
+- **Implementacja etapowa**: ETAP 1 (przeglądanie) → ETAP 2 (filtry) → ETAP 3 (edycja) → ETAP 4 (ulepszenia)
+- **Bezpieczeństwo**: Read-only domyślnie, potwierdzenie zmian, backup automatyczny
+
+**Gotowość do implementacji**: ✅ **TAK** - wszystkie wymagania są jasne, plan jest szczegółowy, architektura przemyślana.
+
+**Obecny stan**: ✅ **PLANOWANIE UKOŃCZONE** - Funkcja "przeglądaj" została szczegółowo przeanalizowana i zaplanowana.
+
+**Następne kroki**: Przejście do trybu Executor i rozpoczęcie implementacji ETAPU 1 - podstawowej funkcjonalności przeglądania.
 
 **Wykonana analiza**:
 - ✅ **Przeanalizowano algorytm dobierania nart** - 5 kategorii, system oceny, tolerancje

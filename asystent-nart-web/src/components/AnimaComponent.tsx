@@ -72,12 +72,55 @@ const AnimaComponent: React.FC = () => {
     na_sile: false
   });
 
+  // NOWY STAN: Rozwijanie szczegółów w rzędach (maksymalnie 3 karty na rząd)
+  const [expandedRows, setExpandedRows] = useState<Record<string, number[]>>({
+    idealne: [],
+    alternatywy: [],
+    poziom_za_nisko: [],
+    inna_plec: [],
+    na_sile: []
+  });
+
   // Funkcja do przełączania rozwinięcia kategorii
   const toggleCategory = (category: 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile') => {
     setExpandedCategories(prev => ({
       ...prev,
       [category]: !prev[category]
     }));
+  };
+
+  // Funkcja do sprawdzania czy karta jest rozwinięta w rzędzie
+  const isCardExpandedInRow = (category: string, cardIndex: number): boolean => {
+    return expandedRows[category]?.includes(cardIndex) || false;
+  };
+
+  // Funkcja do przełączania konkretnej karty w rzędzie (rozwija wszystkie karty w rzędzie, max 3)
+  const toggleCardInRow = (category: string) => {
+    setExpandedRows(prev => {
+      const currentExpanded = prev[category] || [];
+      
+      if (currentExpanded.length > 0) {
+        // Jeśli są już rozwinięte karty - zwiń wszystkie
+        return {
+          ...prev,
+          [category]: []
+        };
+      } else {
+        // Jeśli nie ma rozwiniętych kart - rozwiń maksymalnie 3 karty w tym rzędzie
+        const maxCards = 3;
+        const cardsToExpand = [];
+        
+        // Rozwiń pierwsze 3 karty w rzędzie (lub wszystkie jeśli jest mniej niż 3)
+        for (let i = 0; i < maxCards; i++) {
+          cardsToExpand.push(i);
+        }
+        
+        return {
+          ...prev,
+          [category]: cardsToExpand
+        };
+      }
+    });
   };
 
   // Funkcja do parsowania daty z formularza
@@ -905,6 +948,8 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              isRowExpanded={isCardExpandedInRow('idealne', idx)}
+                              onRowToggle={() => toggleCardInRow('idealne')}
                             />
                           </div>
                         ))}
@@ -938,6 +983,8 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              isRowExpanded={isCardExpandedInRow('alternatywy', idx)}
+                              onRowToggle={() => toggleCardInRow('alternatywy')}
                             />
                           </div>
                         ))}
@@ -979,6 +1026,8 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              isRowExpanded={isCardExpandedInRow('inna_plec', idx)}
+                              onRowToggle={() => toggleCardInRow('inna_plec')}
                             />
                           </div>
                         ))}
@@ -1020,6 +1069,8 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              isRowExpanded={isCardExpandedInRow('poziom_za_nisko', idx)}
+                              onRowToggle={() => toggleCardInRow('poziom_za_nisko')}
                             />
                           </div>
                         ))}
@@ -1061,6 +1112,8 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              isRowExpanded={isCardExpandedInRow('na_sile', idx)}
+                              onRowToggle={() => toggleCardInRow('na_sile')}
                             />
                           </div>
                         ))}
