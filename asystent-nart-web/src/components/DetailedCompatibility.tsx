@@ -38,112 +38,87 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   const availabilitySquares = generateAvailabilitySquares();
   
   /**
-   * Oblicza procent dopasowania dla konkretnego kryterium - zaawansowany system z uwzględnieniem kategorii
+   * Oblicza procent dopasowania dla konkretnego kryterium
+   * WAŻNE: Nie stosujemy tutaj mnożnika kategorii - to jest obsługiwane w skiMatchingServiceV2.ts
+   * Każdy parametr pokazuje swoje rzeczywiste dopasowanie niezależnie od kategorii
    */
   const getCriteriaScore = (criterion: string, status: string): number => {
-    // Oblicz bazowy procent
-    let baseScore = 0;
+    // Oblicz rzeczywisty procent dopasowania bez mnożników kategorii
+    let score = 0;
     
     if (status.includes('✅ zielony')) {
-      // Dla zielonych - zawsze wysoki procent, ale różnicowany w zależności od pozycji w zakresie
+      // Dla zielonych - 100% tylko dla idealnego dopasowania, 90-99% dla pozostałych
       switch (criterion) {
         case 'wzrost':
-          baseScore = calculateRangeScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX);
-          // Zapewnij minimum 80% dla zielonych statusów
-          baseScore = Math.max(80, baseScore);
+          score = calculateRangeScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX);
           break;
         case 'waga':
-          baseScore = calculateRangeScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX);
-          // Zapewnij minimum 80% dla zielonych statusów
-          baseScore = Math.max(80, baseScore);
+          score = calculateRangeScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX);
           break;
         case 'poziom':
-          // Dla zielonych statusów zawsze 100%
-          baseScore = 100;
+          // Poziom jest dyskretny - zawsze 100% dla zielonych
+          score = 100;
           break;
         case 'plec':
-          // Sprawdź czy poziom narty ma format M/D lub U (uniwersalny)
-          if (match.ski.POZIOM.includes('/') || match.ski.POZIOM.includes('U')) {
-            baseScore = 100; // Poziom uniwersalny lub M/D pasuje do obu płci
-          } else {
-            baseScore = userCriteria.plec === match.ski.PLEC ? 100 : 0;
-          }
+          // Płeć jest dyskretna - zawsze 100% dla zielonych
+          score = 100;
+          break;
+        case 'przeznaczenie':
+          // Przeznaczenie jest dyskretne - zawsze 100% dla zielonych
+          score = 100;
           break;
         default:
-          baseScore = 100;
+          score = 100;
       }
     } else if (status.includes('🟡 żółty')) {
       // Dla żółtych oblicz procent na podstawie rzeczywistej odległości od zakresu
       switch (criterion) {
         case 'wzrost':
-          baseScore = calculateDistanceScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX);
+          score = calculateDistanceScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX);
           break;
         case 'waga':
-          baseScore = calculateDistanceScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX);
+          score = calculateDistanceScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX);
           break;
         case 'poziom':
-          baseScore = 75; // Poziom niżej
+          score = 70; // Poziom niżej (żółty)
           break;
         case 'plec':
           // Sprawdź czy poziom narty ma format M/D lub U (uniwersalny)
           if (match.ski.POZIOM.includes('/') || match.ski.POZIOM.includes('U')) {
-            baseScore = 100; // Poziom uniwersalny lub M/D pasuje do obu płci
+            score = 100; // Poziom uniwersalny lub M/D pasuje do obu płci
           } else {
-            baseScore = 25; // Inna płeć ale akceptowalna
+            score = 50; // Inna płeć ale akceptowalna (żółta)
           }
           break;
         default:
-          baseScore = 75;
+          score = 70;
       }
     } else if (status.includes('🔴 czerwony')) {
       // Dla czerwonych niskie procenty
       switch (criterion) {
         case 'wzrost':
-          baseScore = calculateToleranceScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX, 10);
+          score = calculateToleranceScore(userCriteria.wzrost, match.ski.WZROST_MIN, match.ski.WZROST_MAX, 10);
           break;
         case 'waga':
-          baseScore = calculateToleranceScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX, 10);
+          score = calculateToleranceScore(userCriteria.waga, match.ski.WAGA_MIN, match.ski.WAGA_MAX, 10);
           break;
         case 'poziom':
-          baseScore = 25; // 2 poziomy niżej
+          score = 40; // 2 poziomy niżej (czerwony)
           break;
         case 'plec':
           // Sprawdź czy poziom narty ma format M/D lub U (uniwersalny)
           if (match.ski.POZIOM.includes('/') || match.ski.POZIOM.includes('U')) {
-            baseScore = 100; // Poziom uniwersalny lub M/D pasuje do obu płci
+            score = 100; // Poziom uniwersalny lub M/D pasuje do obu płci
           } else {
-            baseScore = 0; // Niezgodna płeć
+            score = 20; // Niezgodna płeć (czerwony)
           }
           break;
         default:
-          baseScore = 25;
+          score = 30;
       }
     }
     
-    // Zastosuj mnożnik kategorii tylko do kryteriów, które nie są zielone
-    // Dla zielonych kryteriów zawsze pełne procenty
-    const categoryMultiplier = status.includes('✅ zielony') ? 1.0 : getCategoryMultiplier(match.kategoria);
-    return Math.round(baseScore * categoryMultiplier);
-  };
-
-  /**
-   * Zwraca mnożnik procentów na podstawie kategorii narty
-   */
-  const getCategoryMultiplier = (category: string): number => {
-    switch (category) {
-      case 'idealne':
-        return 1.0; // 100% - pełne procenty
-      case 'alternatywy':
-        return 0.85; // 85% - nieco niższe procenty
-      case 'poziom_za_nisko':
-        return 0.7; // 70% - niższe procenty
-      case 'inna_plec':
-        return 0.6; // 60% - jeszcze niższe procenty
-      case 'na_sile':
-        return 0.5; // 50% - najniższe procenty
-      default:
-        return 1.0;
-    }
+    return Math.round(score);
   };
 
 
@@ -151,25 +126,32 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
 
   /**
    * Oblicza procent na podstawie funkcji gaussowskiej - im bliżej środka zakresu, tym lepszy wynik
-   * Zgodnie z dokumentacją: używa funkcji gaussowskich dla wagi i wzrostu
+   * NOWA LOGIKA: 100% tylko dla idealnego środka, 90-99% dla pozostałych zielonych
    */
   const calculateRangeScore = (userValue: number, min: number, max: number): number => {
     const center = (min + max) / 2;
     const range = max - min;
-    const sigma = range / 6; // 99.7% wartości w zakresie 3*sigma
     
-    // Funkcja gaussowska: e^(-0.5 * ((x - center) / sigma)^2)
+    // Jeśli zakres jest bardzo mały (≤2), zawsze 100%
+    if (range <= 2) {
+      return 100;
+    }
+    
+    // Oblicz odległość od środka jako procent zakresu
     const distanceFromCenter = Math.abs(userValue - center);
-    const gaussianScore = Math.exp(-0.5 * Math.pow(distanceFromCenter / sigma, 2));
+    const distancePercent = (distanceFromCenter / (range / 2)) * 100; // 0-100%
     
-    // Konwertuj na procent (0-100%)
-    return Math.round(gaussianScore * 100);
+    // Mapuj odległość na procenty: 0% odległości = 100%, 100% odległości = 90%
+    const score = 100 - (distancePercent * 0.1); // 100% - 10% = 90% minimum
+    
+    return Math.round(Math.max(90, Math.min(100, score)));
   };
 
   /**
-   * Oblicza procent na podstawie tolerancji (im dalej od zakresu, tym niższy procent)
+   * Oblicza procent na podstawie tolerancji dla czerwonych statusów (6-10 cm/kg poza zakresem)
+   * Czerwone statusy powinny pokazywać niskie procenty: 20-50%
    */
-  const calculateToleranceScore = (userValue: number, min: number, max: number, tolerance: number): number => {
+  const calculateToleranceScore = (userValue: number, min: number, max: number, _tolerance: number): number => {
     // Oblicz odległość od zakresu (nie od środka!)
     let distanceFromRange = 0;
     
@@ -182,9 +164,11 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
       return calculateRangeScore(userValue, min, max);
     }
     
+    // Czerwony status = 6-10 cm/kg poza zakresem
+    // Dla 6 cm: 50%, dla 10 cm: 20%
     // Im dalej od zakresu, tym niższy procent
-    const score = Math.max(0, 100 - (distanceFromRange / tolerance) * 50);
-    return Math.round(Math.max(25, score));
+    const score = Math.max(20, 50 - ((distanceFromRange - 5) / 5) * 30);
+    return Math.round(score);
   };
 
   /**
@@ -321,24 +305,40 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   };
 
   /**
-   * Oblicza średnią kompatybilność z 4 parametrów (bez stylu jazdy)
-   * Zgodnie z dokumentacją: POZIOM 40%, WAGA 30%, WZROST 20%, PŁEĆ 10%
+   * Zwraca ogólną kompatybilność z match.compatibility
+   * NOWY SYSTEM: match.compatibility zawiera wartość zmapowaną na przedział kategorii:
+   * - Idealne: 90-100%
+   * - Alternatywy/Inna płeć: 70-89%
+   * - Poziom za nisko: 50-69%
+   * - Na siłę: 30-49%
+   * 
+   * Wartość jest obliczana w skiMatchingServiceV2.ts poprzez:
+   * 1. Obliczenie bazowego wyniku 0-100 (wagi kryteriów + precyzja)
+   * 2. Mapowanie na przedział kategorii (mapToCategory)
    */
-  const calculateAverageCompatibility = (): number => {
-    const poziomScore = getCriteriaScore('poziom', match.dopasowanie.poziom);
-    const wagaScore = getCriteriaScore('waga', match.dopasowanie.waga);
-    const wzrostScore = getCriteriaScore('wzrost', match.dopasowanie.wzrost);
-    const plecScore = getCriteriaScore('plec', match.dopasowanie.plec);
-    
-    // Wagi zgodnie z dokumentacją (bez stylu jazdy - wyświetlany jako badge)
-    const weightedAverage = (
-      poziomScore * 0.40 +      // POZIOM - 40% (najważniejsze - bezpieczeństwo)
-      wagaScore * 0.30 +       // WAGA - 30% (bardzo ważne - kontrola nart)
-      wzrostScore * 0.20 +     // WZROST - 20% (ważne - stabilność)
-      plecScore * 0.10         // PŁEĆ - 10% (mniej ważne - ergonomia)
-    );
-    
-    return Math.round(weightedAverage);
+  const getOverallCompatibility = (): number => {
+    // Użyj match.compatibility obliczonego i zmapowanego w skiMatchingServiceV2.ts
+    return match.compatibility || 0;
+  };
+
+  /**
+   * Zwraca etykietę kategorii w polskiej wersji
+   */
+  const getCategoryLabel = (kategoria?: string): string => {
+    switch (kategoria) {
+      case 'idealne':
+        return 'Idealne';
+      case 'alternatywy':
+        return 'Alternatywy';
+      case 'poziom_za_nisko':
+        return 'Poziom za nisko';
+      case 'inna_plec':
+        return 'Inna płeć';
+      case 'na_sile':
+        return 'Na siłę';
+      default:
+        return 'Nieznana';
+    }
   };
 
   const criteria = [
@@ -372,8 +372,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
     },
   ];
 
-  // Oblicz średnią kompatybilność
-  const averageCompatibility = calculateAverageCompatibility();
+  // Pobierz ogólną kompatybilność obliczoną przez serwis
+  const averageCompatibility = getOverallCompatibility();
 
   return (
     <div className="mt-2">
@@ -452,7 +452,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
           
                   <div className="mt-3 pt-2 border-t border-white/10">
                     <div className="flex justify-between items-center text-xs text-white/70">
-                      <span>Kategoria: {averageCompatibility >= 100 ? 'Idealne' : averageCompatibility >= 80 ? 'Bardzo dobre' : averageCompatibility >= 60 ? 'Dobre' : 'Akceptowalne'}</span>
+                      <span>Kategoria: {getCategoryLabel(match.kategoria)}</span>
                       <div className="flex items-center">
                         <span className="mr-2">Dostępność:</span>
                         <div className="flex flex-wrap w-16 gap-x-3 gap-y-2">

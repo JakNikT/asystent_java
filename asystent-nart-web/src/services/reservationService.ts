@@ -217,7 +217,7 @@ export class ReservationService {
     marka: string, 
     model: string, 
     dlugosc: string, 
-    sztukaNumber: number,
+    _sztukaNumber: number,
     startDate: Date, 
     endDate: Date
   ): Promise<{ isAvailable: boolean; reservations: ReservationInfo[] }> {

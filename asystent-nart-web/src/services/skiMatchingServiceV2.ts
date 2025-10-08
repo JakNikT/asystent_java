@@ -147,8 +147,8 @@ export class SkiMatchingServiceV2 {
       return null;
     }
     
-    // Oblicz kompatybilność
-    const compatibility = this.calculateCompatibility(criteriaResults);
+    // Oblicz kompatybilność z precyzyjnymi wartościami
+    const compatibility = this.calculateCompatibility(criteriaResults, ski, criteria);
     
     // Określ kategorię na podstawie wyników
     const kategoria = this.determineCategory(criteriaResults.zielonePunkty);
@@ -212,7 +212,21 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
+   * Stosuje mapowanie do przedziału kategorii (modyfikuje obiekt)
+   * Mapuje bazowy wynik 0-100 na przedział odpowiedni dla kategorii
+   */
+  private static applyCategoryMapping(match: SkiMatch): void {
+    if (match.kategoria) {
+      // match.compatibility zawiera bazowy wynik 0-100
+      // Mapujemy go na przedział kategorii
+      const mappedScore = this.mapToCategory(match.compatibility, match.kategoria);
+      match.compatibility = Math.max(0, Math.min(100, mappedScore));
+    }
+  }
+
+  /**
    * Kategoryzuje wyniki na podstawie kryteriów
+   * NOWY SYSTEM: Mapuje bazowy wynik na przedziały kategorii
    */
   private static categorizeResults(results: SkiMatch[]): SearchResults {
     const idealne: SkiMatch[] = [];
@@ -224,21 +238,26 @@ export class SkiMatchingServiceV2 {
     for (const match of results) {
       const { dopasowanie } = match;
       
-      // Sprawdź kategorię na podstawie kryteriów
+      // Określ kategorię na podstawie kryteriów
       if (this.isIdealne(dopasowanie)) {
         match.kategoria = 'idealne';
+        this.applyCategoryMapping(match); // Mapuj na 90-100%
         idealne.push(match);
       } else if (this.isAlternatywy(dopasowanie)) {
         match.kategoria = 'alternatywy';
+        this.applyCategoryMapping(match); // Mapuj na 70-89%
         alternatywy.push(match);
       } else if (this.isPoziomZaNisko(dopasowanie)) {
         match.kategoria = 'poziom_za_nisko';
+        this.applyCategoryMapping(match); // Mapuj na 50-69%
         poziomZaNisko.push(match);
       } else if (this.isInnaPlec(dopasowanie)) {
         match.kategoria = 'inna_plec';
+        this.applyCategoryMapping(match); // Mapuj na 70-89%
         innaPlec.push(match);
       } else if (this.isNaSile(dopasowanie)) {
         match.kategoria = 'na_sile';
+        this.applyCategoryMapping(match); // Mapuj na 30-49%
         naSile.push(match);
       }
     }
@@ -256,7 +275,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Sprawdza czy narta jest idealna (wszystkie kryteria na zielono)
    */
-  private static isIdealne(dopasowanie: any): boolean {
+  private static isIdealne(dopasowanie: Record<string, string>): boolean {
     return Object.values(dopasowanie).every(status => 
       typeof status === 'string' && status.includes('✅ zielony')
     );
@@ -266,15 +285,15 @@ export class SkiMatchingServiceV2 {
    * Sprawdza czy narta to alternatywa (poziom OK, płeć OK, tylko JEDNO kryterium nie idealne)
    * ZMIANA: Akceptuje też czerwone przeznaczenie - ważniejsze jest dopasowanie fizyczne
    */
-  private static isAlternatywy(dopasowanie: any): boolean {
+  private static isAlternatywy(dopasowanie: Record<string, string>): boolean {
     const poziomOk = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('✅ zielony');
     const plecOk = typeof dopasowanie.plec === 'string' && dopasowanie.plec.includes('✅ zielony');
     
     if (!poziomOk || !plecOk) return false;
     
     const nieZieloneKryteria = Object.entries(dopasowanie)
-      .filter(([_, status]) => typeof status === 'string' && !status.includes('✅ zielony'))
-      .map(([kryterium, _]) => kryterium);
+      .filter(([, status]) => typeof status === 'string' && !status.includes('✅ zielony'))
+      .map(([kryterium]) => kryterium);
     
     // Tylko narty z JEDNYM kryterium nie idealnym
     if (nieZieloneKryteria.length !== 1) return false;
@@ -326,21 +345,21 @@ export class SkiMatchingServiceV2 {
    * ZMIANA: Nazwa "poziom za nisko" → "niższy poziom narty"
    * ZMIANA: Akceptuje też czerwone przeznaczenie - to może być dobra opcja dla bezpieczeństwa
    */
-  private static isPoziomZaNisko(dopasowanie: any): boolean {
+  private static isPoziomZaNisko(dopasowanie: Record<string, string>): boolean {
     const poziomZaNisko = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('niższy poziom narty');
     if (!poziomZaNisko) return false;
     
     // Sprawdź czy WSZYSTKIE inne kryteria są na zielono (poza przeznaczeniem)
     return Object.entries(dopasowanie)
-      .filter(([kryterium, _]) => kryterium !== 'poziom' && kryterium !== 'przeznaczenie')
-      .every(([_, status]) => typeof status === 'string' && status.includes('✅ zielony'));
+      .filter(([kryterium]) => kryterium !== 'poziom' && kryterium !== 'przeznaczenie')
+      .every(([, status]) => typeof status === 'string' && status.includes('✅ zielony'));
   }
 
   /**
    * Sprawdza czy narta ma niepasującą płeć (wszystkie inne kryteria na zielono)
    * ZMIANA: Akceptuje też czerwone przeznaczenie - różnica w płci jest mniejszym problemem
    */
-  private static isInnaPlec(dopasowanie: any): boolean {
+  private static isInnaPlec(dopasowanie: Record<string, string>): boolean {
     const plecStatus = dopasowanie.plec;
     const plecZaNisko = typeof plecStatus === 'string' && plecStatus.includes('🟡 żółty') && 
       (plecStatus.includes('Narta męska') || plecStatus.includes('Narta kobieca'));
@@ -349,15 +368,15 @@ export class SkiMatchingServiceV2 {
     
     // Sprawdź czy WSZYSTKIE inne kryteria są na zielono (poza przeznaczeniem)
     return Object.entries(dopasowanie)
-      .filter(([kryterium, _]) => kryterium !== 'plec' && kryterium !== 'przeznaczenie')
-      .every(([_, status]) => typeof status === 'string' && status.includes('✅ zielony'));
+      .filter(([kryterium]) => kryterium !== 'plec' && kryterium !== 'przeznaczenie')
+      .every(([, status]) => typeof status === 'string' && status.includes('✅ zielony'));
   }
 
   /**
    * Sprawdza czy narta to "na siłę" (z większymi tolerancjami)
    * ZMIANA: Zawsze akceptuj przeznaczenie - to najmniej ważny parametr
    */
-  private static isNaSile(dopasowanie: any): boolean {
+  private static isNaSile(dopasowanie: Record<string, string>): boolean {
     // PŁEĆ MUSI PASOWAĆ (być zielona) w kategorii NA SIŁĘ
     if (typeof dopasowanie.plec !== 'string' || !dopasowanie.plec.includes('✅ zielony')) return false;
     
@@ -614,66 +633,170 @@ export class SkiMatchingServiceV2 {
   }
 
   /**
-   * INTELIGENTNY SYSTEM PUNKTACJI - bardziej intuicyjne procenty dopasowania
-   * Zastępuje prosty system zielonych punktów bardziej zaawansowanym algorytmem
+   * NOWY SYSTEM PROCENTOWY - mapuje bazowy wynik (0-100) na przedziały kategorii
+   * Przedziały:
+   * - Idealne: 90-100% (baseScore już jest w tym przedziale - bez transformacji!)
+   * - Alternatywy/Inna płeć: 70-89%
+   * - Poziom za nisko: 50-69%
+   * - Na siłę: 30-49%
    */
-  private static calculateCompatibility(criteriaResults: any): number {
-    const { dopasowanie, zielonePunkty } = criteriaResults;
+  private static mapToCategory(baseScore: number, kategoria: string): number {
+    // baseScore to wynik 0-100 na podstawie kryteriów
     
-    // Podstawowa punktacja na podstawie zielonych punktów (0-5)
-    const baseScore = (zielonePunkty / 5) * 100;
-    
-    // Bonusy za szczególnie dobre dopasowania
-    let bonus = 0;
-    
-    // Bonus za idealne dopasowanie wagi/wzrostu (w środku zakresu)
-    if (typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('✅ zielony')) {
-      bonus += 5; // Bonus za idealną wagę
+    switch (kategoria) {
+      case 'idealne':
+        // Dla idealnych: bazowy wynik już jest 90-100%, NIE TRANSFORMUJ!
+        // 100 bazowy → 100% (idealnie w środku)
+        // 96 bazowy → 96% (lekko obok środka)
+        // 90 bazowy → 90% (na brzegu zakresu)
+        return Math.round(Math.max(90, Math.min(100, baseScore)));
+        
+      case 'alternatywy':
+      case 'inna_plec':
+        // Mapuj 0-100 → 70-89 (liniowo)
+        return Math.round(70 + (baseScore * 0.19));
+        
+      case 'poziom_za_nisko':
+        // Mapuj 0-100 → 50-69 (liniowo)
+        return Math.round(50 + (baseScore * 0.19));
+        
+      case 'na_sile':
+        // Mapuj 0-100 → 30-49 (liniowo)
+        return Math.round(30 + (baseScore * 0.19));
+        
+      default:
+        return baseScore;
     }
-    if (typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('✅ zielony')) {
-      bonus += 5; // Bonus za idealny wzrost
-    }
-    
-    // Bonus za idealne dopasowanie poziomu
-    if (typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('✅ zielony')) {
-      bonus += 10; // Bonus za idealny poziom
-    }
-    
-    // Bonus za idealne dopasowanie płci
-    if (typeof dopasowanie.plec === 'string' && dopasowanie.plec.includes('✅ zielony')) {
-      bonus += 3; // Bonus za idealną płeć
-    }
-    
-    // Bonus za idealne dopasowanie przeznaczenia
-    if (typeof dopasowanie.przeznaczenie === 'string' && dopasowanie.przeznaczenie.includes('✅ zielony')) {
-      bonus += 2; // Bonus za idealne przeznaczenie
-    }
-    
-    // Kara za problemy z krytycznymi kryteriami
-    let penalty = 0;
-    
-    // Kara za problemy z poziomem (bezpieczeństwo)
-    if (typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('🔴 czerwony')) {
-      penalty += 20; // Duża kara za niebezpieczny poziom
-    } else if (typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('🟡 żółty')) {
-      penalty += 10; // Średnia kara za problemy z poziomem
-    }
-    
-    // Kara za problemy z wagą (kontrola nart)
-    if (typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('🔴 czerwony')) {
-      penalty += 15; // Kara za problemy z wagą
-    }
-    
-    // Kara za problemy ze wzrostem (stabilność)
-    if (typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('🔴 czerwony')) {
-      penalty += 10; // Kara za problemy ze wzrostem
-    }
-    
-    // Oblicz końcowy wynik (0-100)
-    const finalScore = Math.max(0, Math.min(100, baseScore + bonus - penalty));
-    
-    return Math.round(finalScore);
   }
+
+  /**
+   * NOWY UPROSZCZONY SYSTEM PUNKTACJI
+   * Oblicza bazowy wynik 0-100 na podstawie jakości dopasowania kryteriów
+   * Kategoria zostanie zmapowana później w mapToCategory()
+   */
+  private static calculateCompatibility(criteriaResults: { dopasowanie: Record<string, string>; zielonePunkty: number }, ski: SkiData, criteria: SearchCriteria): number {
+    const { dopasowanie } = criteriaResults;
+    
+    // Oblicz wynik dla każdego kryterium z wagami
+    const weights = {
+      poziom: 0.40,      // 40% - najważniejsze
+      waga: 0.25,        // 25%
+      wzrost: 0.20,      // 20%
+      plec: 0.10,        // 10%
+      przeznaczenie: 0.05 // 5%
+    };
+    
+    let totalScore = 0;
+    
+    // Oblicz wynik dla każdego kryterium
+    for (const [criterion, status] of Object.entries(dopasowanie)) {
+      const weight = weights[criterion as keyof typeof weights] || 0;
+      let criterionScore = 0;
+      
+      if (typeof status === 'string') {
+        if (status.includes('✅ zielony')) {
+          // Zielony = pełny wynik + bonus za precyzję
+          criterionScore = 100;
+          
+          // Dodaj bonus za precyzję dla wagi i wzrostu
+          if (criterion === 'waga') {
+            const precision = this.calculateRangePrecisionPercent(criteria.waga, ski.WAGA_MIN, ski.WAGA_MAX);
+            criterionScore = precision;
+          } else if (criterion === 'wzrost') {
+            const precision = this.calculateRangePrecisionPercent(criteria.wzrost, ski.WZROST_MIN, ski.WZROST_MAX);
+            criterionScore = precision;
+          }
+        } else if (status.includes('🟡 żółty')) {
+          // Żółty = częściowy wynik (60-80% w zależności od kryterium)
+          criterionScore = this.getYellowScore(criterion, status);
+        } else if (status.includes('🔴 czerwony')) {
+          // Czerwony = niski wynik (20-40%)
+          criterionScore = this.getRedScore(criterion, status);
+        }
+      }
+      
+      totalScore += criterionScore * weight;
+    }
+    
+    return Math.round(totalScore);
+  }
+  
+  /**
+   * Oblicza precyzję dla zakresów jako procent (90-100%)
+   */
+  private static calculateRangePrecisionPercent(userValue: number, min: number, max: number): number {
+    const center = (min + max) / 2;
+    const range = max - min;
+    
+    // Jeśli zakres jest bardzo mały (≤2), zawsze 100%
+    if (range <= 2) {
+      return 100;
+    }
+    
+    // Oblicz odległość od środka jako procent zakresu
+    const distanceFromCenter = Math.abs(userValue - center);
+    const distancePercent = (distanceFromCenter / (range / 2)) * 100;
+    
+    // Mapuj odległość na procenty: 0% = 100%, 100% = 90%
+    const score = 100 - (distancePercent * 0.1);
+    
+    return Math.round(Math.max(90, Math.min(100, score)));
+  }
+  
+  /**
+   * Zwraca wynik dla żółtych statusów
+   */
+  private static getYellowScore(criterion: string, status: string): number {
+    switch (criterion) {
+      case 'poziom':
+        return 70; // 1 poziom różnicy
+      case 'waga':
+      case 'wzrost': {
+        // Ekstrahuj różnicę i oblicz wynik
+        const match = status.match(/(\d+)[↑↓]/);
+        if (match) {
+          const diff = parseInt(match[1]);
+          // 1-5: 80-60%
+          return Math.max(60, 80 - (diff * 4));
+        }
+        return 70;
+      }
+      case 'plec':
+        return 60; // Inna płeć
+      case 'przeznaczenie':
+        return 50; // Inne przeznaczenie
+      default:
+        return 70;
+    }
+  }
+  
+  /**
+   * Zwraca wynik dla czerwonych statusów
+   */
+  private static getRedScore(criterion: string, status: string): number {
+    switch (criterion) {
+      case 'poziom':
+        return 40; // 2 poziomy różnicy
+      case 'waga':
+      case 'wzrost': {
+        // Ekstrahuj różnicę i oblicz wynik
+        const match = status.match(/(\d+)[↑↓]/);
+        if (match) {
+          const diff = parseInt(match[1]);
+          // 6-10: 40-20%
+          return Math.max(20, 40 - ((diff - 5) * 4));
+        }
+        return 30;
+      }
+      case 'plec':
+        return 20; // Bardzo niezgodna płeć
+      case 'przeznaczenie':
+        return 30; // Bardzo inne przeznaczenie
+      default:
+        return 30;
+    }
+  }
+
 
   /**
    * Oblicza średnią kompatybilność z adaptacyjnymi wagami na podstawie stylu jazdy
@@ -1017,7 +1140,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje sugestie gdy mało wyników
    */
-  private static generateExpandCriteriaSuggestions(skis: SkiData[], criteria: SearchCriteria): string[] {
+  private static generateExpandCriteriaSuggestions(_skis: SkiData[], criteria: SearchCriteria): string[] {
     const suggestions: string[] = [];
     
     // Sprawdź czy można rozszerzyć styl jazdy
@@ -1070,8 +1193,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Proste sprawdzenie dostępności (synchroniczne) - dla sortowania
    */
-  private static getSimpleAvailabilityScore(ski: SkiData): number {
-    const ilosc = parseInt(String(ski.ILOSC) || '2');
+  private static getSimpleAvailabilityScore(_ski: SkiData): number {
     // Na razie zwracamy 1 (dostępne) - później można dodać cache
     return 1;
   }
@@ -1079,7 +1201,7 @@ export class SkiMatchingServiceV2 {
   /**
    * SYSTEM INFORMACJI O DOSTĘPNOŚCI - sprawdza dostępność nart
    */
-  static async checkAvailability(ski: SkiData, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<AvailabilityInfo> {
+  static async checkAvailability(ski: SkiData, reservationCache?: unknown, dateFrom?: Date, dateTo?: Date): Promise<AvailabilityInfo> {
     try {
       const ilosc = parseInt(String(ski.ILOSC) || '2');
       const availability: AvailabilityInfo = {
@@ -1145,7 +1267,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Sprawdza czy konkretna sztuka nart jest zarezerwowana
    */
-  private static async isSkiReserved(ski: SkiData, sztukaNumber: number, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<boolean> {
+  private static async isSkiReserved(ski: SkiData, _sztukaNumber: number, reservationCache?: unknown, dateFrom?: Date, dateTo?: Date): Promise<boolean> {
     try {
       // Jeśli brak cache rezerwacji, sprawdź bezpośrednio
       if (!reservationCache) {
@@ -1175,7 +1297,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Pobiera informacje o rezerwacji dla konkretnej sztuki
    */
-  private static async getReservationInfo(ski: SkiData, sztukaNumber: number, reservationCache?: any, dateFrom?: Date, dateTo?: Date): Promise<string | null> {
+  private static async getReservationInfo(ski: SkiData, _sztukaNumber: number, reservationCache?: unknown, dateFrom?: Date, dateTo?: Date): Promise<string | null> {
     try {
       if (!reservationCache) {
         return null;
@@ -1251,7 +1373,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje wyjaśnienie dla kategorii IDEALNE
    */
-  private static generateIdealneExplanation(dopasowanie: any, criteria: SearchCriteria): string {
+  private static generateIdealneExplanation(_dopasowanie: Record<string, string>, criteria: SearchCriteria): string {
     return `✅ **IDEALNE DOPASOWANIE** - wszystkie kryteria spełnione idealnie:
 • Poziom: ${criteria.poziom} (idealny)
 • Waga: ${criteria.waga}kg (w zakresie)
@@ -1263,7 +1385,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje wyjaśnienie dla kategorii ALTERNATYWY
    */
-  private static generateAlternatywyExplanation(dopasowanie: any, criteria: SearchCriteria): string {
+  private static generateAlternatywyExplanation(dopasowanie: Record<string, string>, criteria: SearchCriteria): string {
     const problemKryterium = this.findProblemCriteria(dopasowanie);
     
     if (!problemKryterium) {
@@ -1294,7 +1416,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje wyjaśnienie dla kategorii POZIOM ZA NISKO
    */
-  private static generatePoziomZaNiskoExplanation(dopasowanie: any, criteria: SearchCriteria): string {
+  private static generatePoziomZaNiskoExplanation(_dopasowanie: Record<string, string>, criteria: SearchCriteria): string {
     return `🟡 **POZIOM ZA NISKO** - narta o jeden poziom za niska, ale wszystkie inne kryteria idealne:
 • Poziom: ${criteria.poziom} (narta o poziom niżej - bezpieczniejsza)
 • Waga: ${criteria.waga}kg (idealna)
@@ -1308,7 +1430,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje wyjaśnienie dla kategorii INNA PŁEĆ
    */
-  private static generateInnaPlecExplanation(dopasowanie: any, criteria: SearchCriteria): string {
+  private static generateInnaPlecExplanation(dopasowanie: Record<string, string>, criteria: SearchCriteria): string {
     const plecStatus = dopasowanie.plec;
     const plecNarty = plecStatus.includes('męska') ? 'męska' : 'kobieca';
     
@@ -1325,7 +1447,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje wyjaśnienie dla kategorii NA SIŁĘ
    */
-  private static generateNaSileExplanation(dopasowanie: any, criteria: SearchCriteria): string {
+  private static generateNaSileExplanation(dopasowanie: Record<string, string>, criteria: SearchCriteria): string {
     const problemy = this.findAllProblemCriteria(dopasowanie);
     
     let explanation = `🔴 **NA SIŁĘ** - większe tolerancje, ale nadal użyteczne:\n`;
@@ -1354,7 +1476,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Znajduje problemowe kryterium (dla alternatyw)
    */
-  private static findProblemCriteria(dopasowanie: any): { kryterium: string; status: string } | null {
+  private static findProblemCriteria(dopasowanie: Record<string, string>): { kryterium: string; status: string } | null {
     for (const [kryterium, status] of Object.entries(dopasowanie)) {
       if (typeof status === 'string' && !status.includes('✅ zielony')) {
         return { kryterium, status };
@@ -1366,7 +1488,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Znajduje wszystkie problemowe kryteria (dla NA SIŁĘ)
    */
-  private static findAllProblemCriteria(dopasowanie: any): { kryterium: string; status: string }[] {
+  private static findAllProblemCriteria(dopasowanie: Record<string, string>): { kryterium: string; status: string }[] {
     const problemy: { kryterium: string; status: string }[] = [];
     
     for (const [kryterium, status] of Object.entries(dopasowanie)) {
@@ -1388,9 +1510,10 @@ export class SkiMatchingServiceV2 {
       case 'idealne':
         return '✅ Idealne dopasowanie';
       
-      case 'alternatywy':
+      case 'alternatywy': {
         const problem = this.findProblemCriteria(dopasowanie);
         return problem ? `⚠️ Alternatywa (${problem.kryterium})` : '⚠️ Alternatywa';
+      }
       
       case 'poziom_za_nisko':
         return '🟡 Poziom za niski';
@@ -1409,7 +1532,7 @@ export class SkiMatchingServiceV2 {
   /**
    * LEPsze SORTOWANIE WYNIKÓW - najpierw dostępne, potem według dopasowania
    */
-  static sortResultsByAvailabilityAndCompatibility(matches: SkiMatch[], reservationCache?: any): SkiMatch[] {
+  static sortResultsByAvailabilityAndCompatibility(matches: SkiMatch[], _reservationCache?: unknown): SkiMatch[] {
     return matches.sort((a, b) => {
       // 1. Najpierw sortuj według dostępności (bez async - użyj prostego sprawdzenia)
       const availabilityScoreA = this.getSimpleAvailabilityScore(a.ski);
@@ -1427,28 +1550,11 @@ export class SkiMatchingServiceV2 {
     });
   }
 
-  /**
-   * Oblicza score dostępności (wyższy = lepszy)
-   */
-  private static getAvailabilityScore(availability: AvailabilityInfo): number {
-    switch (availability.availabilityStatus) {
-      case 'all_available':
-        return 100; // Najlepsze - wszystkie dostępne
-      case 'partially_available':
-        return 50; // Średnie - część dostępna
-      case 'all_reserved':
-        return 0; // Najgorsze - wszystkie zarezerwowane
-      case 'unknown':
-        return 25; // Nieznane - zakładamy że może być dostępne
-      default:
-        return 0;
-    }
-  }
 
   /**
    * Sortuje wszystkie kategorie wyników według dostępności i dopasowania
    */
-  static sortAllResultsByAvailabilityAndCompatibility(results: SearchResults, reservationCache?: any): SearchResults {
+  static sortAllResultsByAvailabilityAndCompatibility(results: SearchResults, reservationCache?: unknown): SearchResults {
     return {
       idealne: this.sortResultsByAvailabilityAndCompatibility(results.idealne, reservationCache),
       alternatywy: this.sortResultsByAvailabilityAndCompatibility(results.alternatywy, reservationCache),
@@ -1462,19 +1568,18 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje podsumowanie dostępności dla kategorii
    */
-  static generateCategoryAvailabilitySummary(matches: SkiMatch[], reservationCache?: any): string {
+  static generateCategoryAvailabilitySummary(matches: SkiMatch[], _reservationCache?: unknown): string {
     if (matches.length === 0) {
       return 'Brak nart w tej kategorii';
     }
 
     let allAvailable = 0;
-    let partiallyAvailable = 0;
-    let allReserved = 0;
-    let unknown = 0;
+    const partiallyAvailable = 0;
+    const allReserved = 0;
+    const unknown = 0;
 
-    for (const match of matches) {
+    for (const _match of matches) {
       // Użyj prostego sprawdzenia zamiast async
-      const ilosc = parseInt(String(match.ski.ILOSC) || '2');
       // Na razie zakładamy że wszystkie są dostępne
       allAvailable++;
     }
@@ -1507,7 +1612,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje szczegóły dopasowania poziomu
    */
-  private static generatePoziomDetails(poziomStatus: string, userPoziom: number, ski: SkiData): CriteriaDetails {
+  private static generatePoziomDetails(poziomStatus: string, userPoziom: number, _ski: SkiData): CriteriaDetails {
     const isGreen = poziomStatus.includes('✅ zielony');
     const isYellow = poziomStatus.includes('🟡 żółty');
     const isRed = poziomStatus.includes('🔴 czerwony');
@@ -1628,7 +1733,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje szczegóły dopasowania płci
    */
-  private static generatePlecDetails(plecStatus: string, userPlec: string, ski: SkiData): CriteriaDetails {
+  private static generatePlecDetails(plecStatus: string, userPlec: string, _ski: SkiData): CriteriaDetails {
     const isGreen = plecStatus.includes('✅ zielony');
     const isYellow = plecStatus.includes('🟡 żółty');
     
@@ -1662,7 +1767,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje szczegóły dopasowania przeznaczenia
    */
-  private static generatePrzeznaczenieDetails(przeznaczenieStatus: string, userStyles: string[], ski: SkiData): CriteriaDetails {
+  private static generatePrzeznaczenieDetails(przeznaczenieStatus: string, userStyles: string[], _ski: SkiData): CriteriaDetails {
     const isGreen = przeznaczenieStatus.includes('✅ zielony');
     const isYellow = przeznaczenieStatus.includes('🟡 żółty');
     
@@ -1696,7 +1801,7 @@ export class SkiMatchingServiceV2 {
   /**
    * Generuje ogólne szczegóły dopasowania
    */
-  private static generateOgolneDetails(match: SkiMatch, criteria: SearchCriteria): CriteriaDetails {
+  private static generateOgolneDetails(match: SkiMatch, _criteria: SearchCriteria): CriteriaDetails {
     const compatibility = match.sredniaKompatybilnosc || 0;
     
     let status: 'perfect' | 'good' | 'warning' | 'error';
