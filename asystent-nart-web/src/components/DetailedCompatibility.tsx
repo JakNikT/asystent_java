@@ -410,20 +410,31 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ ma
   const formatCriterionDisplay = (criterion: any): string => {
     const icon = getScoreIcon(criterion.status);
     
-    // Dla wagi i wzrostu - pokaż konkretne odchylenie
-    if (criterion.key === 'waga' || criterion.key === 'wzrost') {
+    // Dla wagi, wzrostu i poziomu - pokaż konkretne odchylenie
+    if (criterion.key === 'waga' || criterion.key === 'wzrost' || criterion.key === 'poziom') {
       if (criterion.status.includes('✅ zielony')) {
-        return `${icon} ${criterion.key === 'waga' ? 'W' : 'Wz'}:${criterion.userValue}(${criterion.skiValue})→OK`;
+        const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
+        return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→OK`;
       } else {
-        // Wyciągnij odchylenie ze statusu (działa dla żółtych i czerwonych)
-        const match = criterion.status.match(/o (\d+)/);
+        // Wyciągnij odchylenie ze statusu (nowy format z strzałkami)
+        const match = criterion.status.match(/(\d+)([↑↓])/);
         if (match) {
           const odchylenie = match[1];
-          const kierunek = criterion.status.includes('za duża') || criterion.status.includes('za duży') ? '↑' : '↓';
-          return `${icon} ${criterion.key === 'waga' ? 'W' : 'Wz'}:${criterion.userValue}(${criterion.skiValue})→${odchylenie}${kierunek}`;
+          const kierunek = match[2];
+          const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
+          return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→${odchylenie}${kierunek}`;
+        }
+        // Fallback dla starych komunikatów bez strzałek
+        const oldMatch = criterion.status.match(/o (\d+)/);
+        if (oldMatch) {
+          const odchylenie = oldMatch[1];
+          const kierunek = criterion.status.includes('za duża') || criterion.status.includes('za duży') || criterion.status.includes('za wysoki') ? '↑' : '↓';
+          const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
+          return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→${odchylenie}${kierunek}`;
         }
         // Jeśli nie ma odchylenia w statusie, pokaż "NIE"
-        return `${icon} ${criterion.key === 'waga' ? 'W' : 'Wz'}:${criterion.userValue}(${criterion.skiValue})→NIE`;
+        const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
+        return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→NIE`;
       }
     }
     

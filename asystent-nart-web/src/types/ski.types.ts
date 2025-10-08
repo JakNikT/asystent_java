@@ -21,7 +21,7 @@ export interface SearchCriteria {
   wzrost: number;
   waga: number;
   poziom: number;
-  plec: 'M' | 'K';
+  plec: 'M' | 'K' | 'W'; // M = męski, K = kobiecy, W = wszyscy
   styl_jazdy: string;
   dateFrom?: Date; // Data rozpoczęcia rezerwacji
   dateTo?: Date;   // Data zakończenia rezerwacji
