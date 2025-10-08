@@ -73,3 +73,54 @@ button:focus-visible {
     background-color: #f9f9f9;
   }
 }
+
+/* Custom animations for expandable ski card */
+@layer components {
+  .expandable-card-container {
+    @apply transition-all duration-300 ease-out;
+    will-change: height, opacity, transform;
+  }
+  
+  .expandable-card-container.expanded {
+    @apply max-h-96 opacity-100 transform translate-y-0;
+  }
+  
+  .expandable-card-container.collapsed {
+    @apply max-h-0 opacity-0 transform -translate-y-2;
+  }
+  
+  .criterion-labels {
+    @apply transition-transform duration-300 ease-out;
+    will-change: transform;
+  }
+  
+  .criterion-labels.expanded {
+    @apply transform translate-y-2;
+  }
+  
+  .criterion-detail-item {
+    @apply transition-all duration-300 ease-out;
+    will-change: opacity, transform;
+  }
+  
+  .criterion-detail-item.expanded {
+    @apply opacity-100 transform translate-x-0;
+  }
+  
+  .criterion-detail-item.collapsed {
+    @apply opacity-0 transform -translate-x-2;
+  }
+  
+  .progress-bar {
+    @apply transition-all duration-500 ease-out;
+    will-change: width;
+  }
+  
+  .progress-bar.animate-in {
+    @apply w-full;
+  }
+  
+  .progress-bar.animate-out {
+    @apply w-0;
+  }
+}
