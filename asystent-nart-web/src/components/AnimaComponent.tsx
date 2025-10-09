@@ -985,7 +985,7 @@ const AnimaComponent: React.FC = () => {
                         ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.alternatywy ? searchResults.alternatywy : searchResults.alternatywy.slice(0, 6)).map((match, idx) => (
+                        {(expandedCategories.alternatywy ? searchResults.alternatywy : searchResults.alternatywy.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1026,12 +1026,12 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      {searchResults.alternatywy.length > 6 && (
+                      {searchResults.alternatywy.length > 8 && (
                         <button
                           onClick={() => toggleCategory('alternatywy')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.alternatywy.length - 6})`}
+                          {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.alternatywy.length - 8})`}
                         </button>
                       )}
                     </div>
@@ -1043,7 +1043,7 @@ const AnimaComponent: React.FC = () => {
                         👤 INNA PŁEĆ ({searchResults.inna_plec.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.inna_plec ? searchResults.inna_plec : searchResults.inna_plec.slice(0, 6)).map((match, idx) => (
+                        {(expandedCategories.inna_plec ? searchResults.inna_plec : searchResults.inna_plec.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1084,12 +1084,12 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      {searchResults.inna_plec.length > 6 && (
+                      {searchResults.inna_plec.length > 8 && (
                         <button
                           onClick={() => toggleCategory('inna_plec')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.inna_plec.length - 6})`}
+                          {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.inna_plec.length - 8})`}
                         </button>
                       )}
                     </div>
@@ -1101,7 +1101,7 @@ const AnimaComponent: React.FC = () => {
                         📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.poziom_za_nisko ? searchResults.poziom_za_nisko : searchResults.poziom_za_nisko.slice(0, 6)).map((match, idx) => (
+                        {(expandedCategories.poziom_za_nisko ? searchResults.poziom_za_nisko : searchResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1142,12 +1142,12 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      {searchResults.poziom_za_nisko.length > 6 && (
+                      {searchResults.poziom_za_nisko.length > 8 && (
                         <button
                           onClick={() => toggleCategory('poziom_za_nisko')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.poziom_za_nisko.length - 6})`}
+                          {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.poziom_za_nisko.length - 8})`}
                         </button>
                       )}
                     </div>
@@ -1159,7 +1159,7 @@ const AnimaComponent: React.FC = () => {
                         💪 NA SIŁĘ ({searchResults.na_sile.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.na_sile ? searchResults.na_sile : searchResults.na_sile.slice(0, 6)).map((match, idx) => (
+                        {(expandedCategories.na_sile ? searchResults.na_sile : searchResults.na_sile.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1200,12 +1200,12 @@ const AnimaComponent: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      {searchResults.na_sile.length > 6 && (
+                      {searchResults.na_sile.length > 8 && (
                         <button
                           onClick={() => toggleCategory('na_sile')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.na_sile.length - 6})`}
+                          {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.na_sile.length - 8})`}
                         </button>
                       )}
                     </div>

@@ -403,39 +403,29 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
           isActuallyExpanded ? 'p-3' : 'p-2'
         }`}
       >
-        {/* Widok zwinięty - parametry w 2 kolumnach + procent + strzałka */}
+        {/* Widok zwinięty - parametry w 2 kolumnach + kwadraciki */}
         {!isActuallyExpanded && (
-          <div className="flex flex-col justify-between h-full min-h-[70px]">
-            {/* Górny rząd - parametry po lewej, kwadraciki po prawej */}
-            <div className="flex items-center justify-between mb-1 px-2">
-              <div className="flex items-center space-x-2">
-                {/* Parametry w 2 kolumnach × 2 wiersze */}
-                <div className="grid grid-cols-2 gap-2">
-                  {criteria.map((criterion) => {
-                    const icon = getShortStatus(criterion.key, criterion.status);
-                    return (
-                      <span
-                        key={criterion.key}
-                        className="px-2 py-1 rounded text-xs font-medium bg-white/10 text-white whitespace-nowrap"
-                        title={criterion.status}
-                      >
-                        {icon} {criterion.label}
-                      </span>
-                    );
-                  })}
-                </div>
-              </div>
-              {/* Kwadraciki dostępności - prawa strona na wysokości parametrów */}
-              <div className={`grid gap-1 ${availabilitySquares.length <= 3 ? 'grid-cols-1 w-6' : 'grid-cols-2 w-12'}`} title="Dostępność sztuk">
-                {availabilitySquares}
+          <div className="flex items-center justify-between px-3 py-2 min-h-[60px]">
+            <div className="flex-1 flex justify-center">
+              {/* Parametry w 2 kolumnach × 2 wiersze - większe i wyśrodkowane */}
+              <div className="grid grid-cols-2 gap-3">
+                {criteria.map((criterion) => {
+                  const icon = getShortStatus(criterion.key, criterion.status);
+                  return (
+                    <span
+                      key={criterion.key}
+                      className="px-3 py-2 rounded-lg text-sm font-semibold bg-white/15 text-white whitespace-nowrap text-center shadow-sm border border-white/20"
+                      title={criterion.status}
+                    >
+                      {icon} {criterion.label}
+                    </span>
+                  );
+                })}
               </div>
             </div>
-            
-            {/* Dolny rząd - strzałka na środku */}
-            <div className="flex justify-center">
-              <span className="transform transition-transform duration-300 ease-out text-sm">
-                ▼
-              </span>
+            {/* Kwadraciki dostępności - prawa strona */}
+            <div className={`grid gap-1 ml-4 ${availabilitySquares.length <= 3 ? 'grid-cols-1 w-6' : 'grid-cols-2 w-12'}`} title="Dostępność sztuk">
+              {availabilitySquares}
             </div>
           </div>
         )}
