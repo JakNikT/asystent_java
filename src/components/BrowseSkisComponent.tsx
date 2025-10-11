@@ -1,5 +1,4 @@
-import React, { useState, useEffect } from 'react';
-import { CSVParser } from '../utils/csvParser';
+import React, { useState } from 'react';
 import type { SkiData } from '../types/ski.types';
 
 interface BrowseSkisComponentProps {

@@ -1,1 +1,0 @@
-# Moduł stylów i motywów
