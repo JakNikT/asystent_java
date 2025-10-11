@@ -246,20 +246,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
   };
 
   /**
-   * Określa ikonę na podstawie statusu dopasowania
-   */
-  const getScoreIcon = (status: string): string => {
-    if (status.includes('✅ zielony')) {
-      return '✅'; // W zakresie
-    } else if (status.includes('🟡 żółty')) {
-      return '⚠️'; // Poza zakresem ale akceptowalne
-    } else if (status.includes('🔴 czerwony')) {
-      return '❌'; // Znacznie poza zakresem
-    }
-    return '❓'; // Domyślny
-  };
-
-  /**
    * Określa ikonę na podstawie statusu dopasowania (dla przycisku)
    */
   const getShortStatus = (_criterion: string, status: string): string => {
@@ -271,56 +257,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       return '❌';
     }
     return '❓';
-  };
-
-  /**
-   * Formatuje wyświetlanie kryterium zgodnie z dokumentacją
-   * Format: 🟢 P:4(4)→OK | 🟢 Pł:M(M)→OK
-   * Dla wagi i wzrostu: konkretne odchylenie zamiast "→OK"
-   */
-  const formatCriterionDisplay = (criterion: any): string => {
-    const icon = getScoreIcon(criterion.status);
-    
-    // Dla wagi, wzrostu i poziomu - pokaż konkretne odchylenie
-    if (criterion.key === 'waga' || criterion.key === 'wzrost' || criterion.key === 'poziom') {
-      if (criterion.status.includes('✅ zielony')) {
-        const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
-        return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→OK`;
-      } else {
-        // Wyciągnij odchylenie ze statusu (nowy format z strzałkami)
-        const match = criterion.status.match(/(\d+)([↑↓])/);
-        if (match) {
-          const odchylenie = match[1];
-          const kierunek = match[2];
-          const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
-          return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→${odchylenie}${kierunek}`;
-        }
-        // Fallback dla starych komunikatów bez strzałek
-        const oldMatch = criterion.status.match(/o (\d+)/);
-        if (oldMatch) {
-          const odchylenie = oldMatch[1];
-          const kierunek = criterion.status.includes('za duża') || criterion.status.includes('za duży') || criterion.status.includes('za wysoki') ? '↑' : '↓';
-          const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
-          return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→${odchylenie}${kierunek}`;
-        }
-        // Jeśli nie ma odchylenia w statusie, pokaż "NIE"
-        const prefix = criterion.key === 'waga' ? 'W' : criterion.key === 'wzrost' ? 'Wz' : 'P';
-        return `${icon} ${prefix}:${criterion.userValue}(${criterion.skiValue})→NIE`;
-      }
-    }
-    
-    // Dla pozostałych kryteriów - standardowy format
-    const statusText = criterion.status.includes('✅ zielony') ? 'OK' : 
-                      criterion.status.includes('🟡 żółty') ? 'OK' : 'NIE';
-    
-    switch (criterion.key) {
-      case 'poziom':
-        return `${icon} P:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
-      case 'plec':
-        return `${icon} Pł:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
-      default:
-        return `${icon} ${criterion.label}:${criterion.userValue}(${criterion.skiValue})→${statusText}`;
-    }
   };
 
   /**
@@ -338,26 +274,6 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
   const getOverallCompatibility = (): number => {
     // Użyj match.compatibility obliczonego i zmapowanego w skiMatchingServiceV2.ts
     return match.compatibility || 0;
-  };
-
-  /**
-   * Zwraca etykietę kategorii w polskiej wersji
-   */
-  const getCategoryLabel = (kategoria?: string): string => {
-    switch (kategoria) {
-      case 'idealne':
-        return 'Idealne';
-      case 'alternatywy':
-        return 'Alternatywy';
-      case 'poziom_za_nisko':
-        return 'Poziom za nisko';
-      case 'inna_plec':
-        return 'Inna płeć';
-      case 'na_sile':
-        return 'Na siłę';
-      default:
-        return 'Nieznana';
-    }
   };
 
   const criteria = [
