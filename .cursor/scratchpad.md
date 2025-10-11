@@ -2,22 +2,202 @@
 
 ## Background and Motivation
 
-Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) do wersji webowej (React + TypeScript). Obecnie istnieją dwie wersje:
-- **Wersja Beta (Python)**: Pełnofunkcjonalna aplikacja desktopowa z zaawansowanym systemem dobierania nart
-- **Wersja Web (TypeScript)**: Zaawansowana implementacja z pełnym systemem wyszukiwania i kategoryzacji
+**NOWY CEL**: UPORZĄDKOWANIE STRUKTURY FOLDERU APLIKACJI "Asystent_java" - TYLKO WERSJA TYPESCRIPT
 
-**NOWY CEL**: ANALIZA I OPTYMALIZACJA SYSTEMU DOBIERANIA NART - Ulepszenie algorytmów, uproszczenie logiki, lepsze dopasowanie wyników.
+Aplikacja "Asystent Doboru Nart" ma obecnie mieszaną strukturę folderów z kodem Python i React/TypeScript. Główny folder "Asystent_java" zawiera:
+- **Kod Python** (src/) - stara wersja aplikacji desktopowej (DO USUNIĘCIA - zapisana w osobnym repo)
+- **Kod React/TypeScript** (asystent-nart-web/) - nowa wersja webowa (GŁÓWNA APLIKACJA)
+- **Dokumentacja** (docs/) - instrukcje i analizy
+- **Dane** (data/) - pliki CSV i Excel
+- **Zasoby** (resources/) - fonty i obrazy
+- **Konfiguracja** (config/) - pliki konfiguracyjne
 
-**Status obecny**: 
-- ✅ Baza danych nart zintegrowana (CSV)
-- ✅ Zaawansowany algorytm dopasowania zaimplementowany (5 kategorii)
-- ✅ System współczynnika idealności (0-100%)
-- ✅ Wyświetlanie wyników z kolorowym systemem wskaźników
-- ✅ Szczegółowa ocena kompatybilności każdej narty
-- ✅ **ETAP 1 UKOŃCZONY**: Walidacja formularza, obsługa błędów, automatyczne przechodzenie pól, LocalStorage dla sesji użytkownika, opcjonalne daty
-- ✅ **ETAP 2 UKOŃCZONY**: Ulepszenie interfejsu użytkownika i doświadczenia użytkownika (UX/UI)
+**PROBLEM**: Struktura jest nieuporządkowana, zawiera niepotrzebny kod Python, duplikaty plików i trudna do nawigacji.
 
-**NOWY ZADANIE**: IMPLEMENTACJA FUNKCJI "PRZEGLĄDAJ" - Dodanie funkcjonalności przeglądania, edytowania i sortowania nart w bazie danych.
+**CEL**: Stworzenie czystej, logicznej struktury folderów TYLKO dla wersji TypeScript z usunięciem niepotrzebnego kodu Python.
+
+## Key Challenges and Analysis
+
+### ANALIZA OBECNEJ STRUKTURY FOLDERÓW
+
+**Obecna struktura "Asystent_java":**
+```
+Asystent_java/
+├── asystent-nart-web/          # Główna aplikacja React/TypeScript
+│   ├── asystent-nart-web/     # Duplikat struktury (problem!)
+│   ├── dist/                  # Build output
+│   ├── node_modules/          # Dependencies
+│   ├── public/                # Static files
+│   ├── src/                   # Source code React
+│   └── package.json           # Dependencies
+├── src/                       # Kod Python (stara wersja)
+│   ├── dane/                  # Moduły danych
+│   ├── interfejs/             # UI Python
+│   ├── logika/                # Logika biznesowa
+│   ├── narzedzia/             # Narzędzia pomocnicze
+│   └── styl/                  # Style i Figma
+├── docs/                      # Dokumentacja
+├── data/                      # Dane CSV/Excel
+├── resources/                 # Zasoby (fonty, obrazy)
+├── config/                    # Konfiguracja
+└── scripts/                   # Skrypty migracji
+```
+
+**ZIDENTYFIKOWANE PROBLEMY:**
+
+1. **Duplikacja struktury**: `asystent-nart-web/asystent-nart-web/` - niepotrzebne zagnieżdżenie
+2. **Niepotrzebny kod Python**: Cała struktura `src/` z kodem Python (zapisana w osobnym repo)
+3. **Duplikaty plików**: Dane CSV w wielu miejscach
+4. **Niepotrzebne pliki**: `node_modules/` w repozytorium
+5. **Brak jasnego podziału**: Dokumentacja, dane i kod wymieszane
+6. **Skomplikowana struktura**: Zagnieżdżone foldery utrudniają nawigację
+
+### PLAN UPORZĄDKOWANIA STRUKTURY
+
+**DOCELOWA STRUKTURA "Asystent_java" (TYLKO TYPESCRIPT):**
+```
+Asystent_java/
+├── src/                        # Kod źródłowy React/TypeScript
+│   ├── components/             # Komponenty React
+│   ├── services/               # Serwisy i logika biznesowa
+│   ├── types/                  # Definicje typów TypeScript
+│   ├── utils/                  # Funkcje pomocnicze
+│   ├── styles/                 # Style CSS
+│   └── assets/                 # Obrazy, ikony
+├── public/                     # Pliki statyczne
+│   ├── data/                   # Dane CSV (jedna lokalizacja)
+│   └── fonts/                  # Fonty
+├── dist/                       # Build output (ignorowane w git)
+├── docs/                       # Dokumentacja projektu
+├── resources/                  # Zasoby (fonty, obrazy)
+├── config/                     # Konfiguracja
+├── scripts/                    # Skrypty pomocnicze
+├── package.json                # Dependencies
+├── .gitignore                  # Ignorowanie node_modules, dist, etc.
+└── README.md                   # Główna dokumentacja projektu
+```
+
+**KORZYŚCI Z NOWEJ STRUKTURY:**
+1. **Prosta struktura**: Brak niepotrzebnych zagnieżdżeń
+2. **Tylko TypeScript**: Usunięcie niepotrzebnego kodu Python
+3. **Brak duplikatów**: Jedna lokalizacja dla każdego typu pliku
+4. **Łatwiejsza nawigacja**: Logiczna struktura folderów
+5. **Czyste repo**: Brak node_modules i build artifacts w git
+6. **Centralizacja danych**: Wszystkie CSV w public/data/
+
+## High-level Task Breakdown
+
+### PLAN UPORZĄDKOWANIA STRUKTURY FOLDERÓW
+
+#### ETAP 1: PRZYGOTOWANIE I BACKUP
+
+**Task 1.1: Analiza i backup obecnej struktury**
+- **1.1.1**: Sprawdzenie wszystkich plików i ich lokalizacji
+  - Success criteria: Kompletna lista wszystkich plików w projekcie
+  - Estimated time: 1 godzina
+  - **Cel**: Zrozumienie co mamy i gdzie to jest
+
+- **1.1.2**: Stworzenie backupu obecnej struktury
+  - Success criteria: Pełny backup przed zmianami
+  - Estimated time: 30 minut
+  - **Cel**: Bezpieczeństwo przed reorganizacją
+
+- **1.1.3**: Sprawdzenie zależności między plikami
+  - Success criteria: Lista wszystkich importów i referencji
+  - Estimated time: 1 godzina
+  - **Cel**: Zrozumienie co trzeba zaktualizować
+
+#### ETAP 2: REORGANIZACJA STRUKTURY
+
+**Task 2.1: Stworzenie nowej struktury folderów**
+- **2.1.1**: Utworzenie folderów src/, public/, docs/
+  - Success criteria: Nowa struktura folderów gotowa
+  - Estimated time: 30 minut
+  - **Cel**: Podstawowa struktura
+
+- **2.1.2**: Przeniesienie kodu React/TypeScript do src/
+  - Success criteria: Wszystkie pliki React w src/
+  - Estimated time: 1 godzina
+  - **Cel**: Uproszczenie struktury
+
+- **2.1.3**: USUNIĘCIE całego kodu Python (src/)
+  - Success criteria: Cała struktura Python usunięta
+  - Estimated time: 15 minut
+  - **Cel**: Czysta struktura tylko TypeScript
+
+**Task 2.2: Konsolidacja danych**
+- **2.2.1**: Przeniesienie wszystkich plików CSV do public/data/
+  - Success criteria: Wszystkie CSV w jednym miejscu
+  - Estimated time: 30 minut
+  - **Cel**: Centralizacja danych CSV
+
+- **2.2.2**: Przeniesienie plików Excel do data/excel/
+  - Success criteria: Wszystkie Excel w jednym miejscu
+  - Estimated time: 15 minut
+  - **Cel**: Organizacja danych
+
+- **2.2.3**: Przeniesienie logów do data/logs/
+  - Success criteria: Wszystkie logi w jednym miejscu
+  - Estimated time: 15 minut
+  - **Cel**: Centralizacja logów
+
+#### ETAP 3: AKTUALIZACJA KONFIGURACJI
+
+**Task 3.1: Aktualizacja ścieżek w kodzie**
+- **3.1.1**: Aktualizacja importów w kodzie React
+  - Success criteria: Wszystkie importy działają po reorganizacji
+  - Estimated time: 2 godziny
+  - **Cel**: Funkcjonalność aplikacji
+
+- **3.1.2**: Aktualizacja ścieżek do plików CSV
+  - Success criteria: Aplikacja znajduje dane w nowej lokalizacji
+  - Estimated time: 1 godzina
+  - **Cel**: Dostęp do danych
+
+- **3.1.3**: Aktualizacja konfiguracji build
+  - Success criteria: npm run build działa z nową strukturą
+  - Estimated time: 1 godzina
+  - **Cel**: Możliwość budowania aplikacji
+
+**Task 3.2: Aktualizacja dokumentacji**
+- **3.2.1**: Aktualizacja głównego README.md
+  - Success criteria: README opisuje nową strukturę
+  - Estimated time: 1 godzina
+  - **Cel**: Dokumentacja dla deweloperów
+
+- **3.2.2**: Stworzenie README dla frontend i backend
+  - Success criteria: Oddzielne instrukcje dla każdego komponentu
+  - Estimated time: 1 godzina
+  - **Cel**: Jasne instrukcje instalacji
+
+#### ETAP 4: CZYSZCZENIE I OPTYMALIZACJA
+
+**Task 4.1: Usunięcie niepotrzebnych plików**
+- **4.1.1**: Usunięcie node_modules z repozytorium
+  - Success criteria: node_modules nie są w git
+  - Estimated time: 30 minut
+  - **Cel**: Czyste repozytorium
+
+- **4.1.2**: Usunięcie duplikatów struktury
+  - Success criteria: Brak zagnieżdżonych folderów
+  - Estimated time: 30 minut
+  - **Cel**: Prosta struktura
+
+- **4.1.3**: Aktualizacja .gitignore
+  - Success criteria: Ignorowanie build artifacts i dependencies
+  - Estimated time: 30 minut
+  - **Cel**: Nie commitujemy niepotrzebnych plików
+
+**Task 4.2: Testowanie i weryfikacja**
+- **4.2.1**: Testowanie aplikacji po reorganizacji
+  - Success criteria: Aplikacja działa poprawnie
+  - Estimated time: 1 godzina
+  - **Cel**: Funkcjonalność zachowana
+
+- **4.2.2**: Weryfikacja wszystkich ścieżek
+  - Success criteria: Wszystkie pliki są dostępne
+  - Estimated time: 30 minut
+  - **Cel**: Brak błędów 404
 
 **PLANNER MODE - Analiza wymagań funkcji "przeglądaj"**:
 
@@ -480,37 +660,89 @@ Aplikacja "Asystent Doboru Nart" została przeniesiona z wersji Python (PyQt5) d
 
 ## Project Status Board
 
-### NOWY PROJEKT - FUNKCJA "PRZEGLĄDAJ" - Status
-- [x] **Analiza wymagań** - przeanalizowano funkcje przeglądania, edytowania i sortowania
-- [x] **Analiza obecnej struktury** - przeanalizowano bazę danych, interfejs i serwisy
-- [x] **Projektowanie interfejsu** - zaprojektowano layout, nawigację i filtry
-- [x] **Planowanie funkcjonalności edycji** - zaplanowano tryby edycji, walidację i zapisywanie
-- [x] **Planowanie opcji sortowania** - zaplanowano sortowanie podstawowe i zaawansowane
-- [x] **Stworzenie planu implementacji** - 4 etapy z konkretnymi zadaniami
+### NOWY PROJEKT - UPORZĄDKOWANIE STRUKTURY FOLDERÓW - Status
+- [x] **Analiza obecnej struktury** - przeanalizowano wszystkie foldery i pliki w projekcie
+- [x] **Identyfikacja problemów** - zidentyfikowano duplikaty, mieszane technologie, niepotrzebne pliki
+- [x] **Projektowanie nowej struktury** - zaprojektowano logiczną strukturę z jasnym podziałem
+- [x] **Stworzenie planu implementacji** - 4 etapy z konkretnymi zadaniami i czasami
 
-### Do zrobienia (ETAP 1 - PODSTAWOWA FUNKCJONALNOŚĆ PRZEGLĄDANIA)
-- [ ] **1.1**: Stworzenie komponentu BrowseSkisComponent
-- [ ] **1.2**: Implementacja podstawowego sortowania
-- [ ] **1.3**: Dodanie nawigacji między trybami
+### Do zrobienia (ETAP 1 - PRZYGOTOWANIE I BACKUP)
+- [ ] **1.1**: Sprawdzenie wszystkich plików i ich lokalizacji
+- [ ] **1.2**: Stworzenie backupu obecnej struktury
+- [ ] **1.3**: Sprawdzenie zależności między plikami
 
-### Do zrobienia (ETAP 2 - ZAAWANSOWANE FILTROWANIE I SORTOWANIE)
-- [ ] **2.1**: Implementacja filtrów
-- [ ] **2.2**: Wyszukiwanie tekstowe
-- [ ] **2.3**: Paginacja i wydajność
+### Do zrobienia (ETAP 2 - REORGANIZACJA STRUKTURY)
+- [ ] **2.1**: Utworzenie folderów src/, public/, docs/
+- [ ] **2.2**: Przeniesienie kodu React/TypeScript do src/
+- [ ] **2.3**: USUNIĘCIE całego kodu Python (src/)
+- [ ] **2.4**: Konsolidacja wszystkich danych w public/data/
 
-### Do zrobienia (ETAP 3 - FUNKCJONALNOŚĆ EDYTOWANIA)
-- [ ] **3.1**: Tryb edycji inline
-- [ ] **3.2**: Walidacja i zapisywanie
-- [ ] **3.3**: Dodawanie nowych nart
+### Do zrobienia (ETAP 3 - AKTUALIZACJA KONFIGURACJI)
+- [ ] **3.1**: Aktualizacja importów w kodzie React
+- [ ] **3.2**: Aktualizacja ścieżek do plików CSV
+- [ ] **3.3**: Aktualizacja konfiguracji build
+- [ ] **3.4**: Aktualizacja dokumentacji
 
-### Do zrobienia (ETAP 4 - ULEPSZENIA I OPTYMALIZACJE)
-- [ ] **4.1**: Historia zmian i backup
-- [ ] **4.2**: Ulepszenia UX/UI
-- [ ] **4.3**: Integracja z systemem rezerwacji
+### Do zrobienia (ETAP 4 - CZYSZCZENIE I OPTYMALIZACJA)
+- [ ] **4.1**: Usunięcie node_modules z repozytorium
+- [ ] **4.2**: Usunięcie duplikatów struktury
+- [ ] **4.3**: Aktualizacja .gitignore
+- [ ] **4.4**: Testowanie i weryfikacja
 
 ## Current Status / Progress Tracking
 
-**PLANNER MODE - Analiza wymagań funkcji "przeglądaj"**:
+**PLANNER MODE - Analiza struktury folderów aplikacji "Asystent_java"**:
+
+**Wykonana analiza**:
+- ✅ **Przeanalizowano obecną strukturę** - zidentyfikowano wszystkie foldery i pliki w projekcie
+- ✅ **Zidentyfikowano główne problemy** - duplikacja struktury, mieszane technologie, niepotrzebne pliki
+- ✅ **Zaprojektowano nową strukturę** - logiczny podział na frontend, backend, dane, dokumentację
+- ✅ **Stworzono szczegółowy plan implementacji** - 4 etapy z konkretnymi zadaniami i czasami
+
+**Kluczowe odkrycia**:
+
+1. **Duplikacja struktury** - `asystent-nart-web/asystent-nart-web/` to niepotrzebne zagnieżdżenie
+2. **Niepotrzebny kod Python** - cała struktura `src/` z kodem Python (zapisana w osobnym repo)
+3. **Duplikaty danych** - pliki CSV są w wielu miejscach (public/data/, dist/data/, data/csv/)
+4. **Niepotrzebne pliki** - node_modules/ w repozytorium zwiększa rozmiar repo
+5. **Brak jasnego podziału** - dokumentacja, dane i kod są wymieszane
+
+**Zaprojektowana nowa struktura (TYLKO TYPESCRIPT)**:
+```
+Asystent_java/
+├── src/                 # Kod źródłowy React/TypeScript
+├── public/              # Pliki statyczne + dane CSV
+├── docs/                # Dokumentacja projektu
+├── resources/            # Zasoby (fonty, obrazy)
+├── config/               # Konfiguracja
+├── scripts/              # Skrypty pomocnicze
+├── package.json          # Dependencies
+└── README.md             # Główna dokumentacja
+```
+
+**Korzyści z nowej struktury**:
+- **Prosta struktura** - brak niepotrzebnych zagnieżdżeń
+- **Tylko TypeScript** - usunięcie niepotrzebnego kodu Python
+- **Brak duplikatów** - jedna lokalizacja dla każdego typu pliku
+- **Łatwiejsza nawigacja** - logiczna struktura folderów
+- **Czyste repo** - brak node_modules i build artifacts w git
+
+**Zidentyfikowane wyzwania**:
+- **Aktualizacja ścieżek** - wszystkie importy i referencje trzeba zaktualizować
+- **Zachowanie funkcjonalności** - aplikacja musi działać po reorganizacji
+- **Backup bezpieczeństwa** - nie można stracić żadnych plików
+- **Testowanie** - trzeba przetestować wszystkie funkcje po zmianach
+
+**Rekomendowane podejście**:
+- **Implementacja etapowa** - ETAP 1 (backup) → ETAP 2 (reorganizacja) → ETAP 3 (aktualizacja) → ETAP 4 (czyszczenie)
+- **Bezpieczeństwo** - pełny backup przed każdą zmianą
+- **Testowanie** - weryfikacja funkcjonalności po każdym etapie
+
+**Gotowość do implementacji**: ✅ **TAK** - wszystkie wymagania są jasne, plan jest szczegółowy, struktura przemyślana.
+
+**Obecny stan**: ✅ **PLANOWANIE UKOŃCZONE** - Struktura folderów została szczegółowo przeanalizowana i zaplanowana.
+
+**Następne kroki**: Przejście do trybu Executor i rozpoczęcie implementacji ETAPU 1 - Przygotowanie i backup.
 
 **Wykonana analiza**:
 - ✅ **Przeanalizowano wymagania użytkownika** - przeglądanie, edytowanie i sortowanie nart
@@ -983,16 +1215,14 @@ Implementacja jest teraz **W PEŁNI ZGODNA** z podanymi warunkami. System dział
 
 ## Lessons
 
-- **System dobierania nart jest już bardzo zaawansowany** - ma wszystkie funkcje z wersji Python
-- **Główne problemy to architektoniczne, nie funkcjonalne** - złożoność algorytmu, duplikowanie logiki
-- **Najważniejsze ulepszenia to uproszczenie i inteligentne sugestie** - nie dodawanie nowych funkcji
-- **System kolorów i kolejności działa dobrze** - zgodnie z dokumentacją i intuicyjnie
-- **Algorytm oceny dopasowania jest poprawny** - system wag zgodny z dokumentacją (POZIOM 35%, WAGA 25%, WZROST 20%, PŁEĆ 15%, PRZEZNACZENIE 5%)
-- **Parsowanie poziomów jest skomplikowane ale działa** - obsługuje wszystkie formaty (5M/6D, 5M 6D, 5M, 5D, 5)
-- **Tolerancje są dobrze przemyślane** - ±5kg/cm dla żółtego, ±10kg/cm dla czerwonego
-- **Kategoryzacja nart jest logiczna** - 5 kategorii od idealnych do "na siłę"
-- **System logowania jest kluczowy** - pomaga w debugowaniu i utrzymaniu aplikacji
-- **Dokumentacja jest bardzo szczegółowa** - zawiera wszystkie potrzebne informacje o algorytmach
-- **Błędna logika tolerancji może prowadzić do nieprawidłowej kategoryzacji** - funkcja `isInTolerance10()` zwracała `true` dla żółtych statusów zamiast tylko czerwonych
-- **Reguły kategoryzacji muszą być precyzyjne** - REGUŁA 2 była zbyt restrykcyjna, wymagając idealnego dopasowania zamiast tolerancji
-- **Dodatkowe reguły mogą być potrzebne** - REGUŁA 2B została dodana dla poziomu za wysoki + tolerancje
+- **Struktura folderów ma kluczowe znaczenie dla utrzymania projektu** - nieuporządkowana struktura utrudnia nawigację i zarządzanie
+- **Duplikacja plików prowadzi do konfuzji** - te same dane w wielu miejscach powodują problemy z synchronizacją
+- **Niepotrzebny kod powinien być usunięty** - jeśli kod Python jest zapisany w osobnym repo, można go bezpiecznie usunąć
+- **node_modules nie powinny być w repozytorium** - zwiększają rozmiar repo i powodują konflikty
+- **Zagnieżdżone struktury folderów są problematyczne** - `asystent-nart-web/asystent-nart-web/` to niepotrzebna duplikacja
+- **Dokumentacja powinna być oddzielona od kodu** - łatwiejsze zarządzanie i nawigacja
+- **Dane powinny być w jednym miejscu** - centralizacja ułatwia zarządzanie i backup
+- **Planowanie reorganizacji wymaga szczegółowej analizy** - trzeba sprawdzić wszystkie zależności przed zmianami
+- **Backup jest kluczowy przed reorganizacją** - nie można ryzykować utraty plików
+- **Aktualizacja ścieżek to największe wyzwanie** - wszystkie importy i referencje trzeba zaktualizować
+- **Testowanie po reorganizacji jest obowiązkowe** - trzeba upewnić się że aplikacja nadal działa
