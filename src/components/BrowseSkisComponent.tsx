@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
-import type { SkiData } from '../types/ski.types';
+import React, { useState, useEffect } from 'react';
+import type { SkiData, SearchCriteria } from '../types/ski.types';
+import { ReservationService } from '../services/reservationService';
 
 interface BrowseSkisComponentProps {
   skisDatabase: SkiData[];
+  userCriteria?: SearchCriteria; // NOWE: opcjonalne kryteria wyszukiwania z datami
   onBackToSearch: () => void;
 }
 
@@ -16,6 +18,7 @@ interface SortConfig {
 
 export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({ 
   skisDatabase, 
+  userCriteria,
   onBackToSearch 
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
@@ -24,10 +27,138 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   });
   
   const [currentPage, setCurrentPage] = useState(1);
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
   const itemsPerPage = 20;
   
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
+
+  // Ładowanie statusów dostępności dla wszystkich nart (NOWY SYSTEM 3-KOLOROWY)
+  useEffect(() => {
+    const loadAvailabilityStatuses = async () => {
+      const statusMap = new Map<string, any>();
+      
+      try {
+        // Sprawdź czy użytkownik wpisał daty
+        const hasUserDates = userCriteria?.dateFrom && userCriteria?.dateTo;
+        
+        if (!hasUserDates) {
+          console.log('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
+          setAvailabilityStatuses(new Map()); // Brak dat = wszystkie zielone
+          return;
+        }
+        
+        // Użyj dat z formularza użytkownika
+        const startDate = userCriteria!.dateFrom!;
+        const endDate = userCriteria!.dateTo!;
+        
+        console.log('BrowseSkisComponent: Sprawdzam dostępność w okresie:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
+        
+        // Sprawdź status dla każdej narty z kodem (NOWY SYSTEM 3-KOLOROWY)
+        for (const ski of skisDatabase) {
+          if (ski.KOD && ski.KOD !== 'NO_CODE') {
+            try {
+              const availabilityInfo = await ReservationService.getSkiAvailabilityStatus(
+                ski.KOD,
+                startDate,
+                endDate
+              );
+              statusMap.set(ski.KOD, availabilityInfo);
+            } catch (error) {
+              console.error(`Błąd sprawdzania dostępności dla narty ${ski.KOD}:`, error);
+            }
+          }
+        }
+        
+        setAvailabilityStatuses(statusMap);
+      } catch (error) {
+        console.error('Błąd ładowania statusów dostępności:', error);
+      }
+    };
+
+    loadAvailabilityStatuses();
+  }, [skisDatabase, userCriteria?.dateFrom, userCriteria?.dateTo]);
+
+  // Funkcja grupowania nart tego samego modelu
+  const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
+    const grouped = new Map<string, SkiData[]>();
+    
+    skis.forEach(ski => {
+      const key = `${ski.MARKA}|${ski.MODEL}|${ski.DLUGOSC}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(ski);
+    });
+    
+    // Zwróć pierwszą nartę z każdej grupy (reprezentant grupy)
+    return Array.from(grouped.values()).map(group => group[0]);
+  };
+
+  // Funkcja generowania kwadracików dla grupowanych nart (NOWY SYSTEM 3-KOLOROWY)
+  const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
+    // Znajdź wszystkie narty tego samego modelu
+    const sameModelSkis = skisDatabase.filter(s => 
+      s.MARKA === ski.MARKA && 
+      s.MODEL === ski.MODEL && 
+      s.DLUGOSC === ski.DLUGOSC
+    );
+    
+    const squares = sameModelSkis.map((s, index) => {
+      // Pobierz status dostępności (NOWY SYSTEM 3-KOLOROWY)
+      const availabilityInfo = s.KOD ? availabilityStatuses.get(s.KOD) : null;
+      
+      // Określ kolor tła na podstawie statusu (3 kolory)
+      let bgColor = 'bg-green-500'; // Domyślnie zielony (brak dat lub brak rezerwacji)
+      let statusEmoji = '🟢';
+      let statusText = 'Dostępne';
+      
+      if (availabilityInfo) {
+        // SYSTEM 3-KOLOROWY
+        if (availabilityInfo.color === 'red') {
+          bgColor = 'bg-red-500';
+          statusEmoji = '🔴';
+          statusText = 'Zarezerwowane';
+        } else if (availabilityInfo.color === 'yellow') {
+          bgColor = 'bg-yellow-500';
+          statusEmoji = '🟡';
+          statusText = 'Uwaga';
+        } else {
+          bgColor = 'bg-green-500';
+          statusEmoji = '🟢';
+          statusText = 'Dostępne';
+        }
+      }
+      
+      // Stwórz tooltip z informacjami
+      let tooltip = `Sztuka ${index + 1} - ${statusText}\nKod: ${s.KOD || 'Brak kodu'}`;
+      
+      if (availabilityInfo) {
+        tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
+        
+        // Dodaj informacje o rezerwacjach
+        if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
+          tooltip += '\n\nRezerwacje:';
+          availabilityInfo.reservations.forEach((res: any) => {
+            tooltip += `\n- ${res.clientName}`;
+            tooltip += `\n  ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`;
+          });
+        }
+      }
+      
+      return (
+        <span
+          key={s.KOD || `no-code-${index}`}
+          className={`inline-block w-4 h-4 text-white text-xs font-bold rounded mr-1 ${bgColor}`}
+          title={tooltip}
+        >
+          {index + 1}
+        </span>
+      );
+    });
+    
+    return <div className="flex flex-wrap">{squares}</div>;
+  };
 
   // Funkcja filtrowania nart
   const filterSkis = (skis: SkiData[], searchTerm: string): SkiData[] => {
@@ -41,7 +172,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       ski.PLEC.toLowerCase().includes(term) ||
       ski.PRZEZNACZENIE.toLowerCase().includes(term) ||
       ski.ATUTY.toLowerCase().includes(term) ||
-      ski.UWAGI.toLowerCase().includes(term) ||
       ski.DLUGOSC.toString().includes(term) ||
       ski.ROK.toString().includes(term) ||
       ski.ILOSC.toString().includes(term)
@@ -84,9 +214,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }));
   };
 
-  // Sortowanie i paginacja
+  // Sortowanie i paginacja z grupowaniem
   const filteredSkis = filterSkis(skisDatabase, searchTerm);
-  const sortedSkis = sortSkis(filteredSkis, sortConfig);
+  const groupedSkis = groupSkisByModel(filteredSkis);
+  const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -139,7 +270,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 Przeglądaj narty
               </h1>
               <p className="text-[#A6C2EF]">
-                Przejrzyj wszystkie narty w bazie danych ({skisDatabase.length} nart)
+                Przejrzyj wszystkie narty w bazie danych ({groupedSkis.length} modeli nart)
               </p>
             </div>
             <button
@@ -176,7 +307,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </div>
           {searchTerm && (
             <div className="mt-3 text-[#A6C2EF]">
-              Znaleziono {filteredSkis.length} nart z {skisDatabase.length} dostępnych
+              Znaleziono {groupedSkis.length} modeli nart z {groupSkisByModel(skisDatabase).length} dostępnych
             </div>
           )}
         </div>
@@ -281,13 +412,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       {formatGender(ski.PLEC)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                        ski.ILOSC > 0 
-                          ? 'bg-green-100 text-green-800' 
-                          : 'bg-red-100 text-red-800'
-                      }`}>
-                        {ski.ILOSC > 0 ? `🟩 ${ski.ILOSC}` : '🔴 0'}
-                      </span>
+                      {generateAvailabilitySquares(ski)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.ROK}

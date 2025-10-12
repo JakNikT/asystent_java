@@ -17,6 +17,7 @@ import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory }
 import { DetailedCompatibility } from './DetailedCompatibility';
 import { SkiStyleBadge } from './SkiStyleBadge';
 import { BrowseSkisComponent } from './BrowseSkisComponent';
+import { ReservationsView } from './ReservationsView';
 import type { SkiData, SearchResults, SearchCriteria } from '../types/ski.types';
 
 interface FormData {
@@ -65,8 +66,8 @@ const AnimaComponent: React.FC = () => {
   const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
   const [currentCriteria, setCurrentCriteria] = useState<SearchCriteria | null>(null);
 
-  // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie)
-  const [appMode, setAppMode] = useState<'search' | 'browse'>('search');
+  // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje)
+  const [appMode, setAppMode] = useState<'search' | 'browse' | 'reservations'>('search');
 
   // NOWY STAN: Rozwijanie kategorii (pierwsze 6 lub wszystkie)
   const [expandedCategories, setExpandedCategories] = useState({
@@ -125,6 +126,24 @@ const AnimaComponent: React.FC = () => {
         };
       }
     });
+  };
+
+  // Funkcja grupowania wyników po modelu (jedna karta na model nart)
+  // Narty tego samego modelu mają już kwadraciki z numerami sztuk w DetailedCompatibility
+  const groupMatchesByModel = (matches: any[]): any[] => {
+    const grouped = new Map<string, any[]>();
+    
+    matches.forEach(match => {
+      const key = `${match.ski.MARKA}|${match.ski.MODEL}|${match.ski.DLUGOSC}`;
+      if (!grouped.has(key)) {
+        grouped.set(key, []);
+      }
+      grouped.get(key)!.push(match);
+    });
+    
+    // Zwróć pierwszy match z każdej grupy (reprezentant grupy)
+    // Kwadraciki dostępności są generowane w DetailedCompatibility dla wszystkich sztuk tego modelu
+    return Array.from(grouped.values()).map(group => group[0]);
   };
 
   // Funkcja do parsowania daty z formularza
@@ -610,6 +629,16 @@ const AnimaComponent: React.FC = () => {
     console.log('src/components/AnimaComponent.tsx: Dane sesji wyczyszczone z LocalStorage');
   };
 
+  // Grupowanie wyników po modelu (jedna karta na model nart)
+  // Narty tego samego modelu mają już kwadraciki z numerami sztuk w DetailedCompatibility
+  const groupedResults = searchResults ? {
+    idealne: groupMatchesByModel(searchResults.idealne),
+    alternatywy: groupMatchesByModel(searchResults.alternatywy),
+    poziom_za_nisko: groupMatchesByModel(searchResults.poziom_za_nisko),
+    inna_plec: groupMatchesByModel(searchResults.inna_plec),
+    na_sile: groupMatchesByModel(searchResults.na_sile)
+  } : null;
+
   return (
     <div className="min-h-screen bg-[#386BB2]">
       {/* Header Section - stałe wymiary */}
@@ -852,7 +881,10 @@ const AnimaComponent: React.FC = () => {
                 >
                   <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
                 </button>
-                <button className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1">
+                <button 
+                  onClick={() => setAppMode('reservations')}
+                  className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors cursor-pointer"
+                >
                   <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
                 </button>
               </div>
@@ -921,6 +953,41 @@ const AnimaComponent: React.FC = () => {
 
               {!isLoading && !error && searchResults && (
                 <div className="space-y-4">
+                  {/* Legenda kolorów dostępności - NOWY SYSTEM 3-KOLOROWY */}
+                  {currentCriteria?.dateFrom && currentCriteria?.dateTo && (
+                    <div className="bg-[#194576]/50 rounded-lg p-4 border-2 border-[#A6C2EF]">
+                      <h4 className="text-white text-sm font-bold mb-3 flex items-center gap-2">
+                        📅 LEGENDA DOSTĘPNOŚCI:
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+                        <div className="flex items-start gap-2">
+                          <span className="inline-block w-5 h-5 bg-green-500 rounded flex-shrink-0 mt-0.5"></span>
+                          <div>
+                            <span className="text-white font-bold">🟢 Dostępne</span>
+                            <p className="text-[#A6C2EF] text-xs">Brak rezerwacji (min. 2 dni na serwis)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="inline-block w-5 h-5 bg-yellow-500 rounded flex-shrink-0 mt-0.5"></span>
+                          <div>
+                            <span className="text-white font-bold">🟡 Uwaga</span>
+                            <p className="text-[#A6C2EF] text-xs">Rezerwacja 1-2 dni przed/po (za mało czasu na serwis)</p>
+                          </div>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="inline-block w-5 h-5 bg-red-500 rounded flex-shrink-0 mt-0.5"></span>
+                          <div>
+                            <span className="text-white font-bold">🔴 Zarezerwowane</span>
+                            <p className="text-[#A6C2EF] text-xs">Konflikt z wybraną datą wypożyczenia</p>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[#A6C2EF] text-xs mt-3 italic">
+                        💡 Najedź myszką na kwadracik aby zobaczyć szczegóły rezerwacji
+                      </p>
+                    </div>
+                  )}
+
                   {searchResults.wszystkie.length === 0 && (
                     <div className="text-center">
                       <span className="text-white text-lg font-black font-['Inter'] italic">
@@ -929,13 +996,13 @@ const AnimaComponent: React.FC = () => {
                     </div>
                   )}
 
-                  {searchResults.idealne.length > 0 && (
+                  {groupedResults && groupedResults.idealne.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        🏆 IDEALNE DOPASOWANIE ({searchResults.idealne.length})
+                        🏆 IDEALNE DOPASOWANIE ({groupedResults.idealne.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {searchResults.idealne.map((match, idx) => (
+                        {groupedResults.idealne.map((match, idx) => (
                           <div key={idx} className="bg-white/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -970,6 +1037,7 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              skisDatabase={skisDatabase}
                               isRowExpanded={isCardExpandedInRow('idealne', idx)}
                               onRowToggle={() => toggleCardInRow('idealne')}
                             />
@@ -979,13 +1047,13 @@ const AnimaComponent: React.FC = () => {
                     </div>
                   )}
 
-                  {searchResults.alternatywy.length > 0 && (
+                  {groupedResults && groupedResults.alternatywy.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        ⭐ ALTERNATYWY ({searchResults.alternatywy.length})
+                        ⭐ ALTERNATYWY ({groupedResults.alternatywy.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.alternatywy ? searchResults.alternatywy : searchResults.alternatywy.slice(0, 8)).map((match, idx) => (
+                        {(expandedCategories.alternatywy ? groupedResults.alternatywy : groupedResults.alternatywy.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1020,30 +1088,31 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              skisDatabase={skisDatabase}
                               isRowExpanded={isCardExpandedInRow('alternatywy', idx)}
                               onRowToggle={() => toggleCardInRow('alternatywy')}
                             />
                           </div>
                         ))}
                       </div>
-                      {searchResults.alternatywy.length > 8 && (
+                      {groupedResults && groupedResults.alternatywy.length > 8 && (
                         <button
                           onClick={() => toggleCategory('alternatywy')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.alternatywy.length - 8})`}
+                          {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.alternatywy.length - 8})`}
                         </button>
                       )}
                     </div>
                   )}
 
-                  {searchResults.inna_plec.length > 0 && (
+                  {groupedResults && groupedResults.inna_plec.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        👤 INNA PŁEĆ ({searchResults.inna_plec.length})
+                        👤 INNA PŁEĆ ({groupedResults.inna_plec.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.inna_plec ? searchResults.inna_plec : searchResults.inna_plec.slice(0, 8)).map((match, idx) => (
+                        {(expandedCategories.inna_plec ? groupedResults.inna_plec : groupedResults.inna_plec.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1078,30 +1147,31 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              skisDatabase={skisDatabase}
                               isRowExpanded={isCardExpandedInRow('inna_plec', idx)}
                               onRowToggle={() => toggleCardInRow('inna_plec')}
                             />
                           </div>
                         ))}
                       </div>
-                      {searchResults.inna_plec.length > 8 && (
+                      {groupedResults && groupedResults.inna_plec.length > 8 && (
                         <button
                           onClick={() => toggleCategory('inna_plec')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.inna_plec.length - 8})`}
+                          {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.inna_plec.length - 8})`}
                         </button>
                       )}
                     </div>
                   )}
 
-                  {searchResults.poziom_za_nisko.length > 0 && (
+                  {groupedResults && groupedResults.poziom_za_nisko.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        📉 POZIOM ZA NISKO ({searchResults.poziom_za_nisko.length})
+                        📉 POZIOM ZA NISKO ({groupedResults.poziom_za_nisko.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.poziom_za_nisko ? searchResults.poziom_za_nisko : searchResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
+                        {(expandedCategories.poziom_za_nisko ? groupedResults.poziom_za_nisko : groupedResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1136,30 +1206,31 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              skisDatabase={skisDatabase}
                               isRowExpanded={isCardExpandedInRow('poziom_za_nisko', idx)}
                               onRowToggle={() => toggleCardInRow('poziom_za_nisko')}
                             />
                           </div>
                         ))}
                       </div>
-                      {searchResults.poziom_za_nisko.length > 8 && (
+                      {groupedResults && groupedResults.poziom_za_nisko.length > 8 && (
                         <button
                           onClick={() => toggleCategory('poziom_za_nisko')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.poziom_za_nisko.length - 8})`}
+                          {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.poziom_za_nisko.length - 8})`}
                         </button>
                       )}
                     </div>
                   )}
 
-                  {searchResults.na_sile.length > 0 && (
+                  {groupedResults && groupedResults.na_sile.length > 0 && (
                     <div>
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        💪 NA SIŁĘ ({searchResults.na_sile.length})
+                        💪 NA SIŁĘ ({groupedResults.na_sile.length})
                       </h3>
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.na_sile ? searchResults.na_sile : searchResults.na_sile.slice(0, 8)).map((match, idx) => (
+                        {(expandedCategories.na_sile ? groupedResults.na_sile : groupedResults.na_sile.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
                             <div className="flex items-start justify-between mb-2 h-12">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1194,18 +1265,19 @@ const AnimaComponent: React.FC = () => {
                             <DetailedCompatibility 
                               match={match}
                               userCriteria={currentCriteria!}
+                              skisDatabase={skisDatabase}
                               isRowExpanded={isCardExpandedInRow('na_sile', idx)}
                               onRowToggle={() => toggleCardInRow('na_sile')}
                             />
                           </div>
                         ))}
                       </div>
-                      {searchResults.na_sile.length > 8 && (
+                      {groupedResults && groupedResults.na_sile.length > 8 && (
                         <button
                           onClick={() => toggleCategory('na_sile')}
                           className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                         >
-                          {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${searchResults.na_sile.length - 8})`}
+                          {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.na_sile.length - 8})`}
                         </button>
                       )}
                     </div>
@@ -1221,6 +1293,22 @@ const AnimaComponent: React.FC = () => {
         <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
           <BrowseSkisComponent 
             skisDatabase={skisDatabase}
+            userCriteria={currentCriteria || {
+              wzrost: 170,
+              waga: 70,
+              poziom: 3,
+              plec: 'W'
+              // Brak dateFrom i dateTo - wszystkie narty będą zielone
+            }}
+            onBackToSearch={() => setAppMode('search')}
+          />
+        </div>
+      )}
+
+      {/* Renderowanie widoku rezerwacji */}
+      {appMode === 'reservations' && (
+        <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
+          <ReservationsView 
             onBackToSearch={() => setAppMode('search')}
           />
         </div>

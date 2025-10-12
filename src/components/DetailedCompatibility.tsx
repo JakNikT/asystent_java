@@ -3,12 +3,14 @@
  * console.log(src/components/DetailedCompatibility.tsx: Wyświetlanie szczegółowych informacji o dopasowaniu)
  */
 
-import React, { useState } from 'react';
-import type { SkiMatch, SearchCriteria } from '../types/ski.types';
+import React, { useState, useEffect } from 'react';
+import type { SkiMatch, SearchCriteria, SkiData } from '../types/ski.types';
+import { ReservationService } from '../services/reservationService';
 
 interface DetailedCompatibilityProps {
   match: SkiMatch;
   userCriteria: SearchCriteria;
+  skisDatabase: SkiData[]; // NOWE: dostęp do bazy nart dla grupowania
   isRowExpanded?: boolean;
   onRowToggle?: () => void;
 }
@@ -16,8 +18,9 @@ interface DetailedCompatibilityProps {
 export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ 
   match, 
   userCriteria, 
+  skisDatabase,
   isRowExpanded = false, 
-  onRowToggle
+  onRowToggle 
 }) => {
   console.log('src/components/DetailedCompatibility.tsx: Wyświetlanie szczegółowych informacji:', match);
   
@@ -35,22 +38,129 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
     }
   };
 
-  // Proste kwadraciki dostępności (bez async)
+  // Stan dla statusów dostępności nart (NOWY SYSTEM 3-KOLOROWY)
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
+
+  // Ładowanie statusów dostępności dla wszystkich nart tego samego modelu (NOWY SYSTEM)
+  useEffect(() => {
+    const loadAvailabilityStatuses = async () => {
+      // Znajdź wszystkie narty tego samego modelu
+      const sameModelSkis = skisDatabase.filter(ski => 
+        ski.MARKA === match.ski.MARKA && 
+        ski.MODEL === match.ski.MODEL && 
+        ski.DLUGOSC === match.ski.DLUGOSC
+      );
+      
+      if (sameModelSkis.length === 0) return;
+      
+      try {
+        // Sprawdź czy użytkownik wpisał daty
+        const hasUserDates = userCriteria.dateFrom && userCriteria.dateTo;
+        
+        if (!hasUserDates) {
+          console.log('DetailedCompatibility: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
+          setAvailabilityStatuses(new Map()); // Brak dat = wszystkie zielone
+          return;
+        }
+        
+        // Użyj dat z formularza użytkownika
+        const startDate = userCriteria.dateFrom!;
+        const endDate = userCriteria.dateTo!;
+        
+        console.log('DetailedCompatibility: Sprawdzam dostępność w okresie:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
+        
+        const statusMap = new Map<string, any>();
+        
+        // Sprawdź status dla każdej narty tego modelu (NOWY SYSTEM 3-KOLOROWY)
+        for (const ski of sameModelSkis) {
+          if (ski.KOD && ski.KOD !== 'NO_CODE') {
+            try {
+              const availabilityInfo = await ReservationService.getSkiAvailabilityStatus(
+                ski.KOD,
+                startDate,
+                endDate
+              );
+              statusMap.set(ski.KOD, availabilityInfo);
+              console.log(`DetailedCompatibility: Status dla ${ski.KOD}:`, availabilityInfo.emoji, availabilityInfo.message);
+            } catch (error) {
+              console.error(`Błąd sprawdzania dostępności dla narty ${ski.KOD}:`, error);
+            }
+          }
+        }
+        
+        setAvailabilityStatuses(statusMap);
+      } catch (error) {
+        console.error('Błąd ładowania statusów dostępności:', error);
+      }
+    };
+
+    loadAvailabilityStatuses();
+  }, [match.ski.MARKA, match.ski.MODEL, match.ski.DLUGOSC, skisDatabase, userCriteria.dateFrom, userCriteria.dateTo]);
+
+  // Kwadraciki dostępności z NOWYM SYSTEMEM 3-KOLOROWYM
   const generateAvailabilitySquares = () => {
-    const ilosc = parseInt(String(match.ski.ILOSC) || '2');
-    const squares = [];
+    // Znajdź wszystkie narty tego samego modelu
+    const sameModelSkis = skisDatabase.filter(ski => 
+      ski.MARKA === match.ski.MARKA && 
+      ski.MODEL === match.ski.MODEL && 
+      ski.DLUGOSC === match.ski.DLUGOSC
+    );
     
-    for (let i = 1; i <= ilosc; i++) {
+    const squares: React.ReactElement[] = [];
+    
+    sameModelSkis.forEach((ski, index) => {
+      // Pobierz status dostępności (NOWY SYSTEM)
+      const availabilityInfo = ski.KOD ? availabilityStatuses.get(ski.KOD) : null;
+      
+      // Określ kolor tła na podstawie statusu (3 kolory)
+      let bgColor = 'bg-green-500'; // Domyślnie zielony (brak dat lub brak rezerwacji)
+      let statusEmoji = '🟢';
+      let statusText = 'Dostępne';
+      
+      if (availabilityInfo) {
+        // SYSTEM 3-KOLOROWY
+        if (availabilityInfo.color === 'red') {
+          bgColor = 'bg-red-500';
+          statusEmoji = '🔴';
+          statusText = 'Zarezerwowane';
+        } else if (availabilityInfo.color === 'yellow') {
+          bgColor = 'bg-yellow-500';
+          statusEmoji = '🟡';
+          statusText = 'Uwaga';
+        } else {
+          bgColor = 'bg-green-500';
+          statusEmoji = '🟢';
+          statusText = 'Dostępne';
+        }
+      }
+      
+      // Stwórz tooltip z informacjami
+      let tooltip = `Sztuka ${index + 1} - ${statusText}\nKod: ${ski.KOD || 'Brak kodu'}`;
+      
+      if (availabilityInfo) {
+        tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
+        
+        // Dodaj informacje o rezerwacjach
+        if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
+          tooltip += '\n\nRezerwacje:';
+          availabilityInfo.reservations.forEach((res: any) => {
+            tooltip += `\n- ${res.clientName}`;
+            tooltip += `\n  ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`;
+          });
+        }
+      }
+      
       squares.push(
         <span 
-          key={i} 
-          className="inline-block w-5 h-5 bg-green-500 text-white text-xs font-bold rounded flex items-center justify-center"
-          title={`Sztuka ${i} - dostępna`}
+          key={ski.KOD || `no-code-${index}`}
+          className={`inline-block w-5 h-5 text-white text-xs font-bold rounded flex items-center justify-center ${bgColor}`}
+          title={tooltip}
         >
-          {i}
+          {index + 1}
         </span>
       );
-    }
+    });
+    
     return squares;
   };
 
