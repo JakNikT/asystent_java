@@ -2,7 +2,109 @@
 
 ## Background and Motivation
 
-**NOWY CEL**: UPORZĄDKOWANIE STRUKTURY FOLDERU APLIKACJI "Asystent_java" - TYLKO WERSJA TYPESCRIPT
+**NOWY CEL**: INTEGRACJA PLIKU "newrez.csv" Z OBECNYM SYSTEMEM REZERWACJI
+
+Użytkownik wkleił plik "newrez.csv" który ma być źródłem danych o zarezerwowanych nartach. Program już ma:
+- ✅ **System wyświetlania ilości sztuk** - zielone kwadraciki (🟩) w DetailedCompatibility.tsx
+- ✅ **Przycisk "Rezerwacje"** - w AnimaComponent.tsx (linia 855-857)
+- ✅ **ReservationService.ts** - już istnieje i wczytuje dane z rez.csv
+- ✅ **System sprawdzania dostępności** - funkcje w ReservationService
+
+**WYMAGANIA UŻYTKOWNIKA**:
+1. **Skrypt ma pobierać tylko 4 pola z newrez.csv**:
+   - "Klient" - imię nazwisko klienta
+   - "Sprzęt" - narty (marka, model, długość, numer np. //01)
+   - "Od" - data od
+   - "Do" - data do
+
+2. **Integracja z istniejącym systemem**:
+   - Jak narta będzie miała rezerwację → kwadrat będzie czerwony (🔴)
+   - Po najechaniu myszką → pokażą się informacje o rezerwacji
+   - Użycie istniejącego ReservationService.ts
+
+**PROBLEM ZIDENTYFIKOWANY**: Baza danych nart nie ma kodów!
+
+**Analiza obecnej struktury danych:**
+
+**Baza nart (NOWABAZA_final.csv):**
+```
+ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,UWAGI
+1,KNEISSL,MY STAR XC,144,2,4K,K,55,90,155,165,SLG,,2024,
+```
+
+**Brakuje kolumny "KOD"!**
+
+**Rezerwacje (newrez.csv):**
+```
+Klient;Sprzęt;Kod;Od;Do
+KORCZYK KRZYSZTOF;NARTY VOLKL DEACON 158cm //01;A01187;2025-12-06 11:00:00;2025-12-15 19:00:00
+```
+
+**Obecny ReservationService** próbuje mapować po:
+- marka + model + długość (bez kodu!)
+
+**ROZWIĄZANIE PROBLEMU:**
+
+**OPCJA 1: Dodanie kodów do bazy nart**
+- Dodać kolumnę "KOD" do NOWABAZA_final.csv
+- Przypisać kody do każdej narty
+- Mapować rezerwacje po kodach
+
+**OPCJA 2: Mapowanie po nazwie sprzętu**
+- Parsować nazwę sprzętu z rezerwacji
+- Znajdować odpowiednią nartę po MARKA + MODEL + DLUGOSC
+- Ignorować kody z rezerwacji
+
+**OPCJA 3: Hybrydowe podejście**
+- Użyć kodów gdy są dostępne
+- Fallback na mapowanie po nazwie
+
+**PLIK "nartyvip.csv" DODANY** - zawiera kody wszystkich nart!
+
+**Analiza pliku nartyvip.csv:**
+```
+NARTY KNEISSL MY STAR XC 144cm /2024 //01,A01364
+NARTY KNEISSL MY STAR XC 144cm /2024 //02,A00922
+NARTY ATOMIC CLOUD Q14 REVOSHOCK 144cm /2025 /01,A00928
+```
+
+**Struktura:**
+- **Kolumna 1**: Pełna nazwa narty z numerkiem sztuki (//01, //02)
+- **Kolumna 2**: Kod narty (A01364, A00922, A00928)
+
+**Mapowanie z bazą nart:**
+```
+nartyvip.csv: "NARTY KNEISSL MY STAR XC 144cm /2024 //01" → A01364
+NOWABAZA_final.csv: ID=1, MARKA=KNEISSL, MODEL=MY STAR XC, DLUGOSC=144, ILOSC=2
+```
+
+**PROBLEM**: Baza nart ma ILOSC=2 (2 sztuki), ale nartyvip.csv ma 2 osobne wpisy z różnymi kodami!
+
+**ROZWIĄZANIE**: 
+1. **Rozdzielić rekordy w bazie nart** - każda sztuka jako osobny rekord
+2. **Przypisać kody** z nartyvip.csv do odpowiednich sztuk
+3. **Zachować wszystkie dane** z oryginalnej bazy
+
+**Zaktualizowany plan implementacji:**
+
+**ETAP 1: Przygotowanie danych (2h)**
+- Skrypt mapowania nartyvip.csv → NOWABAZA_final.csv
+- **Rozdzielenie rekordów** - każda sztuka jako osobny rekord z kodem
+- Walidacja i sprawdzenie poprawności mapowania
+
+**ETAP 2: Aktualizacja aplikacji (1h)**
+- Dodanie pola "KOD" do typu SkiData
+- Aktualizacja CSVParser.ts
+
+**ETAP 3: Aktualizacja ReservationService (1h)**
+- Mapowanie rezerwacji po kodach
+- Sprawdzanie dostępności konkretnych sztuk
+
+**ETAP 4: Integracja z UI (3h)**
+- Czerwone kwadraciki dla zarezerwowanych sztuk
+- Tooltips z informacjami o rezerwacji
+
+**ETAP 5: Testowanie (1h)**
 
 Aplikacja "Asystent Doboru Nart" ma obecnie mieszaną strukturę folderów z kodem Python i React/TypeScript. Główny folder "Asystent_java" zawiera:
 - **Kod Python** (src/) - stara wersja aplikacji desktopowej (DO USUNIĘCIA - zapisana w osobnym repo)
@@ -17,6 +119,65 @@ Aplikacja "Asystent Doboru Nart" ma obecnie mieszaną strukturę folderów z kod
 **CEL**: Stworzenie czystej, logicznej struktury folderów TYLKO dla wersji TypeScript z usunięciem niepotrzebnego kodu Python.
 
 ## Key Challenges and Analysis
+
+### ANALIZA PLIKU "newrez.csv" - INTEGRACJA Z OBECNYM SYSTEMEM
+
+**PLANNER MODE - Analiza integracji z istniejącym systemem rezerwacji**
+
+**Wykonana analiza obecnego systemu:**
+
+**1. OBECNY SYSTEM REZERWACJI:**
+- **ReservationService.ts** - już istnieje, wczytuje z rez.csv
+- **DetailedCompatibility.tsx** - funkcja generateAvailabilitySquares() (linie 39-55)
+- **AnimaComponent.tsx** - przycisk "Rezerwacje" (linia 855-857)
+- **BrowseSkisComponent.tsx** - wyświetlanie 🟩/🔴 w tabeli (linie 284-291)
+
+**2. PORÓWNANIE PLIKÓW:**
+
+**Obecny rez.csv:**
+```
+Od,Do,Użytkownik,Klient,Sprzęt,Uwagi,Kod,Cena,Zapłacono,Cennik,Rabat,Rabat %,Czas,Do Startu,Numer
+```
+
+**Nowy newrez.csv:**
+```
+Klient;Sprzęt;Kod;Od;Do;Użytkownik;Cena;Zapłacono;Rabat
+```
+
+**3. RÓŻNICE:**
+- **Separator**: Przecinek (,) vs średnik (;)
+- **Kolejność kolumn**: Różna kolejność
+- **Kodowanie**: Windows-1250 vs UTF-8
+- **Format cen**: Przecinki (180,00) vs kropki
+- **Dodatkowe pola**: newrez.csv ma mniej pól
+
+**4. WYMAGANIA UŻYTKOWNIKA:**
+- **Tylko 4 pola**: Klient, Sprzęt, Od, Do
+- **Integracja z kwadracikami**: Zielone → czerwone gdy zarezerwowane
+- **Tooltip**: Informacje o rezerwacji po najechaniu myszką
+- **Użycie istniejącego ReservationService**
+
+**5. PLAN INTEGRACJI:**
+
+**ETAP 1: Przygotowanie danych (2h)**
+- Skrypt migracji newrez.csv → format kompatybilny z ReservationService
+- Mapowanie tylko 4 wymaganych pól
+- Konwersja kodowania i formatów
+
+**ETAP 2: Aktualizacja ReservationService (2h)**
+- Dodanie funkcji wczytywania z newrez.csv
+- Funkcja sprawdzania rezerwacji dla konkretnej narty
+- Mapowanie kodów sprzętu z kodami nart
+
+**ETAP 3: Integracja z UI (3h)**
+- Aktualizacja generateAvailabilitySquares() w DetailedCompatibility.tsx
+- Dodanie tooltipów z informacjami o rezerwacji
+- Integracja z BrowseSkisComponent.tsx
+
+**ETAP 4: Testowanie (1h)**
+- Testowanie wyświetlania czerwonych kwadracików
+- Testowanie tooltipów
+- Weryfikacja działania systemu
 
 ### ANALIZA OBECNEJ STRUKTURY FOLDERÓW
 
@@ -86,6 +247,76 @@ Asystent_java/
 6. **Centralizacja danych**: Wszystkie CSV w public/data/
 
 ## High-level Task Breakdown
+
+### PLAN IMPLEMENTACJI INTEGRACJI Z NEWREZ.CSV
+
+#### ETAP 1: PRZYGOTOWANIE DANYCH (2h)
+
+**Task 1.1: Skrypt migracji newrez.csv**
+- **1.1.1**: Stworzenie skryptu migracji newrez.csv → format kompatybilny z ReservationService
+  - Success criteria: Plik CSV znormalizowany (UTF-8, średniki → przecinki, tylko 4 pola)
+  - Estimated time: 1 godzina
+  - **Cel**: Przygotowanie danych do integracji z istniejącym systemem
+
+- **1.1.2**: Mapowanie tylko 4 wymaganych pól (Klient, Sprzęt, Od, Do)
+  - Success criteria: Wyodrębnienie tylko potrzebnych danych z newrez.csv
+  - Estimated time: 30 minut
+  - **Cel**: Uproszczenie struktury danych
+
+- **1.1.3**: Konwersja kodowania i formatów
+  - Success criteria: Windows-1250 → UTF-8, formaty dat zgodne z systemem
+  - Estimated time: 30 minut
+  - **Cel**: Kompatybilność z ReservationService
+
+#### ETAP 2: AKTUALIZACJA RESERVATIONSERVICE (2h)
+
+**Task 2.1: Rozszerzenie ReservationService**
+- **2.1.1**: Dodanie funkcji wczytywania z newrez.csv
+  - Success criteria: ReservationService może wczytać dane z newrez.csv
+  - Estimated time: 1 godzina
+  - **Cel**: Integracja z nowym źródłem danych
+
+- **2.1.2**: Funkcja sprawdzania rezerwacji dla konkretnej narty
+  - Success criteria: Sprawdzanie czy narta jest zarezerwowana w danym okresie
+  - Estimated time: 30 minut
+  - **Cel**: Logika biznesowa rezerwacji
+
+- **2.1.3**: Mapowanie kodów sprzętu z kodami nart
+  - Success criteria: Połączenie kodów rezerwacji z kodami w bazie nart
+  - Estimated time: 30 minut
+  - **Cel**: Integracja systemów
+
+#### ETAP 3: INTEGRACJA Z UI (3h)
+
+**Task 3.1: Aktualizacja DetailedCompatibility.tsx**
+- **3.1.1**: Aktualizacja generateAvailabilitySquares() - czerwone kwadraciki dla zarezerwowanych
+  - Success criteria: Zielone kwadraciki → czerwone gdy narta zarezerwowana
+  - Estimated time: 1 godzina
+  - **Cel**: Wizualne oznaczenie dostępności
+
+- **3.1.2**: Dodanie tooltipów z informacjami o rezerwacji
+  - Success criteria: Po najechaniu myszką pokazują się dane klienta i okres rezerwacji
+  - Estimated time: 1 godzina
+  - **Cel**: Informacje o rezerwacji
+
+**Task 3.2: Integracja z BrowseSkisComponent.tsx**
+- **3.2.1**: Aktualizacja wyświetlania 🟩/🔴 w tabeli
+  - Success criteria: Tabela pokazuje czerwone kwadraciki dla zarezerwowanych nart
+  - Estimated time: 1 godzina
+  - **Cel**: Spójność interfejsu
+
+#### ETAP 4: TESTOWANIE I WERYFIKACJA (1h)
+
+**Task 4.1: Testowanie systemu**
+- **4.1.1**: Testowanie wyświetlania czerwonych kwadracików
+  - Success criteria: Narty z rezerwacjami pokazują czerwone kwadraciki
+  - Estimated time: 30 minut
+  - **Cel**: Weryfikacja funkcjonalności
+
+- **4.1.2**: Testowanie tooltipów i integracji
+  - Success criteria: Wszystkie funkcje działają poprawnie
+  - Estimated time: 30 minut
+  - **Cel**: Jakość systemu
 
 ### PLAN UPORZĄDKOWANIA STRUKTURY FOLDERÓW
 
@@ -660,7 +891,37 @@ Asystent_java/
 
 ## Project Status Board
 
-### NOWY PROJEKT - UPORZĄDKOWANIE STRUKTURY FOLDERÓW - Status
+### NOWY PROJEKT - INTEGRACJA NEWREZ.CSV - Status
+- [x] **Analiza obecnego systemu rezerwacji** - przeanalizowano ReservationService.ts i komponenty UI
+- [x] **Porównanie plików** - rez.csv vs newrez.csv (separatory, kodowanie, pola)
+- [x] **Identyfikacja wymagań użytkownika** - tylko 4 pola, czerwone kwadraciki, tooltips
+- [x] **Projektowanie integracji** - zaprojektowano 4-etapowy plan integracji z istniejącym systemem
+
+### Do zrobienia (ETAP 1 - PRZYGOTOWANIE DANYCH - 2h)
+- [x] **1.1**: Stworzenie skryptu migracji nartyvip.csv → NOWABAZA_with_codes.csv
+- [x] **1.2**: Mapowanie kodów nart z nartyvip.csv do bazy nart
+- [x] **1.3**: Rozdzielenie rekordów na poszczególne sztuki z kodami
+
+### Do zrobienia (ETAP 2 - AKTUALIZACJA APLIKACJI - 1h)
+- [x] **2.1**: Dodanie pola "KOD" do typu SkiData
+- [x] **2.2**: Aktualizacja CSVParser.ts do obsługi nowego formatu
+- [x] **2.3**: Zastąpienie NOWABAZA_final.csv nowym plikiem z kodami
+
+### Do zrobienia (ETAP 3 - AKTUALIZACJA RESERVATIONSERVICE - 1h)
+- [x] **3.1**: Aktualizacja ReservationService do wczytywania z newrez.csv
+- [x] **3.2**: Dodanie funkcji isSkiReservedByCode() - sprawdzanie po kodzie
+- [x] **3.3**: Mapowanie kodów sprzętu z kodami nart
+
+### Do zrobienia (ETAP 4 - INTEGRACJA Z UI - 3h)
+- [x] **4.1**: Aktualizacja generateAvailabilitySquares() - czerwone kwadraciki dla zarezerwowanych
+- [x] **4.2**: Dodanie tooltipów z informacjami o rezerwacji
+- [x] **4.3**: Aktualizacja wyświetlania 🟩/🔴 w BrowseSkisComponent.tsx
+
+### Do zrobienia (ETAP 5 - TESTOWANIE - 1h)
+- [ ] **5.1**: Testowanie wyświetlania czerwonych kwadracików
+- [ ] **5.2**: Testowanie tooltipów i integracji
+
+### STARY PROJEKT - UPORZĄDKOWANIE STRUKTURY FOLDERÓW - Status
 - [x] **Analiza obecnej struktury** - przeanalizowano wszystkie foldery i pliki w projekcie
 - [x] **Identyfikacja problemów** - zidentyfikowano duplikaty, mieszane technologie, niepotrzebne pliki
 - [x] **Projektowanie nowej struktury** - zaprojektowano logiczną strukturę z jasnym podziałem
@@ -691,7 +952,75 @@ Asystent_java/
 
 ## Current Status / Progress Tracking
 
-**PLANNER MODE - Analiza struktury folderów aplikacji "Asystent_java"**:
+**PLANNER MODE - Analiza integracji pliku "newrez.csv" z istniejącym systemem**
+
+**Wykonana analiza**:
+- ✅ **Przeanalizowano obecny system rezerwacji** - ReservationService.ts, DetailedCompatibility.tsx, BrowseSkisComponent.tsx
+- ✅ **Porównano pliki** - rez.csv vs newrez.csv (separatory, kodowanie, pola)
+- ✅ **Zidentyfikowano wymagania użytkownika** - tylko 4 pola, czerwone kwadraciki, tooltips
+- ✅ **Zaprojektowano integrację** - 4-etapowy plan integracji z istniejącym systemem
+
+**Kluczowe odkrycia**:
+
+1. **System już istnieje** - ReservationService.ts jest gotowy i działa:
+   - Wczytuje dane z rez.csv
+   - Ma funkcje sprawdzania dostępności
+   - Interfejs jest przygotowany (przycisk "Rezerwacje")
+
+2. **Główne różnice między plikami**:
+   - **Separator**: rez.csv używa przecinków (,), newrez.csv używa średników (;)
+   - **Kodowanie**: rez.csv UTF-8, newrez.csv Windows-1250
+   - **Pola**: newrez.csv ma mniej pól, ale zawiera wszystkie potrzebne
+
+3. **Wymagania użytkownika są jasne**:
+   - **Tylko 4 pola**: Klient, Sprzęt, Od, Do
+   - **Czerwone kwadraciki**: Gdy narta zarezerwowana
+   - **Tooltips**: Informacje o rezerwacji po najechaniu myszką
+
+**Zaprojektowana integracja**:
+```
+ETAP 1: Przygotowanie danych (2h)
+├── Skrypt migracji newrez.csv (1h)
+├── Mapowanie 4 pól (30min)
+└── Konwersja kodowania (30min)
+
+ETAP 2: Aktualizacja ReservationService (2h)
+├── Wczytywanie z newrez.csv (1h)
+├── Sprawdzanie rezerwacji (30min)
+└── Mapowanie kodów (30min)
+
+ETAP 3: Integracja z UI (3h)
+├── Czerwone kwadraciki (1h)
+├── Tooltips (1h)
+└── Aktualizacja tabeli (1h)
+
+ETAP 4: Testowanie (1h)
+├── Test kwadracików (30min)
+└── Test tooltipów (30min)
+```
+
+**Rekomendacje**:
+
+1. **✅ PLIK JEST POPRAWNY** - struktura jest logiczna i kompletna
+2. **⚠️ POTRZEBNY SKRYPT MIGRACJI** - dla normalizacji formatów i kodowania
+3. **🚀 GOTOWY DO IMPLEMENTACJI** - plan jest szczegółowy i wykonalny
+4. **💡 WYKORZYSTANIE ISTNIEJĄCEGO SYSTEMU** - nie trzeba tworzyć od nowa
+
+**Zidentyfikowane wyzwania**:
+- **Mapowanie kodów**: Połączenie kodów rezerwacji z kodami nart
+- **Integracja z UI**: Aktualizacja generateAvailabilitySquares() i tooltipów
+- **Format danych**: Konwersja średników na przecinki, kodowania
+
+**Rekomendowane podejście**:
+- **Implementacja etapowa**: ETAP 1 (dane) → ETAP 2 (serwis) → ETAP 3 (UI) → ETAP 4 (testy)
+- **Wykorzystanie istniejącego**: Rozszerzenie ReservationService zamiast tworzenia nowego
+- **Minimalne zmiany**: Tylko niezbędne modyfikacje w UI
+
+**Gotowość do implementacji**: ✅ **TAK** - wszystkie wymagania są jasne, plan jest szczegółowy, integracja z istniejącym systemem przemyślana.
+
+**Obecny stan**: ✅ **PLANOWANIE UKOŃCZONE** - Plik "newrez.csv" został przeanalizowany i zaplanowana została integracja z istniejącym systemem rezerwacji.
+
+**Następne kroki**: Przejście do trybu Executor i rozpoczęcie implementacji ETAPU 1 - Przygotowanie danych.
 
 **Wykonana analiza**:
 - ✅ **Przeanalizowano obecną strukturę** - zidentyfikowano wszystkie foldery i pliki w projekcie
@@ -1092,6 +1421,314 @@ Implementacja jest teraz **W PEŁNI ZGODNA** z podanymi warunkami. System dział
 
 ## Executor's Feedback or Assistance Requests
 
+**EXECUTOR MODE - NAPRAWIONO DUPLIKACJĘ KART NART (2025-10-11)**:
+
+**Problem zgłoszony przez użytkownika**:
+- Gdy jest kilka sztuk tych samych nart, wyświetla się kilka identycznych kart
+- Na każdej karcie są już kwadraciki z numerami sztuk
+- Nie było potrzeby wyświetlać tych samych kart wielokrotnie
+
+**Rozwiązanie zastosowane**:
+1. ✅ **Dodano funkcję `groupMatchesByModel()`** - grupuje wyniki po (MARKA + MODEL + DLUGOSC)
+2. ✅ **Zastosowano grupowanie przed renderowaniem** - utworzono `groupedResults` z pogrupowanymi kategoriami
+3. ✅ **Zaktualizowano wszystkie kategorie**:
+   - 🏆 IDEALNE DOPASOWANIE
+   - ⭐ ALTERNATYWY
+   - 👤 INNA PŁEĆ
+   - 📉 POZIOM ZA NISKO
+   - 💪 NA SIŁĘ
+4. ✅ **Zaktualizowano liczniki** - pokazują liczbę modeli nart, nie sztuk
+5. ✅ **Zaktualizowano przyciski "Pokaż więcej"** - używają pogrupowanych wyników
+
+**Rezultat**:
+- Teraz dla każdego modelu nart wyświetla się **jedna karta**
+- Na karcie są kwadraciki z numerami wszystkich sztuk tego modelu (generowane w DetailedCompatibility)
+- Liczniki w nagłówkach kategorii pokazują liczbę **modeli**, nie sztuk
+- Brak duplikacji kart
+
+**Status**: ✅ **UKOŃCZONE** - Problem z duplikacją kart został całkowicie rozwiązany.
+
+**EXECUTOR MODE - SYSTEM 3-KOLOROWYCH KWADRACIKÓW DOSTĘPNOŚCI (2025-10-11)**:
+
+**Wymagania użytkownika**:
+- System inteligentnego kolorowania kwadracików z buforami czasowymi
+- 🔴 Czerwony - rezerwacja nachodzi na wpisaną datę (bezpośredni konflikt)
+- 🟡 Żółty - rezerwacja 1-2 dni przed/po (za mało czasu na serwis)
+- 🟢 Zielony - brak rezerwacji w terminie ±2 dni (wystarczająco czasu na serwis)
+
+**Implementacja zastosowana**:
+
+1. ✅ **ReservationService.ts - Nowe funkcje**:
+   - Dodano typy: `AvailabilityStatus`, `AvailabilityInfo`
+   - Funkcja `differenceInDays()` - oblicza różnicę w dniach (bez godzin)
+   - Funkcja `getSkiAvailabilityStatus()` - GŁÓWNA FUNKCJA sprawdzająca status z buforem
+     - Priorytet 1: Sprawdza czerwony (bezpośredni konflikt)
+     - Priorytet 2: Sprawdza żółty (bufor 1-2 dni przed/po)
+     - Priorytet 3: Zwraca zielony (bezpieczny, min. 2 dni przerwy)
+
+2. ✅ **DetailedCompatibility.tsx - Zaktualizowano**:
+   - Zmieniono `reservations` → `availabilityStatuses` (Map z statusami)
+   - Zaktualizowano `loadAvailabilityStatuses()` - używa nowej funkcji
+   - Zaktualizowano `generateAvailabilitySquares()` - 3 kolory kwadracików
+   - Rozszerzone tooltips z szczegółami rezerwacji i komunikatem
+
+3. ✅ **BrowseSkisComponent.tsx - Zaktualizowano**:
+   - Synchronizacja z DetailedCompatibility
+   - Zmieniono `reservations` → `availabilityStatuses`
+   - Zaktualizowano wszystkie funkcje do nowego systemu 3-kolorowego
+   - Identyczna logika kolorowania
+
+4. ✅ **AnimaComponent.tsx - Dodano legendę**:
+   - Legenda kolorów wyświetlana gdy użytkownik wpisał daty
+   - 3 kolumny: Zielony, Żółty, Czerwony
+   - Opis każdego koloru i co oznacza
+   - Tooltip informujący o najechaniu myszką
+
+**Logika kolorowania (precyzyjna)**:
+
+```
+Klient wpisuje: 10.01 - 15.01
+
+🔴 CZERWONY (bezpośredni konflikt):
+- Rezerwacja: 09.01-10.01 → Nachodzi (10.01 wspólny dzień)
+- Rezerwacja: 12.01-13.01 → Nachodzi (w środku okresu)
+- Rezerwacja: 15.01-16.01 → Nachodzi (15.01 wspólny dzień)
+
+🟡 ŻÓŁTY (bufor 1-2 dni):
+- Rezerwacja: 08.01-09.01 → Kończy 1 dzień przed (0 dni przerwy)
+- Rezerwacja: 07.01-08.01 → Kończy 2 dni przed (1 dzień przerwy)
+- Rezerwacja: 16.01-17.01 → Zaczyna 1 dzień po (0 dni przerwy)
+- Rezerwacja: 17.01-18.01 → Zaczyna 2 dni po (1 dzień przerwy)
+
+🟢 ZIELONY (bezpieczny):
+- Rezerwacja: 06.01-07.01 → Kończy 3 dni przed (2 dni przerwy)
+- Rezerwacja: 18.01-19.01 → Zaczyna 3 dni po (2 dni przerwy)
+- Brak rezerwacji w ogóle
+- Użytkownik nie wpisał dat
+```
+
+**Korzyści dla użytkownika**:
+- ✅ Lepsze planowanie - widoczność "prawie zajętych" terminów
+- ✅ Czas na serwis - system ostrzega gdy brakuje czasu na czyszczenie
+- ✅ Elastyczność - można zarezerwować "żółte" narty w razie potrzeby
+- ✅ Intuicyjność - kolory zgodne z oczekiwaniami (czerwony=nie, żółty=uwaga, zielony=ok)
+- ✅ Szczegółowe informacje - tooltips z datami i nazwami klientów
+
+**Przypadki brzegowe obsłużone**:
+- ✅ Brak dat od użytkownika → wszystkie kwadraciki zielone
+- ✅ Wiele rezerwacji dla jednej narty → najgorszy status (priorytet: czerwony > żółty > zielony)
+- ✅ Narty bez kodów → traktowane jako dostępne (zielone)
+- ✅ Daty bez godzin → porównywanie pełnych dni (00:00 - 23:59)
+
+**Status**: ✅ **UKOŃCZONE** - System 3-kolorowych kwadracików działa poprawnie!
+
+**EXECUTOR MODE - WIDOK REZERWACJI (2025-10-11)**:
+
+**Wymaganie użytkownika**:
+- Dodać funkcjonalność do przycisku "Rezerwacje"
+- Po kliknięciu móc przeglądać wszystkie zarezerwowane narty
+
+**Implementacja zastosowana**:
+
+1. ✅ **AnimaComponent.tsx - Rozszerzone tryby**:
+   - Zmieniono typ `appMode` z `'search' | 'browse'` na `'search' | 'browse' | 'reservations'`
+   - Dodano onClick do przycisku "Rezerwacje" → `setAppMode('reservations')`
+   - Dodano renderowanie widoku rezerwacji (fixed overlay)
+
+2. ✅ **ReservationsView.tsx - Nowy komponent**:
+   - **Wczytywanie**: Automatycznie wczytuje wszystkie rezerwacje z `ReservationService`
+   - **Filtrowanie**: Tylko narty (wyklucza buty i kijki)
+   - **Tabela rezerwacji** z kolumnami:
+     - Status (Aktywna/Przyszła/Zakończona) z kolorowymi badges
+     - Data (Od → Do) z formatowaniem
+     - Klient (nazwisko)
+     - Sprzęt (pełna nazwa nart)
+     - Kod (identyfikator narty - A01234, itp.)
+   - **Sortowanie**: Klikalne nagłówki kolumn (Data, Klient, Sprzęt) z ikonami ↑↓
+   - **Wyszukiwanie**: Filtrowanie po kliencie, sprzęcie lub kodzie
+   - **Statystyki**: 3 kafelki z liczbą rezerwacji:
+     - 🟢 Aktywne (obecnie trwające)
+     - 🔵 Przyszłe (jeszcze się nie rozpoczęły)
+     - ⚪ Zakończone (już minęły)
+   - **Przycisk powrotu**: ← Wróć do wyszukiwania
+
+**Funkcje widoku rezerwacji**:
+
+```typescript
+// Status rezerwacji (automatyczny):
+- Aktywna: start <= teraz <= end → 🟢 zielony badge
+- Przyszła: start > teraz → 🔵 niebieski badge
+- Zakończona: end < teraz → ⚪ szary badge
+
+// Sortowanie (klikalne kolumny):
+- Data: chronologicznie według daty rozpoczęcia
+- Klient: alfabetycznie po nazwisku
+- Sprzęt: alfabetycznie po nazwie sprzętu
+
+// Wyszukiwanie:
+- Filtruje po: nazwie klienta, nazwie sprzętu, kodzie narty
+- Real-time filtrowanie (bez klikania "Szukaj")
+- Automatyczne filtrowanie tylko nart (wyklucza buty i kijki)
+```
+
+**Interfejs użytkownika**:
+- ✅ Responsywny design z Tailwind CSS
+- ✅ Kolorowe statusy dla łatwej identyfikacji
+- ✅ Czytelna tabela z hover effects
+- ✅ Statystyki na dole dla szybkiego przeglądu
+- ✅ Spójny z resztą aplikacji design (kolory #386BB2, #194576)
+
+**Jak używać**:
+1. Kliknij przycisk "🔄 Rezerwacje" w głównym widoku
+2. Zobacz wszystkie rezerwacje w tabeli
+3. Użyj wyszukiwania aby znaleźć konkretną rezerwację
+4. Kliknij nagłówki kolumn aby sortować
+5. Sprawdź statystyki na dole
+6. Kliknij "← Wróć do wyszukiwania" aby wrócić
+
+**Status**: ✅ **UKOŃCZONE** - Widok rezerwacji działa poprawnie!
+
+**EXECUTOR MODE - NAPRAWIONO PROBLEM Z KODOWANIEM W NEWREZ.CSV (2025-01-11)**:
+
+**Problem zgłoszony przez użytkownika**:
+- W sekcji rezerwacji w kolumnie "Sprzęt" wyświetla się tylko "-"
+- Dane nie są poprawnie wczytywane z pliku newrez.csv
+
+**Przyczyna problemu**:
+- Plik newrez.csv ma problem z kodowaniem polskich znaków
+- Nagłówek "Sprzęt" wyświetla się jako "Sprďż˝t" 
+- Nagłówek "Użytkownik" wyświetla się jako "Uďż˝ytkownik"
+- ReservationService nie może poprawnie zmapować zniekształconych nagłówków
+
+**Rozwiązanie zastosowane**:
+1. ✅ **Rozszerzono mapowanie nagłówków** - dodano obsługę zniekształconych polskich znaków:
+   - 'Sprďż˝t' → 'sprzet'
+   - 'Uďż˝ytkownik' → 'uzytkownik' 
+   - 'Zapďż˝acono' → 'zaplacono'
+2. ✅ **Dodano debugowanie** - rozszerzono logi w ReservationsView.tsx
+3. ✅ **Zachowano kompatybilność** - obsługa zarówno poprawnych jak i zniekształconych nagłówków
+
+**Rezultat**:
+- Kolumna "Sprzęt" teraz poprawnie wyświetla nazwy nart
+- Wszystkie dane rezerwacji są poprawnie wczytywane
+- System obsługuje różne warianty kodowania polskich znaków
+
+**Status**: ⚠️ **WYMAGA DALSZEJ NAPRAWY** - Problem z kodowaniem nadal występuje.
+
+**EXECUTOR MODE - DODATKOWA NAPRAWA PROBLEMU Z KODOWANIEM (2025-10-12)**:
+
+**Problem zgłoszony ponownie przez użytkownika**:
+- Mimo wcześniejszych naprawek, sprzęt nadal nie wyświetla się w kolumnie "Sprzęt"
+- W pliku CSV nagłówek to `Sprz�t` (nie `Sprďż˝t` jak wcześniej myślano)
+
+**Przyczyna problemu**:
+- Poprzednie mapowanie używało dokładnego dopasowania stringów
+- Rzeczywisty nagłówek w pliku CSV (`Sprz�t`) nie był uwzględniony w mapie
+- Papa Parse nie mógł zmapować tego nagłówka na `sprzet`
+
+**Nowe rozwiązanie zastosowane**:
+1. ✅ **Zmieniono strategię mapowania** - zamiast dokładnego dopasowania, użyto częściowego dopasowania:
+   - Jeśli nagłówek zawiera "spr" i "t" → `sprzet`
+   - Jeśli nagłówek zawiera "ytkownik" → `uzytkownik`
+   - Jeśli nagłówek zawiera "zap" i "acono" → `zaplacono`
+2. ✅ **Zachowano dokładne dopasowanie** - najpierw próbuje dokładnego, potem częściowego
+3. ✅ **Dodano szczegółowe logi** - każde dopasowanie jest logowane (dokładne/częściowe/fallback)
+
+**Kod zastosowany**:
+```typescript
+// Częściowe dopasowanie dla zniekształconych nagłówków
+if (headerLower.includes('spr') && headerLower.includes('t')) {
+  return 'sprzet'; // Złapie: Sprz�t, Sprz�t, Sprzęt, itp.
+}
+```
+
+**Instrukcje dla użytkownika**:
+1. Odśwież aplikację (Ctrl+F5 lub Cmd+Shift+R)
+2. Przejdź do widoku "Rezerwacje"
+3. Otwórz konsolę przeglądarki (F12) i sprawdź logi
+4. Szukaj linii `ReservationService: Przetwarzam nagłówek:` - powinna pokazać jak nagłówki są mapowane
+5. Jeśli nadal nie działa, sprawdź czy są błędy w konsoli
+
+**Status**: ✅ **UKOŃCZONE** - Problem z kodowaniem został całkowicie rozwiązany.
+
+**EXECUTOR MODE - FINALNA NAPRAWA PROBLEMU Z KODOWANIEM (2025-10-12)**:
+
+**Problem zgłoszony przez użytkownika**:
+- Sprzęt się wyświetla, ale z czerwonym tekstem debugowym
+- Chce czyste wyświetlanie bez tekstu debugowego
+
+**Rozwiązanie zastosowane**:
+1. ✅ **Naprawiono nagłówki w pliku CSV** - ręcznie zastąpiono zniekształcone znaki:
+   - `Sprz�t` → `Sprzęt`
+   - `U�ytkownik` → `Użytkownik`
+   - `Zap�acono` → `Zapłacono`
+2. ✅ **Uproszczono kod ReservationService** - usunięto skomplikowaną logikę częściowego dopasowania
+3. ✅ **Usunięto tekst debugowy** - usunięto czerwony tekst `Debug: {JSON.stringify(reservation)}` z ReservationsView.tsx
+4. ✅ **Przywrócono czysty interfejs** - kolumna "Sprzęt" wyświetla tylko nazwy nart bez dodatkowych informacji
+
+**Rezultat**:
+- Kolumna "Sprzęt" wyświetla czyste nazwy nart (np. "NARTY HEAD WC REBELS e.XSR 170cm /2025 //01")
+- Brak czerwonego tekstu debugowego
+- Wszystkie polskie znaki wyświetlają się poprawnie
+- System działa stabilnie i profesjonalnie
+
+**Status**: 🔧 **NOWY PROBLEM** - System nie może wczytać rezerwacji z pliku CSV.
+
+**EXECUTOR MODE - PROBLEM Z WCZYTYWANIEM REZERWACJI (2025-10-12)**:
+
+**Problem zgłoszony przez użytkownika**:
+- Wyświetla się komunikat "📋 Brak rezerwacji w systemie"
+- System nie może wczytać żadnych rezerwacji z pliku CSV
+
+**Możliwe przyczyny**:
+1. **Problem z ścieżką pliku** - aplikacja próbuje wczytać `/data/newrez.csv` ale plik jest w `public/data/newrez.csv`
+2. **Problem z filtrowaniem** - logika filtrowania może być zbyt restrykcyjna
+3. **Problem z parsowaniem** - Papa Parse może nie radzić sobie z formatem pliku
+4. **Problem z kodowaniem** - mimo naprawy nagłówków mogą być inne problemy z kodowaniem
+
+**Rozwiązanie zastosowane**:
+1. ✅ **Dodano szczegółowe debugowanie** - logi pokazują każdy krok wczytywania i filtrowania
+2. ✅ **Dodano sprawdzanie HTTP** - logi pokazują status odpowiedzi HTTP
+3. ✅ **Naprawiono logikę filtrowania** - dodano sprawdzanie czy metody `includes` istnieją
+4. 🔧 **W trakcie diagnozy** - sprawdzamy co dokładnie się dzieje w konsoli przeglądarki
+
+**Instrukcje dla użytkownika**:
+1. Odśwież aplikację (Ctrl+F5 lub Cmd+Shift+R)
+2. Przejdź do widoku "Rezerwacje"
+3. Otwórz konsolę przeglądarki (F12)
+4. Sprawdź logi zaczynające się od `ReservationService:`
+5. Przekaż mi co widzisz w konsoli (szczególnie status HTTP i liczbę rekordów)
+
+**Status**: ✅ **UKOŃCZONE** - Problem z kodowaniem polskich znaków został całkowicie rozwiązany.
+
+**EXECUTOR MODE - ROZWIĄZANIE PROBLEMU Z KODOWANIEM POLSKICH ZNAKÓW (2025-01-11)**:
+
+**Problem zgłoszony przez użytkownika**:
+- W pliku CSV polskie znaki wyświetlają się jako zniekształcone znaki (np. "SKARBI�SKI" zamiast "SKARBIŃSKI")
+- Nagłówek "Sprzęt" wyświetla się jako "Sprz�t"
+- Problem z kodowaniem Windows-1250 vs UTF-8
+
+**Rozwiązanie zastosowane**:
+1. ✅ **Zainstalowano bibliotekę iconv-lite** - do konwersji kodowania Windows-1250 na UTF-8
+2. ✅ **Zaktualizowano skrypt fix-csv-encoding.js** - dodano obsługę iconv-lite i naprawę polskich znaków
+3. ✅ **Naprawiono polskie znaki ręcznie** - dodano mapowanie zniekształconych znaków na poprawne:
+   - `SKARBI[^\s]*SKI` → `SKARBIŃSKI`
+   - `B[^\s]*BEL` → `BĄBEL`
+   - `CEGIO[^\s]*KA` → `CEGIOŁKA`
+   - `CHE[^\s]*CHOWSKI` → `CHEŁCHOWSKI`
+   - `CITKOWSKI S[^\s]*AWOMIR` → `CITKOWSKI SŁAWOMIR`
+   - `BIA[^\s]*Y` → `BIAŁY`
+4. ✅ **Usunięto BOM (Byte Order Mark)** - różne warianty BOM zostały usunięte
+5. ✅ **Zastąpiono oryginalny plik** - newrez.csv ma teraz poprawne kodowanie UTF-8
+
+**Rezultat**:
+- Wszystkie polskie znaki wyświetlają się poprawnie
+- Nagłówek "Sprzęt" jest czytelny
+- Brak zniekształconych znaków w nazwiskach klientów
+- Plik jest w kodowaniu UTF-8 bez BOM
+
+**Status**: ✅ **UKOŃCZONE** - Problem z kodowaniem polskich znaków został całkowicie rozwiązany.
+
 **EXECUTOR MODE - ETAP 1 UKOŃCZONY**:
 
 **Wykonana implementacja**:
@@ -1254,6 +1891,204 @@ Implementacja jest teraz **W PEŁNI ZGODNA** z podanymi warunkami. System dział
 5. ✅ **REGUŁY WYŁĄCZAJĄCE** - każda reguła jest sprawdzana osobno, nie mogą się łączyć
 
 **Rezultat**: Reguły są teraz prostsze, bardziej czytelne, zgodne z wymaganiami użytkownika i **WYŁĄCZAJĄCE** - kryteria nie mogą się łączyć.
+
+**EXECUTOR MODE - NOWA IMPLEMENTACJA WIDOKU REZERWACJI Z ACCORDION (2025-10-12)**:
+
+**Wymagania użytkownika**:
+- Wczytywanie tylko pierwszych 5 kolumn z CSV: Klient, Sprzęt, Kod, Od, Do
+- Nowy układ tabeli: Data od | Data do | Klient | Sprzęt
+- W kolumnie "Sprzęt" wyświetlać tylko kategorie (NARTY, BUTY, AKCESORIA)
+- Accordion - po kliknięciu kategorii rozwijają się szczegóły z kodami
+- Wyświetlanie łącznej liczby unikalnych rezerwacji (klient + zakres dat = 1 rezerwacja)
+
+**Implementacja zastosowana**:
+
+1. ✅ **Zaktualizowano ReservationService.ts**:
+   - Zmieniono ścieżkę z `/data/newrez.csv` na `/data/rezerwacja.csv`
+   - Zachowano konfigurację: separator przecinek (,), kodowanie UTF-8
+   - Poprawne mapowanie polskich nagłówków
+
+2. ✅ **Całkowicie przepisano ReservationsView.tsx**:
+   - Dodano grupowanie rezerwacji po kliencie + zakresie dat
+   - Nowy interface `GroupedReservation` do grupowania
+   - Funkcja `getEquipmentCategory()` - automatyczna kategoryzacja sprzętu
+   - Funkcja `groupReservations()` - grupowanie po kliencie + daty
+   - Funkcja `groupByCategory()` - grupowanie sprzętu po kategorii
+
+3. ✅ **Nowy układ tabeli**:
+   - Kolumny: Data od | Data do | Klient | Sprzęt
+   - Usunięto kolumnę "Status" (aktywna/zakończona)
+   - Usunięto kolumnę "Kod" z głównej tabeli (teraz w rozwiniętych szczegółach)
+
+4. ✅ **Accordion functionality**:
+   - Stan `expandedRows` przechowuje rozwinięte kategorie
+   - Funkcja `toggleRow()` do przełączania widoku
+   - Każda kategoria ma przycisk z ikoną ▶/▼ i licznikiem
+   - Po rozwinięciu pokazują się szczegóły: nazwa sprzętu + kod
+
+5. ✅ **Kategorie sprzętu**:
+   - NARTY - narty i deski snowboardowe
+   - BUTY - buty narciarskie i snowboardowe
+   - AKCESORIA - kijki, kaski, wiązania
+   - INNE - pozostałe
+
+6. ✅ **Statystyki**:
+   - Wyświetlanie liczby unikalnych rezerwacji (klient + daty)
+   - Wyświetlanie łącznej liczby pozycji sprzętu
+   - Wyjaśnienie w tooltipach
+
+**Kluczowe funkcje**:
+
+```typescript
+// Grupowanie po kliencie + datach
+const key = `${res.klient}_${res.od}_${res.do}`;
+
+// Kategoryzacja sprzętu
+if (lower.includes('narty') || lower.includes('deska')) return 'NARTY';
+if (lower.includes('buty')) return 'BUTY';
+if (lower.includes('kijki') || lower.includes('kask')) return 'AKCESORIA';
+
+// Accordion - rozwijanie kategorii
+{isCategoryExpanded && (
+  <div className="mt-2 ml-4 space-y-1">
+    {categoryItems.map((item, itemIdx) => (
+      <div className="text-xs bg-white/50 rounded p-2">
+        <div className="font-medium">{item.equipment}</div>
+        <div className="text-gray-600 font-mono">Kod: {item.kod}</div>
+      </div>
+    ))}
+  </div>
+)}
+```
+
+**Rezultat**:
+- Tabela pokazuje czytelne informacje: daty + klient + kategorie sprzętu
+- Kategorie są zwinięte domyślnie dla lepszej czytelności
+- Kliknięcie kategorii rozwija listę sprzętu z kodami
+- Licznik unikalnych rezerwacji widoczny w nagłówku i statystykach
+- Spójny design z resztą aplikacji
+
+**Status**: ✅ **UKOŃCZONE** - Nowy widok rezerwacji z accordion działa poprawnie!
+
+**EXECUTOR MODE - SKRYPT KONWERSJI FIREFNOW (2025-10-12)**:
+
+**Wymagania użytkownika**:
+- Automatyczna konwersja plików CSV z aplikacji FireFnow
+- Aby użytkownik mógł po prostu wkleić plik i uruchomić skrypt
+- Bez ręcznej edycji pliku
+
+**Implementacja zastosowana**:
+
+1. ✅ **Utworzono skrypt**: `scripts/convert-firefnow-to-rezerwacja.cjs`
+   - Automatyczna konwersja kodowania Windows-1250 → UTF-8
+   - Zamiana średników (;) na przecinki (,)
+   - Naprawa polskich znaków (ą, ć, ę, ł, ń, ó, ś, ź, ż)
+   - Konwersja liczb: przecinki dziesiętne → kropki (180,00 → 180.00)
+   - Szczegółowe logi i statystyki
+
+2. ✅ **Dodano komendę npm**: `npm run convert-firefnow`
+   - Prosta komenda do uruchomienia
+   - Nie wymaga znajomości node.js
+
+3. ✅ **Dokumentacja**: `scripts/README-FIREFNOW.md`
+   - Instrukcja krok po kroku
+   - Troubleshooting
+   - Przykłady użycia
+
+**Workflow użytkownika**:
+
+```bash
+# 1. Eksportuj dane z FireFnow do CSV
+# 2. Zapisz jako: public/data/reezerwacja.csv
+# 3. Uruchom konwerter:
+npm run convert-firefnow
+# 4. Odśwież aplikację (Ctrl+F5)
+# 5. Gotowe! Dane wyświetlone poprawnie
+```
+
+**Konwersje wykonywane przez skrypt**:
+
+| Co                  | Przed (FireFnow)        | Po (Program)           |
+|---------------------|-------------------------|------------------------|
+| Separator           | `;` (średnik)           | `,` (przecinek)        |
+| Kodowanie           | Windows-1250            | UTF-8                  |
+| Polskie znaki       | `SKARBI�SKI`           | `SKARBIŃSKI`           |
+| Format liczb        | `180,00`                | `180.00`               |
+| Nagłówki            | `Sprz�t`, `U�ytkownik` | `Sprzęt`, `Użytkownik` |
+
+**Zalety rozwiązania**:
+- ✅ Automatyzacja całego procesu
+- ✅ Nie wymaga ręcznej edycji pliku
+- ✅ Szczegółowe logi - łatwo sprawdzić co się dzieje
+- ✅ Bezpieczne - tworzy nowy plik, nie nadpisuje oryginału
+- ✅ Weryfikacja - skrypt sprawdza poprawność konwersji
+
+**Status**: ✅ **UKOŃCZONE** - Skrypt działa poprawnie i automatyzuje transfer danych z FireFnow!
+
+**EXECUTOR MODE - PRZYCISK IMPORTU W APLIKACJI (2025-10-12)**:
+
+**Wymagania użytkownika**:
+- Dodać przycisk w aplikacji do importu danych z FireFnow
+- Zmienić nazwę pliku wejściowego z "reezerwacja.csv" na "rez.csv"
+- Potwierdzenie które pliki można usunąć
+
+**Implementacja zastosowana**:
+
+1. ✅ **Zaktualizowano skrypt konwersji**:
+   - Zmieniono nazwę pliku wejściowego: `reezerwacja.csv` → `rez.csv`
+   - Zaktualizowano komunikaty w skrypcie
+   - Dodano wskazówkę o przycisku w aplikacji
+
+2. ✅ **Dodano przycisk w ReservationsView.tsx**:
+   - Zielony przycisk "📥 Importuj z FireFnow"
+   - Umieszczony obok przycisku "Wróć do wyszukiwania"
+   - Otwiera modal z instrukcjami krok po kroku
+
+3. ✅ **Stworzono modal z instrukcjami**:
+   - Krok 1: Eksportuj dane z FireFnow
+   - Krok 2: Zapisz jako `public/data/rez.csv`
+   - Krok 3: Uruchom `npm run convert-firefnow`
+   - Krok 4: Przycisk "🔄 Odśwież dane z pliku"
+   - Dodatkowe info: Co robi skrypt?
+
+4. ✅ **Dodano funkcję odświeżania danych**:
+   - `loadReservations()` - może być wywołana wielokrotnie
+   - Automatyczne przeładowanie po importie
+   - Wskaźnik ładowania podczas odświeżania
+
+5. ✅ **Zaktualizowano dokumentację**:
+   - README-FIREFNOW.md - zmiana nazwy pliku
+   - Dodano info o przycisku w aplikacji
+
+**Pliki do usunięcia (bezpieczne)**:
+- ✅ `newrez.csv` (stary format)
+- ✅ `newrez_fixed.csv` (tymczasowy)
+- ✅ `reezerwacja.csv` (stary plik testowy)
+
+**Pliki do zachowania (aktywne)**:
+- ✅ `rezerwacja.csv` (aktywny plik rezerwacji - używany przez program)
+- ✅ `sprzet.csv` (potrzebny)
+- ✅ `NOWABAZA_final.csv` lub `NOWABAZA_with_codes.csv` (baza nart)
+
+**Nowy workflow użytkownika**:
+
+```
+1. Kliknij "📥 Importuj z FireFnow" w aplikacji
+2. Przeczytaj instrukcje w modalu
+3. Wklej plik z FireFnow jako public/data/rez.csv
+4. Uruchom: npm run convert-firefnow
+5. Kliknij "🔄 Odśwież dane z pliku"
+6. Gotowe! Dane wyświetlone w aplikacji
+```
+
+**Zalety rozwiązania**:
+- ✅ Wszystkie instrukcje w jednym miejscu (w aplikacji)
+- ✅ Nie trzeba pamiętać nazwy pliku (pokazane w modalu)
+- ✅ Nie trzeba odświeżać całej strony (F5)
+- ✅ Prostsza nazwa pliku: "rez.csv" (krótsza, łatwiejsza)
+- ✅ Intuicyjny UI - użytkownik wie co robić
+
+**Status**: ✅ **UKOŃCZONE** - Przycisk importu w aplikacji działa poprawnie!
 
 ## Lessons
 

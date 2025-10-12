@@ -15,7 +15,7 @@ export interface SkiData {
   PRZEZNACZENIE: string; // Teraz tylko: SL, G, SLG, OFF
   ATUTY: string;         // NOWE: np. "C", "C,premium" lub ""
   ROK: number;
-  UWAGI: string;
+  KOD: string;           // NOWE: kod narty z nartyvip.csv
 }
 
 export interface SearchCriteria {

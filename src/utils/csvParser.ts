@@ -38,16 +38,16 @@ export class CSVParser {
     // Dzieli linię zachowując przecinki w cudzysłowach
     const fields = this.splitCSVLine(line);
     
-    // Sprawdź czy ma nowy format (z ATUTY) czy stary
-    const hasAtuty = fields.length >= 15;
+    // Sprawdź format pliku
+    const hasKod = fields.length >= 15; // Nowy format z kodem
     
     if (fields.length < 14) {
       return null;
     }
 
     try {
-      // Nowy format: ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,UWAGI
-      if (hasAtuty) {
+      // Nowy format z kodem: ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,KOD
+      if (hasKod) {
         return {
           ID: fields[0].trim(),
           MARKA: fields[1].trim(),
@@ -63,7 +63,7 @@ export class CSVParser {
           PRZEZNACZENIE: fields[11].trim(),
           ATUTY: fields[12] ? fields[12].trim() : '',
           ROK: parseInt(fields[13]) || 2024,
-          UWAGI: fields[14] ? fields[14].trim() : ''
+          KOD: fields[14] ? fields[14].trim() : ''
         };
       } else {
         // Stary format - kompatybilność wsteczna
@@ -95,7 +95,7 @@ export class CSVParser {
           PRZEZNACZENIE: newPrzeznaczenie,
           ATUTY: atuty,
           ROK: parseInt(fields[12]) || 2024,
-          UWAGI: fields[13] ? fields[13].trim() : ''
+          KOD: fields[13] ? fields[13].trim() : 'NO_CODE'
         };
       }
     } catch (error) {
