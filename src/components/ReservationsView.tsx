@@ -18,13 +18,22 @@ interface GroupedReservation {
   }[];
 }
 
+// Interface dla kompletu sprzętu
+interface EquipmentSet {
+  id: number;
+  items: GroupedReservation['items'];
+  color: string; // Kolor tła dla kompletu
+  icon: string; // Ikona kompletu (🎿, 🏂, 📦)
+}
+
 export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSearch }) => {
   const [reservations, setReservations] = useState<ReservationData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [sortField, setSortField] = useState<'od' | 'klient'>('od');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedReservations, setExpandedReservations] = useState<Set<string>>(new Set());
+  const [showPromotorContracts, setShowPromotorContracts] = useState(false); // Przełącznik: false = zwykłe umowy, true = umowy promotora
   const [toast, setToast] = useState({
     message: '',
     type: 'info' as 'info' | 'success' | 'error',
@@ -86,10 +95,19 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const getEquipmentCategory = (sprzet: string): string => {
     if (!sprzet) return 'INNE';
     const lower = sprzet.toLowerCase();
-    if (lower.includes('narty') || lower.includes('deska')) return 'NARTY';
+    if (lower.includes('narty') || lower.includes('deska')) return 'NARTY/DESKI';
     if (lower.includes('buty') || lower.includes('but')) return 'BUTY';
-    if (lower.includes('kijki') || lower.includes('kask') || lower.includes('wiązania')) return 'AKCESORIA';
+    if (lower.includes('kijki')) return 'KIJKI';
+    if (lower.includes('wiązania')) return 'WIĄZANIA';
+    if (lower.includes('kask')) return 'KASKI';
     return 'INNE';
+  };
+
+  // Sprawdza czy rezerwacja zawiera pozycję PROMOTOR
+  const isPromotorContract = (items: GroupedReservation['items']): boolean => {
+    return items.some(item => 
+      item.equipment && item.equipment.toLowerCase().includes('promotor')
+    );
   };
 
   // Group reservations by client + date range
@@ -121,6 +139,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
   // Filter grouped reservations
   const filteredGroupedReservations = groupReservations().filter(group => {
+    // Filtruj według typu umowy (promotor vs zwykła)
+    const hasPromotor = isPromotorContract(group.items);
+    if (showPromotorContracts && !hasPromotor) return false; // Pokaż tylko promotora
+    if (!showPromotorContracts && hasPromotor) return false; // Pokaż tylko zwykłe umowy
+    
+    // Filtruj według tekstu wyszukiwania
     if (!filterText) return true;
     const searchTerm = filterText.toLowerCase();
     return (
@@ -169,47 +193,83 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     }
   };
 
-  // Toggle kategorii sprzętu
-  const toggleCategory = (categoryKey: string) => {
-    const newExpanded = new Set(expandedCategories);
-    if (newExpanded.has(categoryKey)) {
-      newExpanded.delete(categoryKey);
+  // Toggle wszystkich kompletów w rezerwacji
+  const toggleReservation = (reservationKey: string) => {
+    const newExpanded = new Set(expandedReservations);
+    if (newExpanded.has(reservationKey)) {
+      newExpanded.delete(reservationKey);
     } else {
-      newExpanded.add(categoryKey);
+      newExpanded.add(reservationKey);
     }
-    setExpandedCategories(newExpanded);
+    setExpandedReservations(newExpanded);
   };
 
-  // Rozwiń wszystkie kategorie w danym wierszu
-  const expandAllCategoriesInRow = (rowKey: string, categoryGroups: Map<string, GroupedReservation['items']>) => {
-    const newExpanded = new Set(expandedCategories);
-    Array.from(categoryGroups.keys()).forEach(category => {
-      const categoryKey = `${rowKey}_${category}`;
-      newExpanded.add(categoryKey);
+  // Rozpoznawanie kompletów sprzętu
+  const detectEquipmentSets = (items: GroupedReservation['items']): EquipmentSet[] => {
+    const sets: EquipmentSet[] = [];
+    const colors = ['bg-blue-50', 'bg-gray-50', 'bg-green-50'];
+    let currentSet: typeof items = [];
+    let setIndex = 0;
+    
+    // Filtruj elementy - usuń pozycje które nie są prawdziwym sprzętem
+    const validItems = items.filter(item => {
+      if (!item.equipment) return false;
+      const equipmentLower = item.equipment.toLowerCase();
+      
+      // ZAWSZE ignoruj "PROMOTOR" - to tylko znacznik, nie sprzęt
+      if (equipmentLower.includes('promotor')) return false;
+      
+      // Ignoruj także inne pozycje nietypowe
+      if (equipmentLower.includes('suma:')) return false;
+      if (equipmentLower.trim() === '') return false;
+      
+      return true;
     });
-    setExpandedCategories(newExpanded);
-  };
-
-  // Zwiń wszystkie kategorie w danym wierszu
-  const collapseAllCategoriesInRow = (rowKey: string, categoryGroups: Map<string, GroupedReservation['items']>) => {
-    const newExpanded = new Set(expandedCategories);
-    Array.from(categoryGroups.keys()).forEach(category => {
-      const categoryKey = `${rowKey}_${category}`;
-      newExpanded.delete(categoryKey);
-    });
-    setExpandedCategories(newExpanded);
-  };
-
-  // Group equipment items by category
-  const groupByCategory = (items: GroupedReservation['items']) => {
-    const categoryMap = new Map<string, typeof items>();
-    items.forEach(item => {
-      if (!categoryMap.has(item.category)) {
-        categoryMap.set(item.category, []);
+    
+    validItems.forEach((item) => {
+      const equipmentLower = item.equipment.toLowerCase();
+      const isStartOfSet = 
+        equipmentLower.includes('narty') ||
+        equipmentLower.includes('deska');
+      
+      if (isStartOfSet && currentSet.length > 0) {
+        // Zapisz poprzedni komplet
+        const setIcon = getSetIcon(currentSet);
+        sets.push({
+          id: setIndex,
+          items: currentSet,
+          color: colors[setIndex % colors.length],
+          icon: setIcon
+        });
+        setIndex++;
+        currentSet = [item];
+      } else {
+        currentSet.push(item);
       }
-      categoryMap.get(item.category)!.push(item);
     });
-    return categoryMap;
+    
+    // Dodaj ostatni komplet (tylko jeśli ma elementy)
+    if (currentSet.length > 0) {
+      const setIcon = getSetIcon(currentSet);
+      sets.push({
+        id: setIndex,
+        items: currentSet,
+        color: colors[setIndex % colors.length],
+        icon: setIcon
+      });
+    }
+    
+    return sets;
+  };
+
+  // Określa ikonę dla kompletu na podstawie zawartości
+  const getSetIcon = (items: GroupedReservation['items']): string => {
+    const hasNarty = items.some(item => item.equipment.toLowerCase().includes('narty'));
+    const hasDeska = items.some(item => item.equipment.toLowerCase().includes('deska'));
+    
+    if (hasNarty) return '🎿';
+    if (hasDeska) return '🏂';
+    return '📦'; // Dla niekompletnych zestawów
   };
 
   // Funkcja przełączania sortowania
@@ -245,16 +305,41 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
               </p>
               <p className="text-[#A6C2EF] text-sm mt-1">
-                Kliknij kategorię sprzętu aby zobaczyć szczegóły
+                🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col gap-3">
+              {/* Przełącznik typu umów */}
+              <div className="flex items-center gap-3 bg-[#2C699F] px-4 py-2 rounded-lg">
+                <span className="text-white text-sm font-medium">Typ umów:</span>
+                <button
+                  onClick={() => setShowPromotorContracts(false)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    !showPromotorContracts 
+                      ? 'bg-white text-[#194576]' 
+                      : 'bg-[#194576] text-white hover:bg-[#0F2D4A]'
+                  }`}
+                >
+                  🎿 Zwykłe
+                </button>
+                <button
+                  onClick={() => setShowPromotorContracts(true)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
+                    showPromotorContracts 
+                      ? 'bg-white text-[#194576]' 
+                      : 'bg-[#194576] text-white hover:bg-[#0F2D4A]'
+                  }`}
+                >
+                  📋 Promotor
+                </button>
+              </div>
+              
               <button
                 onClick={onBackToSearch}
-                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 justify-center"
               >
-              ← Wróć do wyszukiwania
-            </button>
+                ← Wróć do wyszukiwania
+              </button>
             </div>
           </div>
 
@@ -325,93 +410,80 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
                   {sortedGroupedReservations.map((group, idx) => {
                     const rowKey = `${group.klient}_${group.od}_${group.do}_${idx}`;
-                    const categoryGroups = groupByCategory(group.items);
+                    const equipmentSets = detectEquipmentSets(group.items);
+                    const isReservationExpanded = expandedReservations.has(rowKey);
 
                     return (
-                      <React.Fragment key={rowKey}>
-                        <tr className="hover:bg-[#8BAED8] transition-colors">
-                          <td className="px-2 py-4 whitespace-nowrap text-sm text-[#194576] font-bold w-20">
-                            {formatDate(group.od)}
+                      <tr key={rowKey} className="hover:bg-[#8BAED8] transition-colors">
+                        <td className="px-2 py-4 whitespace-nowrap text-sm text-[#194576] font-bold w-20 align-top">
+                          {formatDate(group.od)}
                         </td>
-                          <td className="px-2 py-4 whitespace-nowrap text-sm text-[#194576] font-bold w-20">
-                            {formatDate(group.do)}
+                        <td className="px-2 py-4 whitespace-nowrap text-sm text-[#194576] font-bold w-20 align-top">
+                          {formatDate(group.do)}
                         </td>
-                        <td className="px-2 py-4 text-sm text-[#194576] font-medium w-32">
-                            {group.klient || '-'}
+                        <td className="px-2 py-4 text-sm text-[#194576] font-medium w-32 align-top">
+                          <div>
+                            <div className="mb-2">{group.klient || '-'}</div>
+                            {/* Mały przycisk do rozwijania wszystkich kompletów */}
+                            <button
+                              onClick={() => toggleReservation(rowKey)}
+                              className="bg-[#2C699F] hover:bg-[#194576] text-white px-2 py-1 rounded text-xs font-medium transition-colors duration-200 flex items-center gap-1"
+                            >
+                              <span className="text-xs">{isReservationExpanded ? '▼' : '▶'}</span>
+                              <span className="text-xs">
+                                {isReservationExpanded ? 'Zwiń' : 'Rozwiń'}
+                              </span>
+                              <span className="text-[10px] opacity-80">({equipmentSets.length})</span>
+                            </button>
+                          </div>
                         </td>
-                          <td className="px-4 py-4 text-sm text-[#194576]">
-                            <div className="flex items-start gap-2">
-                              {/* Mały trójkącik do rozwijania/zwijania wszystkich */}
-                              <button
-                                onClick={() => {
-                                  const hasExpandedCategories = Array.from(categoryGroups.keys()).some(category => {
-                                    const categoryKey = `${rowKey}_${category}`;
-                                    return expandedCategories.has(categoryKey);
-                                  });
-                                  
-                                  if (hasExpandedCategories) {
-                                    collapseAllCategoriesInRow(rowKey, categoryGroups);
-                                  } else {
-                                    expandAllCategoriesInRow(rowKey, categoryGroups);
-                                  }
-                                }}
-                                className="bg-[#2C699F] hover:bg-[#194576] text-white px-2 py-1 rounded text-xs font-bold text-center transition-colors duration-200 flex items-center justify-center gap-1 flex-shrink-0"
-                                title="Rozwiń/zwij wszystkie kategorie"
-                              >
-                                <span className="text-sm">
-                                  {Array.from(categoryGroups.keys()).some(category => {
-                                    const categoryKey = `${rowKey}_${category}`;
-                                    return expandedCategories.has(categoryKey);
-                                  }) ? '▼' : '▶'}
-                                </span>
-                              </button>
-                              
-                              {/* Kategorie sprzętu */}
-                              <div className="flex flex-wrap gap-2">
-                                {Array.from(categoryGroups.keys()).map(category => {
-                                const categoryItems = categoryGroups.get(category) || [];
-                                const categoryKey = `${rowKey}_${category}`;
-                                const isExpanded = expandedCategories.has(categoryKey);
-                                
-                                return (
-                                  <div key={category} className="flex flex-col gap-1">
-                                    {/* Kategoria jako klikalny nagłówek */}
-                                    <button
-                                      onClick={() => toggleCategory(categoryKey)}
-                                      className="bg-[#2C699F] hover:bg-[#194576] text-white px-2 py-1 rounded text-xs font-bold text-center transition-colors duration-200 flex items-center justify-center gap-1"
-                                    >
-                                      <span>{isExpanded ? '▼' : '▶'}</span>
-                                      <span>{category} ({categoryItems.length})</span>
-                                    </button>
-                                    
-                                    {/* Lista sprzętu w kategorii - pokazuje się tylko gdy rozwinięta */}
-                                    {isExpanded && (
-                                      <div className="space-y-1 animate-fade-in max-w-full">
-                                        {categoryItems.map((item, itemIdx) => {
-                                          return (
-                                            <div 
-                                              key={itemIdx} 
-                                              className="text-xs text-[#194576] bg-white/70 rounded p-2 border border-[#2C699F]/30 w-full max-w-full"
-                                            >
-                                              <div className="font-medium break-words" title={item.equipment}>
-                                                {item.equipment}
-                                              </div>
-                                              <div className="text-gray-600 font-mono text-[10px] mt-1">
-                                                Kod: {item.kod}
-                                              </div>
-                                            </div>
-                                          );
-                                        })}
-                                      </div>
-                                    )}
+                        
+                        {/* Kolumna ze wszystkimi kompletami w poziomej siatce */}
+                        <td className="px-4 py-4 text-sm text-[#194576]">
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                            {equipmentSets.map((set) => {
+                              return (
+                                <div 
+                                  key={set.id}
+                                  className={`${set.color} rounded-lg p-3 border-2 border-[#2C699F]/20 shadow-sm`}
+                                >
+                                  {/* Nagłówek kompletu */}
+                                  <div className="w-full bg-[#2C699F] text-white px-3 py-2 rounded text-xs font-bold text-left flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
+                                      <span>{set.icon}</span>
+                                      <span>KOMPLET {set.id + 1}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] opacity-80">({set.items.length})</span>
+                                      <span className="text-sm">{isReservationExpanded ? '▼' : '▶'}</span>
+                                    </div>
                                   </div>
-                                );
-                              })}
-                              </div>
+                                  
+                                  {/* Lista sprzętu w komplecie - pokazuje się tylko gdy rozwinięty */}
+                                  {isReservationExpanded && (
+                                    <div className="mt-2 space-y-1 animate-fade-in">
+                                      {set.items.map((item, itemIdx) => (
+                                        <div 
+                                          key={itemIdx} 
+                                          className="text-[10px] text-[#194576] bg-white/70 rounded p-2 border border-[#2C699F]/30"
+                                        >
+                                          <div className="font-medium break-words leading-tight" title={item.equipment}>
+                                            {item.equipment}
+                                          </div>
+                                          <div className="text-gray-600 font-mono text-[9px] mt-1">
+                                            {item.kod}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
                           </div>
                         </td>
                       </tr>
-                      </React.Fragment>
                     );
                   })}
                 </tbody>

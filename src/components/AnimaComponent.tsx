@@ -44,30 +44,130 @@ interface FormData {
   // USUNIĘTO: preferences - teraz filtry stylu są oddzielne
 }
 
-const AnimaComponent: React.FC = () => {
-  const [formData, setFormData] = useState<FormData>({
-    dateFrom: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
-    dateTo: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
-    height: { value: '', unit: 'cm' },
-    weight: { value: '', unit: 'kg' },
-    level: '',
-    gender: ''
-    // USUNIĘTO: preferences
-  });
+// NOWY INTERFEJS: Dane dla pojedynczej karty (osoby)
+interface TabData {
+  id: string;
+  label: string; // np. "Osoba 1", "Osoba 2"
+  formData: FormData;
+  selectedStyles: string[];
+  searchResults: SearchResults | null;
+  currentCriteria: SearchCriteria | null;
+  formErrors: FormErrors;
+  error: string;
+  isLoading: boolean;
+  expandedCategories: {
+    alternatywy: boolean;
+    poziom_za_nisko: boolean;
+    inna_plec: boolean;
+    na_sile: boolean;
+  };
+  expandedRows: Record<string, number[]>;
+}
 
-  // NOWY STAN: Filtry stylu jazdy (oddzielne od formularza)
-  const [selectedStyles, setSelectedStyles] = useState<string[]>([]);
+const AnimaComponent: React.FC = () => {
+  // NOWY STAN: System kart - każda karta to jedna osoba
+  const [tabs, setTabs] = useState<TabData[]>([
+    {
+      id: '1',
+      label: 'Osoba 1',
+      formData: {
+        dateFrom: { day: '', month: '', year: '' },
+        dateTo: { day: '', month: '', year: '' },
+        height: { value: '', unit: 'cm' },
+        weight: { value: '', unit: 'kg' },
+        level: '',
+        gender: ''
+      },
+      selectedStyles: [],
+      searchResults: null,
+      currentCriteria: null,
+      formErrors: initialFormErrors,
+      error: '',
+      isLoading: false,
+      expandedCategories: {
+        alternatywy: false,
+        poziom_za_nisko: false,
+        inna_plec: false,
+        na_sile: false
+      },
+      expandedRows: {
+        idealne: [],
+        alternatywy: [],
+        poziom_za_nisko: [],
+        inna_plec: [],
+        na_sile: []
+      }
+    }
+  ]);
+  
+  const [activeTabId, setActiveTabId] = useState<string>('1');
 
   const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
-  const [searchResults, setSearchResults] = useState<SearchResults | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string>('');
-  const [formErrors, setFormErrors] = useState<FormErrors>(initialFormErrors);
-  const [currentCriteria, setCurrentCriteria] = useState<SearchCriteria | null>(null);
 
   // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje)
   const [appMode, setAppMode] = useState<'search' | 'browse' | 'reservations'>('search');
+
+  // HELPER: Pobierz aktywną kartę
+  const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
+  
+  // HELPER: Aktualizuj aktywną kartę
+  const updateActiveTab = (updates: Partial<TabData>) => {
+    setTabs(prev => prev.map(tab => 
+      tab.id === activeTabId ? { ...tab, ...updates } : tab
+    ));
+  };
+
+  // Skróty do danych aktywnej karty (dla kompatybilności z istniejącym kodem)
+  const formData = activeTab.formData;
+  const setFormData = (data: FormData | ((prev: FormData) => FormData)) => {
+    const newData = typeof data === 'function' ? data(activeTab.formData) : data;
+    updateActiveTab({ formData: newData });
+  };
+  
+  const selectedStyles = activeTab.selectedStyles;
+  const setSelectedStyles = (styles: string[] | ((prev: string[]) => string[])) => {
+    const newStyles = typeof styles === 'function' ? styles(activeTab.selectedStyles) : styles;
+    updateActiveTab({ selectedStyles: newStyles });
+  };
+  
+  const searchResults = activeTab.searchResults;
+  const setSearchResults = (results: SearchResults | null) => {
+    updateActiveTab({ searchResults: results });
+  };
+  
+  const formErrors = activeTab.formErrors;
+  const setFormErrors = (errors: FormErrors | ((prev: FormErrors) => FormErrors)) => {
+    const newErrors = typeof errors === 'function' ? errors(activeTab.formErrors) : errors;
+    updateActiveTab({ formErrors: newErrors });
+  };
+  
+  const error = activeTab.error;
+  const setError = (err: string) => {
+    updateActiveTab({ error: err });
+  };
+  
+  const isLoading = activeTab.isLoading;
+  const setIsLoading = (loading: boolean) => {
+    updateActiveTab({ isLoading: loading });
+  };
+  
+  const currentCriteria = activeTab.currentCriteria;
+  const setCurrentCriteria = (criteria: SearchCriteria | null) => {
+    updateActiveTab({ currentCriteria: criteria });
+  };
+
+  const expandedCategories = activeTab.expandedCategories;
+  const setExpandedCategories = (categories: typeof activeTab.expandedCategories | ((prev: typeof activeTab.expandedCategories) => typeof activeTab.expandedCategories)) => {
+    const newCategories = typeof categories === 'function' ? categories(activeTab.expandedCategories) : categories;
+    updateActiveTab({ expandedCategories: newCategories });
+  };
+
+  const expandedRows = activeTab.expandedRows;
+  const setExpandedRows = (rows: Record<string, number[]> | ((prev: Record<string, number[]>) => Record<string, number[]>)) => {
+    const newRows = typeof rows === 'function' ? rows(activeTab.expandedRows) : rows;
+    updateActiveTab({ expandedRows: newRows });
+  };
 
   // NOWY STAN: Rozwijanie kategorii (pierwsze 6 lub wszystkie)
   const [expandedCategories, setExpandedCategories] = useState({
