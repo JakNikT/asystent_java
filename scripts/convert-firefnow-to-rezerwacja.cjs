@@ -47,9 +47,10 @@ try {
   console.log('🔤 Krok 2: Konwertuję kodowanie Windows-1250 → UTF-8...');
   let content = iconv.decode(buffer, 'win1250');
   
-  // Krok 3: Zamień średniki na przecinki (separator CSV)
-  console.log('📝 Krok 3: Zamieniam średniki na przecinki...');
-  console.log('🔢 Krok 4: Konwertuję format liczb (przecinki → kropki)...');
+  // Krok 3: Reorganizuj kolumny i wybierz tylko potrzebne
+  console.log('📝 Krok 3: Reorganizuję kolumny i określam typ umowy...');
+  console.log('   Wybrane kolumny: Klient, Sprzęt, Kod, Od, Do, TypUmowy, Numer, Cena, Zapłacono');
+  console.log('   TypUmowy: "PROMOTOR" (jeśli Uwagi="P") lub "STANDARD"');
   
   // Podziel na linie
   const lines = content.split(/\r?\n/);
@@ -60,25 +61,52 @@ try {
       return; // Pomiń puste linie
     }
     
-    // Najpierw podziel linię po średnikach (oryginalne separatory)
+    // Podziel linię po średnikach (oryginalne separatory)
     const fields = line.split(';');
     
-    // Zamień przecinki dziesiętne na kropki w polach liczbowych
-    const fixedFields = fields.map(field => {
-      // Sprawdź czy pole wygląda na liczbę z przecinkiem dziesiętnym (np. "180,00")
-      if (/^\d+,\d+$/.test(field.trim())) {
-        return field.replace(',', '.');
-      }
-      return field;
-    });
+    // Jeśli to nagłówek (pierwsza linia), stwórz nowy standardowy nagłówek
+    if (index === 0) {
+      const newHeader = 'Klient,Sprzęt,Kod,Od,Do,TypUmowy,Numer,Cena,Zapłacono';
+      convertedLines.push(newHeader);
+      console.log('   ✅ Nagłówek zamieniony na:', newHeader);
+      return;
+    }
+    
+    // FireFnow format: Numer;Sprzęt;Klient;Kod;Od;Do;Do Startu;Zapłacono;Cennik;Uwagi
+    // Indeksy:          0      1       2      3   4   5   6          7         8       9
+    
+    const numer = fields[0] || '';
+    const sprzet = fields[1] || '';
+    const klient = fields[2] || '';
+    const kod = fields[3] || '';
+    const od = fields[4] || '';
+    const do_date = fields[5] || '';
+    const uwagi = fields[9] || '';
+    
+    // Określ typ umowy na podstawie kolumny Uwagi
+    // "P" = PROMOTOR, puste lub inne = STANDARD
+    const typUmowy = (uwagi && uwagi.trim().toUpperCase() === 'P') ? 'PROMOTOR' : 'STANDARD';
+    
+    // Nowa struktura: Klient,Sprzęt,Kod,Od,Do,TypUmowy,Numer,Cena,Zapłacono
+    const newFields = [
+      klient,
+      sprzet,
+      kod,
+      od,
+      do_date,
+      typUmowy,
+      numer,
+      '0',  // Cena domyślnie 0
+      '0'   // Zapłacono domyślnie 0
+    ];
     
     // Połącz pola z przecinkami (nowy separator CSV)
-    const convertedLine = fixedFields.join(',');
+    const convertedLine = newFields.join(',');
     convertedLines.push(convertedLine);
     
-    // Pokaż przykład konwersji (pierwsze 3 linie)
-    if (index < 3) {
-      console.log(`   Linia ${index + 1}:`);
+    // Pokaż przykład konwersji (pierwsze 3 linie danych)
+    if (index <= 3) {
+      console.log(`   Linia ${index}:`);
       console.log(`   Przed: ${line.substring(0, 80)}...`);
       console.log(`   Po:    ${convertedLine.substring(0, 80)}...`);
     }
@@ -116,11 +144,30 @@ try {
   if (verificationLines.length > 1) {
     console.log('\n📄 Przykładowy rekord (linia 2):');
     const fields = verificationLines[1].split(',');
-    console.log('   Klient:  ', fields[0] || '-');
-    console.log('   Sprzęt:  ', fields[1] || '-');
-    console.log('   Kod:     ', fields[2] || '-');
-    console.log('   Od:      ', fields[3] || '-');
-    console.log('   Do:      ', fields[4] || '-');
+    console.log('   Klient:     ', fields[0] || '-');
+    console.log('   Sprzęt:     ', fields[1] || '-');
+    console.log('   Kod:        ', fields[2] || '-');
+    console.log('   Od:         ', fields[3] || '-');
+    console.log('   Do:         ', fields[4] || '-');
+    console.log('   TypUmowy:   ', fields[5] || '-');
+    console.log('   Numer:      ', fields[6] || '-');
+    console.log('   Cena:       ', fields[7] || '-');
+    console.log('   Zapłacono:  ', fields[8] || '-');
+    
+    // Policz statystyki typów umów
+    let promotorCount = 0;
+    let standardCount = 0;
+    for (let i = 1; i < verificationLines.length; i++) {
+      const line = verificationLines[i];
+      if (line.trim() === '') continue;
+      const lineFields = line.split(',');
+      const typ = lineFields[5];
+      if (typ === 'PROMOTOR') promotorCount++;
+      else if (typ === 'STANDARD') standardCount++;
+    }
+    console.log('\n📊 Statystyki typów umów:');
+    console.log('   PROMOTOR:  ', promotorCount, 'rezerwacji');
+    console.log('   STANDARD:  ', standardCount, 'rezerwacji');
   }
   
   console.log('\n✅ SUKCES! Plik został skonwertowany!');
