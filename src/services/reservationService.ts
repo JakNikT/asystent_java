@@ -158,8 +158,8 @@ export class ReservationService {
    */
   static async loadReservations(): Promise<ReservationData[]> {
     try {
-      console.log('ReservationService: Próbuję wczytać plik /data/rez.csv');
-      const response = await fetch('/data/rez.csv');
+      console.log('ReservationService: Próbuję wczytać plik /data/rezerwacja.csv');
+      const response = await fetch('/data/rezerwacja.csv');
       console.log('ReservationService: Odpowiedź HTTP:', response.status, response.statusText);
       
       if (!response.ok) {
