@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import type { SkiData, SearchCriteria } from '../types/ski.types';
 import { ReservationService } from '../services/reservationService';
+import { SkiDataService } from '../services/skiDataService';
+import { SkiEditModal } from './SkiEditModal';
+import { Toast } from './Toast';
 
 interface BrowseSkisComponentProps {
   skisDatabase: SkiData[];
   userCriteria?: SearchCriteria; // NOWE: opcjonalne kryteria wyszukiwania z datami
   onBackToSearch: () => void;
+  onRefreshData?: () => Promise<void>; // NOWE: callback do odświeżenia danych
 }
 
 type SortField = 'ID' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
@@ -19,7 +23,8 @@ interface SortConfig {
 export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({ 
   skisDatabase, 
   userCriteria,
-  onBackToSearch 
+  onBackToSearch,
+  onRefreshData
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'ID',
@@ -32,6 +37,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
+
+  // NOWY STAN: Modal edycji/dodawania
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
+  const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
+
+  // NOWY STAN: Toast notifications
+  const [toastMessage, setToastMessage] = useState('');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   // Ładowanie statusów dostępności dla wszystkich nart (NOWY SYSTEM 3-KOLOROWY)
   useEffect(() => {
@@ -160,6 +174,76 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     return <div className="flex flex-wrap">{squares}</div>;
   };
 
+  // NOWE FUNKCJE: Obsługa edycji i dodawania
+
+  // Pokazuje toast notification
+  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
+    setToastMessage(message);
+    setToastType(type);
+  };
+
+  // Otwórz modal edycji dla wybranej narty
+  const handleEditSki = (ski: SkiData) => {
+    console.log('BrowseSkisComponent: Edycja narty:', ski);
+    setSelectedSki(ski);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  // Otwórz modal dodawania nowej narty
+  const handleAddSki = () => {
+    console.log('BrowseSkisComponent: Dodawanie nowej narty');
+    setSelectedSki(undefined);
+    setModalMode('add');
+    setIsModalOpen(true);
+  };
+
+  // Zamknij modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setSelectedSki(undefined);
+  };
+
+  // Zapisz zmiany narty (edycja lub dodawanie)
+  const handleSaveSki = async (skiData: Partial<SkiData>) => {
+    try {
+      if (modalMode === 'edit' && selectedSki) {
+        // Edycja istniejącej narty
+        console.log('BrowseSkisComponent: Zapisywanie edycji narty:', selectedSki.ID);
+        const result = await SkiDataService.updateSki(selectedSki.ID, skiData);
+        
+        if (result) {
+          showToast('✅ Narta zaktualizowana pomyślnie!', 'success');
+          
+          // Odśwież dane
+          if (onRefreshData) {
+            await onRefreshData();
+          }
+        } else {
+          showToast('❌ Błąd aktualizacji narty', 'error');
+        }
+      } else if (modalMode === 'add') {
+        // Dodawanie nowej narty
+        console.log('BrowseSkisComponent: Dodawanie nowej narty');
+        const result = await SkiDataService.addSki(skiData);
+        
+        if (result) {
+          showToast('✅ Narta dodana pomyślnie!', 'success');
+          
+          // Odśwież dane
+          if (onRefreshData) {
+            await onRefreshData();
+          }
+        } else {
+          showToast('❌ Błąd dodawania narty', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('BrowseSkisComponent: Błąd zapisu:', error);
+      showToast('❌ Błąd połączenia z serwerem', 'error');
+    }
+  };
+
   // Funkcja filtrowania nart
   const filterSkis = (skis: SkiData[], searchTerm: string): SkiData[] => {
     if (!searchTerm.trim()) return skis;
@@ -273,12 +357,20 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 Przejrzyj wszystkie narty w bazie danych ({groupedSkis.length} modeli nart)
               </p>
             </div>
-            <button
-              onClick={onBackToSearch}
-              className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
-            >
-              ← Wróć do wyszukiwania
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={handleAddSki}
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+              >
+                ➕ Dodaj nową nartę
+              </button>
+              <button
+                onClick={onBackToSearch}
+                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+              >
+                ← Wróć do wyszukiwania
+              </button>
+            </div>
           </div>
           
           {/* Pole wyszukiwania */}
@@ -388,6 +480,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Atuty
                   </th>
+                  <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
+                    Akcje
+                  </th>
                 </tr>
               </thead>
               <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
@@ -422,6 +517,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.ATUTY || '-'}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                      <button
+                        onClick={() => handleEditSki(ski)}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                        title="Edytuj nartę"
+                      >
+                        ✏️ Edytuj
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -508,6 +612,23 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </p>
         </div>
       </div>
+
+      {/* Modal edycji/dodawania */}
+      <SkiEditModal
+        isOpen={isModalOpen}
+        mode={modalMode}
+        ski={selectedSki}
+        onClose={handleCloseModal}
+        onSave={handleSaveSki}
+      />
+
+      {/* Toast notification */}
+      <Toast
+        message={toastMessage}
+        type={toastType}
+        isVisible={!!toastMessage}
+        onClose={() => setToastMessage('')}
+      />
     </div>
   );
 };

@@ -15,6 +15,7 @@ export interface ReservationData {
   numer: string;        // Numer rezerwacji (np. "P 71/10/2025")
   cena?: string;        // Cena (opcjonalna, domyślnie 0)
   zaplacono?: string;   // Zapłacono (opcjonalne, domyślnie 0)
+  uwagi?: string;       // Uwagi (opcjonalne)
 }
 
 export interface ReservationInfo {
@@ -275,7 +276,7 @@ export class ReservationService {
             equipment: reservation.sprzet,
             startDate: new Date(reservation.od),
             endDate: new Date(reservation.do),
-            notes: reservation.uwagi,
+            notes: reservation.uwagi || '',
             price: parseFloat(String(reservation.cena)) || 0,
             paid: parseFloat(String(reservation.zaplacono)) || 0,
             status: this.getReservationStatus(reservation)
@@ -320,7 +321,7 @@ export class ReservationService {
             equipment: reservation.sprzet,
             startDate: new Date(reservation.od),
             endDate: new Date(reservation.do),
-            notes: reservation.uwagi,
+            notes: reservation.uwagi || '',
             price: parseFloat(String(reservation.cena)) || 0,
             paid: parseFloat(String(reservation.zaplacono)) || 0,
             status: this.getReservationStatus(reservation)
@@ -527,7 +528,7 @@ export class ReservationService {
             equipment: reservation.sprzet,
             startDate: new Date(reservation.od),
             endDate: new Date(reservation.do),
-            notes: reservation.uwagi,
+            notes: reservation.uwagi || '',
             price: parseFloat(String(reservation.cena)) || 0,
             paid: parseFloat(String(reservation.zaplacono)) || 0,
             status: status
@@ -582,7 +583,7 @@ export class ReservationService {
           equipment: reservation.sprzet,
           startDate: new Date(reservation.od),
           endDate: new Date(reservation.do),
-          notes: reservation.uwagi,
+          notes: reservation.uwagi || '',
           price: parseFloat(String(reservation.cena)) || 0,
           paid: parseFloat(String(reservation.zaplacono)) || 0,
           status: this.getReservationStatus(reservation)
