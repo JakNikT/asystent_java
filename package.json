@@ -10,7 +10,9 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "preview": "vite preview",
-    "convert-firefnow": "node scripts/convert-firefnow-to-rezerwacja.cjs"
+    "convert-firefnow": "node scripts/convert-firefnow-to-rezerwacja.cjs",
+    "server": "node server.js",
+    "build:server": "npm run build && npm install express cors papaparse"
   },
   "dependencies": {
     "cors": "^2.8.5",

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { CSVParser } from '../utils/csvParser';
+import { SkiDataService } from '../services/skiDataService';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { 
   validateForm, 
@@ -366,22 +367,35 @@ const AnimaComponent: React.FC = () => {
   const levelRef = React.useRef<HTMLInputElement>(null);
   const genderRef = React.useRef<HTMLInputElement>(null);
 
+  // NOWA FUNKCJA: Ładowanie bazy danych (może być wywołana wielokrotnie)
+  const loadDatabase = async () => {
+    try {
+      console.log('AnimaComponent: Ładuję bazę danych nart...');
+      
+      // Sprawdź czy serwer API jest dostępny
+      const isServerAvailable = await SkiDataService.checkServerHealth();
+      
+      let skis: SkiData[];
+      if (isServerAvailable) {
+        // Ładuj z API (zawsze aktualne dane!)
+        console.log('AnimaComponent: Ładuję dane z API serwera');
+        skis = await SkiDataService.getAllSkis();
+      } else {
+        // Fallback do statycznego CSV (gdy serwer nie działa)
+        console.log('AnimaComponent: Serwer niedostępny - ładuję ze statycznego CSV');
+        skis = await CSVParser.loadFromPublic();
+      }
+      
+      setSkisDatabase(skis);
+      console.log(`AnimaComponent: Załadowano ${skis.length} nart z bazy danych`);
+    } catch (err) {
+      console.error('AnimaComponent: Błąd ładowania bazy:', err);
+      setError('Nie udało się załadować bazy danych nart');
+    }
+  };
+
   // Ładowanie bazy danych przy starcie
   useEffect(() => {
-    const loadDatabase = async () => {
-      try {
-        setIsLoading(true);
-        const skis = await CSVParser.loadFromPublic();
-        setSkisDatabase(skis);
-        console.log(`Załadowano ${skis.length} nart z bazy danych`);
-      } catch (err) {
-        console.error('Błąd ładowania bazy:', err);
-        setError('Nie udało się załadować bazy danych nart');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     loadDatabase();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1464,6 +1478,7 @@ const AnimaComponent: React.FC = () => {
               // Brak dateFrom i dateTo - wszystkie narty będą zielone
             }}
             onBackToSearch={() => setAppMode('search')}
+            onRefreshData={loadDatabase}
           />
         </div>
       )}

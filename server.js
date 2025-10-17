@@ -269,6 +269,75 @@ app.get('/api/skis', async (req, res) => {
 });
 
 /**
+ * POST /api/skis - Dodaj nową nartę
+ */
+app.post('/api/skis', async (req, res) => {
+  try {
+    console.log('Server: POST /api/skis', req.body);
+    
+    const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
+    const result = Papa.parse(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+      delimiter: ','
+    });
+    
+    const skis = result.data;
+    
+    // Generuj nowe ID (max + 1)
+    const maxId = Math.max(...skis.map(ski => parseInt(ski.ID) || 0), 0);
+    const newId = (maxId + 1).toString();
+    
+    // Generuj unikalny KOD (jeśli nie podano)
+    let newKod = req.body.KOD || '';
+    if (!newKod) {
+      const existingCodes = skis.map(ski => ski.KOD).filter(Boolean);
+      let codeNum = 1;
+      do {
+        newKod = `NEW_${String(codeNum).padStart(3, '0')}`;
+        codeNum++;
+      } while (existingCodes.includes(newKod));
+    }
+    
+    // Stwórz nową nartę
+    const newSki = {
+      ID: newId,
+      MARKA: req.body.MARKA || '',
+      MODEL: req.body.MODEL || '',
+      DLUGOSC: req.body.DLUGOSC || 0,
+      ILOSC: req.body.ILOSC || 1,
+      POZIOM: req.body.POZIOM || '',
+      PLEC: req.body.PLEC || '',
+      WAGA_MIN: req.body.WAGA_MIN || 0,
+      WAGA_MAX: req.body.WAGA_MAX || 0,
+      WZROST_MIN: req.body.WZROST_MIN || 0,
+      WZROST_MAX: req.body.WZROST_MAX || 0,
+      PRZEZNACZENIE: req.body.PRZEZNACZENIE || '',
+      ATUTY: req.body.ATUTY || '',
+      ROK: req.body.ROK || new Date().getFullYear(),
+      KOD: newKod
+    };
+    
+    // Dodaj do listy
+    skis.push(newSki);
+    
+    // Zapisz z powrotem do CSV
+    const csvContentNew = Papa.unparse(skis, {
+      delimiter: ',',
+      header: true
+    });
+    
+    await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
+    
+    console.log('Server: Narta dodana pomyślnie:', newSki);
+    res.json(newSki);
+  } catch (error) {
+    console.error('Server: Błąd dodawania narty:', error);
+    res.status(500).json({ error: 'Błąd dodawania narty' });
+  }
+});
+
+/**
  * PUT /api/skis/:id - Zaktualizuj nartę
  */
 app.put('/api/skis/:id', async (req, res) => {
@@ -319,8 +388,9 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serwuj aplikację React dla wszystkich innych ścieżek
-app.get('*', (req, res) => {
+// Serwuj aplikację React dla wszystkich innych ścieżek (catch-all route)
+// Express 5.x wymaga użycia middleware zamiast route dla wildcard
+app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
