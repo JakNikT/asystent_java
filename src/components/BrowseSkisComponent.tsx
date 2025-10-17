@@ -344,37 +344,37 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#386BB2] p-6">
+    <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
       <div className="max-w-8xl mx-auto">
-        {/* Header z wyszukiwaniem */}
-        <div className="bg-[#194576] rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
+        {/* Header z wyszukiwaniem - responsywny */}
+        <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
                 Przeglądaj narty
               </h1>
-              <p className="text-[#A6C2EF]">
+              <p className="text-[#A6C2EF] text-sm lg:text-base">
                 Przejrzyj wszystkie narty w bazie danych ({groupedSkis.length} modeli nart)
               </p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
               <button
                 onClick={handleAddSki}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 ➕ Dodaj nową nartę
               </button>
               <button
                 onClick={onBackToSearch}
-                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2"
+                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 ← Wróć do wyszukiwania
               </button>
             </div>
           </div>
           
-          {/* Pole wyszukiwania */}
-          <div className="flex items-center gap-4">
+          {/* Pole wyszukiwania - responsywne */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <label className="text-white font-medium text-lg">
               🔍 Wyszukaj narty:
             </label>

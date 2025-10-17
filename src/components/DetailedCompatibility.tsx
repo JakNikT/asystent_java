@@ -153,7 +153,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       squares.push(
         <span 
           key={ski.KOD || `no-code-${index}`}
-          className={`inline-block w-5 h-5 text-white text-xs font-bold rounded flex items-center justify-center ${bgColor}`}
+          className={`inline-block w-6 h-6 lg:w-5 lg:h-5 text-white text-xs font-bold rounded flex items-center justify-center ${bgColor}`}
           title={tooltip}
         >
           {index + 1}
@@ -434,7 +434,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
           <div className="flex items-center justify-between px-3 py-2 min-h-[60px]">
             <div className="flex-1 flex justify-center">
               {/* Parametry w 2 kolumnach × 2 wiersze - większe i wyśrodkowane */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {criteria.map((criterion) => {
                   const icon = getShortStatus(criterion.key, criterion.status);
                   return (
