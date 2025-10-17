@@ -32,6 +32,7 @@ export interface UserSessionData {
 
 const STORAGE_KEY = 'ski-assistant-session';
 const HISTORY_KEY = 'ski-assistant-history';
+const TABS_STORAGE_KEY = 'ski-assistant-tabs'; // NOWY: dla systemu kart
 
 /**
  * Zapisuje dane sesji użytkownika do LocalStorage
@@ -172,5 +173,77 @@ export function clearSearchHistory(): void {
     console.log(`src/utils/localStorage.ts: Historia wyszukiwania wyczyszczona pomyślnie`);
   } catch (error) {
     console.error(`src/utils/localStorage.ts: Błąd podczas czyszczenia historii:`, error);
+  }
+}
+
+/**
+ * NOWE FUNKCJE DLA SYSTEMU KART (wiele osób)
+ */
+
+export interface TabStorageData {
+  tabs: any[];
+  activeTabId: string;
+  lastUpdate: string;
+}
+
+/**
+ * Zapisuje wszystkie karty do LocalStorage
+ */
+export function saveAllTabs(tabs: any[], activeTabId: string): void {
+  console.log(`src/utils/localStorage.ts: Zapisuję ${tabs.length} kart do LocalStorage`);
+  
+  try {
+    const tabsData: TabStorageData = {
+      tabs: tabs.map(tab => ({
+        id: tab.id,
+        label: tab.label,
+        formData: tab.formData,
+        selectedStyles: tab.selectedStyles
+        // Nie zapisujemy searchResults, currentCriteria - tylko dane formularza
+      })),
+      activeTabId,
+      lastUpdate: new Date().toISOString()
+    };
+
+    localStorage.setItem(TABS_STORAGE_KEY, JSON.stringify(tabsData));
+    console.log(`src/utils/localStorage.ts: Karty zapisane pomyślnie`);
+  } catch (error) {
+    console.error(`src/utils/localStorage.ts: Błąd podczas zapisywania kart:`, error);
+  }
+}
+
+/**
+ * Wczytuje wszystkie karty z LocalStorage
+ */
+export function loadAllTabs(): TabStorageData | null {
+  console.log(`src/utils/localStorage.ts: Wczytuję karty z LocalStorage`);
+  
+  try {
+    const storedData = localStorage.getItem(TABS_STORAGE_KEY);
+    if (!storedData) {
+      console.log(`src/utils/localStorage.ts: Brak zapisanych kart`);
+      return null;
+    }
+
+    const tabsData = JSON.parse(storedData) as TabStorageData;
+    console.log(`src/utils/localStorage.ts: Wczytano ${tabsData.tabs.length} kart`);
+    return tabsData;
+  } catch (error) {
+    console.error(`src/utils/localStorage.ts: Błąd podczas wczytywania kart:`, error);
+    return null;
+  }
+}
+
+/**
+ * Czyści zapisane karty z LocalStorage
+ */
+export function clearAllTabs(): void {
+  console.log(`src/utils/localStorage.ts: Czyszczę karty z LocalStorage`);
+  
+  try {
+    localStorage.removeItem(TABS_STORAGE_KEY);
+    console.log(`src/utils/localStorage.ts: Karty wyczyszczone pomyślnie`);
+  } catch (error) {
+    console.error(`src/utils/localStorage.ts: Błąd podczas czyszczenia kart:`, error);
   }
 }

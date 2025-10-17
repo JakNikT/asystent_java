@@ -13,12 +13,12 @@ import {
   validateGenderRealtime,
   type FormErrors 
 } from '../utils/formValidation';
-import { saveUserSession, loadUserSession, clearUserSession, saveSearchHistory } from '../utils/localStorage';
+import { saveSearchHistory, saveAllTabs, loadAllTabs } from '../utils/localStorage';
 import { DetailedCompatibility } from './DetailedCompatibility';
 import { SkiStyleBadge } from './SkiStyleBadge';
 import { BrowseSkisComponent } from './BrowseSkisComponent';
 import { ReservationsView } from './ReservationsView';
-import type { SkiData, SearchResults, SearchCriteria } from '../types/ski.types';
+import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../types/ski.types';
 
 interface FormData {
   dateFrom: {
@@ -169,22 +169,56 @@ const AnimaComponent: React.FC = () => {
     updateActiveTab({ expandedRows: newRows });
   };
 
-  // NOWY STAN: Rozwijanie kategorii (pierwsze 6 lub wszystkie)
-  const [expandedCategories, setExpandedCategories] = useState({
-    alternatywy: false,
-    poziom_za_nisko: false,
-    inna_plec: false,
-    na_sile: false
-  });
+  // FUNKCJE ZARZĄDZANIA KARTAMI
+  const addNewTab = () => {
+    const newId = (tabs.length + 1).toString();
+    const newTab: TabData = {
+      id: newId,
+      label: `Osoba ${newId}`,
+      formData: {
+        dateFrom: { day: '', month: '', year: '' },
+        dateTo: { day: '', month: '', year: '' },
+        height: { value: '', unit: 'cm' },
+        weight: { value: '', unit: 'kg' },
+        level: '',
+        gender: ''
+      },
+      selectedStyles: [],
+      searchResults: null,
+      currentCriteria: null,
+      formErrors: initialFormErrors,
+      error: '',
+      isLoading: false,
+      expandedCategories: {
+        alternatywy: false,
+        poziom_za_nisko: false,
+        inna_plec: false,
+        na_sile: false
+      },
+      expandedRows: {
+        idealne: [],
+        alternatywy: [],
+        poziom_za_nisko: [],
+        inna_plec: [],
+        na_sile: []
+      }
+    };
+    setTabs(prev => [...prev, newTab]);
+    setActiveTabId(newId); // Przełącz na nową kartę
+  };
 
-  // NOWY STAN: Rozwijanie szczegółów w rzędach (maksymalnie 3 karty na rząd)
-  const [expandedRows, setExpandedRows] = useState<Record<string, number[]>>({
-    idealne: [],
-    alternatywy: [],
-    poziom_za_nisko: [],
-    inna_plec: [],
-    na_sile: []
-  });
+  const removeTab = (tabId: string) => {
+    if (tabs.length === 1) return; // Nie usuwaj ostatniej karty
+    
+    setTabs(prev => {
+      const filtered = prev.filter(tab => tab.id !== tabId);
+      // Jeśli usuwamy aktywną kartę, przełącz na pierwszą dostępną
+      if (tabId === activeTabId && filtered.length > 0) {
+        setActiveTabId(filtered[0].id);
+      }
+      return filtered;
+    });
+  };
 
   // Funkcja do przełączania rozwinięcia kategorii
   const toggleCategory = (category: 'alternatywy' | 'poziom_za_nisko' | 'inna_plec' | 'na_sile') => {
@@ -230,8 +264,8 @@ const AnimaComponent: React.FC = () => {
 
   // Funkcja grupowania wyników po modelu (jedna karta na model nart)
   // Narty tego samego modelu mają już kwadraciki z numerami sztuk w DetailedCompatibility
-  const groupMatchesByModel = (matches: any[]): any[] => {
-    const grouped = new Map<string, any[]>();
+  const groupMatchesByModel = (matches: SkiMatch[]): SkiMatch[] => {
+    const grouped = new Map<string, SkiMatch[]>();
     
     matches.forEach(match => {
       const key = `${match.ski.MARKA}|${match.ski.MODEL}|${match.ski.DLUGOSC}`;
@@ -272,54 +306,55 @@ const AnimaComponent: React.FC = () => {
    * Konwertuje preferencje użytkownika na skróconą formę
    */
 
-  // Wczytaj dane sesji przy starcie aplikacji
+  // NOWY: Wczytaj karty z LocalStorage przy starcie
   useEffect(() => {
-    console.log('src/components/AnimaComponent.tsx: Wczytuję dane sesji przy starcie aplikacji');
-    const savedSession = loadUserSession();
-    if (savedSession) {
-      console.log('src/components/AnimaComponent.tsx: Znaleziono zapisane dane sesji:', savedSession);
-      console.log('src/components/AnimaComponent.tsx: Daty z LocalStorage - dateFrom:', savedSession.formData.dateFrom, 'dateTo:', savedSession.formData.dateTo);
+    console.log('src/components/AnimaComponent.tsx: Wczytuję karty z LocalStorage przy starcie aplikacji');
+    const savedTabs = loadAllTabs();
+    
+    if (savedTabs && savedTabs.tabs.length > 0) {
+      console.log('src/components/AnimaComponent.tsx: Znaleziono zapisane karty:', savedTabs);
       
-      // Sprawdź czy daty mają stare wartości (np. year: '2025' bez day i month)
-      const hasInvalidDates = 
-        (savedSession.formData.dateFrom.year && !savedSession.formData.dateFrom.day && !savedSession.formData.dateFrom.month) ||
-        (savedSession.formData.dateTo.year && !savedSession.formData.dateTo.day && !savedSession.formData.dateTo.month);
-      
-      if (hasInvalidDates) {
-        console.log('src/components/AnimaComponent.tsx: Wykryto nieprawidłowe daty w LocalStorage, czyszczę...');
-        clearUserSession();
-        console.log('src/components/AnimaComponent.tsx: LocalStorage wyczyszczony, używam domyślnych wartości');
-        return;
-      }
-      
-      // Upewnij się, że struktura danych jest kompletna
-      const completeFormData = {
-        ...savedSession.formData,
-        dateFrom: {
-          day: savedSession.formData.dateFrom.day || '',
-          month: savedSession.formData.dateFrom.month || '',
-          year: savedSession.formData.dateFrom.year || ''
+      // Odtwórz karty z domyślnymi wartościami dla pól, które nie są zapisywane
+      const restoredTabs = savedTabs.tabs.map(savedTab => ({
+        id: savedTab.id,
+        label: savedTab.label,
+        formData: savedTab.formData,
+        selectedStyles: savedTab.selectedStyles || [],
+        searchResults: null,
+        currentCriteria: null,
+        formErrors: initialFormErrors,
+        error: '',
+        isLoading: false,
+        expandedCategories: {
+          alternatywy: false,
+          poziom_za_nisko: false,
+          inna_plec: false,
+          na_sile: false
         },
-        dateTo: {
-          day: savedSession.formData.dateTo.day || '',
-          month: savedSession.formData.dateTo.month || '',
-          year: savedSession.formData.dateTo.year || ''
-        },
-        height: {
-          value: savedSession.formData.height.value || '',
-          unit: savedSession.formData.height.unit || 'cm'
-        },
-        weight: {
-          value: savedSession.formData.weight.value || '',
-          unit: savedSession.formData.weight.unit || 'kg'
+        expandedRows: {
+          idealne: [],
+          alternatywy: [],
+          poziom_za_nisko: [],
+          inna_plec: [],
+          na_sile: []
         }
-      };
-      console.log('src/components/AnimaComponent.tsx: Zaktualizowane dane formularza:', completeFormData);
-      setFormData(completeFormData);
+      }));
+      
+      setTabs(restoredTabs);
+      setActiveTabId(savedTabs.activeTabId);
+      console.log('src/components/AnimaComponent.tsx: Karty przywrócone z LocalStorage');
     } else {
-      console.log('src/components/AnimaComponent.tsx: Brak zapisanych danych sesji, używam domyślnych');
+      console.log('src/components/AnimaComponent.tsx: Brak zapisanych kart, używam domyślnych');
     }
   }, []);
+
+  // NOWY: Automatycznie zapisuj karty do LocalStorage przy każdej zmianie
+  useEffect(() => {
+    if (tabs.length > 0) {
+      console.log('src/components/AnimaComponent.tsx: Auto-zapisywanie kart do LocalStorage');
+      saveAllTabs(tabs, activeTabId);
+    }
+  }, [tabs, activeTabId]);
 
   // Refs dla automatycznego przechodzenia między polami
   const dayFromRef = React.useRef<HTMLInputElement>(null);
@@ -348,6 +383,7 @@ const AnimaComponent: React.FC = () => {
     };
 
     loadDatabase();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
@@ -400,42 +436,27 @@ const AnimaComponent: React.FC = () => {
 
     // Aktualizuj dane formularza (bez formatowania)
     if (section === 'dateFrom' || section === 'dateTo') {
-      setFormData(prev => {
-        const updatedData = {
-          ...prev,
-          [section]: {
-            ...prev[section],
-            [field]: value
-          }
-        };
-        // Zapisz dane sesji po każdej zmianie
-        saveUserSession(updatedData);
-        return updatedData;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value
+        }
+      }));
     } else if (section === 'height' || section === 'weight') {
-      setFormData(prev => {
-        const updatedData = {
-          ...prev,
-          [section]: {
-            ...prev[section],
-            [field]: value
-          }
-        };
-        // Zapisz dane sesji po każdej zmianie
-        saveUserSession(updatedData);
-        return updatedData;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [section]: {
+          ...prev[section],
+          [field]: value
+        }
+      }));
     } else {
       console.log(`src/components/AnimaComponent.tsx: Aktualizuję ${section} na wartość: ${value}`);
-      setFormData(prev => {
-        const updatedData = {
-          ...prev,
-          [section]: value
-        };
-        // Zapisz dane sesji po każdej zmianie
-        saveUserSession(updatedData);
-        return updatedData;
-      });
+      setFormData(prev => ({
+        ...prev,
+        [section]: value
+      }));
     }
 
     // Wyczyść błędy dla tego pola
@@ -707,26 +728,27 @@ const AnimaComponent: React.FC = () => {
   };
 
   const handleClear = () => {
-    console.log('src/components/AnimaComponent.tsx: Czyszczenie formularza');
+    console.log('src/components/AnimaComponent.tsx: Czyszczenie formularza aktywnej karty');
     const defaultData = {
-      dateFrom: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
-      dateTo: { day: '', month: '', year: '' }, // Puste daty - opcjonalne
+      dateFrom: { day: '', month: '', year: '' },
+      dateTo: { day: '', month: '', year: '' },
       height: { value: '', unit: 'cm' },
       weight: { value: '', unit: 'kg' },
       level: '',
       gender: ''
-      // USUNIĘTO: preferences
     };
     
-    setFormData(defaultData);
-    setSelectedStyles([]); // NOWE: wyczyść filtry stylu
-    setSearchResults(null);
-    setError('');
-    setFormErrors(initialFormErrors);
+    // Wyczyść tylko aktywną kartę
+    updateActiveTab({
+      formData: defaultData,
+      selectedStyles: [],
+      searchResults: null,
+      error: '',
+      formErrors: initialFormErrors,
+      currentCriteria: null
+    });
     
-    // Wyczyść dane sesji z LocalStorage
-    clearUserSession();
-    console.log('src/components/AnimaComponent.tsx: Dane sesji wyczyszczone z LocalStorage');
+    console.log('src/components/AnimaComponent.tsx: Aktywna karta wyczyszczona');
   };
 
   // Grupowanie wyników po modelu (jedna karta na model nart)
@@ -741,6 +763,47 @@ const AnimaComponent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#386BB2]">
+      {/* Tabs Navigation - System kart dla wielu osób */}
+      <div className="w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
+        <div className="max-w-[1100px] mx-auto flex items-center gap-2">
+          {/* Renderuj karty */}
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTabId(tab.id)}
+              className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all ${
+                activeTabId === tab.id
+                  ? 'bg-[#386BB2] text-white'
+                  : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
+              }`}
+            >
+              {tab.label}
+              {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
+              {tabs.length > 1 && (
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    removeTab(tab.id);
+                  }}
+                  className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
+                >
+                  ✕
+                </span>
+              )}
+            </button>
+          ))}
+          
+          {/* Przycisk dodawania nowej karty */}
+          <button
+            onClick={addNewTab}
+            className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1"
+            title="Dodaj nową osobę"
+          >
+            ➕ Nowa osoba
+          </button>
+        </div>
+      </div>
+
       {/* Header Section - stałe wymiary */}
       <div className="w-[1100px] h-[200px] bg-[#386BB2] flex items-start justify-between p-2 mx-auto">
         {/* Avatar */}
