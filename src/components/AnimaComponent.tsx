@@ -777,15 +777,15 @@ const AnimaComponent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#386BB2]">
-      {/* Tabs Navigation - System kart dla wielu osób */}
+      {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
       <div className="w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
-        <div className="max-w-[1100px] mx-auto flex items-center gap-2">
+        <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
           {/* Renderuj karty */}
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
-              className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all ${
+              className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
                 activeTabId === tab.id
                   ? 'bg-[#386BB2] text-white'
                   : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
@@ -807,10 +807,10 @@ const AnimaComponent: React.FC = () => {
             </button>
           ))}
           
-          {/* Przycisk dodawania nowej karty */}
+          {/* Przycisk dodawania nowej karty - sticky na mobile */}
           <button
             onClick={addNewTab}
-            className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1"
+            className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
             title="Dodaj nową osobę"
           >
             ➕ Nowa osoba
@@ -818,19 +818,23 @@ const AnimaComponent: React.FC = () => {
         </div>
       </div>
 
-      {/* Header Section - stałe wymiary */}
-      <div className="w-[1100px] h-[200px] bg-[#386BB2] flex items-start justify-between p-2 mx-auto">
-        {/* Avatar */}
-        <div className="w-[180px] h-[180px] bg-[#D9D9D9] rounded-full" />
+      {/* Header Section - responsywne */}
+      <div className="w-full max-w-[1100px] lg:h-[200px] h-auto bg-[#386BB2] flex flex-col lg:flex-row items-center lg:items-start justify-between p-4 lg:p-2 mx-auto gap-4 lg:gap-0">
+        {/* Logo "narty poznań" - ukryty avatar na mobile, duży napis na mobile, mniejszy na desktop */}
+        <div className="w-full lg:w-[180px] flex items-center justify-center lg:h-[180px] h-auto">
+          <span className="text-white text-4xl lg:text-5xl font-black font-['Inter'] italic underline">
+            ⛷️ narty poznań
+          </span>
+        </div>
         
-        {/* Main Content Container */}
-        <div className="w-[890px] h-[180px] bg-[#194576] rounded-[20px] flex items-center justify-start gap-3 p-2">
+        {/* Main Content Container - responsywny */}
+        <div className="w-full lg:w-[890px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2">
             
-            {/* Left Section - Personal Data */}
-            <div className="w-[307px] h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5">
-              {/* Date From */}
+            {/* Left Section - Personal Data - responsywna szerokość */}
+            <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5">
+              {/* Date From - responsywne inputy */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-[111px] h-[29px] bg-[#194576] rounded-[5px] border border-white flex items-center justify-center px-1">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] border border-white flex items-center justify-center px-1">
                   <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data od:</span>
                 </div>
                 <input
@@ -839,26 +843,26 @@ const AnimaComponent: React.FC = () => {
                   placeholder="DD"
                   value={formData.dateFrom.day}
                   onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
-                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <input
                   ref={monthFromRef}
                   type="text"
                   placeholder="MM"
                   value={formData.dateFrom.month}
                   onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
-                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <select
                   value={formData.dateFrom.year}
                   onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value)}
-                  className={`w-[61px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 >
@@ -868,9 +872,9 @@ const AnimaComponent: React.FC = () => {
                 </select>
             </div>
 
-              {/* Date To */}
+              {/* Date To - responsywne inputy */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-[111px] h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1">
                   <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data do:</span>
                 </div>
                 <input
@@ -879,26 +883,26 @@ const AnimaComponent: React.FC = () => {
                   placeholder="DD"
                   value={formData.dateTo.day}
                   onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
-                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <input
                   ref={monthToRef}
                   type="text"
                   placeholder="MM"
                   value={formData.dateTo.month}
                   onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
-                  className={`w-[38px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <select
                   value={formData.dateTo.year}
                   onChange={(e) => handleInputChange('dateTo', 'year', e.target.value)}
-                  className={`w-[61px] h-[29px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 >
@@ -908,9 +912,9 @@ const AnimaComponent: React.FC = () => {
                 </select>
               </div>
 
-              {/* Height */}
+              {/* Height - responsywne */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-[111px] h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
                   <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">📏 Wzrost:</span>
                 </div>
                 <input
@@ -919,18 +923,18 @@ const AnimaComponent: React.FC = () => {
                   placeholder="180"
                   value={formData.height.value}
                   onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
-                  className={`w-[112px] h-[31px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <div className="w-[48px] h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
-                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">cm</span>
+                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">cm</span>
                 </div>
               </div>
 
-              {/* Weight */}
+              {/* Weight - responsywne */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-[111px] h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
                   <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">⚖️ Waga:</span>
                 </div>
                 <input
@@ -939,28 +943,28 @@ const AnimaComponent: React.FC = () => {
                   placeholder="70"
                   value={formData.weight.value}
                   onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
-                  className={`w-[112px] h-[31px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <div className="w-[48px] h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
-                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-none">kg</span>
+                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">kg</span>
                 </div>
               </div>
             </div>
 
-            {/* Center Section - Level and Gender */}
-            <div className="w-[230px] h-[140px] flex flex-col justify-start items-center gap-[5px]">
-              {/* Client Data Title */}
-              <div className="w-[197px] h-[39px] bg-[#2C699F] rounded-[10px] border border-white flex justify-center items-center">
+            {/* Center Section - Level and Gender - responsywna szerokość */}
+            <div className="w-full lg:w-[230px] h-auto lg:h-[140px] flex flex-col justify-start items-center gap-[5px]">
+              {/* Client Data Title - responsywny */}
+              <div className="w-full lg:w-[197px] h-[39px] bg-[#2C699F] rounded-[10px] border border-white flex justify-center items-center">
                 <div className="text-center justify-center text-white text-[21px] font-black font-['Inter'] italic underline leading-[29px]">Dane klienta</div>
               </div>
               
-              {/* Level and Gender Section */}
-              <div className="w-[230px] h-[96px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5">
-                {/* Level */}
+              {/* Level and Gender Section - responsywny */}
+              <div className="w-full lg:w-[230px] h-auto lg:h-[96px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5">
+                {/* Level - responsywny */}
                 <div className="w-full flex items-center gap-2">
-                  <div className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Poziom:</span>
                   </div>
                   <input
@@ -969,15 +973,15 @@ const AnimaComponent: React.FC = () => {
                     placeholder="1-6"
                     value={formData.level}
                     onChange={(e) => handleInputChange('level', 'value', e.target.value, e.target)}
-                    className={`w-[60px] h-[35px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] ${
                       formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
                 </div>
 
-                {/* Gender */}
+                {/* Gender - responsywny */}
                 <div className="w-full flex items-center gap-2">
-                  <div className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">👤 Płeć:</span>
                   </div>
                   <input
@@ -986,7 +990,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="M/K"
                     value={formData.gender}
                     onChange={(e) => handleInputChange('gender', 'value', e.target.value, e.target)}
-                    className={`w-[60px] h-[35px] rounded-[5px] text-white text-center text-xs font-black font-['Inter'] ${
+                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] ${
                       formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -994,86 +998,71 @@ const AnimaComponent: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Section - Style Filters and Action Buttons */}
-            <div className="w-[300px] h-[160px] p-1 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-[5px]">
-              {/* Style Filters Title */}
-              <div className="w-[140px] h-[20px] bg-[#194576] rounded-[5px] flex items-center justify-center">
-                <div className="text-center justify-center text-white text-[14px] font-black font-['Inter'] italic underline leading-[20px]">Style jazdy:</div>
+            {/* Right Section - Style Filters and Action Buttons - responsywna szerokość */}
+            <div className="w-full lg:w-[300px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1">
+              {/* Style Filters Title - responsywny */}
+              <div className="w-auto lg:w-[140px] h-[20px] bg-[#194576] rounded-[5px] flex items-center justify-center px-3">
+                <div className="text-center justify-center text-white text-sm lg:text-[14px] font-black font-['Inter'] italic underline leading-[20px]">Style jazdy:</div>
               </div>
 
-              {/* Style Filter Checkboxes - 2 rows */}
-              <div className="w-[300px] flex flex-col justify-center items-center gap-1">
-                {/* First row */}
-                <div className="w-full flex justify-center items-center gap-3">
-                  {['SL', 'G'].map((style) => (
-                    <label key={style} className="flex items-center gap-1 cursor-pointer">
+              {/* Style Filter Checkboxes - responsywny grid, mniejsze odstępy */}
+              <div className="w-full lg:w-[300px] grid grid-cols-1 sm:grid-cols-2 gap-1 lg:gap-0.5 px-2">
+                {[
+                  { id: 'SL', label: 'Slalom' },
+                  { id: 'G', label: 'Gigant' },
+                  { id: 'SLG', label: 'Pomiędzy' },
+                  { id: 'OFF', label: 'Poza trasę' }
+                ].map((style) => (
+                  <label key={style.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 hover:bg-[#194576]/30 rounded-lg">
                       <input
                         type="checkbox"
-                        checked={selectedStyles.includes(style)}
-                        onChange={() => handleStyleToggle(style)}
-                        className="flex-shrink-0"
-                      />
-                      <span className="text-white text-xs font-extrabold font-['Inter'] italic underline leading-[17px] whitespace-nowrap">
-                        {style === 'SL' ? 'Slalom' : 'Gigant'}
+                      checked={selectedStyles.includes(style.id)}
+                      onChange={() => handleStyleToggle(style.id)}
+                      className="flex-shrink-0 w-4 h-4 cursor-pointer"
+                    />
+                    <span className="text-white text-sm lg:text-xs font-extrabold font-['Inter'] italic underline leading-[17px]">
+                      {style.label}
                       </span>
                     </label>
                   ))}
                 </div>
                 
-                {/* Second row */}
-                <div className="w-full flex justify-center items-center gap-3">
-                  {['SLG', 'OFF'].map((style) => (
-                    <label key={style} className="flex items-center gap-1 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selectedStyles.includes(style)}
-                        onChange={() => handleStyleToggle(style)}
-                        className="flex-shrink-0"
-                      />
-                      <span className="text-white text-xs font-extrabold font-['Inter'] italic underline leading-[17px] whitespace-nowrap">
-                        {style === 'SLG' ? 'Pomiędzy' : 'Poza trasę'}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="w-[299px] h-[75px] flex justify-center items-center gap-[5px] flex-wrap">
+              {/* Action Buttons - responsywne, pionowo na mobile, grid 2x2 na desktop, mniejsze */}
+              <div className="w-full h-auto lg:h-auto grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-1 px-2 lg:px-1">
                 <button
                   onClick={handleSubmitClick}
-                  className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1"
+                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors"
                 >
-                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight">🔍 Wyszukaj</span>
+                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight">🔍 Wyszukaj</span>
                 </button>
                 <button
                   onClick={handleClear}
-                  className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1"
+                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors"
                 >
-                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
+                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
                 </button>
                 <button 
                   onClick={() => setAppMode('browse')}
-                  className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1"
+                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors"
                 >
-                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
                 </button>
                 <button 
                   onClick={() => setAppMode('reservations')}
-                  className="w-[140px] h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors cursor-pointer"
+                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors cursor-pointer"
                 >
-                  <span className="text-white text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
                 </button>
               </div>
             </div>
           </div>
         </div>
 
-      {/* Results Section - pełnoekranowa */}
-      <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-5">
-        {/* Results Header */}
-        <div className="w-[344px] h-[50px] bg-[#194576] rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[10px] rounded-br-[10px] flex justify-center items-center">
-          <div className="text-white text-[30px] font-normal font-['ADLaM_Display'] underline leading-[42px]">🔍 Wyniki Doboru Nart</div>
+      {/* Results Section - responsywna */}
+      <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
+        {/* Results Header - responsywny */}
+        <div className="w-full max-w-md lg:max-w-[344px] h-auto lg:h-[50px] bg-[#194576] rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[10px] rounded-br-[10px] flex justify-center items-center py-2 px-4">
+          <div className="text-white text-2xl lg:text-[30px] font-normal font-['ADLaM_Display'] underline leading-tight lg:leading-[42px] text-center">🔍 Wyniki Doboru Nart</div>
         </div>
 
         {/* Inteligentne sugestie */}

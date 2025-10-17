@@ -193,7 +193,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     clientCounts.set(name, (clientCounts.get(name) || 0) + 1);
   });
   const multipleReservations = Array.from(clientCounts.entries())
-    .filter(([_, count]) => count > 1)
+    .filter(([, count]) => count > 1)
     .sort((a, b) => b[1] - a[1]);
     
   console.log('   Klienci z wieloma rezerwacjami:', multipleReservations.length);
@@ -311,30 +311,30 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   };
 
   return (
-    <div className="min-h-screen bg-[#386BB2] p-6">
+    <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
       <div className="max-w-8xl mx-auto">
-        {/* Header */}
-        <div className="bg-[#194576] rounded-lg shadow-lg p-6 mb-6">
-          <div className="flex justify-between items-center mb-4">
+        {/* Header - responsywny */}
+        <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
+          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
             <div>
-              <h1 className="text-3xl font-bold text-white mb-2">
+              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
                 🔄 Rezerwacje
               </h1>
               <div className="space-y-1">
-                <p className="text-[#A6C2EF]">
+                <p className="text-[#A6C2EF] text-sm lg:text-base">
                   📋 Liczba rezerwacji: <strong>{totalReservations}</strong>
                   {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
                 </p>
-                <p className="text-[#A6C2EF]">
+                <p className="text-[#A6C2EF] text-sm lg:text-base">
                   👥 Liczba unikalnych klientów: <strong>{uniqueClients}</strong> 
                   <span className="text-xs ml-2">(porównaj z FireFnow)</span>
                 </p>
-                <p className="text-[#A6C2EF] text-sm mt-1">
+                <p className="text-[#A6C2EF] text-xs lg:text-sm mt-1">
                   🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
                 </p>
               </div>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-3 w-full lg:w-auto">
               <button
                 onClick={onBackToSearch}
                 className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 justify-center"
@@ -344,10 +344,10 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             </div>
           </div>
 
-          {/* Wyszukiwanie */}
+          {/* Wyszukiwanie - responsywne */}
           <div className="space-y-3">
-            {/* Wyszukiwarka */}
-            <div className="flex items-center gap-4">
+            {/* Wyszukiwarka - responsywna */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
               <label className="text-white font-medium text-lg">
                 🔍 Szukaj:
               </label>

@@ -2,9 +2,11 @@
  * src/services/skiDataService.ts: Klient API dla zarządzania danymi nart
  * 
  * Komunikacja z backend API do edycji i dodawania nart
+ * FALLBACK: Jeśli API nie działa, wczytuje z lokalnego CSV
  */
 
 import type { SkiData } from '../types/ski.types';
+import { CSVParser } from '../utils/csvParser';
 
 const API_BASE_URL = '/api';
 
@@ -56,11 +58,21 @@ export class SkiDataService {
       console.log(`SkiDataService: Pobrano ${processedSkis.length} nart`);
       return processedSkis;
     } catch (error) {
-      console.error('SkiDataService: Błąd pobierania nart:', error);
+      console.error('SkiDataService: Błąd pobierania nart z API:', error);
       
-      // Jeśli cache jest pusty, zwróć pustą tablicę
+      // FALLBACK: Spróbuj wczytać z lokalnego CSV
       if (this.cache.length === 0) {
-        return [];
+        try {
+          console.log('SkiDataService: Próbuję wczytać z lokalnego CSV...');
+          const skisFromCSV = await CSVParser.loadFromPublic();
+          this.cache = skisFromCSV;
+          this.lastFetch = Date.now();
+          console.log(`SkiDataService: Załadowano ${skisFromCSV.length} nart z CSV`);
+          return skisFromCSV;
+        } catch (csvError) {
+          console.error('SkiDataService: Błąd wczytywania CSV:', csvError);
+          return [];
+        }
       }
       
       // W przeciwnym razie użyj cache (może być nieaktualny)
