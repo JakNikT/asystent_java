@@ -11,6 +11,7 @@ interface GroupedReservation {
   klient: string;
   od: string;
   do: string;
+  typumowy: string; // Typ umowy: "PROMOTOR" lub "STANDARD"
   items: {
     category: string; // NARTY, BUTY, KIJKI
     equipment: string; // Full equipment name
@@ -33,7 +34,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
   const [expandedReservations, setExpandedReservations] = useState<Set<string>>(new Set());
-  const [showPromotorContracts, setShowPromotorContracts] = useState(false); // Przełącznik: false = zwykłe umowy, true = umowy promotora
+  const [showPromotorOnly, setShowPromotorOnly] = useState(false);
   const [toast, setToast] = useState({
     message: '',
     type: 'info' as 'info' | 'success' | 'error',
@@ -103,25 +104,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     return 'INNE';
   };
 
-  // Sprawdza czy rezerwacja zawiera pozycję PROMOTOR
-  const isPromotorContract = (items: GroupedReservation['items']): boolean => {
-    return items.some(item => 
-      item.equipment && item.equipment.toLowerCase().includes('promotor')
-    );
-  };
-
   // Group reservations by client + date range
   const groupReservations = (): GroupedReservation[] => {
     const grouped = new Map<string, GroupedReservation>();
 
     reservations.forEach(res => {
-      const key = `${res.klient}_${res.od}_${res.do}`;
+      // Normalizuj nazwę klienta (usuń dodatkowe spacje, trim)
+      const normalizedKlient = res.klient.trim().replace(/\s+/g, ' ').toUpperCase();
+      const key = `${normalizedKlient}_${res.od}_${res.do}`;
       
       if (!grouped.has(key)) {
         grouped.set(key, {
-          klient: res.klient,
+          klient: res.klient.trim(), // Zachowaj oryginalną wielkość liter, ale trim
           od: res.od,
           do: res.do,
+          typumowy: res.typumowy || 'STANDARD',
           items: []
         });
       }
@@ -139,10 +136,10 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
   // Filter grouped reservations
   const filteredGroupedReservations = groupReservations().filter(group => {
-    // Filtruj według typu umowy (promotor vs zwykła)
-    const hasPromotor = isPromotorContract(group.items);
-    if (showPromotorContracts && !hasPromotor) return false; // Pokaż tylko promotora
-    if (!showPromotorContracts && hasPromotor) return false; // Pokaż tylko zwykłe umowy
+    // Filtruj według checkbox PROMOTOR
+    if (showPromotorOnly && group.typumowy !== 'PROMOTOR') {
+      return false;
+    }
     
     // Filtruj według tekstu wyszukiwania
     if (!filterText) return true;
@@ -177,7 +174,30 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   });
 
   // Calculate total unique reservations
-  const totalUniqueReservations = groupReservations().length;
+  // Liczniki
+  const allGroups = groupReservations();
+  const totalReservations = allGroups.length; // Liczba wszystkich rezerwacji (90)
+  
+  // Liczba unikalnych klientów (jak w FireFnow)
+  const clientNames = allGroups.map(g => g.klient);
+  const uniqueClients = new Set(clientNames).size;
+  
+  // Debug: Sprawdź czy są duplikaty z różnymi spacjami/wielkością liter
+  console.log('📊 Debug liczników:');
+  console.log('   Liczba rezerwacji:', totalReservations);
+  console.log('   Liczba unikalnych klientów (raw):', uniqueClients);
+  
+  // Znajdź klientów z wieloma rezerwacjami
+  const clientCounts = new Map<string, number>();
+  clientNames.forEach(name => {
+    clientCounts.set(name, (clientCounts.get(name) || 0) + 1);
+  });
+  const multipleReservations = Array.from(clientCounts.entries())
+    .filter(([_, count]) => count > 1)
+    .sort((a, b) => b[1] - a[1]);
+    
+  console.log('   Klienci z wieloma rezerwacjami:', multipleReservations.length);
+  console.log('   Szczegóły:', multipleReservations.slice(0, 10));
 
   // Funkcja formatowania daty
   const formatDate = (dateString: string) => {
@@ -300,40 +320,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
               <h1 className="text-3xl font-bold text-white mb-2">
                 🔄 Rezerwacje
               </h1>
-              <p className="text-[#A6C2EF]">
-                Liczba unikalnych rezerwacji: <strong>{totalUniqueReservations}</strong> 
-                {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
-              </p>
-              <p className="text-[#A6C2EF] text-sm mt-1">
-                🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
-              </p>
+              <div className="space-y-1">
+                <p className="text-[#A6C2EF]">
+                  📋 Liczba rezerwacji: <strong>{totalReservations}</strong>
+                  {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
+                </p>
+                <p className="text-[#A6C2EF]">
+                  👥 Liczba unikalnych klientów: <strong>{uniqueClients}</strong> 
+                  <span className="text-xs ml-2">(porównaj z FireFnow)</span>
+                </p>
+                <p className="text-[#A6C2EF] text-sm mt-1">
+                  🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
+                </p>
+              </div>
             </div>
             <div className="flex flex-col gap-3">
-              {/* Przełącznik typu umów */}
-              <div className="flex items-center gap-3 bg-[#2C699F] px-4 py-2 rounded-lg">
-                <span className="text-white text-sm font-medium">Typ umów:</span>
-                <button
-                  onClick={() => setShowPromotorContracts(false)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    !showPromotorContracts 
-                      ? 'bg-white text-[#194576]' 
-                      : 'bg-[#194576] text-white hover:bg-[#0F2D4A]'
-                  }`}
-                >
-                  🎿 Zwykłe
-                </button>
-                <button
-                  onClick={() => setShowPromotorContracts(true)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 ${
-                    showPromotorContracts 
-                      ? 'bg-white text-[#194576]' 
-                      : 'bg-[#194576] text-white hover:bg-[#0F2D4A]'
-                  }`}
-                >
-                  📋 Promotor
-                </button>
-              </div>
-              
               <button
                 onClick={onBackToSearch}
                 className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 justify-center"
@@ -344,25 +345,41 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           </div>
 
           {/* Wyszukiwanie */}
-          <div className="flex items-center gap-4">
-            <label className="text-white font-medium text-lg">
-              🔍 Szukaj:
-            </label>
-            <input
-              type="text"
-              value={filterText}
-              onChange={(e) => setFilterText(e.target.value)}
-              placeholder="Wpisz klienta, sprzęt lub kod..."
-              className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
-            />
-            {filterText && (
-              <button
-                onClick={() => setFilterText('')}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200"
-              >
-                Wyczyść
-              </button>
-            )}
+          <div className="space-y-3">
+            {/* Wyszukiwarka */}
+            <div className="flex items-center gap-4">
+              <label className="text-white font-medium text-lg">
+                🔍 Szukaj:
+              </label>
+              <input
+                type="text"
+                value={filterText}
+                onChange={(e) => setFilterText(e.target.value)}
+                placeholder="Wpisz klienta, sprzęt lub kod..."
+                className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
+              />
+              {filterText && (
+                <button
+                  onClick={() => setFilterText('')}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200"
+                >
+                  Wyczyść
+                </button>
+              )}
+            </div>
+            
+            {/* Checkbox PROMOTOR */}
+            <div className="flex items-center gap-3 bg-[#2C699F] px-4 py-2 rounded-lg w-fit">
+              <label className="flex items-center gap-2 cursor-pointer text-white text-sm font-medium">
+                <input
+                  type="checkbox"
+                  checked={showPromotorOnly}
+                  onChange={(e) => setShowPromotorOnly(e.target.checked)}
+                  className="w-4 h-4 cursor-pointer"
+                />
+                <span>📋 Pokaż tylko umowy PROMOTOR</span>
+              </label>
+            </div>
           </div>
         </div>
 
@@ -492,14 +509,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           </div>
         )}
 
-        {/* Statystyki - Unikalne rezerwacje */}
-        {!isLoading && totalUniqueReservations > 0 && (
+        {/* Statystyki - Podsumowanie */}
+        {!isLoading && totalReservations > 0 && (
           <div className="mt-6 bg-[#194576] rounded-lg shadow-lg p-6">
             <h2 className="text-xl font-bold text-white mb-4">📊 Statystyki</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="bg-[#2C699F] rounded-lg p-4">
-                <div className="text-[#A6C2EF] text-sm font-bold mb-1">Łączna liczba unikalnych rezerwacji</div>
-                <div className="text-white text-3xl font-bold">{totalUniqueReservations}</div>
+                <div className="text-[#A6C2EF] text-sm font-bold mb-1">Łączna liczba rezerwacji</div>
+                <div className="text-white text-3xl font-bold">{totalReservations}</div>
                 <div className="text-[#A6C2EF] text-xs mt-1">
                   (ta sama osoba + te same daty = 1 rezerwacja)
                 </div>

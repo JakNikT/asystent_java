@@ -2090,6 +2090,735 @@ npm run convert-firefnow
 
 **Status**: ✅ **UKOŃCZONE** - Przycisk importu w aplikacji działa poprawnie!
 
+## Background and Motivation
+
+**NOWY CEL (2025-10-17)**: AUTOMATYZACJA IMPORTU NOWYCH REZERWACJI Z FIREFNOW
+
+Użytkownik wkleił nowy plik backup z aplikacji FireFnow (system rezerwacji) zawierający stare i nowe rezerwacje. Potrzebuje automatycznego sposobu na:
+1. Odczytanie potrzebnych danych z pliku
+2. Konwersję formatu (kodowanie, separatory, polskie znaki)
+3. Nadpisanie pliku `rezerwacja.csv` nowymi danymi
+
+**Obecna sytuacja**:
+- ✅ Plik wklejony: `public/data/REZ.csv` (nowy backup z FireFnow)
+- ✅ Istniejący skrypt: `scripts/convert-firefnow-to-rezerwacja.cjs`
+- ✅ Automatyczna komenda: `npm run convert-firefnow`
+- ⚠️ Problem: Nazwy plików (REZ.csv vs rez.csv)
+
+**Różnice formatów**:
+
+| Element | FireFnow (REZ.csv) | Program (rezerwacja.csv) |
+|---------|-------------------|------------------------|
+| Separator | `;` (średnik) | `,` (przecinek) |
+| Kodowanie | Windows-1250 | UTF-8 |
+| Polskie znaki | `Sprz�t`, `BIA�Y` | `Sprzęt`, `BIAŁY` |
+| Format liczb | `180,00` | `180.00` |
+| Nagłówki | `Numer;Sprz�t;Klient;...` | `Klient,Sprzęt,Kod,Od,Do,...` |
+
+**Wymagania użytkownika**:
+- Prosty workflow: wklej plik → uruchom skrypt → dane zaktualizowane
+- Automatyczna konwersja wszystkich formatów
+- Nadpisanie pliku `rezerwacja.csv` z nowymi rezerwacjami
+- Brak ręcznej edycji plików
+
+## Key Challenges and Analysis
+
+### PLANNER MODE - Analiza systemu importu rezerwacji z FireFnow
+
+**Wykonana analiza**:
+- ✅ Sprawdzono istniejące skrypty konwersji
+- ✅ Przeanalizowano nowy plik REZ.csv (537 linii)
+- ✅ Porównano formaty FireFnow vs Program
+- ✅ Zidentyfikowano wszystkie różnice formatów
+- ✅ Sprawdzono obecny workflow użytkownika
+
+**Kluczowe odkrycia**:
+
+1. **Mamy już gotowy skrypt konwersji!**
+   - Plik: `scripts/convert-firefnow-to-rezerwacja.cjs`
+   - Komenda: `npm run convert-firefnow`
+   - Funkcje:
+     - ✅ Konwersja kodowania Windows-1250 → UTF-8
+     - ✅ Zamiana średników (;) na przecinki (,)
+     - ✅ Naprawa polskich znaków (ą, ć, ę, ł, ń, ó, ś, ź, ż)
+     - ✅ Konwersja liczb: przecinki → kropki (180,00 → 180.00)
+     - ✅ Szczegółowe logi i weryfikacja
+     - ✅ Nadpisywanie pliku `rezerwacja.csv`
+
+2. **Obecny workflow jest prosty**:
+   ```
+   1. Wklej plik z FireFnow jako: public/data/rez.csv
+   2. Uruchom: npm run convert-firefnow
+   3. Odśwież aplikację (Ctrl+F5)
+   4. Gotowe! Dane wyświetlone w aplikacji
+   ```
+
+3. **Problem zidentyfikowany**:
+   - Użytkownik wkleił plik jako `REZ.csv` (duże litery)
+   - Skrypt oczekuje `rez.csv` (małe litery)
+   - **Rozwiązanie**: Zmienić nazwę pliku lub zaktualizować skrypt
+
+4. **Struktura danych w REZ.csv**:
+   ```
+   Numer;Sprzęt;Klient;DIN;Od;Do Startu;Zapłacono;Cennik;Rabat %;Cena;Uwagi
+   ```
+   - 537 linii (536 rezerwacji + nagłówek)
+   - Zawiera wszystkie typy sprzętu (narty, buty, kijki, kaski, deski)
+   - Polskie znaki zniekształcone (`Sprz�t`, `BIA�Y`, `SKARBI�SKI`)
+   - Format dat: `2025-12-06 11:00:00`
+
+5. **Oczekiwana struktura dla programu (rezerwacja.csv)**:
+   ```
+   Klient,Sprzęt,Kod,Od,Do,Użytkownik,Cena,Zapłacono,Rabat
+   ```
+   - Prostszy format
+   - Tylko potrzebne kolumny
+   - UTF-8 z poprawnymi polskimi znakami
+   - Separator: przecinki
+
+**Zidentyfikowane wyzwania**:
+- ⚠️ Skrypt nie ekstraktuje tylko potrzebnych pól - konwertuje wszystkie
+- ⚠️ Wrażliwość na wielkość liter w nazwie pliku (REZ.csv vs rez.csv)
+- ⚠️ Brak automatycznego usuwania niepotrzebnych plików po konwersji
+
+**Rekomendowane podejście**:
+
+**OPCJA 1: Najprostsza (dla użytkownika)**
+- Zmienić nazwę pliku `REZ.csv` → `rez.csv`
+- Uruchomić istniejący skrypt
+- Gotowe!
+
+**OPCJA 2: Ulepszenie skryptu**
+- Zaktualizować skrypt aby akceptował dowolną wielkość liter
+- Dodać automatyczne czyszczenie starych plików
+- Dodać ekstraktowanie tylko potrzebnych kolumn
+
+**OPCJA 3: Pomysł użytkownika - lepszy transfer danych**
+- Automatyczne odbieranie danych z FireFnow (API?)
+- Synchronizacja w czasie rzeczywistym
+- Brak ręcznego kopiowania plików
+
+## High-level Task Breakdown
+
+### PLAN IMPLEMENTACJI - Import rezerwacji z FireFnow
+
+#### ETAP 1: SZYBKIE ROZWIĄZANIE (5 minut)
+
+**Task 1.1: Naprawa nazwy pliku i uruchomienie skryptu**
+- **1.1.1**: Zmienić nazwę `REZ.csv` → `rez.csv` w folderze `public/data/`
+  - Success criteria: Plik ma poprawną nazwę `rez.csv`
+  - Estimated time: 1 minuta
+  - **Cel**: Kompatybilność ze skryptem
+
+- **1.1.2**: Uruchomić skrypt konwersji
+  - Success criteria: Plik `rezerwacja.csv` został utworzony z nowymi danymi
+  - Estimated time: 2 minuty
+  - **Cel**: Konwersja i nadpisanie danych
+
+- **1.1.3**: Weryfikacja w aplikacji
+  - Success criteria: Nowe rezerwacje wyświetlają się w widoku "Rezerwacje"
+  - Estimated time: 2 minuty
+  - **Cel**: Potwierdzenie poprawności importu
+
+#### ETAP 2: ULEPSZENIE SKRYPTU (OPCJONALNE - 30 minut)
+
+**Task 2.1: Akceptowanie różnych nazw plików**
+- **2.1.1**: Dodać obsługę `REZ.csv` (duże litery) jako alternatywnej nazwy
+  - Success criteria: Skrypt działa z obiema nazwami
+  - Estimated time: 10 minut
+  - **Cel**: Większa elastyczność
+
+- **2.1.2**: Dodać automatyczne czyszczenie plików tymczasowych
+  - Success criteria: Po konwersji `REZ.csv`/`rez.csv` są usuwane
+  - Estimated time: 10 minut
+  - **Cel**: Czystość w folderze danych
+
+- **2.1.3**: Dodać ekstraktowanie tylko potrzebnych kolumn
+  - Success criteria: `rezerwacja.csv` zawiera tylko: Klient, Sprzęt, Kod, Od, Do
+  - Estimated time: 10 minut
+  - **Cel**: Prostszy format, mniejszy rozmiar pliku
+
+#### ETAP 3: AUTOMATYZACJA (PRZYSZŁOŚĆ - 2-3 godziny)
+
+**Task 3.1: Integracja API FireFnow (jeśli dostępne)**
+- **3.1.1**: Sprawdzenie czy FireFnow ma API
+  - Success criteria: Dokumentacja API znaleziona
+  - Estimated time: 30 minut
+  - **Cel**: Możliwość automatycznej synchronizacji
+
+- **3.1.2**: Implementacja pobierania danych przez API
+  - Success criteria: Dane pobierane automatycznie bez eksportu CSV
+  - Estimated time: 2 godziny
+  - **Cel**: Eliminacja ręcznego kopiowania plików
+
+- **3.1.3**: Dodanie przycisku "Synchronizuj z FireFnow" w aplikacji
+  - Success criteria: Jeden klik → nowe dane
+  - Estimated time: 30 minut
+  - **Cel**: Maksymalne uproszczenie procesu
+
+## Project Status Board
+
+### Do zrobienia (ETAP 1 - SZYBKIE ROZWIĄZANIE - 5 min)
+- [x] **1.1**: Zmienić nazwę pliku REZ.csv → rez.csv ✅
+- [x] **1.2**: Uruchomić skrypt: npm run convert-firefnow ✅
+- [x] **1.3**: Weryfikacja w widoku "Rezerwacje" ⚠️ Problem - brak kolumny "Kod"
+
+### PROBLEM ZNALEZIONY - Nowy plan
+- [ ] **1.4**: Użytkownik wklei nowy plik z FireFnow (z kolumną "Kod")
+- [ ] **1.5**: Uruchomić skrypt ponownie: npm run convert-firefnow  
+- [ ] **1.6**: Weryfikacja w widoku "Rezerwacje" - powinno działać ✅
+
+### Do zrobienia (ETAP 2 - ULEPSZENIE SKRYPTU - opcjonalne)
+- [ ] **2.1**: Dodać obsługę wielkich liter (REZ.csv)
+- [ ] **2.2**: Automatyczne czyszczenie plików tymczasowych
+- [ ] **2.3**: Ekstraktowanie tylko potrzebnych kolumn
+
+### Do zrobienia (ETAP 3 - AUTOMATYZACJA - przyszłość)
+- [ ] **3.1**: Sprawdzenie API FireFnow
+- [ ] **3.2**: Implementacja pobierania przez API
+- [ ] **3.3**: Przycisk "Synchronizuj z FireFnow"
+
+---
+
+### NOWY PROJEKT - EDYCJA I DODAWANIE NART - Todo List
+
+**Status**: ⏸️ OCZEKIWANIE NA DECYZJĘ UŻYTKOWNIKA
+
+Użytkownik musi wybrać jedną z opcji:
+- **OPCJA A**: Backend API Server (~8h, profesjonalne rozwiązanie)
+- **OPCJA B**: Pobieranie CSV (~2h, szybkie rozwiązanie)
+
+#### Do zrobienia - OPCJA A (Backend API Server)
+
+**ETAP 1: Setup Backend Server (2h)**
+- [ ] **1.1**: Zainstalować dependencies (express, cors, body-parser)
+- [ ] **1.2**: Stworzyć `server/index.js` - podstawowy Express server
+- [ ] **1.3**: Dodać CORS middleware
+- [ ] **1.4**: Stworzyć API endpoint `GET /api/skis`
+- [ ] **1.5**: Stworzyć API endpoint `PUT /api/skis/:id`
+- [ ] **1.6**: Stworzyć API endpoint `POST /api/skis`
+- [ ] **1.7**: Dodać funkcje do odczytu/zapisu CSV
+- [ ] **1.8**: Dodać walidację danych
+
+**ETAP 2: Integracja Frontend z API (1h)**
+- [ ] **2.1**: Stworzyć `src/services/skiDataService.ts`
+- [ ] **2.2**: Zaktualizować `App.tsx` do używania API
+- [ ] **2.3**: Dodać error handling i loading states
+- [ ] **2.4**: Dodać mechanizm automatycznego odświeżania
+
+**ETAP 3: Formularz Edycji Narty (2h)**
+- [ ] **3.1**: Stworzyć komponent `SkiEditModal.tsx`
+- [ ] **3.2**: Dodać formularz z wszystkimi polami SkiData
+- [ ] **3.3**: Dodać walidację formularza
+- [ ] **3.4**: Dodać przycisk "Edytuj" w BrowseSkisComponent
+- [ ] **3.5**: Implementować obsługę zapisu - API PUT
+- [ ] **3.6**: Dodać Toast notification "Narta zaktualizowana"
+
+**ETAP 4: Formularz Dodawania Narty (1.5h)**
+- [ ] **4.1**: Dodać przycisk "Dodaj nową nartę"
+- [ ] **4.2**: Wykorzystać `SkiEditModal.tsx` w trybie "add"
+- [ ] **4.3**: Implementować automatyczne generowanie ID
+- [ ] **4.4**: Dodać domyślne wartości
+- [ ] **4.5**: Implementować obsługę zapisu - API POST
+- [ ] **4.6**: Dodać logikę generowania kodu KOD
+- [ ] **4.7**: Dodać Toast notification "Narta dodana"
+
+**ETAP 5: Testowanie i Dopracowanie (1.5h)**
+- [ ] **5.1**: Testowanie edycji różnych nart
+- [ ] **5.2**: Testowanie dodawania wielu nowych nart
+- [ ] **5.3**: Testowanie walidacji (błędne dane)
+- [ ] **5.4**: Testowanie synchronizacji z systemem rezerwacji
+- [ ] **5.5**: Testowanie równoczesnej edycji
+- [ ] **5.6**: Dodać dokumentację w README
+- [ ] **5.7**: Dodać skrypt `npm run dev:full`
+
+#### Do zrobienia - OPCJA B (Pobieranie CSV) - ALTERNATYWA
+
+**Implementacja (2h)**
+- [ ] **B.1**: Stworzyć komponent `SkiEditModal.tsx` z formularzem
+- [ ] **B.2**: Dodać przycisk "Edytuj" w BrowseSkisComponent
+- [ ] **B.3**: Dodać funkcję generowania CSV
+- [ ] **B.4**: Dodać funkcję pobierania pliku CSV
+- [ ] **B.5**: Dodać przycisk "Dodaj nową nartę"
+- [ ] **B.6**: Implementować automatyczne generowanie ID i KOD
+- [ ] **B.7**: Testowanie i dokumentacja workflow
+
+---
+
+## Current Status / Progress Tracking
+
+**PLANNER MODE - Analiza edycji i dodawania nart (2025-10-17)**
+
+**Wykonana analiza**:
+- ✅ Przeanalizowano obecną architekturę aplikacji
+- ✅ Zidentyfikowano wyzwania techniczne (brak backend, ograniczenia przeglądarki)
+- ✅ Przygotowano 4 możliwe opcje rozwiązania
+- ✅ Oceniono każdą opcję pod kątem złożoności, czasu i zalet/wad
+- ✅ Stworzono szczegółowy plan implementacji dla opcji A (Backend API)
+- ✅ Stworzono alternatywny plan dla opcji B (Pobieranie CSV)
+
+**Kluczowe odkrycia**:
+
+1. **Aplikacja nie ma backend serwera**:
+   - Obecny system to statyczna aplikacja React (frontend-only)
+   - Dane CSV są tylko odczytywane przez fetch()
+   - Przeglądarka NIE MOŻE zapisywać bezpośrednio do plików na serwerze
+   
+2. **Są 4 możliwe opcje**:
+   - **OPCJA A** (rekomendowana): Backend API Server - profesjonalne, ~8h
+   - **OPCJA B** (szybka): Pobieranie zmienionego CSV - proste, ~2h
+   - **OPCJA C**: Vite Dev Server Middleware - średnie, ~3-4h
+   - **OPCJA D**: Electron/Tauri App - bardzo złożone, ~10-15h
+
+3. **Rekomendacja Planera**:
+   - Dla długoterminowego rozwiązania: **OPCJA A**
+   - Dla szybkiego prototypu: **OPCJA B**
+   - Można zacząć od OPCJI B i później ulepszyć do OPCJI A
+
+**Odpowiedź na pytanie użytkownika "Nie będzie to ciężkie?"**:
+- OPCJA A: Średnia trudność, ~8h (ale wykonalne!)
+- OPCJA B: Łatwa, ~2h (szybkie rozwiązanie)
+
+**Oczekiwanie na decyzję użytkownika**: Która opcja? A czy B?
+
+---
+
+**POPRZEDNI PROJEKT - Analiza importu rezerwacji z FireFnow (2025-10-17)**
+
+**Wykonana analiza**:
+- ✅ Sprawdzono obecny system importu
+- ✅ Przeanalizowano nowy plik REZ.csv (537 linii rezerwacji)
+- ✅ Zweryfikowano istniejący skrypt konwersji
+- ✅ Porównano formaty danych
+- ✅ Zidentyfikowano problem z nazwą pliku
+
+**Kluczowe odkrycia**:
+
+1. **Mamy już działające rozwiązanie!**
+   - Skrypt `convert-firefnow-to-rezerwacja.cjs` robi dokładnie to czego potrzebuje użytkownik
+   - Automatyczna konwersja wszystkich formatów
+   - Nadpisywanie pliku `rezerwacja.csv`
+   - Prosta komenda: `npm run convert-firefnow`
+
+2. **Problem jest minimalny**:
+   - Użytkownik wkleił plik jako `REZ.csv` (duże litery)
+   - Skrypt oczekuje `rez.csv` (małe litery)
+   - Rozwiązanie: Zmienić nazwę lub zaktualizować skrypt
+
+3. **Workflow jest już prosty**:
+   ```
+   OBECNY WORKFLOW (działa!):
+   1. Wklej plik jako rez.csv → public/data/
+   2. Uruchom: npm run convert-firefnow
+   3. Odśwież aplikację
+   4. Gotowe!
+   ```
+
+**Rekomendacje**:
+
+**Dla natychmiastowego rozwiązania (ETAP 1 - 5 min)**:
+1. Zmienić nazwę pliku `REZ.csv` → `rez.csv`
+2. Uruchomić: `npm run convert-firefnow`
+3. Odświeżyć aplikację → nowe rezerwacje będą widoczne
+
+**Dla lepszego doświadczenia (ETAP 2 - 30 min - opcjonalnie)**:
+1. Zaktualizować skrypt aby akceptował `REZ.csv` i `rez.csv`
+2. Dodać automatyczne czyszczenie starych plików
+3. Wyekstraktować tylko potrzebne kolumny (Klient, Sprzęt, Kod, Od, Do)
+
+**Dla przyszłości (ETAP 3 - 2-3h - opcjonalnie)**:
+1. Sprawdzić czy FireFnow ma API
+2. Zaimplementować automatyczną synchronizację
+3. Dodać przycisk "Synchronizuj z FireFnow" w aplikacji
+
+**Gotowość do implementacji**: ✅ **TAK** - rozwiązanie już istnieje, wymaga tylko drobnej zmiany.
+
+**Obecny stan**: ⚠️ **PROBLEM ZIDENTYFIKOWANY** - Format FireFnow nie ma kolumny "Kod" w nagłówku.
+
+**Problem znaleziony (2025-10-17)**:
+- ❌ Skrypt skonwertował plik ale aplikacja pokazuje 0 rezerwacji
+- ❌ Brak kolumny "Kod" w eksporcie FireFnow
+- ❌ Format FireFnow: `Numer;Sprzęt;Klient;DIN;Od;Do Startu;...` (bez "Kod")
+- ✅ Aplikacja potrzebuje: `Klient,Sprzęt,Kod,Od,Do,Użytkownik,...`
+
+**Rozwiązanie ustalone z użytkownikiem**:
+- 🔄 Użytkownik wklei **nowy plik** z FireFnow który ma kolumnę "Kod"
+- ✅ Skrypt został przywrócony do oryginalnej wersji (git checkout)
+- ✅ Czekamy na nowy plik z poprawną strukturą
+
+**Następne kroki**: Czekamy aż użytkownik wklei nowy plik, potem uruchomimy `npm run convert-firefnow`
+
+---
+
+## NOWY PROJEKT - EDYCJA I DODAWANIE NART (2025-10-17)
+
+### Background and Motivation
+
+**WYMAGANIA UŻYTKOWNIKA:**
+
+1. **Edycja nart w widoku "Przeglądaj"**:
+   - Dodać przycisk "Edytuj" do każdego wiersza w tabeli
+   - Po kliknięciu otworzyć okno modalne z formularzem edycji
+   - Wszystkie parametry narty edytowalne
+   - Zapisywanie zmian do bazy danych (CSV)
+
+2. **Dodawanie nowych nart**:
+   - Przycisk "Dodaj nowe narty" w widoku "Przeglądaj"
+   - Formularz z wszystkimi polami narty
+   - Automatyczne generowanie ID
+   - Zapis do bazy danych (CSV)
+
+**PYTANIE UŻYTKOWNIKA**: "Nie będzie to ciężkie?"
+
+### Key Challenges and Analysis
+
+#### 1. Architektura Aplikacji - Analiza Techniczna
+
+**Obecny stan**:
+- ✅ Frontend: React + TypeScript + Vite
+- ✅ Baza danych: CSV pliki w `public/data/NOWABAZA_final.csv`
+- ✅ Parser: `csvParser.ts` - tylko odczyt
+- ❌ Backend: BRAK - aplikacja statyczna
+- ❌ API do zapisu: NIE ISTNIEJE
+
+**Identyfikowane wyzwania**:
+
+1. **Problem bezpieczeństwa przeglądarki**:
+   - Przeglądarki NIE MOGĄ zapisywać bezpośrednio do plików na serwerze
+   - Frontend może tylko odczytywać pliki statyczne przez HTTP
+   - Zapis do CSV wymaga serwera backend
+
+2. **Obecne mechanizmy zapisu**:
+   - Skrypty Node.js (map-ski-codes.js, migrate-csv-data.js) działają w terminal
+   - Nie ma połączenia między frontend a tymi skryptami
+   - Brak API endpointów
+
+3. **Synchronizacja danych**:
+   - Po zapisie do CSV aplikacja musi odświeżyć dane
+   - Potrzeba mechanizmu cache invalidation
+   - React state musi być zsynchronizowany z plikiem
+
+#### 2. Możliwe Rozwiązania
+
+**OPCJA A: Backend API Server (Rekomendowana) ⭐**
+
+**Architektura**:
+```
+Frontend (React) → HTTP API → Backend Server (Express/Node.js) → CSV Files
+```
+
+**Zalety**:
+- ✅ Profesjonalne rozwiązanie
+- ✅ Bezpieczne - walidacja po stronie serwera
+- ✅ Skalowalne - łatwo rozszerzyć o nowe funkcje
+- ✅ Może działać lokalnie i na produkcji
+- ✅ Obsługa równoczesnych edycji
+
+**Wady**:
+- ⚠️ Wymaga serwera backend (Express.js)
+- ⚠️ Więcej konfiguracji
+- ⚠️ Trzeba uruchamiać 2 procesy (frontend + backend)
+
+**Złożoność**: ⭐⭐⭐ (Średnia)
+**Czas implementacji**: 4-6 godzin
+
+---
+
+**OPCJA B: Pobieranie Zmienionego CSV**
+
+**Jak działa**:
+1. Użytkownik edytuje narty w UI
+2. Po kliknięciu "Zapisz" - generowany jest nowy CSV
+3. Browser automatycznie pobiera plik
+4. Użytkownik ręcznie zastępuje plik w `public/data/`
+5. Odświeża aplikację
+
+**Zalety**:
+- ✅ Bardzo proste - brak backend
+- ✅ Szybka implementacja (1-2h)
+- ✅ Działa w przeglądarce
+- ✅ Brak zmian w architekturze
+
+**Wady**:
+- ❌ Manualna procedura
+- ❌ Nie jest automatyczne
+- ❌ Wymaga dostępu do systemu plików
+- ❌ Ryzyko błędu użytkownika
+
+**Złożoność**: ⭐ (Niska)
+**Czas implementacji**: 1-2 godziny
+
+---
+
+**OPCJA C: Vite Dev Server Middleware**
+
+**Jak działa**:
+- Custom middleware w Vite do obsługi POST requests
+- Działa tylko w development mode
+- Zapisuje do plików lokalnie
+
+**Zalety**:
+- ✅ Bez dodatkowego serwera
+- ✅ Zintegrowane z Vite
+
+**Wady**:
+- ❌ Nie działa w production build
+- ❌ Tylko dla development
+- ❌ Ograniczone możliwości
+
+**Złożoność**: ⭐⭐ (Średnia-niska)
+**Czas implementacji**: 3-4 godziny
+
+---
+
+**OPCJA D: Electron/Tauri App**
+
+**Jak działa**:
+- Przekształcenie aplikacji web na desktop app
+- Bezpośredni dostęp do systemu plików
+- API Node.js wbudowane
+
+**Zalety**:
+- ✅ Pełny dostęp do systemu plików
+- ✅ Działa jak normalna aplikacja desktop
+
+**Wady**:
+- ❌ Wymaga przepisania części aplikacji
+- ❌ Dużo większa aplikacja (MB vs KB)
+- ❌ Bardziej skomplikowana dystrybucja
+- ❌ Zmiana paradygmatu (nie jest już web app)
+
+**Złożoność**: ⭐⭐⭐⭐⭐ (Bardzo wysoka)
+**Czas implementacji**: 10-15 godzin
+
+---
+
+#### 3. Rekomendacja Planera
+
+**PREFEROWANE PODEJŚCIE**: **OPCJA A - Backend API Server**
+
+**Uzasadnienie**:
+
+1. **Profesjonalizm**: To standardowe rozwiązanie w web development
+2. **Bezpieczeństwo**: Walidacja po stronie serwera
+3. **Skalowalność**: Łatwo dodać więcej funkcji (autoryzacja, logi, backup)
+4. **Doświadczenie użytkownika**: Automatyczne zapisywanie bez manualnych kroków
+5. **Zgodność z dotychczasowym workflow**: System rezerwacji już wczytuje CSV, możemy użyć tego samego mechanizmu
+
+**Alternatywa dla szybkiego prototypu**: **OPCJA B - Pobieranie CSV**
+- Jeśli użytkownik chce szybkie rozwiązanie "na już" (1-2h)
+- Można później ulepszyć do OPCJI A
+
+### High-level Task Breakdown
+
+**WYBRANA STRATEGIA**: OPCJA A - Backend API Server
+
+#### ETAP 1: Setup Backend Server (2h)
+
+**Cel**: Stworzyć prosty Express.js server z API do zarządzania nartami
+
+**Zadania**:
+- **1.1**: Zainstalować dependencies (express, cors, body-parser)
+  - Success: `package.json` zawiera nowe zależności
+  
+- **1.2**: Stworzyć `server/index.js` - podstawowy Express server
+  - Success: Serwer uruchamia się na porcie 3001
+  
+- **1.3**: Dodać CORS middleware dla komunikacji z frontend
+  - Success: Frontend może wysyłać requesty do API
+  
+- **1.4**: Stworzyć API endpoint `GET /api/skis` - lista nart
+  - Success: Zwraca wszystkie narty z CSV
+  
+- **1.5**: Stworzyć API endpoint `PUT /api/skis/:id` - edycja narty
+  - Success: Aktualizuje nartę i zapisuje do CSV
+  
+- **1.6**: Stworzyć API endpoint `POST /api/skis` - dodanie narty
+  - Success: Dodaje nową nartę i zapisuje do CSV
+  
+- **1.7**: Dodać funkcje do odczytu/zapisu CSV w server
+  - Success: Server może czytać i pisać do `NOWABAZA_final.csv`
+  
+- **1.8**: Dodać walidację danych po stronie serwera
+  - Success: Nieprawidłowe dane są odrzucane z błędem 400
+
+**Kryteria sukcesu ETAPU 1**:
+- ✅ Server Express działa na localhost:3001
+- ✅ Wszystkie 3 endpointy działają poprawnie
+- ✅ Zmiany zapisują się do CSV
+- ✅ Frontend może komunikować się z API
+
+---
+
+#### ETAP 2: Integracja Frontend z API (1h)
+
+**Cel**: Połączyć React frontend z backend API
+
+**Zadania**:
+- **2.1**: Stworzyć `src/services/skiDataService.ts` - API client
+  - Success: Service z metodami: getAllSkis(), updateSki(), addSki()
+  
+- **2.2**: Zaktualizować `App.tsx` do używania API zamiast statycznego CSV
+  - Success: Dane ładują się z API endpoint
+  
+- **2.3**: Dodać error handling i loading states
+  - Success: Użytkownik widzi spinner podczas ładowania
+  
+- **2.4**: Dodać mechanizm automatycznego odświeżania po zapisie
+  - Success: Po edycji/dodaniu lista się automatycznie aktualizuje
+
+**Kryteria sukcesu ETAPU 2**:
+- ✅ Frontend komunikuje się z backend API
+- ✅ Dane ładują się poprawnie
+- ✅ Error handling działa
+- ✅ Lista aktualizuje się po zmianach
+
+---
+
+#### ETAP 3: Formularz Edycji Narty (2h)
+
+**Cel**: Stworzyć UI do edycji istniejących nart
+
+**Zadania**:
+- **3.1**: Stworzyć komponent `SkiEditModal.tsx` - okno modalne
+  - Success: Modal otwiera się i zamyka
+  
+- **3.2**: Dodać formularz z wszystkimi polami SkiData
+  - Success: Wszystkie pola edytowalne (MARKA, MODEL, DLUGOSC, etc.)
+  
+- **3.3**: Dodać walidację formularza (wzrost min < max, waga min < max, etc.)
+  - Success: Błędne dane nie mogą być zapisane
+  
+- **3.4**: Dodać przycisk "Edytuj" w BrowseSkisComponent
+  - Success: Kliknięcie otwiera modal z danymi narty
+  
+- **3.5**: Implementować obsługę zapisu - wywołanie API PUT
+  - Success: Po zapisie dane aktualizują się w liście
+  
+- **3.6**: Dodać Toast notification "Narta zaktualizowana"
+  - Success: Użytkownik widzi potwierdzenie zapisu
+
+**Kryteria sukcesu ETAPU 3**:
+- ✅ Przycisk "Edytuj" widoczny w każdym wierszu
+- ✅ Modal otwiera się z danymi narty
+- ✅ Wszystkie pola można edytować
+- ✅ Walidacja działa poprawnie
+- ✅ Zapis aktualizuje dane
+- ✅ Toast pokazuje potwierdzenie
+
+---
+
+#### ETAP 4: Formularz Dodawania Narty (1.5h)
+
+**Cel**: Stworzyć UI do dodawania nowych nart
+
+**Zadania**:
+- **4.1**: Dodać przycisk "Dodaj nową nartę" w BrowseSkisComponent
+  - Success: Przycisk widoczny w header widoku
+  
+- **4.2**: Wykorzystać `SkiEditModal.tsx` w trybie "add"
+  - Success: Modal otwiera się z pustym formularzem
+  
+- **4.3**: Implementować automatyczne generowanie ID
+  - Success: Nowa narta dostaje kolejny ID (max + 1)
+  
+- **4.4**: Dodać domyślne wartości dla nowej narty
+  - Success: Pola mają sensowne wartości domyślne
+  
+- **4.5**: Implementować obsługę zapisu - wywołanie API POST
+  - Success: Nowa narta pojawia się na liście
+  
+- **4.6**: Dodać logikę generowania/przypisywania kodu KOD
+  - Success: Nowa narta ma unikalny kod (np. "NEW_001", "NEW_002")
+  
+- **4.7**: Dodać Toast notification "Narta dodana"
+  - Success: Użytkownik widzi potwierdzenie
+
+**Kryteria sukcesu ETAPU 4**:
+- ✅ Przycisk "Dodaj nową nartę" działa
+- ✅ Modal otwiera się z pustym formularzem
+- ✅ ID generuje się automatycznie
+- ✅ KOD generuje się automatycznie
+- ✅ Zapis dodaje nartę do listy
+- ✅ Toast pokazuje potwierdzenie
+
+---
+
+#### ETAP 5: Testowanie i Dopracowanie (1.5h)
+
+**Cel**: Przetestować wszystkie funkcjonalności i naprawić bugi
+
+**Zadania**:
+- **5.1**: Testowanie edycji różnych nart
+  - Success: Wszystkie pola zapisują się poprawnie
+  
+- **5.2**: Testowanie dodawania wielu nowych nart
+  - Success: Każda nowa narta ma unikalny ID i KOD
+  
+- **5.3**: Testowanie walidacji (błędne dane)
+  - Success: Formularz blokuje nieprawidłowe dane
+  
+- **5.4**: Testowanie synchronizacji z systemem rezerwacji
+  - Success: Edytowane narty nadal pokazują poprawne rezerwacje
+  
+- **5.5**: Testowanie równoczesnej edycji (symulacja konfliktu)
+  - Success: Ostatni zapis wygrywa (lub pokazuje ostrzeżenie)
+  
+- **5.6**: Dodać dokumentację w README - jak uruchomić backend
+  - Success: Instrukcje krok po kroku w README.md
+  
+- **5.7**: Dodać skrypt `npm run dev:full` - uruchamia frontend + backend
+  - Success: Jedna komenda uruchamia wszystko
+
+**Kryteria sukcesu ETAPU 5**:
+- ✅ Wszystkie testy przechodzą
+- ✅ Nie ma błędów w konsoli
+- ✅ Dokumentacja gotowa
+- ✅ Wygodny workflow uruchomienia
+
+---
+
+### Oszacowanie Czasu
+
+**OPCJA A - Backend API (Rekomendowana)**:
+- ETAP 1: Setup Backend Server - **2h**
+- ETAP 2: Integracja Frontend - **1h**
+- ETAP 3: Formularz Edycji - **2h**
+- ETAP 4: Formularz Dodawania - **1.5h**
+- ETAP 5: Testowanie - **1.5h**
+- **TOTAL: 8 godzin**
+
+**OPCJA B - Pobieranie CSV (Alternatywa)**:
+- Formularz edycji - **1h**
+- Generowanie CSV do pobrania - **0.5h**
+- Formularz dodawania - **0.5h**
+- **TOTAL: 2 godziny**
+
+### Odpowiedź na Pytanie Użytkownika
+
+**"Nie będzie to ciężkie?"**
+
+**ODPOWIEDŹ**: To zależy od wybranej opcji! 😊
+
+**OPCJA A (Backend API)** - **Średnia trudność**:
+- ⚠️ Wymaga stworzenia backend serwera (jeśli nigdy tego nie robiłeś - to nowa wiedza)
+- ✅ Jest standardowym, profesjonalnym rozwiązaniem
+- ✅ Mamy doświadczenie z Express.js (bo używamy Node.js w skryptach)
+- ⏱️ **~8 godzin pracy** (rozłożone na 1-2 dni)
+- 💪 **Poziom: Średni** - ale wykonalne!
+
+**OPCJA B (Pobieranie CSV)** - **Łatwa**:
+- ✅ Prosta implementacja - tylko frontend
+- ✅ Szybka - **~2 godziny**
+- ⚠️ Mniej wygodna dla użytkownika (manualne kroki)
+- 💪 **Poziom: Łatwy**
+
+**MOJA REKOMENDACJA**:
+1. Jeśli masz **czas i chęć** - wybierz **OPCJĘ A**. To lepsze rozwiązanie długoterminowe.
+2. Jeśli potrzebujesz **szybko** - zacznij od **OPCJI B**, później możesz ulepszyć do OPCJI A.
+
+**Jestem gotowy zacząć jako Executor gdy użytkownik zdecyduje!** 🚀
+
 ## Lessons
 
 - **Struktura folderów ma kluczowe znaczenie dla utrzymania projektu** - nieuporządkowana struktura utrudnia nawigację i zarządzanie
@@ -2103,3 +2832,6 @@ npm run convert-firefnow
 - **Backup jest kluczowy przed reorganizacją** - nie można ryzykować utraty plików
 - **Aktualizacja ścieżek to największe wyzwanie** - wszystkie importy i referencje trzeba zaktualizować
 - **Testowanie po reorganizacji jest obowiązkowe** - trzeba upewnić się że aplikacja nadal działa
+- **Automatyzacja importu danych oszczędza czas** - skrypt konwersji eliminuje ręczną edycję
+- **Wrażliwość na wielkość liter może powodować problemy** - nazwy plików powinny być elastyczne
+- **Istniejące rozwiązania powinny być sprawdzone przed tworzeniem nowych** - często mamy już gotowe narzędzia

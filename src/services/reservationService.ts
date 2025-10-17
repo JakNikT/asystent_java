@@ -6,21 +6,15 @@
 import Papa from 'papaparse';
 
 export interface ReservationData {
-  od: string;           // Data rozpoczęcia
-  do: string;           // Data zakończenia
-  uzytkownik: string;   // Użytkownik
   klient: string;       // Klient
   sprzet: string;       // Sprzęt (narty)
-  uwagi: string;        // Uwagi
-  kod: string;          // Kod
-  cena: number;        // Cena
-  zaplacono: number;   // Zapłacono
-  cennik: string;      // Cennik
-  rabat: string;        // Rabat
-  rabat_procent: string; // Rabat %
-  czas: string;         // Czas
-  do_startu: string;    // Do startu
-  numer: string;        // Numer
+  kod: string;          // Kod sprzętu
+  od: string;           // Data rozpoczęcia
+  do: string;           // Data zakończenia
+  typumowy: string;     // Typ umowy: "PROMOTOR" lub "STANDARD"
+  numer: string;        // Numer rezerwacji (np. "P 71/10/2025")
+  cena?: string;        // Cena (opcjonalna, domyślnie 0)
+  zaplacono?: string;   // Zapłacono (opcjonalne, domyślnie 0)
 }
 
 export interface ReservationInfo {
@@ -60,8 +54,6 @@ export class ReservationService {
    * @returns true jeśli wykryto format FireFnow (średniki + zniekształcone znaki)
    */
   private static detectFirefnowFormat(csvText: string): boolean {
-    console.log('ReservationService: Wykrywanie formatu FireFnow...');
-    
     // Sprawdź pierwsze 500 znaków
     const sample = csvText.substring(0, 500);
     
@@ -80,13 +72,7 @@ export class ReservationService {
       sample.includes('UÄytkownik') ||
       sample.includes('ZapÄacono');
     
-    const isFirefnow = hasSemicolons || hasCorruptedChars;
-    
-    console.log(`ReservationService: Średniki: ${semicolonCount}, Przecinki: ${commaCount}`);
-    console.log(`ReservationService: Zniekształcone znaki: ${hasCorruptedChars}`);
-    console.log(`ReservationService: Format FireFnow: ${isFirefnow}`);
-    
-    return isFirefnow;
+    return hasSemicolons || hasCorruptedChars;
   }
 
   /**
@@ -158,9 +144,7 @@ export class ReservationService {
    */
   static async loadReservations(): Promise<ReservationData[]> {
     try {
-      console.log('ReservationService: Próbuję wczytać plik /data/rezerwacja.csv');
       const response = await fetch('/data/rezerwacja.csv');
-      console.log('ReservationService: Odpowiedź HTTP:', response.status, response.statusText);
       
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -169,11 +153,9 @@ export class ReservationService {
       // Pobierz plik jako tekst do wykrycia formatu
       const clonedResponse = response.clone(); // Clone aby móc użyć ponownie
       let csvText = await response.text();
-      console.log('ReservationService: Pobrano plik jako tekst (pierwsze 200 znaków):', csvText.substring(0, 200));
       
       // Wykryj czy to format FireFnow
       const isFirefnow = this.detectFirefnowFormat(csvText);
-      console.log('ReservationService: Czy wykryto FireFnow?', isFirefnow);
       
       if (isFirefnow) {
         console.log('ReservationService: Rozpoczynam konwersję FireFnow...');
@@ -189,107 +171,69 @@ export class ReservationService {
         
         // Wywołaj callback toast (jeśli ustawiony)
         if (this.onConversionComplete) {
-          console.log('ReservationService: Wywołuję onConversionComplete callback');
           this.onConversionComplete();
         }
-      } else {
-        console.log('ReservationService: Format nie jest FireFnow - używam oryginalnego tekstu');
       }
-      
-      console.log('ReservationService: CSV gotowy do parsowania (pierwsze 200 znaków):', csvText.substring(0, 200));
       
       const result = Papa.parse(csvText, {
         header: true,
         skipEmptyLines: true,
         delimiter: ',',
         transformHeader: (header) => {
-          // Mapowanie nagłówków na polskie nazwy (lowercase)
+          // Mapowanie nagłówków - obsługa polskich znaków
           const headerMap: { [key: string]: string } = {
+            'Klient': 'klient',
+            'Sprzęt': 'sprzet',
+            'Kod': 'kod',
             'Od': 'od',
             'Do': 'do',
-            'Klient': 'klient',
-            'Kod': 'kod',
+            'TypUmowy': 'typumowy',
+            'Numer': 'numer',
             'Cena': 'cena',
-            'Rabat': 'rabat',
-            'Użytkownik': 'uzytkownik',
-            'Sprzęt': 'sprzet',
             'Zapłacono': 'zaplacono'
           };
           
+          // Zwróć zmapowaną wartość lub lowercase jako fallback
           return headerMap[header] || header.toLowerCase();
         }
       });
 
-      console.log('ReservationService: Papa Parse zakończone:', result);
-      console.log('ReservationService: Liczba rekordów:', result.data.length);
-      console.log('ReservationService: Pierwszy rekord:', result.data[0]);
-
-      // Debug: sprawdź surowe dane przed filtrowaniem
       const rawData = result.data as ReservationData[];
-      console.log('ReservationService: Surowe dane przed filtrowaniem:', rawData.length, 'rekordów');
-      console.log('ReservationService: Pierwsze 3 surowe rekordy:', rawData.slice(0, 3));
       
-      // Filtruj tylko prawdziwe rezerwacje (wyklucz wiersze podsumowujące)
+      // Filtruj tylko prawdziwe rezerwacje (wyklucz nagłówki i podsumowania)
       this.reservations = rawData.filter(reservation => {
-        // Debug: sprawdź każdy rekord
-        console.log('ReservationService: Sprawdzam rekord:', reservation);
-        console.log('ReservationService: Klient:', reservation.klient, 'Sprzęt:', reservation.sprzet, 'Od:', reservation.od, 'Do:', reservation.do);
-        
-        // Wyklucz wiersze podsumowujące
+        // Wyklucz wiersze bez podstawowych danych
         if (!reservation.klient || !reservation.sprzet) {
-          console.log('ReservationService: Wykluczam - brak klienta lub sprzętu');
           return false;
         }
-        if (reservation.klient === '57' || reservation.sprzet === 'Suma:') {
-          console.log('ReservationService: Wykluczam - wiersz podsumowujący');
+        
+        // Wyklucz wiersze podsumowujące (Suma:)
+        if (reservation.sprzet === 'Suma:' || reservation.klient === 'Suma:') {
           return false;
         }
+        
         if (reservation.klient.includes && reservation.klient.includes('Suma:') || 
             reservation.sprzet.includes && reservation.sprzet.includes('Suma:')) {
-          console.log('ReservationService: Wykluczam - zawiera "Suma:"');
           return false;
         }
         
-        // Wyklucz puste wiersze
+        // Wyklucz nagłówki PROMOTOR (nie mają kodu)
+        // Kijki, buty itp. mogą nie mieć kodu - to OK!
+        if (reservation.sprzet.trim().toUpperCase() === 'PROMOTOR' && 
+            (!reservation.kod || reservation.kod.trim() === '')) {
+          return false;
+        }
+        
+        // Wyklucz wiersze bez dat
         if (!reservation.od || !reservation.do) {
-          console.log('ReservationService: Wykluczam - brak dat');
           return false;
         }
         
-        console.log('ReservationService: ZACHOWUJĘ rekord:', reservation);
+        // Wszystko inne zachowuj (narty z kodem, kijki bez kodu, buty bez kodu)
         return true;
       });
       
-      console.log('ReservationService: Po filtrowaniu:', this.reservations.length, 'rekordów');
-      
-      // this.isLoaded = true; // Commented out for debugging
-      
-      // Debug: sprawdź czy dane są poprawnie wczytane
-      console.log('ReservationService: Po parsowaniu - liczba rekordów:', this.reservations.length);
-      console.log('ReservationService: Po parsowaniu - pierwszy rekord:', this.reservations[0]);
-      if (this.reservations[0]) {
-        console.log('ReservationService: Po parsowaniu - sprzęt pierwszego rekordu:', this.reservations[0].sprzet);
-        console.log('ReservationService: Po parsowaniu - klient pierwszego rekordu:', this.reservations[0].klient);
-      }
-      
-      // Debug: sprawdź konkretnie pole sprzęt
-      const firstReservation = this.reservations[0];
-      if (firstReservation) {
-        console.log('ReservationService: Pierwsza rezerwacja - wszystkie pola:', firstReservation);
-        console.log('ReservationService: Pierwsza rezerwacja - sprzęt:', firstReservation.sprzet);
-        console.log('ReservationService: Pierwsza rezerwacja - klient:', firstReservation.klient);
-        console.log('ReservationService: Pierwsza rezerwacja - kod:', firstReservation.kod);
-      }
-      
-      // Debug: sprawdź konkretne przykłady nart
-      const nartyExamples = this.reservations.filter(r => 
-        r.sprzet && (
-          r.sprzet.toLowerCase().includes('narty') ||
-          r.sprzet.toLowerCase().includes('volkl') ||
-          r.sprzet.toLowerCase().includes('atomic')
-        )
-      );
-      console.log('ReservationService: Przykłady nart:', nartyExamples.slice(0, 3));
+      console.log('ReservationService: Wczytano', this.reservations.length, 'rezerwacji');
       
       return this.reservations;
     } catch (error) {
