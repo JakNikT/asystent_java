@@ -23,7 +23,10 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // Ścieżki do plików CSV
 const RESERVATIONS_CSV_PATH = path.join(__dirname, 'public', 'data', 'rezerwacja.csv');
-const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWABAZA_final.csv');
+// Stara baza (backup):
+// const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWABAZA_final.csv');
+// Nowa baza z butami i deskami:
+const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWA_BAZA_KOMPLETNA.csv');
 
 /**
  * Wczytuje rezerwacje z pliku CSV

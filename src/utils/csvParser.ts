@@ -33,23 +33,53 @@ export class CSVParser {
 
   /**
    * Parsuje pojedynczą linię CSV
+   * src/utils/csvParser.ts: Obsługuje 3 formaty:
+   * - Nowy format (17 pól): ID,TYP_SPRZETU,KATEGORIA,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,KOD
+   * - Format z kodem (15 pól): ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,KOD
+   * - Stary format (14 pól): ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ROK,KOD
    */
   private static parseLine(line: string): SkiData | null {
-    // Dzieli linię zachowując przecinki w cudzysłowach
+    // src/utils/csvParser.ts: Dzieli linię zachowując przecinki w cudzysłowach
     const fields = this.splitCSVLine(line);
     
-    // Sprawdź format pliku
-    const hasKod = fields.length >= 15; // Nowy format z kodem
+    console.log(`src/utils/csvParser.ts: Parsowanie linii z ${fields.length} polami`);
     
     if (fields.length < 14) {
+      console.warn('src/utils/csvParser.ts: Zbyt mało pól w linii CSV:', fields.length);
       return null;
     }
 
     try {
-      // Nowy format z kodem: ID,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAGA_MIN,WAGA_MAX,WZROST_MIN,WZROST_MAX,PRZEZNACZENIE,ATUTY,ROK,KOD
-      if (hasKod) {
+      // NOWY FORMAT z TYP_SPRZETU i KATEGORIA (17 pól)
+      if (fields.length >= 17) {
+        console.log('src/utils/csvParser.ts: Wykryto nowy format (17 pól) z TYP_SPRZETU i KATEGORIA');
         return {
           ID: fields[0].trim(),
+          TYP_SPRZETU: fields[1].trim() as 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD',
+          KATEGORIA: fields[2].trim() as 'VIP' | 'TOP' | 'JUNIOR' | 'DOROSLE' | '',
+          MARKA: fields[3].trim(),
+          MODEL: fields[4].trim(),
+          DLUGOSC: parseFloat(fields[5]) || 0,
+          ILOSC: parseInt(fields[6]) || 1,
+          POZIOM: fields[7].trim(),
+          PLEC: fields[8].trim(),
+          WAGA_MIN: parseInt(fields[9]) || 0,
+          WAGA_MAX: parseInt(fields[10]) || 0,
+          WZROST_MIN: parseInt(fields[11]) || 0,
+          WZROST_MAX: parseInt(fields[12]) || 0,
+          PRZEZNACZENIE: fields[13].trim(),
+          ATUTY: fields[14] ? fields[14].trim() : '',
+          ROK: parseInt(fields[15]) || 0,
+          KOD: fields[16] ? fields[16].trim() : ''
+        };
+      }
+      // Format z kodem (15 pól) - stara baza NOWABAZA_final.csv
+      else if (fields.length >= 15) {
+        console.log('src/utils/csvParser.ts: Wykryto format z kodem (15 pól)');
+        return {
+          ID: fields[0].trim(),
+          TYP_SPRZETU: 'NARTY', // Domyślnie narty dla starej bazy
+          KATEGORIA: '', // Puste dla starej bazy
           MARKA: fields[1].trim(),
           MODEL: fields[2].trim(),
           DLUGOSC: parseInt(fields[3]) || 0,
@@ -66,8 +96,8 @@ export class CSVParser {
           KOD: fields[14] ? fields[14].trim() : ''
         };
       } else {
-        // Stary format - kompatybilność wsteczna
-        // Sprawdź czy PRZEZNACZENIE zawiera przecinek (format "SLG,C")
+        // Stary format (14 pól) - kompatybilność wsteczna
+        console.log('src/utils/csvParser.ts: Wykryto stary format (14 pól)');
         const przeznaczenie = fields[11].trim();
         let newPrzeznaczenie = przeznaczenie;
         let atuty = '';
@@ -82,6 +112,8 @@ export class CSVParser {
         
         return {
           ID: fields[0].trim(),
+          TYP_SPRZETU: 'NARTY', // Domyślnie narty
+          KATEGORIA: '', // Puste
           MARKA: fields[1].trim(),
           MODEL: fields[2].trim(),
           DLUGOSC: parseInt(fields[3]) || 0,
@@ -99,7 +131,7 @@ export class CSVParser {
         };
       }
     } catch (error) {
-      console.error('Błąd tworzenia obiektu SkiData:', error);
+      console.error('src/utils/csvParser.ts: Błąd tworzenia obiektu SkiData:', error);
       return null;
     }
   }
@@ -131,8 +163,9 @@ export class CSVParser {
 
   /**
    * Ładuje plik CSV z public/data
+   * src/utils/csvParser.ts: Domyślnie wczytuje nową bazę z butami i deskami
    */
-  static async loadFromPublic(filename: string = 'NOWABAZA_final.csv'): Promise<SkiData[]> {
+  static async loadFromPublic(filename: string = 'NOWA_BAZA_KOMPLETNA.csv'): Promise<SkiData[]> {
     try {
       const response = await fetch(`/data/${filename}`);
       
