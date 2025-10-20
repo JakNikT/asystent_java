@@ -2,7 +2,20 @@
 
 ## Background and Motivation
 
-**NOWY CEL**: INTEGRACJA PLIKU "newrez.csv" Z OBECNYM SYSTEMEM REZERWACJI
+**AKTUALNY CEL**: DODANIE OPCJI USUWANIA I DEZAKTYWACJI NART Z BAZY DANYCH
+
+**Data rozpoczęcia**: 2025-10-18
+
+Użytkownik poprosił o dodanie funkcjonalności usuwania i dezaktywacji nart z bazy danych. Obecny system umożliwia:
+- ✅ Przeglądanie wszystkich nart (BrowseSkisComponent)
+- ✅ Edycję istniejących nart
+- ✅ Dodawanie nowych nart
+- ❌ **BRAK**: Usuwanie nart
+- ❌ **BRAK**: Dezaktywacja/ukrywanie nart
+
+---
+
+**POPRZEDNI CEL**: INTEGRACJA PLIKU "newrez.csv" Z OBECNYM SYSTEMEM REZERWACJI
 
 Użytkownik wkleił plik "newrez.csv" który ma być źródłem danych o zarezerwowanych nartach. Program już ma:
 - ✅ **System wyświetlania ilości sztuk** - zielone kwadraciki (🟩) w DetailedCompatibility.tsx
@@ -246,9 +259,180 @@ Asystent_java/
 5. **Czyste repo**: Brak node_modules i build artifacts w git
 6. **Centralizacja danych**: Wszystkie CSV w public/data/
 
+## Key Challenges and Analysis
+
+### ANALIZA WYMAGAŃ: USUWANIE I DEZAKTYWACJA NART
+
+**Dwa różne podejścia do zarządzania nartami:**
+
+1. **USUWANIE (DELETE)** - Trwałe usunięcie narty z bazy danych
+   - Narta jest całkowicie usuwana z pliku CSV
+   - **RYZYKO**: Nieodwracalna operacja
+   - **USE CASE**: Narty które już nie istnieją fizycznie (zniszczone, sprzedane)
+   - **WYMAGA**: Potwierdzenia od użytkownika
+
+2. **DEZAKTYWACJA (SOFT DELETE)** - Oznaczenie narty jako nieaktywnej
+   - Narta pozostaje w bazie danych ale jest ukryta
+   - **KORZYŚCI**: Możliwość przywrócenia, zachowanie historii
+   - **USE CASE**: Narty czasowo niedostępne (serwis, wypożyczenie długoterminowe)
+   - **IMPLEMENTACJA**: Dodanie pola `ACTIVE` (1/0 lub true/false)
+
+**REKOMENDACJA**: Zaimplementować OBA rozwiązania
+- Dezaktywacja jako domyślna opcja (bezpieczniejsza)
+- Usuwanie jako dodatkowa opcja z potwierdzeniem
+
+**TECHNICZNE ASPEKTY:**
+
+**Struktura danych:**
+- Dodać pole `ACTIVE` do SkiData (domyślnie `1` lub `true`)
+- Dodać pole do CSV: `ID,MARKA,MODEL,...,ACTIVE`
+
+**Backend (server.js):**
+- Endpoint `DELETE /api/skis/:id` - fizyczne usunięcie
+- Endpoint `PATCH /api/skis/:id/deactivate` - zmiana statusu ACTIVE
+- Endpoint `PATCH /api/skis/:id/activate` - przywrócenie narty
+
+**Frontend:**
+- Przyciski w BrowseSkisComponent: "🗑️ Usuń" i "👁️ Ukryj"
+- Modal potwierdzenia usunięcia
+- Filtr pokazujący/ukrywający nieaktywne narty
+- Toast notifications dla sukcesu/błędu
+
+**Bezpieczeństwo:**
+- Sprawdzenie czy narta ma aktywne rezerwacje przed usunięciem
+- Ostrzeżenie o nieodwracalności operacji
+- Logowanie operacji (console.log)
+
 ## High-level Task Breakdown
 
-### PLAN IMPLEMENTACJI INTEGRACJI Z NEWREZ.CSV
+### PLAN IMPLEMENTACJI: USUWANIE I DEZAKTYWACJA NART
+
+#### ETAP 1: PRZYGOTOWANIE STRUKTURY DANYCH (30 min)
+
+**Task 1.1: Aktualizacja typu SkiData**
+- **1.1.1**: Dodanie pola `ACTIVE: boolean` do interfejsu SkiData
+  - Success criteria: TypeScript kompiluje się bez błędów, nowe pole dodane do ski.types.ts
+  - Estimated time: 5 minut
+  - **Cel**: Wsparcie dla soft delete w strukturze danych
+
+- **1.1.2**: Aktualizacja istniejącego CSV (NOWABAZA_final.csv)
+  - Success criteria: Wszystkie istniejące narty mają pole ACTIVE=1
+  - Estimated time: 10 minut
+  - **Cel**: Kompatybilność wsteczna - wszystkie obecne narty są aktywne
+
+- **1.1.3**: Aktualizacja CSVParser.ts
+  - Success criteria: Parser poprawnie wczytuje pole ACTIVE (domyślnie 1 jeśli brak)
+  - Estimated time: 15 minut
+  - **Cel**: Obsługa nowego pola w parsowaniu CSV
+
+#### ETAP 2: BACKEND API (1h)
+
+**Task 2.1: Endpoint DELETE /api/skis/:id**
+- **2.1.1**: Implementacja fizycznego usuwania narty z CSV
+  - Success criteria: Endpoint usuwa nartę o podanym ID i zapisuje CSV
+  - Estimated time: 20 minut
+  - **Cel**: Możliwość trwałego usunięcia narty
+
+- **2.1.2**: Walidacja przed usunięciem
+  - Success criteria: Sprawdzenie czy narta nie ma aktywnych rezerwacji
+  - Estimated time: 15 minut
+  - **Cel**: Bezpieczeństwo - nie usuwać zarezerwowanych nart
+
+- **2.1.3**: Logowanie operacji
+  - Success criteria: Każde usunięcie jest logowane w konsoli serwera
+  - Estimated time: 5 minut
+  - **Cel**: Audyt operacji
+
+**Task 2.2: Endpoint PATCH /api/skis/:id/deactivate**
+- **2.2.1**: Implementacja zmiany statusu ACTIVE na 0
+  - Success criteria: Endpoint zmienia pole ACTIVE i zapisuje CSV
+  - Estimated time: 15 minut
+  - **Cel**: Soft delete narty
+
+- **2.2.2**: Endpoint PATCH /api/skis/:id/activate
+  - Success criteria: Endpoint przywraca nartę (ACTIVE=1)
+  - Estimated time: 5 minut
+  - **Cel**: Możliwość cofnięcia dezaktywacji
+
+#### ETAP 3: FRONTEND SERVICE (30 min)
+
+**Task 3.1: Rozszerzenie SkiDataService**
+- **3.1.1**: Dodanie metody deleteSki(id: string)
+  - Success criteria: Metoda wywołuje DELETE /api/skis/:id
+  - Estimated time: 10 minut
+  - **Cel**: Klient API dla usuwania
+
+- **3.1.2**: Dodanie metody deactivateSki(id: string)
+  - Success criteria: Metoda wywołuje PATCH /api/skis/:id/deactivate
+  - Estimated time: 10 minut
+  - **Cel**: Klient API dla dezaktywacji
+
+- **3.1.3**: Dodanie metody activateSki(id: string)
+  - Success criteria: Metoda wywołuje PATCH /api/skis/:id/activate
+  - Estimated time: 10 minut
+  - **Cel**: Klient API dla aktywacji
+
+#### ETAP 4: FRONTEND UI (1.5h)
+
+**Task 4.1: Modal potwierdzenia usunięcia**
+- **4.1.1**: Stworzenie komponentu ConfirmDeleteModal
+  - Success criteria: Modal wyświetla się z ostrzeżeniem i przyciskami Tak/Nie
+  - Estimated time: 20 minut
+  - **Cel**: Bezpieczeństwo - potwierdzenie operacji
+
+- **4.1.2**: Integracja z BrowseSkisComponent
+  - Success criteria: Przycisk "Usuń" otwiera modal
+  - Estimated time: 10 minut
+  - **Cel**: UX dla usuwania
+
+**Task 4.2: Przyciski akcji w BrowseSkisComponent**
+- **4.2.1**: Dodanie przycisku "🗑️ Usuń" w kolumnie akcji
+  - Success criteria: Przycisk wywołuje modal potwierdzenia
+  - Estimated time: 15 minut
+  - **Cel**: UI dla usuwania
+
+- **4.2.2**: Dodanie przycisku "👁️ Ukryj" / "👁️ Pokaż"
+  - Success criteria: Przycisk przełącza status ACTIVE (bez potwierdzenia)
+  - Estimated time: 15 minut
+  - **Cel**: UI dla dezaktywacji
+
+- **4.2.3**: Wizualna różnica dla nieaktywnych nart
+  - Success criteria: Nieaktywne narty mają szare tło lub oznaczenie
+  - Estimated time: 10 minut
+  - **Cel**: Czytelność statusu
+
+**Task 4.3: Filtr aktywnych/nieaktywnych nart**
+- **4.3.1**: Dodanie checkboxa "Pokaż nieaktywne narty"
+  - Success criteria: Checkbox filtruje listę nart
+  - Estimated time: 20 minut
+  - **Cel**: Możliwość przeglądania ukrytych nart
+
+- **4.3.2**: Domyślnie ukrywanie nieaktywnych nart
+  - Success criteria: Po załadowaniu pokazują się tylko aktywne narty
+  - Estimated time: 10 minut
+  - **Cel**: Czysta lista dostępnych nart
+
+#### ETAP 5: TESTOWANIE I WALIDACJA (30 min)
+
+**Task 5.1: Testy funkcjonalności**
+- **5.1.1**: Test usuwania narty (bez rezerwacji)
+  - Success criteria: Narta jest usuwana, CSV zaktualizowane, UI odświeżone
+  - Estimated time: 10 minut
+  - **Cel**: Weryfikacja działania
+
+- **5.1.2**: Test ochrony przed usunięciem (z rezerwacją)
+  - Success criteria: System blokuje usunięcie zarezerwowanej narty
+  - Estimated time: 10 minut
+  - **Cel**: Weryfikacja bezpieczeństwa
+
+- **5.1.3**: Test dezaktywacji i aktywacji
+  - Success criteria: Narta znika/pojawia się w liście, status zmieniony w CSV
+  - Estimated time: 10 minut
+  - **Cel**: Weryfikacja soft delete
+
+---
+
+### PLAN IMPLEMENTACJI INTEGRACJI Z NEWREZ.CSV (ZAKOŃCZONY)
 
 #### ETAP 1: PRZYGOTOWANIE DANYCH (2h)
 
@@ -891,7 +1075,44 @@ Asystent_java/
 
 ## Project Status Board
 
-### NOWY PROJEKT - INTEGRACJA NEWREZ.CSV - Status
+### AKTUALNY PROJEKT - USUWANIE I DEZAKTYWACJA NART - Status (2025-10-18)
+
+**CZAS SZACOWANY ŁĄCZNIE**: ~4 godziny
+
+#### ETAP 1: PRZYGOTOWANIE STRUKTURY DANYCH (30 min)
+- [ ] **1.1.1**: Dodanie pola `ACTIVE: boolean` do interfejsu SkiData w ski.types.ts
+- [ ] **1.1.2**: Aktualizacja istniejącego CSV (NOWABAZA_final.csv) - dodanie kolumny ACTIVE=1
+- [ ] **1.1.3**: Aktualizacja CSVParser.ts - obsługa pola ACTIVE (domyślnie 1)
+
+#### ETAP 2: BACKEND API (1h)
+- [ ] **2.1.1**: Implementacja DELETE /api/skis/:id - fizyczne usuwanie narty
+- [ ] **2.1.2**: Walidacja przed usunięciem - sprawdzenie rezerwacji
+- [ ] **2.1.3**: Logowanie operacji usuwania
+- [ ] **2.2.1**: Implementacja PATCH /api/skis/:id/deactivate - soft delete
+- [ ] **2.2.2**: Implementacja PATCH /api/skis/:id/activate - przywrócenie
+
+#### ETAP 3: FRONTEND SERVICE (30 min)
+- [ ] **3.1.1**: Dodanie metody deleteSki(id) w SkiDataService
+- [ ] **3.1.2**: Dodanie metody deactivateSki(id) w SkiDataService
+- [ ] **3.1.3**: Dodanie metody activateSki(id) w SkiDataService
+
+#### ETAP 4: FRONTEND UI (1.5h)
+- [ ] **4.1.1**: Stworzenie komponentu ConfirmDeleteModal
+- [ ] **4.1.2**: Integracja modalu z BrowseSkisComponent
+- [ ] **4.2.1**: Dodanie przycisku "🗑️ Usuń" w kolumnie akcji
+- [ ] **4.2.2**: Dodanie przycisku "👁️ Ukryj" / "👁️ Pokaż" w kolumnie akcji
+- [ ] **4.2.3**: Wizualna różnica dla nieaktywnych nart (szare tło)
+- [ ] **4.3.1**: Dodanie checkboxa "Pokaż nieaktywne narty"
+- [ ] **4.3.2**: Domyślne ukrywanie nieaktywnych nart
+
+#### ETAP 5: TESTOWANIE I WALIDACJA (30 min)
+- [ ] **5.1.1**: Test usuwania narty (bez rezerwacji)
+- [ ] **5.1.2**: Test ochrony przed usunięciem (z rezerwacją)
+- [ ] **5.1.3**: Test dezaktywacji i aktywacji
+
+---
+
+### ZAKOŃCZONY PROJEKT - INTEGRACJA NEWREZ.CSV - Status
 - [x] **Analiza obecnego systemu rezerwacji** - przeanalizowano ReservationService.ts i komponenty UI
 - [x] **Porównanie plików** - rez.csv vs newrez.csv (separatory, kodowanie, pola)
 - [x] **Identyfikacja wymagań użytkownika** - tylko 4 pola, czerwone kwadraciki, tooltips
@@ -1420,6 +1641,29 @@ Implementacja jest teraz **W PEŁNI ZGODNA** z podanymi warunkami. System dział
 - Szczegółowe informacje o dopasowaniu dla każdego kryterium
 
 ## Executor's Feedback or Assistance Requests
+
+**PLANNER MODE - PLAN USUWANIA I DEZAKTYWACJI NART (2025-10-18)**:
+
+**Status**: 📋 **PLAN PRZYGOTOWANY** - Czekam na zatwierdzenie użytkownika przed rozpoczęciem implementacji.
+
+**Stworzone dokumenty**:
+1. ✅ **Analiza wymagań** - zidentyfikowano różnicę między usuwaniem a dezaktywacją
+2. ✅ **Techniczny plan implementacji** - 5 etapów z jasnymi kryteriami sukcesu
+3. ✅ **Project Status Board** - checklisty dla wszystkich zadań
+4. ✅ **Oszacowanie czasu** - ~4 godziny całkowity czas implementacji
+
+**Rekomendacje dla Executor:**
+- Rozpocząć od ETAPU 1 (struktura danych)
+- Testować każdy etap przed przejściem do następnego
+- Używać TDD gdzie to możliwe (szczególnie dla backend API)
+- Zakomunikować użytkownikowi po zakończeniu ETAPU 4 (UI) aby przetestował ręcznie
+
+**Pytania do użytkownika**:
+1. ✅ Czy plan wygląda dobrze?
+2. ❓ Czy mam przejść do trybu Executor i rozpocząć implementację?
+3. ❓ Czy są jakieś dodatkowe wymagania które nie zostały uwzględnione?
+
+---
 
 **EXECUTOR MODE - NAPRAWIONO DUPLIKACJĘ KART NART (2025-10-11)**:
 
@@ -3477,3 +3721,7 @@ Frontend (React) → HTTP API → Backend Server (Express/Node.js) → CSV Files
 - **Automatyzacja importu danych oszczędza czas** - skrypt konwersji eliminuje ręczną edycję
 - **Wrażliwość na wielkość liter może powodować problemy** - nazwy plików powinny być elastyczne
 - **Istniejące rozwiązania powinny być sprawdzone przed tworzeniem nowych** - często mamy już gotowe narzędzia
+- **Różnica między usuwaniem a dezaktywacją jest kluczowa** - soft delete (dezaktywacja) jest bezpieczniejszy i pozwala na przywracanie danych
+- **Walidacja przed operacjami krytycznymi zapobiega błędom** - sprawdzanie rezerwacji przed usunięciem narty to konieczność
+- **Planowanie zmian w kilku warstwach aplikacji wymaga strukturalnego podejścia** - backend API → service → UI to logiczny przepływ implementacji
+- **Modal potwierdzenia jest niezbędny dla operacji nieodwracalnych** - użytkownik musi być świadomy konsekwencji usunięcia danych
