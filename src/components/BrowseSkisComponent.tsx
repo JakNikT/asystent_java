@@ -38,6 +38,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
 
+  // NOWY STAN: Filtry typu i kategorii sprzętu
+  const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+
   // NOWY STAN: Modal edycji/dodawania
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
@@ -244,22 +248,44 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
-  // Funkcja filtrowania nart
-  const filterSkis = (skis: SkiData[], searchTerm: string): SkiData[] => {
-    if (!searchTerm.trim()) return skis;
-    
-    const term = searchTerm.toLowerCase();
-    return skis.filter(ski => 
-      ski.MARKA.toLowerCase().includes(term) ||
-      ski.MODEL.toLowerCase().includes(term) ||
-      ski.POZIOM.toLowerCase().includes(term) ||
-      ski.PLEC.toLowerCase().includes(term) ||
-      ski.PRZEZNACZENIE.toLowerCase().includes(term) ||
-      ski.ATUTY.toLowerCase().includes(term) ||
-      ski.DLUGOSC.toString().includes(term) ||
-      ski.ROK.toString().includes(term) ||
-      ski.ILOSC.toString().includes(term)
-    );
+  // src/components/BrowseSkisComponent.tsx: Funkcja filtrowania sprzętu
+  const filterSkis = (
+    skis: SkiData[], 
+    searchTerm: string,
+    typeFilter: string,
+    catFilter: string
+  ): SkiData[] => {
+    let filtered = skis;
+
+    // Filtruj po typie sprzętu
+    if (typeFilter) {
+      filtered = filtered.filter(ski => ski.TYP_SPRZETU === typeFilter);
+    }
+
+    // Filtruj po kategorii
+    if (catFilter) {
+      filtered = filtered.filter(ski => ski.KATEGORIA === catFilter);
+    }
+
+    // Filtruj po tekście wyszukiwania
+    if (searchTerm.trim()) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(ski => 
+        ski.MARKA.toLowerCase().includes(term) ||
+        ski.MODEL.toLowerCase().includes(term) ||
+        ski.POZIOM.toLowerCase().includes(term) ||
+        ski.PLEC.toLowerCase().includes(term) ||
+        ski.PRZEZNACZENIE.toLowerCase().includes(term) ||
+        ski.ATUTY.toLowerCase().includes(term) ||
+        ski.DLUGOSC.toString().includes(term) ||
+        ski.ROK.toString().includes(term) ||
+        ski.ILOSC.toString().includes(term) ||
+        ski.TYP_SPRZETU.toLowerCase().includes(term) ||
+        ski.KATEGORIA.toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
   };
 
   // Funkcja sortowania nart
@@ -299,7 +325,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // Sortowanie i paginacja z grupowaniem
-  const filteredSkis = filterSkis(skisDatabase, searchTerm);
+  const filteredSkis = filterSkis(skisDatabase, searchTerm, equipmentTypeFilter, categoryFilter);
   const groupedSkis = groupSkisByModel(filteredSkis);
   const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
@@ -376,32 +402,143 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
+  // src/components/BrowseSkisComponent.tsx: Funkcje obsługi szybkich filtrów
+  const handleQuickFilter = (type: string, category: string) => {
+    console.log(`BrowseSkisComponent: Szybki filtr - typ: ${type}, kategoria: ${category}`);
+    setEquipmentTypeFilter(type);
+    setCategoryFilter(category);
+    setCurrentPage(1); // Reset do pierwszej strony
+  };
+
+  const clearFilters = () => {
+    console.log('BrowseSkisComponent: Czyszczenie filtrów');
+    setEquipmentTypeFilter('');
+    setCategoryFilter('');
+    setSearchTerm('');
+    setCurrentPage(1);
+  };
+
   return (
     <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
       <div className="max-w-8xl mx-auto">
         {/* Header z wyszukiwaniem - responsywny */}
         <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
+          {/* Nowy układ: Tytuł + Przyciski filtrów + Przyciski akcji w jednej linii */}
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
+            {/* Lewa strona: Tytuł */}
+            <div className="flex-shrink-0">
+              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
                 Przeglądaj sprzęt
               </h1>
-              <p className="text-[#A6C2EF] text-sm lg:text-base">
-                Przejrzyj cały sprzęt w bazie danych ({groupedSkis.length} modeli)
+              <p className="text-[#A6C2EF] text-sm">
+                Przejrzyj cały sprzęt ({groupedSkis.length} modeli)
               </p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
+
+            {/* Środek: Przyciski szybkiego dostępu (2 linie, zmniejszone) */}
+            <div className="flex flex-col gap-1.5">
+              {/* Linia 1: Wszystkie + Narty */}
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => clearFilters()}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    !equipmentTypeFilter && !categoryFilter
+                      ? 'bg-white text-[#194576] shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  🎿 Wszystkie
+                </button>
+                <button
+                  onClick={() => handleQuickFilter('NARTY', 'TOP')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
+                      ? 'bg-blue-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  🔵 TOP
+                </button>
+                <button
+                  onClick={() => handleQuickFilter('NARTY', 'VIP')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
+                      ? 'bg-yellow-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  ⭐ VIP
+                </button>
+                <button
+                  onClick={() => handleQuickFilter('NARTY', 'JUNIOR')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
+                      ? 'bg-green-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  👶 Junior
+                </button>
+              </div>
+
+              {/* Linia 2: Buty i Deski */}
+              <div className="flex flex-wrap gap-1.5">
+                <button
+                  onClick={() => handleQuickFilter('BUTY', 'DOROSLE')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
+                      ? 'bg-purple-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  🥾 Buty
+                </button>
+                <button
+                  onClick={() => handleQuickFilter('BUTY', 'JUNIOR')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
+                      ? 'bg-green-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  👶 Buty Jr
+                </button>
+                <button
+                  onClick={() => handleQuickFilter('DESKI', '')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'DESKI'
+                      ? 'bg-orange-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  🏂 Deski
+                </button>
+                <button
+                  onClick={() => handleQuickFilter('BUTY_SNOWBOARD', '')}
+                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                    equipmentTypeFilter === 'BUTY_SNOWBOARD'
+                      ? 'bg-red-500 text-white shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  }`}
+                >
+                  👢 Buty SB
+                </button>
+              </div>
+            </div>
+
+            {/* Prawa strona: Przyciski akcji */}
+            <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
               <button
                 onClick={handleAddSki}
-                className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
-                ➕ Dodaj nową nartę
+                ➕ Dodaj
               </button>
               <button
                 onClick={onBackToSearch}
-                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                className="bg-[#2C699F] hover:bg-[#194576] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
-                ← Wróć do wyszukiwania
+                ← Wróć
               </button>
             </div>
           </div>
