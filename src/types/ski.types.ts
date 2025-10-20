@@ -1,21 +1,27 @@
 // Typy danych dla aplikacji dobierania nart
 
+// src/types/ski.types.ts: Definicje typów sprzętu
+export type TYP_SPRZETU = 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD';
+export type KATEGORIA_SPRZETU = 'VIP' | 'TOP' | 'JUNIOR' | 'DOROSLE' | '';
+
 export interface SkiData {
   ID: string;
+  TYP_SPRZETU: TYP_SPRZETU;           // NOWE: typ sprzętu
+  KATEGORIA: KATEGORIA_SPRZETU;        // NOWE: kategoria sprzętu
   MARKA: string;
   MODEL: string;
-  DLUGOSC: number;
-  ILOSC: number;
-  POZIOM: string;
-  PLEC: string;
-  WAGA_MIN: number;
-  WAGA_MAX: number;
-  WZROST_MIN: number;
-  WZROST_MAX: number;
-  PRZEZNACZENIE: string; // Teraz tylko: SL, G, SLG, OFF
-  ATUTY: string;         // NOWE: np. "C", "C,premium" lub ""
-  ROK: number;
-  KOD: string;           // NOWE: kod narty z nartyvip.csv
+  DLUGOSC: number;                     // dla butów: rozmiar w cm (długość wkładki)
+  ILOSC: number;                       // zawsze 1 (każda sztuka osobno)
+  POZIOM: string;                      // opcjonalnie puste dla butów/desek
+  PLEC: string;                        // M/K/U
+  WAGA_MIN: number;                    // opcjonalnie puste
+  WAGA_MAX: number;                    // opcjonalnie puste
+  WZROST_MIN: number;                  // opcjonalnie puste dla butów
+  WZROST_MAX: number;                  // opcjonalnie puste dla butów
+  PRZEZNACZENIE: string;               // SL, G, SLG, OFF (opcjonalnie puste)
+  ATUTY: string;                       // np. "C", "C,premium" lub ""
+  ROK: number;                         // opcjonalnie puste dla niektórych desek
+  KOD: string;                         // kod sprzętu
 }
 
 export interface SearchCriteria {

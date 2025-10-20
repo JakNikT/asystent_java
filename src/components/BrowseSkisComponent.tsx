@@ -12,7 +12,7 @@ interface BrowseSkisComponentProps {
   onRefreshData?: () => Promise<void>; // NOWE: callback do odświeżenia danych
 }
 
-type SortField = 'ID' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
+type SortField = 'ID' | 'TYP_SPRZETU' | 'KATEGORIA' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -343,6 +343,39 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
+  // src/components/BrowseSkisComponent.tsx: Funkcja formatowania typu sprzętu
+  const formatEquipmentType = (type: string) => {
+    switch (type) {
+      case 'NARTY': return '⛷️ Narty';
+      case 'BUTY': return '🥾 Buty';
+      case 'DESKI': return '🏂 Deski';
+      case 'BUTY_SNOWBOARD': return '👢 Buty SB';
+      default: return type;
+    }
+  };
+
+  // src/components/BrowseSkisComponent.tsx: Funkcja formatowania kategorii sprzętu
+  const formatCategory = (category: string) => {
+    switch (category) {
+      case 'VIP': return '⭐ VIP';
+      case 'TOP': return '🔵 TOP';
+      case 'JUNIOR': return '👶 Junior';
+      case 'DOROSLE': return '👤 Dorosłe';
+      default: return category || '-';
+    }
+  };
+
+  // src/components/BrowseSkisComponent.tsx: Funkcja formatowania długości/rozmiaru
+  const formatLength = (ski: SkiData) => {
+    const typSprzetu = ski.TYP_SPRZETU || 'NARTY';
+    
+    if (typSprzetu === 'BUTY' || typSprzetu === 'BUTY_SNOWBOARD') {
+      return `${ski.DLUGOSC} cm`; // Rozmiar w cm (długość wkładki)
+    } else {
+      return `${ski.DLUGOSC} cm`; // Długość w cm
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
       <div className="max-w-8xl mx-auto">
@@ -351,10 +384,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Przeglądaj narty
+                Przeglądaj sprzęt
               </h1>
               <p className="text-[#A6C2EF] text-sm lg:text-base">
-                Przejrzyj wszystkie narty w bazie danych ({groupedSkis.length} modeli nart)
+                Przejrzyj cały sprzęt w bazie danych ({groupedSkis.length} modeli)
               </p>
             </div>
             <div className="flex flex-col sm:flex-row gap-3 w-full lg:w-auto">
@@ -399,12 +432,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </div>
           {searchTerm && (
             <div className="mt-3 text-[#A6C2EF]">
-              Znaleziono {groupedSkis.length} modeli nart z {groupSkisByModel(skisDatabase).length} dostępnych
+              Znaleziono {groupedSkis.length} modeli z {groupSkisByModel(skisDatabase).length} dostępnych
             </div>
           )}
         </div>
 
-        {/* Tabela nart */}
+        {/* Tabela sprzętu */}
         <div className="bg-[#194576] rounded-lg shadow-lg overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -416,6 +449,22 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   >
                     <div className="flex items-center gap-2">
                       ID {renderSortIcon('ID')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                    onClick={() => handleSort('TYP_SPRZETU')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Typ {renderSortIcon('TYP_SPRZETU')}
+                    </div>
+                  </th>
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                    onClick={() => handleSort('KATEGORIA')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Kategoria {renderSortIcon('KATEGORIA')}
                     </div>
                   </th>
                   <th 
@@ -492,13 +541,19 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       {ski.ID}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                      {formatEquipmentType(ski.TYP_SPRZETU)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                      {formatCategory(ski.KATEGORIA)}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.MARKA}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.MODEL}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.DLUGOSC} cm
+                      {formatLength(ski)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {formatLevel(ski.POZIOM)}
