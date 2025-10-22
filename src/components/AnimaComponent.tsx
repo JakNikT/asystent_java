@@ -109,6 +109,10 @@ const AnimaComponent: React.FC = () => {
   // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje)
   const [appMode, setAppMode] = useState<'search' | 'browse' | 'reservations'>('search');
 
+  // NOWY STAN: Filtry kategorii sprzętu
+  const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('');
+
   // HELPER: Pobierz aktywną kartę
   const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
   
@@ -264,7 +268,7 @@ const AnimaComponent: React.FC = () => {
   };
 
   // Funkcja grupowania wyników po modelu (jedna karta na model nart)
-  // Narty tego samego modelu mają już kwadraciki z numerami sztuk w DetailedCompatibility
+  // Narty tego samego modelu mają już licznik wolnych sztuk w DetailedCompatibility
   const groupMatchesByModel = (matches: SkiMatch[]): SkiMatch[] => {
     const grouped = new Map<string, SkiMatch[]>();
     
@@ -279,6 +283,96 @@ const AnimaComponent: React.FC = () => {
     // Zwróć pierwszy match z każdej grupy (reprezentant grupy)
     // Kwadraciki dostępności są generowane w DetailedCompatibility dla wszystkich sztuk tego modelu
     return Array.from(grouped.values()).map(group => group[0]);
+  };
+
+  // Funkcja filtrowania wyników wyszukiwania według typu i kategorii sprzętu
+  const filterSearchResults = (results: SearchResults | null): SearchResults | null => {
+    if (!results) return null;
+    if (!equipmentTypeFilter && !categoryFilter) return results;
+    
+    console.log('src/components/AnimaComponent.tsx: Filtrowanie wyników - typ:', equipmentTypeFilter, 'kategoria:', categoryFilter);
+    
+    // Filtruj każdą kategorię wyników
+    const filterMatches = (matches: SkiMatch[]) => {
+      return matches.filter(match => {
+        let typeMatch = true;
+        let catMatch = true;
+        
+        if (equipmentTypeFilter) {
+          typeMatch = match.ski.TYP_SPRZETU === equipmentTypeFilter;
+        }
+        
+        if (categoryFilter) {
+          catMatch = match.ski.KATEGORIA === categoryFilter;
+        }
+        
+        return typeMatch && catMatch;
+      });
+    };
+    
+    const filtered = {
+      idealne: filterMatches(results.idealne),
+      alternatywy: filterMatches(results.alternatywy),
+      poziom_za_nisko: filterMatches(results.poziom_za_nisko),
+      inna_plec: filterMatches(results.inna_plec),
+      na_sile: filterMatches(results.na_sile),
+      wszystkie: filterMatches(results.wszystkie)
+    };
+    
+    console.log('src/components/AnimaComponent.tsx: Wyniki po filtrowaniu:', {
+      idealne: filtered.idealne.length,
+      alternatywy: filtered.alternatywy.length,
+      wszystkie: filtered.wszystkie.length
+    });
+    
+    return filtered;
+  };
+
+  // Funkcja automatycznego wyboru pierwszej dostępnej kategorii
+  const autoSelectFirstCategory = (results: SearchResults) => {
+    console.log('src/components/AnimaComponent.tsx: Automatyczny wybór pierwszej kategorii z wynikami');
+    
+    // Znajdź pierwszą kategorię z wynikami
+    const categories = [
+      { type: 'NARTY', category: 'TOP', label: 'Narty TOP' },
+      { type: 'NARTY', category: 'VIP', label: 'Narty VIP' },
+      { type: 'BUTY', category: 'DOROSLE', label: 'Buty dorosłe' },
+      { type: 'NARTY', category: 'JUNIOR', label: 'Narty Junior' },
+      { type: 'BUTY', category: 'JUNIOR', label: 'Buty Junior' },
+      { type: 'DESKI', category: '', label: 'Deski' },
+      { type: 'BUTY_SNOWBOARD', category: '', label: 'Buty Snowboard' }
+    ];
+    
+    for (const cat of categories) {
+      const filtered = results.wszystkie.filter(m => {
+        const typeMatch = m.ski.TYP_SPRZETU === cat.type;
+        const catMatch = !cat.category || m.ski.KATEGORIA === cat.category;
+        return typeMatch && catMatch;
+      });
+      
+      if (filtered.length > 0) {
+        console.log(`src/components/AnimaComponent.tsx: Wybrano kategorię ${cat.label} (${filtered.length} wyników)`);
+        setEquipmentTypeFilter(cat.type);
+        setCategoryFilter(cat.category);
+        return;
+      }
+    }
+    
+    console.log('src/components/AnimaComponent.tsx: Nie znaleziono żadnej kategorii z wynikami');
+  };
+
+  // Funkcja obsługi szybkich filtrów w wyszukiwaniu
+  const handleQuickFilterInSearch = (type: string, category: string) => {
+    console.log(`src/components/AnimaComponent.tsx: Zmiana filtru - typ: ${type}, kategoria: ${category}`);
+    setEquipmentTypeFilter(type);
+    setCategoryFilter(category);
+  };
+
+  // Funkcja czyszczenia filtrów sprzętu
+  const clearEquipmentFilters = () => {
+    console.log('src/components/AnimaComponent.tsx: Czyszczenie filtrów sprzętu');
+    setEquipmentTypeFilter('');
+    setCategoryFilter('');
   };
 
   // Funkcja do parsowania daty z formularza
@@ -706,6 +800,9 @@ const AnimaComponent: React.FC = () => {
       const sortedResults = SkiMatchingServiceV2.sortAllResultsByAvailabilityAndCompatibility(results);
       setSearchResults(sortedResults);
 
+      // Automatycznie wybierz pierwszą dostępną kategorię
+      autoSelectFirstCategory(sortedResults);
+
       // Zapisz historię wyszukiwania
       saveSearchHistory({
         criteria,
@@ -762,17 +859,23 @@ const AnimaComponent: React.FC = () => {
       currentCriteria: null
     });
     
+    // Reset filtrów kategorii
+    setEquipmentTypeFilter('');
+    setCategoryFilter('');
+    
     console.log('src/components/AnimaComponent.tsx: Aktywna karta wyczyszczona');
   };
 
   // Grupowanie wyników po modelu (jedna karta na model nart)
-  // Narty tego samego modelu mają już kwadraciki z numerami sztuk w DetailedCompatibility
-  const groupedResults = searchResults ? {
-    idealne: groupMatchesByModel(searchResults.idealne),
-    alternatywy: groupMatchesByModel(searchResults.alternatywy),
-    poziom_za_nisko: groupMatchesByModel(searchResults.poziom_za_nisko),
-    inna_plec: groupMatchesByModel(searchResults.inna_plec),
-    na_sile: groupMatchesByModel(searchResults.na_sile)
+  // Narty tego samego modelu mają już licznik wolnych sztuk w DetailedCompatibility
+  // ZMIENIONE: Najpierw filtruj według kategorii sprzętu, potem grupuj
+  const filteredSearchResults = filterSearchResults(searchResults);
+  const groupedResults = filteredSearchResults ? {
+    idealne: groupMatchesByModel(filteredSearchResults.idealne),
+    alternatywy: groupMatchesByModel(filteredSearchResults.alternatywy),
+    poziom_za_nisko: groupMatchesByModel(filteredSearchResults.poziom_za_nisko),
+    inna_plec: groupMatchesByModel(filteredSearchResults.inna_plec),
+    na_sile: groupMatchesByModel(filteredSearchResults.na_sile)
   } : null;
 
   return (
@@ -1060,9 +1163,97 @@ const AnimaComponent: React.FC = () => {
 
       {/* Results Section - responsywna */}
       <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
-        {/* Results Header - responsywny */}
-        <div className="w-full max-w-md lg:max-w-[344px] h-auto lg:h-[50px] bg-[#194576] rounded-tl-[20px] rounded-tr-[20px] rounded-bl-[10px] rounded-br-[10px] flex justify-center items-center py-2 px-4">
-          <div className="text-white text-2xl lg:text-[30px] font-normal font-['ADLaM_Display'] underline leading-tight lg:leading-[42px] text-center">🔍 Wyniki Doboru Nart</div>
+        {/* Przyciski filtrowania kategorii sprzętu - ZMIENIONE */}
+        <div className="w-full max-w-4xl bg-[#194576] rounded-lg p-4 mb-3">
+          <div className="flex flex-col gap-2">
+            {/* Linia 1: Wszystkie + Narty */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={clearEquipmentFilters}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  !equipmentTypeFilter && !categoryFilter
+                    ? 'bg-white text-[#194576] shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                🎿 Wszystkie
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('NARTY', 'TOP')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                🔵 TOP
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('NARTY', 'VIP')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
+                    ? 'bg-yellow-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                ⭐ VIP
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
+                    ? 'bg-green-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                👶 Junior
+              </button>
+            </div>
+
+            {/* Linia 2: Buty i Deski */}
+            <div className="flex flex-wrap gap-2 justify-center">
+              <button
+                onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
+                    ? 'bg-purple-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                🥾 Buty
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
+                    ? 'bg-green-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                👶 Buty Jr
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('DESKI', '')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'DESKI'
+                    ? 'bg-orange-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                🏂 Deski
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('BUTY_SNOWBOARD', '')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'BUTY_SNOWBOARD'
+                    ? 'bg-red-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                }`}
+              >
+                👢 Buty SB
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Inteligentne sugestie */}
@@ -1149,7 +1340,7 @@ const AnimaComponent: React.FC = () => {
                         </div>
                       </div>
                       <p className="text-[#A6C2EF] text-xs mt-3 italic">
-                        💡 Najedź myszką na kwadracik aby zobaczyć szczegóły rezerwacji
+                        💡 Najedź myszką na licznik dostępności aby zobaczyć szczegóły rezerwacji
                       </p>
                     </div>
                   )}
