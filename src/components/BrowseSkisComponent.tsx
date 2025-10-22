@@ -46,6 +46,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
   const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
+  const [allSkisInGroup, setAllSkisInGroup] = useState<SkiData[]>([]);
 
   // NOWY STAN: Toast notifications
   const [toastMessage, setToastMessage] = useState('');
@@ -189,7 +190,20 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Otwórz modal edycji dla wybranej narty
   const handleEditSki = (ski: SkiData) => {
     console.log('BrowseSkisComponent: Edycja narty:', ski);
+    
+    // Znajdź wszystkie narty w tej samej grupie
+    const sameGroupSkis = skisDatabase.filter(s => 
+      s.TYP_SPRZETU === ski.TYP_SPRZETU &&
+      s.KATEGORIA === ski.KATEGORIA &&
+      s.MARKA === ski.MARKA && 
+      s.MODEL === ski.MODEL && 
+      s.DLUGOSC === ski.DLUGOSC
+    );
+    
+    console.log('BrowseSkisComponent: Znaleziono nart w grupie:', sameGroupSkis.length);
+    
     setSelectedSki(ski);
+    setAllSkisInGroup(sameGroupSkis);
     setModalMode('edit');
     setIsModalOpen(true);
   };
@@ -209,12 +223,38 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // Zapisz zmiany narty (edycja lub dodawanie)
-  const handleSaveSki = async (skiData: Partial<SkiData>) => {
+  const handleSaveSki = async (skiData: Partial<SkiData>, selectedSkiId?: string, updateAll?: boolean) => {
     try {
-      if (modalMode === 'edit' && selectedSki) {
-        // Edycja istniejącej narty
-        console.log('BrowseSkisComponent: Zapisywanie edycji narty:', selectedSki.ID);
-        const result = await SkiDataService.updateSki(selectedSki.ID, skiData);
+      if (modalMode === 'edit') {
+        if (updateAll && allSkisInGroup.length > 1) {
+          // Aktualizacja wszystkich nart w grupie
+          console.log('BrowseSkisComponent: Aktualizacja wszystkich nart w grupie');
+          const ids = allSkisInGroup.map(s => s.ID);
+          console.log('BrowseSkisComponent: IDs do aktualizacji:', ids);
+          
+          const result = await SkiDataService.updateMultipleSkis(ids, skiData);
+          
+          if (result) {
+            showToast(`✅ Zaktualizowano ${ids.length} nart pomyślnie!`, 'success');
+            
+            // Odśwież dane
+            if (onRefreshData) {
+              await onRefreshData();
+            }
+          } else {
+            showToast('❌ Błąd aktualizacji nart', 'error');
+          }
+        } else {
+          // Aktualizacja pojedynczej narty
+          const targetId = selectedSkiId || selectedSki?.ID;
+          console.log('BrowseSkisComponent: Zapisywanie edycji narty:', targetId);
+          
+          if (!targetId) {
+            showToast('❌ Błąd: brak ID narty', 'error');
+            return;
+          }
+          
+          const result = await SkiDataService.updateSki(targetId, skiData);
         
         if (result) {
           showToast('✅ Narta zaktualizowana pomyślnie!', 'success');
@@ -225,6 +265,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           }
         } else {
           showToast('❌ Błąd aktualizacji narty', 'error');
+          }
         }
       } else if (modalMode === 'add') {
         // Dodawanie nowej narty
@@ -810,6 +851,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         isOpen={isModalOpen}
         mode={modalMode}
         ski={selectedSki}
+        allSkisInGroup={allSkisInGroup}
         onClose={handleCloseModal}
         onSave={handleSaveSki}
       />

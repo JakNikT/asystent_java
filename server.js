@@ -305,6 +305,8 @@ app.post('/api/skis', async (req, res) => {
     // Stwórz nową nartę
     const newSki = {
       ID: newId,
+      TYP_SPRZETU: req.body.TYP_SPRZETU || 'NARTY',
+      KATEGORIA: req.body.KATEGORIA || '',
       MARKA: req.body.MARKA || '',
       MODEL: req.body.MODEL || '',
       DLUGOSC: req.body.DLUGOSC || 0,
@@ -324,10 +326,11 @@ app.post('/api/skis', async (req, res) => {
     // Dodaj do listy
     skis.push(newSki);
     
-    // Zapisz z powrotem do CSV
+    // Zapisz z powrotem do CSV - WYMUSZAMY KOLEJNOŚĆ KOLUMN
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
-      header: true
+      header: true,
+      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
     });
     
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
@@ -341,11 +344,85 @@ app.post('/api/skis', async (req, res) => {
 });
 
 /**
- * PUT /api/skis/:id - Zaktualizuj nartę
+ * PUT /api/skis/bulk - Zaktualizuj wiele nart jednocześnie
+ * UWAGA: Ten endpoint MUSI być PRZED /api/skis/:id, żeby Express go poprawnie dopasował!
+ */
+app.put('/api/skis/bulk', async (req, res) => {
+  try {
+    const { ids, updates } = req.body;
+    console.log('Server: PUT /api/skis/bulk - aktualizacja wielu nart');
+    console.log('Server: IDs:', ids);
+    console.log('Server: Updates:', updates);
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ error: 'Brak tablicy ID do aktualizacji' });
+    }
+    
+    const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
+    const result = Papa.parse(csvContent, {
+      header: true,
+      skipEmptyLines: true,
+      delimiter: ','
+    });
+    
+    const skis = result.data;
+    const updatedSkis = [];
+    
+    // Zaktualizuj wszystkie narty o podanych ID
+    ids.forEach(id => {
+      const index = skis.findIndex(ski => ski.ID === id);
+      if (index !== -1) {
+        console.log(`Server: Aktualizacja narty ${id} (index ${index})`);
+        console.log('Server: Updates przed filtrowaniem:', updates);
+        
+        // Skopiuj dane bez pola KOD i ID (chronimy unikalne identyfikatory)
+        const updatesWithoutCode = { ...updates };
+        delete updatesWithoutCode.KOD;
+        delete updatesWithoutCode.ID;
+        
+        console.log('Server: Updates po filtrowaniu:', updatesWithoutCode);
+        
+        skis[index] = { ...skis[index], ...updatesWithoutCode };
+        updatedSkis.push(skis[index]);
+        
+        console.log('Server: Zaktualizowana narta:', skis[index]);
+      }
+    });
+    
+    if (updatedSkis.length === 0) {
+      return res.status(404).json({ error: 'Nie znaleziono nart o podanych ID' });
+    }
+    
+    console.log(`Server: Zaktualizowano ${updatedSkis.length} nart`);
+    
+    // Zapisz z powrotem do CSV
+    const csvContentNew = Papa.unparse(skis, {
+      delimiter: ',',
+      header: true,
+      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
+    });
+    
+    await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
+    
+    console.log('Server: Narty zaktualizowane pomyślnie - zapisano do pliku');
+    res.json(updatedSkis);
+  } catch (error) {
+    console.error('Server: Błąd aktualizacji wielu nart:', error);
+    res.status(500).json({ error: 'Błąd aktualizacji wielu nart' });
+  }
+});
+
+/**
+ * PUT /api/skis/:id - Zaktualizuj pojedynczą nartę
+ * UWAGA: Ten endpoint MUSI być PONIŻEJ /api/skis/bulk!
  */
 app.put('/api/skis/:id', async (req, res) => {
   try {
-    console.log('Server: PUT /api/skis/', req.params.id, req.body);
+    console.log('Server: PUT /api/skis/', req.params.id);
+    console.log('Server: Otrzymane dane:', req.body);
+    console.log('Server: KATEGORIA otrzymana:', req.body.KATEGORIA);
+    console.log('Server: TYP_SPRZETU otrzymany:', req.body.TYP_SPRZETU);
+    console.log('Server: PRZEZNACZENIE otrzymane:', req.body.PRZEZNACZENIE);
     
     const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
     const result = Papa.parse(csvContent, {
@@ -361,18 +438,30 @@ app.put('/api/skis/:id', async (req, res) => {
       return res.status(404).json({ error: 'Narta nie znaleziona' });
     }
     
+    console.log('Server: Stara narta przed aktualizacją:', skis[index]);
+    console.log('Server: KATEGORIA przed aktualizacją:', skis[index].KATEGORIA);
+    
     // Aktualizuj dane narty
     skis[index] = { ...skis[index], ...req.body };
     
-    // Zapisz z powrotem do CSV
+    console.log('Server: Nowa narta po aktualizacji:', skis[index]);
+    console.log('Server: KATEGORIA po aktualizacji:', skis[index].KATEGORIA);
+    console.log('Server: TYP_SPRZETU po aktualizacji:', skis[index].TYP_SPRZETU);
+    console.log('Server: PRZEZNACZENIE po aktualizacji:', skis[index].PRZEZNACZENIE);
+    
+    // Zapisz z powrotem do CSV - WYMUSZAMY KOLEJNOŚĆ KOLUMN
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
-      header: true
+      header: true,
+      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
     });
+    
+    console.log('Server: Zapisuję CSV - pierwszy wiersz (header):', csvContentNew.split('\n')[0]);
+    console.log('Server: Zapisuję CSV - zaktualizowany wiersz (index=' + index + '):', csvContentNew.split('\n')[index + 1]);
     
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
     
-    console.log('Server: Narta zaktualizowana pomyślnie');
+    console.log('Server: Narta zaktualizowana pomyślnie - zapisano do pliku');
     res.json(skis[index]);
   } catch (error) {
     console.error('Server: Błąd aktualizacji narty:', error);

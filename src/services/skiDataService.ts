@@ -86,7 +86,11 @@ export class SkiDataService {
    */
   static async updateSki(id: string, updates: Partial<SkiData>): Promise<SkiData | null> {
     try {
-      console.log('SkiDataService: Aktualizacja narty:', id, updates);
+      console.log('SkiDataService: Aktualizacja narty:', id);
+      console.log('SkiDataService: Wszystkie pola do aktualizacji:', updates);
+      console.log('SkiDataService: KATEGORIA do wysłania:', updates.KATEGORIA);
+      console.log('SkiDataService: TYP_SPRZETU do wysłania:', updates.TYP_SPRZETU);
+      console.log('SkiDataService: PRZEZNACZENIE do wysłania:', updates.PRZEZNACZENIE);
       
       const response = await fetch(`${API_BASE_URL}/skis/${id}`, {
         method: 'PUT',
@@ -143,6 +147,40 @@ export class SkiDataService {
       return newSki;
     } catch (error) {
       console.error('SkiDataService: Błąd dodawania narty:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Aktualizuje wiele nart jednocześnie
+   */
+  static async updateMultipleSkis(ids: string[], updates: Partial<SkiData>): Promise<SkiData[] | null> {
+    try {
+      console.log('SkiDataService: Aktualizacja wielu nart:', ids);
+      console.log('SkiDataService: Dane do aktualizacji:', updates);
+      
+      const response = await fetch(`${API_BASE_URL}/skis/bulk`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ ids, updates })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const updatedSkis = await response.json();
+      
+      // Wyczyść cache aby wymusić odświeżenie danych
+      this.cache = [];
+      this.lastFetch = 0;
+      
+      console.log(`SkiDataService: ${updatedSkis.length} nart zaktualizowanych pomyślnie`);
+      return updatedSkis;
+    } catch (error) {
+      console.error('SkiDataService: Błąd aktualizacji wielu nart:', error);
       return null;
     }
   }

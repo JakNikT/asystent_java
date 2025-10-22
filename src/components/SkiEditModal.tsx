@@ -9,18 +9,22 @@ interface SkiEditModalProps {
   isOpen: boolean;
   mode: 'edit' | 'add';
   ski?: SkiData;
+  allSkisInGroup?: SkiData[]; // NOWE: tablica wszystkich nart w grupie
   onClose: () => void;
-  onSave: (skiData: Partial<SkiData>) => Promise<void>;
+  onSave: (skiData: Partial<SkiData>, selectedSkiId?: string, updateAll?: boolean) => Promise<void>;
 }
 
 export const SkiEditModal: React.FC<SkiEditModalProps> = ({
   isOpen,
   mode,
   ski,
+  allSkisInGroup,
   onClose,
   onSave
 }) => {
   const [formData, setFormData] = useState<Partial<SkiData>>({
+    TYP_SPRZETU: 'NARTY',
+    KATEGORIA: '',
     MARKA: '',
     MODEL: '',
     DLUGOSC: 150,
@@ -39,14 +43,42 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
 
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [warnings, setWarnings] = useState<string[]>([]); // NOWE: Ostrzeżenia o niekompletnych danych
+  const [selectedSkiIndex, setSelectedSkiIndex] = useState<number>(-1); // -1 = wszystkie
+  const [skisInGroup, setSkisInGroup] = useState<SkiData[]>([]);
+
+  // Załaduj listę nart w grupie
+  useEffect(() => {
+    if (allSkisInGroup && allSkisInGroup.length > 0) {
+      setSkisInGroup(allSkisInGroup);
+      setSelectedSkiIndex(-1); // Domyślnie "Wszystkie"
+      console.log('SkiEditModal: Załadowano grupę nart:', allSkisInGroup.length);
+    } else {
+      setSkisInGroup([]);
+      setSelectedSkiIndex(-1);
+    }
+  }, [allSkisInGroup]);
 
   // Załaduj dane narty przy edycji
   useEffect(() => {
     if (mode === 'edit' && ski) {
-      setFormData(ski);
+      // Przy edycji: ustaw domyślne wartości dla pustych pól
+      setFormData({
+        ...ski,
+        TYP_SPRZETU: ski.TYP_SPRZETU || 'NARTY',
+        KATEGORIA: ski.KATEGORIA || '',
+        PRZEZNACZENIE: ski.PRZEZNACZENIE || 'SLG'
+      });
+      console.log('SkiEditModal: Załadowano nartę do edycji:', ski.ID, {
+        TYP_SPRZETU: ski.TYP_SPRZETU || 'NARTY',
+        KATEGORIA: ski.KATEGORIA || 'brak',
+        PRZEZNACZENIE: ski.PRZEZNACZENIE || 'SLG'
+      });
     } else if (mode === 'add') {
       // Resetuj formularz dla nowej narty
       setFormData({
+        TYP_SPRZETU: 'NARTY',
+        KATEGORIA: '',
         MARKA: '',
         MODEL: '',
         DLUGOSC: 150,
@@ -65,33 +97,63 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
     }
   }, [mode, ski]);
 
-  // Walidacja formularza
+  // Walidacja formularza - UPROSZCZONA: tylko krytyczne pola
   const validateForm = (): boolean => {
     const newErrors: Record<string, string> = {};
+    const newWarnings: string[] = [];
 
+    // === KRYTYCZNE POLA (wymagane do zapisu) ===
     if (!formData.MARKA?.trim()) {
       newErrors.MARKA = 'Marka jest wymagana';
     }
     if (!formData.MODEL?.trim()) {
       newErrors.MODEL = 'Model jest wymagany';
     }
-    if (!formData.POZIOM?.trim()) {
-      newErrors.POZIOM = 'Poziom jest wymagany';
-    }
     if ((formData.DLUGOSC || 0) < 100 || (formData.DLUGOSC || 0) > 220) {
       newErrors.DLUGOSC = 'Długość musi być między 100 a 220 cm';
-    }
-    if ((formData.WAGA_MIN || 0) >= (formData.WAGA_MAX || 0)) {
-      newErrors.WAGA_MIN = 'Waga minimalna musi być mniejsza niż maksymalna';
-    }
-    if ((formData.WZROST_MIN || 0) >= (formData.WZROST_MAX || 0)) {
-      newErrors.WZROST_MIN = 'Wzrost minimalny musi być mniejszy niż maksymalny';
     }
     if ((formData.ILOSC || 0) < 1) {
       newErrors.ILOSC = 'Ilość musi być większa niż 0';
     }
 
+    // === WALIDACJA LOGICZNA (jeśli pola są uzupełnione) ===
+    if (formData.WAGA_MIN && formData.WAGA_MAX && formData.WAGA_MIN >= formData.WAGA_MAX) {
+      newErrors.WAGA_MIN = 'Waga minimalna musi być mniejsza niż maksymalna';
+    }
+    if (formData.WZROST_MIN && formData.WZROST_MAX && formData.WZROST_MIN >= formData.WZROST_MAX) {
+      newErrors.WZROST_MIN = 'Wzrost minimalny musi być mniejszy niż maksymalny';
+    }
+
+    // === OSTRZEŻENIA (pola potrzebne do wyszukiwania) ===
+    const missingFields: string[] = [];
+    
+    if (!formData.POZIOM?.trim()) {
+      missingFields.push('POZIOM');
+    }
+    if (!formData.PLEC?.trim()) {
+      missingFields.push('PŁEĆ');
+    }
+    if (!formData.WAGA_MIN || !formData.WAGA_MAX) {
+      missingFields.push('ZAKRES WAGI');
+    }
+    if (!formData.WZROST_MIN || !formData.WZROST_MAX) {
+      missingFields.push('ZAKRES WZROSTU');
+    }
+    if (!formData.PRZEZNACZENIE?.trim()) {
+      missingFields.push('PRZEZNACZENIE');
+    }
+
+    if (missingFields.length > 0) {
+      newWarnings.push(
+        `⚠️ UWAGA: Brakuje pól: ${missingFields.join(', ')}.`
+      );
+      newWarnings.push(
+        `Ta narta NIE BĘDZIE WYŚWIETLANA w wynikach wyszukiwania, dopóki nie uzupełnisz wszystkich danych.`
+      );
+    }
+
     setErrors(newErrors);
+    setWarnings(newWarnings);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -119,7 +181,17 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
 
     setIsSaving(true);
     try {
-      await onSave(formData);
+      console.log('SkiEditModal: Zapisuję dane narty:', formData);
+      console.log('SkiEditModal: KATEGORIA przed zapisem:', formData.KATEGORIA);
+      console.log('SkiEditModal: TYP_SPRZETU przed zapisem:', formData.TYP_SPRZETU);
+      console.log('SkiEditModal: PRZEZNACZENIE przed zapisem:', formData.PRZEZNACZENIE);
+      
+      const updateAll = selectedSkiIndex === -1 && skisInGroup.length > 1;
+      const targetSkiId = updateAll ? undefined : (selectedSkiIndex >= 0 ? skisInGroup[selectedSkiIndex]?.ID : ski?.ID);
+      
+      console.log('SkiEditModal: updateAll:', updateAll, 'targetSkiId:', targetSkiId);
+      
+      await onSave(formData, targetSkiId, updateAll);
       onClose();
     } catch (error) {
       console.error('Błąd zapisywania narty:', error);
@@ -148,6 +220,37 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Dropdown wyboru narty - tylko w trybie edycji z wieloma nartami */}
+        {mode === 'edit' && skisInGroup.length > 1 && (
+          <div className="bg-[#2C699F] p-4 mx-6 mt-4 rounded-lg">
+            <label className="block text-white font-medium mb-2">
+              Która narta edytować?
+            </label>
+            <select
+              value={selectedSkiIndex}
+              onChange={(e) => setSelectedSkiIndex(parseInt(e.target.value))}
+              className="w-full px-4 py-2 rounded-lg bg-[#A6C2EF] text-[#194576] font-medium"
+            >
+              <option value={-1}>✨ Wszystkie ({skisInGroup.length} szt.)</option>
+              {skisInGroup.map((s, idx) => (
+                <option key={s.ID} value={idx}>
+                  {idx + 1}/{s.KOD}
+                </option>
+              ))}
+            </select>
+            {selectedSkiIndex === -1 && (
+              <p className="text-[#A6C2EF] text-sm mt-2">
+                ⚠️ Zmiany zostaną zastosowane do wszystkich {skisInGroup.length} nart (oprócz kodu)
+              </p>
+            )}
+            {selectedSkiIndex >= 0 && (
+              <p className="text-[#A6C2EF] text-sm mt-2">
+                ✏️ Edytujesz nartę: {skisInGroup[selectedSkiIndex].ID} / {skisInGroup[selectedSkiIndex].KOD}
+              </p>
+            )}
+          </div>
+        )}
 
         {/* Formularz - responsywny */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
@@ -195,6 +298,43 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
                 {errors.MODEL && (
                   <p className="text-red-300 text-sm mt-1">{errors.MODEL}</p>
                 )}
+              </div>
+
+              {/* Typ sprzętu */}
+              <div>
+                <label className="block text-white font-medium mb-2">
+                  Typ sprzętu
+                </label>
+                <select
+                  value={formData.TYP_SPRZETU || 'NARTY'}
+                  onChange={(e) => handleChange('TYP_SPRZETU', e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg bg-[#A6C2EF] text-[#194576]"
+                >
+                  <option value="NARTY">⛷️ Narty</option>
+                  <option value="BUTY">🥾 Buty narciarskie</option>
+                  <option value="DESKI">🏂 Deski snowboard</option>
+                  <option value="BUTY_SNOWBOARD">👢 Buty snowboardowe</option>
+                </select>
+              </div>
+
+              {/* Kategoria */}
+              <div>
+                <label className="block text-white font-medium mb-2">
+                  Kategoria 🏷️
+                  <span className="text-xs text-[#A6C2EF] ml-2">(poziom cenowy/jakości)</span>
+                </label>
+                <select
+                  value={formData.KATEGORIA || ''}
+                  onChange={(e) => handleChange('KATEGORIA', e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg bg-[#A6C2EF] text-[#194576]"
+                  title="Wybierz kategorię: VIP (najdroższe), TOP (zaawansowane), JUNIOR (dzieci), DOROSŁE (standard)"
+                >
+                  <option value="">Brak kategorii</option>
+                  <option value="VIP">⭐ VIP (Premium)</option>
+                  <option value="TOP">🔵 TOP (Zaawansowane)</option>
+                  <option value="JUNIOR">👶 Junior (Dzieci)</option>
+                  <option value="DOROSLE">👤 Dorosłe (Standard)</option>
+                </select>
               </div>
 
               {/* Długość */}
@@ -259,15 +399,26 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               <div>
                 <label className="block text-white font-medium mb-2">
                   Kod {mode === 'add' && '(automatyczny)'}
+                  {selectedSkiIndex === -1 && skisInGroup.length > 1 && ' (zablokowane dla wszystkich)'}
                 </label>
                 <input
                   type="text"
                   value={formData.KOD || ''}
                   onChange={(e) => handleChange('KOD', e.target.value.toUpperCase())}
-                  className="w-full px-4 py-2 rounded-lg bg-[#A6C2EF] text-[#194576]"
+                  className={`w-full px-4 py-2 rounded-lg ${
+                    (selectedSkiIndex === -1 && skisInGroup.length > 1) || mode === 'add'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-[#A6C2EF] text-[#194576]'
+                  }`}
                   placeholder={mode === 'add' ? 'Zostanie wygenerowany' : 'np. A01234'}
-                  disabled={mode === 'add'}
+                  disabled={mode === 'add' || (selectedSkiIndex === -1 && skisInGroup.length > 1)}
+                  title={selectedSkiIndex === -1 && skisInGroup.length > 1 ? 'Wybierz konkretną nartę aby zmienić kod' : ''}
                 />
+                {selectedSkiIndex === -1 && skisInGroup.length > 1 && (
+                  <p className="text-yellow-300 text-xs mt-1">
+                    ⚠️ Aby zmienić kod, wybierz konkretną nartę z listy powyżej
+                  </p>
+                )}
               </div>
             </div>
           </div>
@@ -279,7 +430,8 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               {/* Poziom */}
               <div>
                 <label className="block text-white font-medium mb-2">
-                  Poziom zaawansowania *
+                  Poziom zaawansowania
+                  <span className="text-xs text-[#A6C2EF] ml-2">(potrzebne do wyszukiwania)</span>
                 </label>
                 <input
                   type="text"
@@ -304,6 +456,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               <div>
                 <label className="block text-white font-medium mb-2">
                   Płeć
+                  <span className="text-xs text-[#A6C2EF] ml-2">(potrzebne do wyszukiwania)</span>
                 </label>
                 <select
                   value={formData.PLEC || 'U'}
@@ -320,6 +473,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               <div>
                 <label className="block text-white font-medium mb-2">
                   Waga minimalna (kg)
+                  <span className="text-xs text-[#A6C2EF] ml-2">(potrzebne do wyszukiwania)</span>
                 </label>
                 <input
                   type="number"
@@ -353,6 +507,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               <div>
                 <label className="block text-white font-medium mb-2">
                   Wzrost minimalny (cm)
+                  <span className="text-xs text-[#A6C2EF] ml-2">(potrzebne do wyszukiwania)</span>
                 </label>
                 <input
                   type="number"
@@ -392,17 +547,25 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               <div>
                 <label className="block text-white font-medium mb-2">
                   Przeznaczenie
+                  <span className="text-xs text-[#A6C2EF] ml-2">(potrzebne do wyszukiwania)</span>
                 </label>
                 <select
                   value={formData.PRZEZNACZENIE || 'SLG'}
                   onChange={(e) => handleChange('PRZEZNACZENIE', e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg bg-[#A6C2EF] text-[#194576]"
+                  className={`w-full px-4 py-2 rounded-lg ${
+                    errors.PRZEZNACZENIE 
+                      ? 'bg-red-100 border-2 border-red-500 text-red-900' 
+                      : 'bg-[#A6C2EF] text-[#194576]'
+                  }`}
                 >
                   <option value="SL">Slalom (SL)</option>
                   <option value="G">Gigant (G)</option>
                   <option value="SLG">Pomiędzy (SLG)</option>
                   <option value="OFF">Poza trasę (OFF)</option>
                 </select>
+                {errors.PRZEZNACZENIE && (
+                  <p className="text-red-300 text-sm mt-1">{errors.PRZEZNACZENIE}</p>
+                )}
               </div>
 
               {/* Atuty */}
@@ -424,6 +587,30 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
             </div>
           </div>
         </div>
+
+        {/* Ostrzeżenia o niekompletnych danych */}
+        {warnings.length > 0 && (
+          <div className="px-4 sm:px-6 pb-4">
+            <div className="bg-yellow-500 border-2 border-yellow-600 rounded-lg p-4">
+              <div className="flex items-start gap-3">
+                <span className="text-3xl">⚠️</span>
+                <div className="flex-1">
+                  <h4 className="text-white font-bold text-lg mb-2">
+                    Niekompletne dane
+                  </h4>
+                  {warnings.map((warning, index) => (
+                    <p key={index} className="text-white text-sm mb-1">
+                      {warning}
+                    </p>
+                  ))}
+                  <p className="text-white text-sm font-bold mt-3">
+                    💡 Możesz zapisać mimo to, ale uzupełnij dane później, aby narta była widoczna w wyszukiwarce.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="sticky bottom-0 bg-[#194576] border-t border-[#2C699F] p-6">

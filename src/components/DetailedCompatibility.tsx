@@ -97,8 +97,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
     loadAvailabilityStatuses();
   }, [match.ski.MARKA, match.ski.MODEL, match.ski.DLUGOSC, skisDatabase, userCriteria.dateFrom, userCriteria.dateTo]);
 
-  // Kwadraciki dostępności z NOWYM SYSTEMEM 3-KOLOROWYM
-  const generateAvailabilitySquares = () => {
+  // Licznik dostępnych nart (zamiast kwadracików)
+  const generateAvailabilityCounter = () => {
     // Znajdź wszystkie narty tego samego modelu
     const sameModelSkis = skisDatabase.filter(ski => 
       ski.MARKA === match.ski.MARKA && 
@@ -106,65 +106,59 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       ski.DLUGOSC === match.ski.DLUGOSC
     );
     
-    const squares: React.ReactElement[] = [];
+    let available = 0; // Zielone (dostępne)
+    let warning = 0;   // Żółte (ostrzeżenie)
+    let reserved = 0;  // Czerwone (zarezerwowane)
+    
+    const detailsForTooltip: string[] = [];
     
     sameModelSkis.forEach((ski, index) => {
       // Pobierz status dostępności (NOWY SYSTEM)
       const availabilityInfo = ski.KOD ? availabilityStatuses.get(ski.KOD) : null;
       
-      // Określ kolor tła na podstawie statusu (3 kolory)
-      let bgColor = 'bg-green-500'; // Domyślnie zielony (brak dat lub brak rezerwacji)
-      let statusEmoji = '🟢';
+      // Określ status tekstowy
       let statusText = 'Dostępne';
       
       if (availabilityInfo) {
         // SYSTEM 3-KOLOROWY
         if (availabilityInfo.color === 'red') {
-          bgColor = 'bg-red-500';
-          statusEmoji = '🔴';
           statusText = 'Zarezerwowane';
+          reserved++;
         } else if (availabilityInfo.color === 'yellow') {
-          bgColor = 'bg-yellow-500';
-          statusEmoji = '🟡';
-          statusText = 'Uwaga';
+          statusText = 'Ostrzeżenie';
+          warning++;
         } else {
-          bgColor = 'bg-green-500';
-          statusEmoji = '🟢';
           statusText = 'Dostępne';
+          available++;
         }
+      } else {
+        available++;
       }
       
-      // Stwórz tooltip z informacjami
-      let tooltip = `Sztuka ${index + 1} - ${statusText}\nKod: ${ski.KOD || 'Brak kodu'}`;
+      // Dodaj do tooltipa
+      detailsForTooltip.push(`Sztuka ${index + 1}: ${statusText}${ski.KOD ? ` (${ski.KOD})` : ''}`);
       
-      if (availabilityInfo) {
-        tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
-        
-        // Dodaj informacje o rezerwacjach
-        if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
-          tooltip += '\n\nRezerwacje:';
-          availabilityInfo.reservations.forEach((res: any) => {
-            tooltip += `\n- ${res.clientName}`;
-            tooltip += `\n  ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`;
-          });
-        }
+      // Dodaj szczegóły rezerwacji
+      if (availabilityInfo?.reservations && availabilityInfo.reservations.length > 0) {
+        availabilityInfo.reservations.forEach((res: any) => {
+          detailsForTooltip.push(`  → ${res.clientName}: ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`);
+        });
       }
-      
-      squares.push(
-        <span 
-          key={ski.KOD || `no-code-${index}`}
-          className={`inline-block w-6 h-6 lg:w-5 lg:h-5 text-white text-xs font-bold rounded flex items-center justify-center ${bgColor}`}
-          title={tooltip}
-        >
-          {index + 1}
-        </span>
-      );
     });
     
-    return squares;
+    const total = sameModelSkis.length;
+    const tooltip = detailsForTooltip.join('\n');
+    
+    return {
+      available,
+      warning,
+      reserved,
+      total,
+      tooltip
+    };
   };
 
-  const availabilitySquares = generateAvailabilitySquares();
+  const availabilityCounter = generateAvailabilityCounter();
   
   /**
    * Oblicza procent dopasowania dla konkretnego kryterium
@@ -449,9 +443,19 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
                 })}
               </div>
             </div>
-            {/* Kwadraciki dostępności - prawa strona */}
-            <div className={`grid gap-1 ml-4 ${availabilitySquares.length <= 3 ? 'grid-cols-1 w-6' : 'grid-cols-2 w-12'}`} title="Dostępność sztuk">
-              {availabilitySquares}
+            {/* Licznik wolnych nart - prawa strona */}
+            <div className="ml-4 flex flex-col items-center justify-center min-w-[60px]" title={availabilityCounter.tooltip}>
+              <div className="text-green-400 text-xl font-bold">
+                {availabilityCounter.available}
+              </div>
+              <div className="text-white/60 text-[10px] font-medium">
+                wolne
+              </div>
+              {availabilityCounter.total > availabilityCounter.available && (
+                <div className="text-white/40 text-[9px]">
+                  z {availabilityCounter.total}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -529,10 +533,25 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
             
             {/* Stopka z dostępnością - kompaktowa */}
             <div className="pt-1 border-t border-white/10 px-2">
-              <div className="flex items-center text-xs text-white/70">
-                <span className="mr-2">Dostępność:</span>
-                <div className="flex gap-1">
-                  {availabilitySquares}
+              <div className="flex items-center justify-between text-xs" title={availabilityCounter.tooltip}>
+                <span className="text-white/70">Dostępność:</span>
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <span className="text-green-400 font-bold text-sm">🟢 {availabilityCounter.available}</span>
+                    <span className="text-white/50 text-[10px]">wolne</span>
+                  </div>
+                  {availabilityCounter.warning > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-yellow-400 font-bold text-sm">🟡 {availabilityCounter.warning}</span>
+                      <span className="text-white/50 text-[10px]">uwaga</span>
+                    </div>
+                  )}
+                  {availabilityCounter.reserved > 0 && (
+                    <div className="flex items-center gap-1">
+                      <span className="text-red-400 font-bold text-sm">🔴 {availabilityCounter.reserved}</span>
+                      <span className="text-white/50 text-[10px]">zajęte</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
