@@ -12,6 +12,7 @@ import {
   validateWeightRealtime, 
   validateLevelRealtime, 
   validateGenderRealtime,
+  validateShoeSizeRealtime,
   type FormErrors 
 } from '../utils/formValidation';
 import { saveSearchHistory, saveAllTabs, loadAllTabs } from '../utils/localStorage';
@@ -42,6 +43,7 @@ interface FormData {
   };
   level: string;
   gender: string;
+  shoeSize?: string; // NOWE: rozmiar buta w cm (opcjonalny)
   // USUNIĘTO: preferences - teraz filtry stylu są oddzielne
 }
 
@@ -77,7 +79,8 @@ const AnimaComponent: React.FC = () => {
         height: { value: '', unit: 'cm' },
         weight: { value: '', unit: 'kg' },
         level: '',
-        gender: ''
+        gender: '',
+        shoeSize: '' // NOWE: pole rozmiaru buta
       },
       selectedStyles: [],
       searchResults: null,
@@ -186,7 +189,8 @@ const AnimaComponent: React.FC = () => {
         height: { value: '', unit: 'cm' },
         weight: { value: '', unit: 'kg' },
         level: '',
-        gender: ''
+        gender: '',
+        shoeSize: '' // NOWE: pole rozmiaru buta
       },
       selectedStyles: [],
       searchResults: null,
@@ -361,9 +365,99 @@ const AnimaComponent: React.FC = () => {
     console.log('src/components/AnimaComponent.tsx: Nie znaleziono żadnej kategorii z wynikami');
   };
 
+  // NOWA FUNKCJA: Wyszukiwanie butów po rozmiarze
+  const handleShoeSearch = (type: string, category: string, shoeSize: number) => {
+    console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie butów - typ: ${type}, kategoria: ${category}, rozmiar: ${shoeSize}`);
+    
+    try {
+      setIsLoading(true);
+      setError('');
+      
+      // Filtruj buty po rozmiarze i typie
+      const matchingShoes = skisDatabase.filter(shoe => {
+        // Sprawdź typ sprzętu
+        if (shoe.TYP_SPRZETU !== type) return false;
+        
+        // Sprawdź kategorię (jeśli podana)
+        if (category && shoe.KATEGORIA !== category) return false;
+        
+        // Sprawdź rozmiar (DLUGOSC == shoeSize)
+        // Tolerancja 0.5 cm żeby uwzględnić różnice w zaokrągleniach
+        if (Math.abs(shoe.DLUGOSC - shoeSize) > 0.5) return false;
+        
+        return true;
+      });
+      
+      console.log(`src/components/AnimaComponent.tsx: Znaleziono ${matchingShoes.length} butów`);
+      
+      if (matchingShoes.length === 0) {
+        setError(`Nie znaleziono butów w rozmiarze ${shoeSize} cm`);
+        setSearchResults(null);
+        return;
+      }
+      
+      // Utwórz wyniki jako SkiMatch (wszystkie buty jako "idealne")
+      const shoeMatches: SkiMatch[] = matchingShoes.map(shoe => ({
+        ski: shoe,
+        compatibility: 100, // Dopasowanie 100% dla dokładnego rozmiaru
+        dopasowanie: {
+          poziom: '✓ Rozmiar pasuje',
+          plec: '',
+          waga: '',
+          wzrost: '',
+          przeznaczenie: ''
+        },
+        kategoria: 'idealne' as const,
+        zielone_punkty: 5
+      }));
+      
+      // Utwórz strukturę SearchResults
+      const results: SearchResults = {
+        idealne: shoeMatches,
+        alternatywy: [],
+        poziom_za_nisko: [],
+        inna_plec: [],
+        na_sile: [],
+        wszystkie: shoeMatches
+      };
+      
+      setSearchResults(results);
+      setCurrentCriteria(null); // Brak kryteriów wyszukiwania nart
+      
+      // Ustaw filtry do wyświetlania
+      setEquipmentTypeFilter(type);
+      setCategoryFilter(category);
+      
+      console.log(`src/components/AnimaComponent.tsx: Wyświetlono ${matchingShoes.length} butów`);
+    } catch (err) {
+      console.error('src/components/AnimaComponent.tsx: Błąd wyszukiwania butów:', err);
+      setError('Wystąpił błąd podczas wyszukiwania butów');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   // Funkcja obsługi szybkich filtrów w wyszukiwaniu
   const handleQuickFilterInSearch = (type: string, category: string) => {
     console.log(`src/components/AnimaComponent.tsx: Zmiana filtru - typ: ${type}, kategoria: ${category}`);
+    
+    // NOWA LOGIKA: Jeśli klikamy w buty, sprawdź czy wypełniono rozmiar i wyszukaj
+    if (type === 'BUTY' || type === 'BUTY_SNOWBOARD') {
+      const shoeSize = formData.shoeSize?.trim();
+      
+      if (!shoeSize) {
+        // Brak rozmiaru - pokaż komunikat
+        setError('Proszę wpisać rozmiar buta w polu "Rozmiar 👟" przed wyszukiwaniem butów');
+        return;
+      }
+      
+      // Mamy rozmiar - wyszukaj buty
+      console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie butów rozmiaru ${shoeSize}`);
+      handleShoeSearch(type, category, parseFloat(shoeSize.replace(',', '.')));
+      return;
+    }
+    
+    // Dla nart i desek - normalne filtrowanie
     setEquipmentTypeFilter(type);
     setCategoryFilter(category);
   };
@@ -460,6 +554,7 @@ const AnimaComponent: React.FC = () => {
   const weightRef = React.useRef<HTMLInputElement>(null);
   const levelRef = React.useRef<HTMLInputElement>(null);
   const genderRef = React.useRef<HTMLInputElement>(null);
+  const shoeSizeRef = React.useRef<HTMLInputElement>(null); // NOWE: ref dla pola rozmiaru buta
 
   // NOWA FUNKCJA: Ładowanie bazy danych (może być wywołana wielokrotnie)
   const loadDatabase = async () => {
@@ -495,7 +590,8 @@ const AnimaComponent: React.FC = () => {
   }, []);
 
   const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
-    console.log(`src/components/AnimaComponent.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: ${value}`);
+    console.log(`src/components/AnimaComponent.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    console.log(`src/components/AnimaComponent.tsx: Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
     
     // Walidacja w czasie rzeczywistym
     let isValid = true;
@@ -530,6 +626,10 @@ const AnimaComponent: React.FC = () => {
       errorMessage = validation.message;
     } else if (section === 'gender') {
       const validation = validateGenderRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    } else if (section === 'shoeSize') {
+      const validation = validateShoeSizeRealtime(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
     }
@@ -572,7 +672,7 @@ const AnimaComponent: React.FC = () => {
       const newErrors = { ...prev };
       if (section === 'dateFrom' || section === 'dateTo') {
         newErrors[section] = { ...newErrors[section], [field]: '' };
-      } else if (section === 'height' || section === 'weight' || section === 'level' || section === 'gender') {
+      } else if (section === 'height' || section === 'weight' || section === 'level' || section === 'gender' || section === 'shoeSize') {
         newErrors[section] = '';
       }
       return newErrors;
@@ -846,7 +946,8 @@ const AnimaComponent: React.FC = () => {
       height: { value: '', unit: 'cm' },
       weight: { value: '', unit: 'kg' },
       level: '',
-      gender: ''
+      gender: '',
+      shoeSize: '' // NOWE: pole rozmiaru buta
     };
     
     // Wyczyść tylko aktywną kartę
@@ -1056,15 +1157,10 @@ const AnimaComponent: React.FC = () => {
               </div>
             </div>
 
-            {/* Center Section - Level and Gender - responsywna szerokość */}
-            <div className="w-full lg:w-[230px] h-auto lg:h-[140px] flex flex-col justify-start items-center gap-[5px]">
-              {/* Client Data Title - responsywny */}
-              <div className="w-full lg:w-[197px] h-[39px] bg-[#2C699F] rounded-[10px] border border-white flex justify-center items-center">
-                <div className="text-center justify-center text-white text-[21px] font-black font-['Inter'] italic underline leading-[29px]">Dane klienta</div>
-              </div>
-              
-              {/* Level and Gender Section - responsywny */}
-              <div className="w-full lg:w-[230px] h-auto lg:h-[96px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5">
+            {/* Center Section - Level, Gender and Shoe Size - responsywna szerokość */}
+            <div className="w-full lg:w-[230px] h-auto lg:h-[160px] flex flex-col justify-start items-center">
+              {/* Level, Gender and Shoe Size Section - responsywny */}
+              <div className="w-full lg:w-[230px] h-auto lg:h-[160px] py-[21.5px] px-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5">
                 {/* Level - responsywny */}
                 <div className="w-full flex items-center gap-2">
                   <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
@@ -1098,11 +1194,28 @@ const AnimaComponent: React.FC = () => {
                     }`}
                   />
                 </div>
+
+                {/* Shoe Size - responsywny */}
+                <div className="w-full flex items-center gap-2">
+                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                    <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Rozmiar 👟:</span>
+                  </div>
+                  <input
+                    ref={shoeSizeRef}
+                    type="text"
+                    placeholder="23-35"
+                    value={formData.shoeSize || ''}
+                    onChange={(e) => handleInputChange('shoeSize', 'value', e.target.value, e.target)}
+                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] ${
+                      formErrors.shoeSize ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
 
             {/* Right Section - Style Filters and Action Buttons - responsywna szerokość */}
-            <div className="w-full lg:w-[300px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1">
+            <div className="w-full lg:w-[300px] h-auto lg:h-[160px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1">
               {/* Style Filters Title - responsywny */}
               <div className="w-auto lg:w-[140px] h-[20px] bg-[#194576] rounded-[5px] flex items-center justify-center px-3">
                 <div className="text-center justify-center text-white text-sm lg:text-[14px] font-black font-['Inter'] italic underline leading-[20px]">Style jazdy:</div>
@@ -1310,41 +1423,6 @@ const AnimaComponent: React.FC = () => {
 
               {!isLoading && !error && searchResults && (
                 <div className="space-y-4">
-                  {/* Legenda kolorów dostępności - NOWY SYSTEM 3-KOLOROWY */}
-                  {currentCriteria?.dateFrom && currentCriteria?.dateTo && (
-                    <div className="bg-[#194576]/50 rounded-lg p-4 border-2 border-[#A6C2EF]">
-                      <h4 className="text-white text-sm font-bold mb-3 flex items-center gap-2">
-                        📅 LEGENDA DOSTĘPNOŚCI:
-                      </h4>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
-                        <div className="flex items-start gap-2">
-                          <span className="inline-block w-5 h-5 bg-green-500 rounded flex-shrink-0 mt-0.5"></span>
-                          <div>
-                            <span className="text-white font-bold">🟢 Dostępne</span>
-                            <p className="text-[#A6C2EF] text-xs">Brak rezerwacji (min. 2 dni na serwis)</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="inline-block w-5 h-5 bg-yellow-500 rounded flex-shrink-0 mt-0.5"></span>
-                          <div>
-                            <span className="text-white font-bold">🟡 Uwaga</span>
-                            <p className="text-[#A6C2EF] text-xs">Rezerwacja 1-2 dni przed/po (za mało czasu na serwis)</p>
-                          </div>
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <span className="inline-block w-5 h-5 bg-red-500 rounded flex-shrink-0 mt-0.5"></span>
-                          <div>
-                            <span className="text-white font-bold">🔴 Zarezerwowane</span>
-                            <p className="text-[#A6C2EF] text-xs">Konflikt z wybraną datą wypożyczenia</p>
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-[#A6C2EF] text-xs mt-3 italic">
-                        💡 Najedź myszką na licznik dostępności aby zobaczyć szczegóły rezerwacji
-                      </p>
-                    </div>
-                  )}
-
                   {searchResults.wszystkie.length === 0 && (
                     <div className="text-center">
                       <span className="text-white text-lg font-black font-['Inter'] italic">
