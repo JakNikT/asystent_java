@@ -93,27 +93,29 @@ export class SkiMatchingServiceV2 {
    */
   private static filterByStyles(matches: SkiMatch[], selectedStyles: string[]): SkiMatch[] {
     if (!selectedStyles || selectedStyles.length === 0) {
-      return matches; // Brak filtrów - zwróć wszystkie style
+      return matches; // Brak filtrów - zwróć wszystkie narty
     }
+
+    // SINGLE SELECT: Weź tylko pierwszy wybrany styl (ignoruj resztę)
+    const selectedStyle = selectedStyles[0];
+    console.log(`SkiMatchingServiceV2.filterByStyles: Filtrowanie ${matches.length} nart po stylu: ${selectedStyle}`);
 
     return matches.filter(match => {
       const skiPrzeznaczenie = match.ski.PRZEZNACZENIE;
       
-      // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
-      return selectedStyles.some(style => {
-        switch (style) {
-          case 'SL':
-            return skiPrzeznaczenie === 'SL';
-          case 'G':
-            return skiPrzeznaczenie === 'G';
-          case 'SLG':
-            return skiPrzeznaczenie === 'SLG';
-          case 'OFF':
-            return skiPrzeznaczenie === 'OFF';
-          default:
-            return false;
-        }
-      });
+      // Proste dopasowanie: sprawdź czy narta pasuje do wybranego stylu
+      switch (selectedStyle) {
+        case 'SL':
+          return skiPrzeznaczenie === 'SL';
+        case 'G':
+          return skiPrzeznaczenie === 'G';
+        case 'SLG':
+          return skiPrzeznaczenie === 'SLG';
+        case 'OFF':
+          return skiPrzeznaczenie === 'OFF';
+        default:
+          return true; // Jeśli nieznany styl, pokaż wszystkie
+      }
     });
   }
 
