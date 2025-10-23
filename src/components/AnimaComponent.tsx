@@ -307,7 +307,12 @@ const AnimaComponent: React.FC = () => {
         }
         
         if (categoryFilter) {
-          catMatch = match.ski.KATEGORIA === categoryFilter;
+          // SPECJALNY PRZYPADEK: TOP_VIP pokazuje zarówno TOP jak i VIP
+          if (categoryFilter === 'TOP_VIP') {
+            catMatch = match.ski.KATEGORIA === 'TOP' || match.ski.KATEGORIA === 'VIP';
+          } else {
+            catMatch = match.ski.KATEGORIA === categoryFilter;
+          }
         }
         
         return typeMatch && catMatch;
@@ -338,11 +343,10 @@ const AnimaComponent: React.FC = () => {
     
     // Znajdź pierwszą kategorię z wynikami
     const categories = [
-      { type: 'NARTY', category: 'TOP', label: 'Narty TOP' },
-      { type: 'NARTY', category: 'VIP', label: 'Narty VIP' },
-      { type: 'BUTY', category: 'DOROSLE', label: 'Buty dorosłe' },
+      { type: 'NARTY', category: 'TOP_VIP', label: 'Narty (TOP+VIP)' },
       { type: 'NARTY', category: 'JUNIOR', label: 'Narty Junior' },
       { type: 'BUTY', category: 'JUNIOR', label: 'Buty Junior' },
+      { type: 'BUTY', category: 'DOROSLE', label: 'Buty dorosłe' },
       { type: 'DESKI', category: '', label: 'Deski' },
       { type: 'BUTY_SNOWBOARD', category: '', label: 'Buty Snowboard' }
     ];
@@ -350,7 +354,17 @@ const AnimaComponent: React.FC = () => {
     for (const cat of categories) {
       const filtered = results.wszystkie.filter(m => {
         const typeMatch = m.ski.TYP_SPRZETU === cat.type;
-        const catMatch = !cat.category || m.ski.KATEGORIA === cat.category;
+        
+        // SPECJALNY PRZYPADEK: TOP_VIP pokazuje zarówno TOP jak i VIP
+        let catMatch = true;
+        if (cat.category) {
+          if (cat.category === 'TOP_VIP') {
+            catMatch = m.ski.KATEGORIA === 'TOP' || m.ski.KATEGORIA === 'VIP';
+          } else {
+            catMatch = m.ski.KATEGORIA === cat.category;
+          }
+        }
+        
         return typeMatch && catMatch;
       });
       
@@ -450,11 +464,11 @@ const AnimaComponent: React.FC = () => {
     }
   };
 
-  // Funkcja obsługi szybkich filtrów w wyszukiwaniu
+  // Funkcja obsługi szybkich filtrów - NOWA LOGIKA: Każdy przycisk wyszukuje
   const handleQuickFilterInSearch = (type: string, category: string) => {
-    console.log(`src/components/AnimaComponent.tsx: Zmiana filtru - typ: ${type}, kategoria: ${category}`);
+    console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie sprzętu - typ: ${type}, kategoria: ${category}`);
     
-    // NOWA LOGIKA: Jeśli klikamy w buty, sprawdź czy wypełniono rozmiar i wyszukaj
+    // PRZYPADEK 1: Buty - sprawdź rozmiar i wyszukaj
     if (type === 'BUTY' || type === 'BUTY_SNOWBOARD') {
       const shoeSize = formData.shoeSize?.trim();
       
@@ -464,23 +478,31 @@ const AnimaComponent: React.FC = () => {
         return;
       }
       
-      // Mamy rozmiar - wyszukaj buty
+      // Mamy rozmiar - wyszukaj buty (funkcja już ustawia filtry)
       console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie butów rozmiaru ${shoeSize}`);
       handleShoeSearch(type, category, parseFloat(shoeSize.replace(',', '.')));
       return;
     }
     
-    // Dla nart i desek - normalne filtrowanie
+    // PRZYPADEK 2: Narty/Deski - najpierw ustaw filtry, wyczyść style, potem wyszukaj
+    console.log(`src/components/AnimaComponent.tsx: Ustawiam filtry - typ: ${type}, kategoria: ${category}`);
+    
+    // WAŻNE: Wyczyść wybrane style aby nie filtrowały wyników
+    setSelectedStyles([]);
+    
+    // Ustaw filtry PRZED wyszukiwaniem
     setEquipmentTypeFilter(type);
     setCategoryFilter(category);
+    
+    // Wywołaj wyszukiwanie (waliduje formularz i wyszukuje)
+    // Użyj setTimeout aby React miał czas zaktualizować state
+    setTimeout(() => {
+      console.log(`src/components/AnimaComponent.tsx: Wykonuję wyszukiwanie nart/desek bez filtrów stylu...`);
+      handleSubmit();
+    }, 50);
   };
 
-  // Funkcja czyszczenia filtrów sprzętu
-  const clearEquipmentFilters = () => {
-    console.log('src/components/AnimaComponent.tsx: Czyszczenie filtrów sprzętu');
-    setEquipmentTypeFilter('');
-    setCategoryFilter('');
-  };
+  // USUNIĘTO: clearEquipmentFilters - nie jest już potrzebna (brak przycisku "Wszystkie")
 
   // Funkcja do parsowania daty z formularza
   const parseDate = (dateObj: { day: string; month: string; year: string }): Date | undefined => {
@@ -790,14 +812,14 @@ const AnimaComponent: React.FC = () => {
   // USUNIĘTO: handlePreferenceChange - teraz używamy handleStyleToggle
 
   /**
-   * Obsługuje zmianę pojedynczego filtra stylu (dla checkboxów)
+   * Obsługuje zmianę stylu (SINGLE SELECT - tylko jeden na raz)
    */
   const handleStyleToggle = (style: string) => {
-    const newStyles = selectedStyles.includes(style)
-      ? selectedStyles.filter(s => s !== style)
-      : [...selectedStyles, style];
+    // SINGLE SELECT: Kliknięcie tego samego stylu = odznacz (pusta tablica)
+    // Kliknięcie innego stylu = tylko ten jeden
+    const newStyles = selectedStyles.includes(style) ? [] : [style];
     
-    console.log(`src/components/AnimaComponent.tsx: Przełączenie stylu ${style}, nowe style:`, newStyles);
+    console.log(`src/components/AnimaComponent.tsx: Wybrano styl ${style}, nowe style:`, newStyles);
     setSelectedStyles(newStyles);
     
     // Automatyczne wyszukiwanie po KAŻDEJ zmianie filtrów (jeśli są już wyniki)
@@ -913,8 +935,14 @@ const AnimaComponent: React.FC = () => {
       const sortedResults = SkiMatchingServiceV2.sortAllResultsByAvailabilityAndCompatibility(results);
       setSearchResults(sortedResults);
 
-      // Automatycznie wybierz pierwszą dostępną kategorię
-      autoSelectFirstCategory(sortedResults);
+      // Automatycznie wybierz pierwszą dostępną kategorię TYLKO jeśli użytkownik nie wybrał już kategorii
+      // (czyli jeśli equipmentTypeFilter i categoryFilter są puste)
+      if (!equipmentTypeFilter && !categoryFilter) {
+        console.log('src/components/AnimaComponent.tsx: Automatyczny wybór kategorii (brak filtrów)');
+        autoSelectFirstCategory(sortedResults);
+      } else {
+        console.log('src/components/AnimaComponent.tsx: Pomijam automatyczny wybór - użytkownik wybrał filtry:', equipmentTypeFilter, categoryFilter);
+      }
 
       // Zapisz historię wyszukiwania
       saveSearchHistory({
@@ -945,11 +973,7 @@ const AnimaComponent: React.FC = () => {
     }
   };
 
-  // Event handler dla przycisku "Wyszukaj"
-  const handleSubmitClick = (event: React.MouseEvent) => {
-    event.preventDefault();
-    handleSubmit();
-  };
+  // USUNIĘTO: handleSubmitClick - nie jest już potrzebna (brak przycisku "Wyszukaj")
 
   const handleClear = () => {
     console.log('src/components/AnimaComponent.tsx: Czyszczenie formularza aktywnej karty');
@@ -1036,16 +1060,19 @@ const AnimaComponent: React.FC = () => {
       </div>
 
       {/* Header Section - responsywne */}
-      <div className="w-full max-w-[1100px] lg:h-[200px] h-auto bg-[#386BB2] flex flex-col lg:flex-row items-center lg:items-start justify-between p-4 lg:p-2 mx-auto gap-4 lg:gap-0">
-        {/* Logo "narty poznań" - ukryty avatar na mobile, duży napis na mobile, mniejszy na desktop */}
+      <div className="w-full max-w-[900px] lg:h-[200px] h-auto bg-[#386BB2] flex flex-col lg:flex-row items-center lg:items-start justify-between p-4 lg:p-2 mx-auto gap-4 lg:gap-0">
+        {/* Logo "narty poznań" - okrągłe logo z cieniem */}
         <div className="w-full lg:w-[180px] flex items-center justify-center lg:h-[180px] h-auto">
-          <span className="text-white text-4xl lg:text-5xl font-black font-['Inter'] italic underline">
-            ⛷️ narty poznań
-          </span>
+          <img 
+            src="/images/logo.png" 
+            alt="Narty Poznań Logo" 
+            className="w-[160px] h-[160px] rounded-full object-cover shadow-2xl"
+            style={{ clipPath: 'circle(50%)' }}
+          />
         </div>
         
         {/* Main Content Container - responsywny */}
-        <div className="w-full lg:w-[890px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2">
+        <div className="w-full lg:w-[700px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2">
             
             {/* Left Section - Personal Data - responsywna szerokość */}
             <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5">
@@ -1227,158 +1254,97 @@ const AnimaComponent: React.FC = () => {
               </div>
             </div>
 
-            {/* Right Section - Style Filters and Action Buttons - responsywna szerokość */}
-            <div className="w-full lg:w-[300px] h-auto lg:h-[160px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1">
-              {/* Style Filters Title - responsywny */}
-              <div className="w-auto lg:w-[140px] h-[20px] bg-[#194576] rounded-[5px] flex items-center justify-center px-3">
-                <div className="text-center justify-center text-white text-sm lg:text-[14px] font-black font-['Inter'] italic underline leading-[20px]">Style jazdy:</div>
-              </div>
-
-              {/* Style Filter Checkboxes - responsywny grid, mniejsze odstępy */}
-              <div className="w-full lg:w-[300px] grid grid-cols-1 sm:grid-cols-2 gap-1 lg:gap-0.5 px-2">
-                {[
-                  { id: 'SL', label: 'Slalom' },
-                  { id: 'G', label: 'Gigant' },
-                  { id: 'SLG', label: 'Pomiędzy' },
-                  { id: 'OFF', label: 'Poza trasę' }
-                ].map((style) => (
-                  <label key={style.id} className="flex items-center gap-2 cursor-pointer py-1 px-2 hover:bg-[#194576]/30 rounded-lg">
-                      <input
-                        type="checkbox"
-                      checked={selectedStyles.includes(style.id)}
-                      onChange={() => handleStyleToggle(style.id)}
-                      className="flex-shrink-0 w-4 h-4 cursor-pointer"
-                    />
-                    <span className="text-white text-sm lg:text-xs font-extrabold font-['Inter'] italic underline leading-[17px]">
-                      {style.label}
-                      </span>
-                    </label>
-                  ))}
-                </div>
-                
-              {/* Action Buttons - responsywne, pionowo na mobile, grid 2x2 na desktop, mniejsze */}
-              <div className="w-full h-auto lg:h-auto grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-1 px-2 lg:px-1">
-                <button
-                  onClick={handleSubmitClick}
-                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors"
-                >
-                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight">🔍 Wyszukaj</span>
-                </button>
-                <button
-                  onClick={handleClear}
-                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors"
-                >
-                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
-                </button>
-                <button 
-                  onClick={() => setAppMode('browse')}
-                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors"
-                >
-                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
-                </button>
-                <button 
-                  onClick={() => setAppMode('reservations')}
-                  className="w-full h-12 lg:h-[30px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1 hover:bg-[#2C699F] transition-colors cursor-pointer"
-                >
-                  <span className="text-white text-sm lg:text-[10px] font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
-                </button>
-              </div>
+            {/* Right Section - Action Buttons PIONOWO - style przeniesione nad wyniki */}
+            <div className="w-full lg:w-[120px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-2">
+              {/* Action Buttons - PIONOWO w jednej kolumnie */}
+              <button
+                onClick={handleClear}
+                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-colors"
+              >
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
+              </button>
+              <button 
+                onClick={() => setAppMode('browse')}
+                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-colors"
+              >
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+              </button>
+              <button 
+                onClick={() => setAppMode('reservations')}
+                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-colors cursor-pointer"
+              >
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+              </button>
             </div>
           </div>
         </div>
 
       {/* Results Section - responsywna */}
       <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
-        {/* Przyciski filtrowania kategorii sprzętu - ZMIENIONE */}
-        <div className="w-full max-w-4xl bg-[#194576] rounded-lg p-4 mb-3">
-          <div className="flex flex-col gap-2">
-            {/* Linia 1: Wszystkie + Narty */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              <button
-                onClick={clearEquipmentFilters}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  !equipmentTypeFilter && !categoryFilter
-                    ? 'bg-white text-[#194576] shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                🎿 Wszystkie
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'TOP')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
-                    ? 'bg-blue-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                🔵 TOP
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'VIP')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
-                    ? 'bg-yellow-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                ⭐ VIP
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
-                    ? 'bg-green-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                👶 Junior
-              </button>
-            </div>
-
-            {/* Linia 2: Buty i Deski */}
-            <div className="flex flex-wrap gap-2 justify-center">
-              <button
-                onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
-                    ? 'bg-purple-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                🥾 Buty
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
-                    ? 'bg-green-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                👶 Buty Jr
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('DESKI', '')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'DESKI'
-                    ? 'bg-orange-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                🏂 Deski
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('BUTY_SNOWBOARD', '')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'BUTY_SNOWBOARD'
-                    ? 'bg-red-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                }`}
-              >
-                👢 Buty SB
-              </button>
-            </div>
+        {/* Przyciski filtrowania kategorii sprzętu - NOWY LAYOUT: JEDEN WIERSZ */}
+        <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3">
+          {/* Wszystkie przyciski w jednym wierszu - responsywne */}
+          <div className="flex flex-wrap gap-2 justify-center items-center">
+            <button
+              onClick={() => handleQuickFilterInSearch('NARTY', 'TOP_VIP')}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                equipmentTypeFilter === 'NARTY' && (categoryFilter === 'TOP' || categoryFilter === 'VIP' || categoryFilter === 'TOP_VIP')
+                  ? 'bg-blue-500 text-white shadow-lg'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+              }`}
+            >
+              🎿 Narty (TOP+VIP)
+            </button>
+            <button
+              onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
+                  ? 'bg-green-500 text-white shadow-lg'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+              }`}
+            >
+              👶 Narty Jr
+            </button>
+            <button
+              onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
+                  ? 'bg-green-500 text-white shadow-lg'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+              }`}
+            >
+              👶 Buty Jr
+            </button>
+            <button
+              onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
+                  ? 'bg-purple-500 text-white shadow-lg'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+              }`}
+            >
+              🥾 Buty
+            </button>
+            <button
+              onClick={() => handleQuickFilterInSearch('DESKI', '')}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                equipmentTypeFilter === 'DESKI'
+                  ? 'bg-orange-500 text-white shadow-lg'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+              }`}
+            >
+              🏂 Deski
+            </button>
+            <button
+              onClick={() => handleQuickFilterInSearch('BUTY_SNOWBOARD', '')}
+              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                equipmentTypeFilter === 'BUTY_SNOWBOARD'
+                  ? 'bg-red-500 text-white shadow-lg'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+              }`}
+            >
+              👢 Buty SB
+            </button>
           </div>
         </div>
 
@@ -1427,9 +1393,9 @@ const AnimaComponent: React.FC = () => {
               )}
 
               {!isLoading && !error && !searchResults && (
-                <div className="flex items-center justify-center h-full text-center">
+                <div className="flex items-center justify-center h-full text-center px-4">
                   <span className="text-white text-lg font-black font-['Inter'] italic">
-                    👋 Witaj! Wypełnij formularz i kliknij "Wyszukaj" aby znaleźć idealne narty
+                    👋 Witaj! Wypełnij formularz i wybierz kategorię sprzętu poniżej 👇
                   </span>
                 </div>
               )}
@@ -1446,6 +1412,37 @@ const AnimaComponent: React.FC = () => {
 
                   {groupedResults && groupedResults.idealne.length > 0 && (
                     <div>
+                      {/* Style jazdy - tylko dla poziomu 4+ */}
+                      {parseInt(formData.level) >= 4 && equipmentTypeFilter === 'NARTY' && (
+                        <div className="w-full bg-[#194576]/50 rounded-lg p-3 mb-3">
+                          <div className="flex flex-wrap gap-2 justify-center items-center">
+                            {[
+                              { id: 'SL', label: '🎿 Slalom', emoji: 'SL' },
+                              { id: 'G', label: '⛷️ Gigant', emoji: 'G' },
+                              { id: 'SLG', label: '🎯 Pomiędzy', emoji: 'SLG' },
+                              { id: 'OFF', label: '🏔️ Poza trasę', emoji: 'OFF' }
+                            ].map((style) => (
+                              <label 
+                                key={style.id} 
+                                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                                  selectedStyles.includes(style.id)
+                                    ? 'bg-green-500 text-white shadow-lg'
+                                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={selectedStyles.includes(style.id)}
+                                  onChange={() => handleStyleToggle(style.id)}
+                                  className="hidden"
+                                />
+                                {style.label}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
                       <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
                         🏆 IDEALNE DOPASOWANIE ({groupedResults.idealne.length})
                       </h3>
