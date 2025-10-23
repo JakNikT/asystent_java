@@ -16,6 +16,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = 3000;
 
+// FireSnow API Configuration
+const FIRESNOW_API_URL = 'http://192.168.X.X:8080'; // ZMIEŃ NA IP KOMPUTERA 1!
+const USE_FIRESNOW_API = true; // Zmień na false żeby używać CSV
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -29,7 +33,96 @@ const RESERVATIONS_CSV_PATH = path.join(__dirname, 'public', 'data', 'rezerwacja
 const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWA_BAZA_KOMPLETNA.csv');
 
 /**
- * Wczytuje rezerwacje z pliku CSV
+ * Wczytuje rezerwacje z FireSnow API
+ * Mapuje dane z formatu API FireSnow na format używany w aplikacji
+ */
+async function loadReservationsFromFireSnowAPI() {
+  try {
+    console.log('Server: Pobieranie rezerwacji z FireSnow API:', FIRESNOW_API_URL);
+    
+    const response = await fetch(`${FIRESNOW_API_URL}/api/rezerwacje/aktywne`);
+    
+    if (!response.ok) {
+      throw new Error(`FireSnow API error: ${response.status}`);
+    }
+    
+    const fireSnowData = await response.json();
+    console.log(`Server: Otrzymano ${fireSnowData.length} rezerwacji z FireSnow API`);
+    
+    // Mapuj dane z formatu FireSnow API na format aplikacji
+    const reservations = fireSnowData.map(item => {
+      // Użyj imie_nazwisko z API (już połączone w SQL)
+      let klient = item.imie_nazwisko || '';
+      
+      // Fallback jeśli brak imienia
+      if (!klient && item.telefon) {
+        klient = `Tel: ${item.telefon}`;
+      } else if (!klient) {
+        klient = `Klient #${item.klient_id || '?'}`;
+      }
+      
+      return {
+        // Format FireSnow API -> Format aplikacji
+        klient: klient,
+        sprzet: item.nazwa_sprzetu || '',
+        kod: item.kod_sprzetu || '', // Kod bezpośrednio z API (nie wyciągamy z nazwy)
+        od: formatFireSnowDate(item.data_od),
+        do: formatFireSnowDate(item.data_do),
+        cena: item.cena ? item.cena.toString() : '0',
+        zaplacono: '', // FireSnow API nie zwraca tego pola
+        numer: item.rezerwacja_id ? item.rezerwacja_id.toString() : '',
+        telefon: item.telefon || '',
+        // Dodatkowe pola z API
+        obiekt_id: item.obiekt_id,
+        klient_id: item.klient_id
+      };
+    });
+    
+    console.log(`Server: Zmapowano ${reservations.length} rezerwacji`);
+    return reservations;
+    
+  } catch (error) {
+    console.error('Server: Błąd pobierania z FireSnow API:', error);
+    throw error;
+  }
+}
+
+/**
+ * Wyciąga kod sprzętu z nazwy (np. "NARTY ATOMIC //01" -> "01")
+ */
+function extractKodFromName(name) {
+  const match = name.match(/\/\/(\d+)/);
+  return match ? match[1] : '';
+}
+
+/**
+ * Formatuje datę z FireSnow API do formatu ISO 8601 (rozumiany przez JavaScript Date)
+ * Input: "2026-02-13 11:00:00.000000" → Output: "2026-02-13T11:00:00"
+ */
+function formatFireSnowDate(dateString) {
+  if (!dateString) return '';
+  
+  try {
+    // Format z API: "2026-02-13 11:00:00.000000"
+    // Usuń mikrosekundy i zamień spację na T (ISO 8601)
+    const isoString = dateString.split('.')[0].replace(' ', 'T');
+    
+    // Sprawdź czy to poprawna data
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      console.warn('Server: Nieprawidłowa data:', dateString);
+      return dateString;
+    }
+    
+    return isoString; // "2026-02-13T11:00:00"
+  } catch (error) {
+    console.error('Server: Błąd formatowania daty:', dateString, error);
+    return dateString;
+  }
+}
+
+/**
+ * Wczytuje rezerwacje z pliku CSV (fallback gdy API nie działa)
  */
 async function loadReservationsFromCSV() {
   try {
@@ -155,11 +248,31 @@ function convertFromFirefnow(csvText) {
 
 /**
  * GET /api/reservations - Pobierz wszystkie rezerwacje
+ * Używa FireSnow API z fallback do CSV
  */
 app.get('/api/reservations', async (req, res) => {
   try {
     console.log('Server: GET /api/reservations');
-    const reservations = await loadReservationsFromCSV();
+    
+    let reservations = [];
+    
+    if (USE_FIRESNOW_API) {
+      try {
+        // Próbuj pobrać z API
+        reservations = await loadReservationsFromFireSnowAPI();
+        console.log(`Server: Zwracam ${reservations.length} rezerwacji z FireSnow API`);
+      } catch (apiError) {
+        console.warn('Server: FireSnow API niedostępne, fallback do CSV:', apiError.message);
+        // Fallback do CSV jeśli API nie działa
+        reservations = await loadReservationsFromCSV();
+        console.log(`Server: Zwracam ${reservations.length} rezerwacji z CSV (fallback)`);
+      }
+    } else {
+      // Używaj CSV jeśli USE_FIRESNOW_API = false
+      reservations = await loadReservationsFromCSV();
+      console.log(`Server: Zwracam ${reservations.length} rezerwacji z CSV`);
+    }
+    
     res.json(reservations);
   } catch (error) {
     console.error('Server: Błąd pobierania rezerwacji:', error);
@@ -480,6 +593,74 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+/**
+ * GET /api/firesnow/status - Sprawdź status połączenia z FireSnow API
+ */
+app.get('/api/firesnow/status', async (req, res) => {
+  try {
+    console.log('Server: Sprawdzanie statusu FireSnow API...');
+    
+    const response = await fetch(`${FIRESNOW_API_URL}/api/health`, {
+      signal: AbortSignal.timeout(5000) // 5 sec timeout
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      res.json({
+        status: 'online',
+        api_url: FIRESNOW_API_URL,
+        api_response: data
+      });
+    } else {
+      res.json({
+        status: 'error',
+        api_url: FIRESNOW_API_URL,
+        error: `HTTP ${response.status}`
+      });
+    }
+  } catch (error) {
+    console.error('Server: FireSnow API niedostępne:', error.message);
+    res.json({
+      status: 'offline',
+      api_url: FIRESNOW_API_URL,
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/firesnow/refresh - Wymusza odświeżenie cache w FireSnow API
+ */
+app.post('/api/firesnow/refresh', async (req, res) => {
+  try {
+    console.log('Server: Wymuszam odświeżenie FireSnow API...');
+    
+    const response = await fetch(`${FIRESNOW_API_URL}/api/refresh`, {
+      signal: AbortSignal.timeout(5000)
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      res.json({
+        success: true,
+        message: 'FireSnow API odświeżone',
+        api_response: data
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: `HTTP ${response.status}`
+      });
+    }
+  } catch (error) {
+    console.error('Server: Błąd odświeżania FireSnow API:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
 // Serwuj aplikację React dla wszystkich innych ścieżek (catch-all route)
 // Express 5.x wymaga użycia middleware zamiast route dla wildcard
 app.use((req, res) => {
@@ -488,11 +669,25 @@ app.use((req, res) => {
 
 // Uruchom serwer
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Serwer asystenta nart uruchomiony na porcie ${PORT}`);
+  console.log('');
+  console.log('========================================');
+  console.log(`🚀 Serwer asystenta nart uruchomiony`);
+  console.log('========================================');
   console.log(`📱 Dostęp lokalny: http://localhost:${PORT}`);
   console.log(`🌐 Dostęp sieciowy: http://[IP_KOMPUTERA]:${PORT}`);
   console.log(`📊 API dostępne pod: http://localhost:${PORT}/api/`);
-  console.log(`💾 Plik rezerwacji: ${RESERVATIONS_CSV_PATH}`);
+  console.log('');
+  console.log('📡 FireSnow API Integration:');
+  console.log(`   Status: ${USE_FIRESNOW_API ? 'ENABLED ✅' : 'DISABLED (używa CSV)'}`);
+  console.log(`   URL: ${FIRESNOW_API_URL}`);
+  console.log(`   Fallback: CSV (${RESERVATIONS_CSV_PATH})`);
+  console.log('');
+  console.log('💡 Endpointy:');
+  console.log('   GET  /api/reservations - Pobierz rezerwacje');
+  console.log('   GET  /api/firesnow/status - Status FireSnow API');
+  console.log('   POST /api/firesnow/refresh - Odśwież cache API');
   console.log('');
   console.log('Aby znaleźć adres IP komputera, uruchom: ipconfig');
+  console.log('========================================');
+  console.log('');
 });
