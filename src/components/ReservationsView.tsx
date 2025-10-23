@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ReservationService, type ReservationData } from '../services/reservationService';
+import { ReservationApiClient } from '../services/reservationApiClient';
+import type { ReservationData } from '../services/reservationService';
 import { Toast } from './Toast';
 
 interface ReservationsViewProps {
@@ -45,7 +46,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     const loadReservations = async () => {
       setIsLoading(true);
       try {
-        const data = await ReservationService.loadReservations();
+        // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
+        const data = await ReservationApiClient.loadReservations();
       console.log('ReservationsView: Wczytano', data.length, 'rezerwacji (tylko pierwsze 5 kolumn)');
         console.log('ReservationsView: Przykładowe dane:', data.slice(0, 3));
         setReservations(data);
@@ -61,32 +63,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       }
     };
 
-  // Ustaw callbacki dla toastów konwersji
-  useEffect(() => {
-    ReservationService.onConversionStart = () => {
-      console.log('ReservationsView: Rozpoczynam konwersję FireFnow');
-      setToast({
-        message: '🔄 Wykryto plik z FireFnow - konwersja...',
-        type: 'info',
-        isVisible: true
-      });
-    };
-
-    ReservationService.onConversionComplete = () => {
-      console.log('ReservationsView: Konwersja FireFnow zakończona');
-      setToast({
-        message: '✅ Dane skonwertowane i wczytane!',
-        type: 'success',
-        isVisible: true
-      });
-    };
-
-    return () => {
-      // Cleanup
-      ReservationService.onConversionStart = null;
-      ReservationService.onConversionComplete = null;
-    };
-  }, []);
+  // USUNIĘTO: Callbacki konwersji - ReservationApiClient obsługuje to po stronie serwera
+  // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
   useEffect(() => {
     loadReservations();

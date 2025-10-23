@@ -422,7 +422,20 @@ const AnimaComponent: React.FC = () => {
       };
       
       setSearchResults(results);
-      setCurrentCriteria(null); // Brak kryteriów wyszukiwania nart
+      
+      // ZMIENIONE: Zamiast null, zachowaj daty z formularza dla sprawdzania dostępności
+      const dateFrom = parseDate(formData.dateFrom);
+      const dateTo = parseDate(formData.dateTo);
+      
+      // Utwórz minimalne kryteria z datami (dla sprawdzania dostępności w "Przeglądaj")
+      setCurrentCriteria({
+        wzrost: 170, // Domyślne wartości (nieużywane dla butów)
+        waga: 70,
+        poziom: 3,
+        plec: 'W',
+        dateFrom: dateFrom, // WAŻNE: Zachowaj daty!
+        dateTo: dateTo
+      });
       
       // Ustaw filtry do wyświetlania
       setEquipmentTypeFilter(type);

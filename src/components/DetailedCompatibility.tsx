@@ -167,6 +167,11 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
    * Każdy parametr pokazuje swoje rzeczywiste dopasowanie niezależnie od kategorii
    */
   const getCriteriaScore = (criterion: string, status: string): number => {
+    // Guard clause - jeśli nie ma userCriteria, zwróć domyślną wartość
+    if (!userCriteria) {
+      return 0;
+    }
+    
     // Oblicz rzeczywisty procent dopasowania bez mnożników kategorii
     let score = 0;
     

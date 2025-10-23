@@ -1,6 +1,6 @@
 // Serwis dopasowywania nart - UPROSZCZONA WERSJA
 import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails } from '../types/ski.types';
-import { ReservationService } from './reservationService';
+import { ReservationApiClient } from './reservationApiClient';
 
 // Konfiguracja tolerancji - uproszczona logika
 interface ToleranceConfig {
@@ -1319,8 +1319,8 @@ export class SkiMatchingServiceV2 {
       const startDate = dateFrom || new Date();
       const endDate = dateTo || new Date();
 
-      // Sprawdź czy narta jest zarezerwowana w danym okresie
-      const reservations = await ReservationService.isSkiReserved(
+      // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
+      const reservations = await ReservationApiClient.isSkiReserved(
         ski.MARKA,
         ski.MODEL,
         ski.DLUGOSC.toString(),
@@ -1348,7 +1348,8 @@ export class SkiMatchingServiceV2 {
       const startDate = dateFrom || new Date();
       const endDate = dateTo || new Date();
 
-      const reservations = await ReservationService.isSkiReserved(
+      // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
+      const reservations = await ReservationApiClient.isSkiReserved(
         ski.MARKA,
         ski.MODEL,
         ski.DLUGOSC.toString(),
