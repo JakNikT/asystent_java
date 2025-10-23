@@ -5,11 +5,11 @@
 
 import React, { useState, useEffect } from 'react';
 import type { SkiMatch, SearchCriteria, SkiData } from '../types/ski.types';
-import { ReservationService } from '../services/reservationService';
+import { ReservationApiClient } from '../services/reservationApiClient';
 
 interface DetailedCompatibilityProps {
   match: SkiMatch;
-  userCriteria: SearchCriteria;
+  userCriteria: SearchCriteria | null; // ZMIENIONE: opcjonalne dla wyszukiwania butów
   skisDatabase: SkiData[]; // NOWE: dostęp do bazy nart dla grupowania
   isRowExpanded?: boolean;
   onRowToggle?: () => void;
@@ -55,7 +55,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       
       try {
         // Sprawdź czy użytkownik wpisał daty
-        const hasUserDates = userCriteria.dateFrom && userCriteria.dateTo;
+        const hasUserDates = userCriteria && userCriteria.dateFrom && userCriteria.dateTo;
         
         if (!hasUserDates) {
           console.log('DetailedCompatibility: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
@@ -64,8 +64,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
         }
         
         // Użyj dat z formularza użytkownika
-        const startDate = userCriteria.dateFrom!;
-        const endDate = userCriteria.dateTo!;
+        const startDate = userCriteria!.dateFrom!;
+        const endDate = userCriteria!.dateTo!;
         
         console.log('DetailedCompatibility: Sprawdzam dostępność w okresie:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
         
@@ -75,7 +75,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
         for (const ski of sameModelSkis) {
           if (ski.KOD && ski.KOD !== 'NO_CODE') {
             try {
-              const availabilityInfo = await ReservationService.getSkiAvailabilityStatus(
+              // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
+              const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
                 ski.KOD,
                 startDate,
                 endDate
@@ -95,7 +96,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
     };
 
     loadAvailabilityStatuses();
-  }, [match.ski.MARKA, match.ski.MODEL, match.ski.DLUGOSC, skisDatabase, userCriteria.dateFrom, userCriteria.dateTo]);
+  }, [match.ski.MARKA, match.ski.MODEL, match.ski.DLUGOSC, skisDatabase, userCriteria?.dateFrom, userCriteria?.dateTo]);
 
   // Licznik dostępnych nart (zamiast kwadracików)
   const generateAvailabilityCounter = () => {
@@ -380,7 +381,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
     return match.compatibility || 0;
   };
 
-  const criteria = [
+  const criteria = userCriteria ? [
     { 
       key: 'poziom', 
       label: 'Poziom', 
@@ -409,7 +410,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       skiValue: `${match.ski.WZROST_MIN}-${match.ski.WZROST_MAX}cm`,
       userValue: `${userCriteria.wzrost}cm`
     },
-  ];
+  ] : [];
 
   // Pobierz ogólną kompatybilność obliczoną przez serwis
   const averageCompatibility = getOverallCompatibility();
@@ -419,7 +420,9 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       {/* Główna karta - rozszerza się w dół */}
       <div 
         onClick={handleToggle}
-        className={`bg-black/20 rounded-lg border border-white/10 hover:bg-black/30 cursor-pointer transition-all duration-300 ease-out ${
+        className={`bg-black/20 rounded-lg border ${
+          availabilityCounter.available === 0 ? 'border-red-500 border-2' : 'border-white/10'
+        } hover:bg-black/30 cursor-pointer transition-all duration-300 ease-out ${
           isActuallyExpanded ? 'p-3' : 'p-2'
         }`}
       >
@@ -445,7 +448,9 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
             </div>
             {/* Licznik wolnych nart - prawa strona */}
             <div className="ml-4 flex flex-col items-center justify-center min-w-[60px]" title={availabilityCounter.tooltip}>
-              <div className="text-green-400 text-xl font-bold">
+              <div className={`text-xl font-bold ${
+                availabilityCounter.available === 0 ? 'text-red-500' : 'text-green-400'
+              }`}>
                 {availabilityCounter.available}
               </div>
               <div className="text-white/60 text-[10px] font-medium">
@@ -537,7 +542,11 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
                 <span className="text-white/70">Dostępność:</span>
                 <div className="flex items-center gap-3">
                   <div className="flex items-center gap-1">
-                    <span className="text-green-400 font-bold text-sm">🟢 {availabilityCounter.available}</span>
+                    <span className={`font-bold text-sm ${
+                      availabilityCounter.available === 0 ? 'text-red-500' : 'text-green-400'
+                    }`}>
+                      {availabilityCounter.available === 0 ? '🔴' : '🟢'} {availabilityCounter.available}
+                    </span>
                     <span className="text-white/50 text-[10px]">wolne</span>
                   </div>
                   {availabilityCounter.warning > 0 && (

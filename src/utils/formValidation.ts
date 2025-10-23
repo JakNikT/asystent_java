@@ -21,6 +21,7 @@ export interface FormErrors {
   weight: string;
   level: string;
   gender: string;
+  shoeSize?: string; // NOWE: błąd walidacji rozmiaru buta (opcjonalny)
 }
 
 export const initialFormErrors: FormErrors = {
@@ -29,7 +30,8 @@ export const initialFormErrors: FormErrors = {
   height: '',
   weight: '',
   level: '',
-  gender: ''
+  gender: '',
+  shoeSize: '' // NOWE: początkowy błąd rozmiaru buta
 };
 
 /**
@@ -295,6 +297,41 @@ export function validateGenderRealtime(gender: string): ValidationResult {
     return { isValid: false, message: 'Płeć może być tylko M lub K' };
   }
 
+  return { isValid: true, message: '' };
+}
+
+/**
+ * Waliduje rozmiar buta w czasie rzeczywistym (20-35 cm)
+ * console.log(src/utils/formValidation.ts: Walidacja rozmiaru buta w czasie rzeczywistym - zakres 20-35 cm)
+ */
+export function validateShoeSizeRealtime(shoeSize: string): ValidationResult {
+  console.log(`src/utils/formValidation.ts: Walidacja rozmiaru buta w czasie rzeczywistym - wartość: ${shoeSize}`);
+  
+  if (!shoeSize) {
+    return { isValid: true, message: '' }; // Puste pole jest OK (opcjonalne)
+  }
+
+  // Sprawdź czy zawiera tylko cyfry i ewentualnie kropkę lub przecinek
+  if (!/^[\d.,]*$/.test(shoeSize)) {
+    return { isValid: false, message: 'Rozmiar może zawierać tylko cyfry i kropkę/przecinek' };
+  }
+
+  // Podczas wpisywania (1-2 cyfry) nie waliduj zakresu - pozwól użytkownikowi dokończyć
+  // Zamień przecinek na kropkę
+  const normalizedSize = shoeSize.replace(',', '.');
+  const sizeNum = parseFloat(normalizedSize);
+  
+  // Waliduj zakres tylko dla liczb >= 10 (użytkownik skończył wpisywać pierwszą cyfrę)
+  if (!isNaN(sizeNum) && sizeNum >= 10) {
+    if (sizeNum < 20) {
+      return { isValid: false, message: 'Rozmiar nie może być mniejszy niż 20 cm' };
+    }
+    if (sizeNum > 35) {
+      return { isValid: false, message: 'Rozmiar nie może być większy niż 35 cm' };
+    }
+  }
+  
+  // Dla liczb < 10 (pierwsza cyfra 2-9) - pozwól na wpisywanie
   return { isValid: true, message: '' };
 }
 
