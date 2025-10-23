@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { SkiData, SearchCriteria } from '../types/ski.types';
-import { ReservationService } from '../services/reservationService';
+import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiDataService } from '../services/skiDataService';
 import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
@@ -77,12 +77,14 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         for (const ski of skisDatabase) {
           if (ski.KOD && ski.KOD !== 'NO_CODE') {
             try {
-              const availabilityInfo = await ReservationService.getSkiAvailabilityStatus(
+              // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
+              const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
                 ski.KOD,
                 startDate,
                 endDate
               );
               statusMap.set(ski.KOD, availabilityInfo);
+              console.log(`BrowseSkisComponent: Status dla ${ski.KOD}:`, availabilityInfo.emoji, availabilityInfo.message);
             } catch (error) {
               console.error(`Błąd sprawdzania dostępności dla narty ${ski.KOD}:`, error);
             }
