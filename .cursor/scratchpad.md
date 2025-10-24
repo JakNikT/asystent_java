@@ -4296,6 +4296,32 @@ Frontend (React) → HTTP API → Backend Server (Express/Node.js) → CSV Files
 - **Tablet/Desktop**: ≥ 1024px (prefiks `lg:`)
 - **Small devices**: ≥ 640px (prefiks `sm:` gdzie potrzebny)
 
+---
+
+### 🆕 OSTATNIE ZMIANY (24.10.2025)
+
+**1. Automatyczne wczytywanie rezerwacji po wpisaniu dat** ✅
+- Użytkownik może teraz sprawdzać dostępność sprzętu w trybie "Przeglądaj" bez wypełniania danych osobowych
+- Wystarczy wpisać daty (od/do) i kliknąć "Przeglądaj"
+- Kolorowe kwadraciki pokazują dostępność automatycznie
+
+**2. Pole roku z input zamiast select** ✅
+- Rok wpisuje się ręcznie w formacie 2-cyfrowym (np. "25" zamiast "2025")
+- Automatyczne przeskakiwanie do następnego pola po wpisaniu 2 cyfr
+- Walidacja zakresu 24-30 (lata 2024-2030)
+- Dodano konwersję 2-cyfrowego roku na pełny format w walidacji i parsowaniu dat
+
+**ZMIANY W PLIKACH**:
+- `src/utils/formValidation.ts` - zaktualizowano `validateYear()` i `validateDate()` dla formatu 2-cyfrowego
+- `src/components/AnimaComponent.tsx` - zamieniono `<select>` na `<input>` dla roku, dodano automatyczne przeskakiwanie, zaktualizowano `parseDate()`
+
+**AUTOMATYCZNE PRZESKAKIWANIE (kompletna sekwencja)**:
+```
+Dzień od → Miesiąc od → Rok od → Dzień do → Miesiąc do → Rok do → Wzrost → Waga → Poziom → Płeć
+```
+
+---
+
 #### Kolejność elementów na mobile (zgodnie z wymaganiem):
 1. ⛷️ Logo "narty poznań"
 2. 📅 Daty + 📏 Wzrost + ⚖️ Waga

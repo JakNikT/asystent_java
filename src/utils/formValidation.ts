@@ -111,26 +111,41 @@ export function validateMonth(month: string): ValidationResult {
 }
 
 /**
- * Waliduje pojedynczy rok (2025-2026)
- * console.log(src/utils/formValidation.ts: Walidacja roku - zakres 2025-2026)
+ * Waliduje pojedynczy rok w formacie 2-cyfrowym (24-30)
+ * console.log(src/utils/formValidation.ts: Walidacja roku - zakres 24-30)
  */
 export function validateYear(year: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja roku - wartość: ${year}`);
+  console.log(`src/utils/formValidation.ts: Walidacja roku - wartość: "${year}", długość: ${year.length}`);
   
   if (!year) {
     return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
   }
 
-  const yearNum = parseInt(year);
-  if (isNaN(yearNum)) {
-    return { isValid: false, message: 'Rok musi być liczbą' };
+  // Sprawdź czy zawiera tylko cyfry
+  if (!/^\d*$/.test(year)) {
+    return { isValid: false, message: 'Rok może zawierać tylko cyfry' };
   }
 
-  if (yearNum < 2025 || yearNum > 2026) {
-    return { isValid: false, message: 'Rok musi być 2025 lub 2026' };
+  // Pozwól na wpisanie pierwszego znaku
+  if (year.length === 1) {
+    console.log(`src/utils/formValidation.ts: Pierwszy znak roku - OK`);
+    return { isValid: true, message: '' };
   }
 
-  return { isValid: true, message: '' };
+  // Sprawdź dwucyfrową liczbę (zakres 24-30)
+  if (year.length === 2) {
+    const yearNum = parseInt(year);
+    if (yearNum >= 24 && yearNum <= 30) {
+      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba roku ${yearNum} - OK`);
+      return { isValid: true, message: '' };
+    } else {
+      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba roku ${yearNum} poza zakresem - BŁĄD`);
+      return { isValid: false, message: 'Rok musi być między 24-30' };
+    }
+  }
+
+  // Jeśli więcej niż 2 cyfry
+  return { isValid: false, message: 'Rok może mieć maksymalnie 2 cyfry' };
 }
 
 /**
@@ -186,16 +201,22 @@ export function validateDate(day: string, month: string, year: string): Validati
     };
   }
 
-  if (yearNum < 2025 || yearNum > 2026) {
+  // Konwertuj 2-cyfrowy rok na pełny format (24 → 2024, 25 → 2025, itd.)
+  let fullYear = yearNum;
+  if (yearNum >= 24 && yearNum <= 30) {
+    fullYear = 2000 + yearNum;
+  } else if (yearNum >= 2024 && yearNum <= 2030) {
+    fullYear = yearNum; // Już pełny format
+  } else {
     return {
       isValid: false,
-      message: 'Rok musi być 2025 lub 2026'
+      message: 'Rok musi być między 24-30'
     };
   }
 
   // Sprawdź czy data jest prawidłowa (np. 31.02.2024 nie istnieje)
-  const date = new Date(yearNum, monthNum - 1, dayNum);
-  if (date.getDate() !== dayNum || date.getMonth() !== monthNum - 1 || date.getFullYear() !== yearNum) {
+  const date = new Date(fullYear, monthNum - 1, dayNum);
+  if (date.getDate() !== dayNum || date.getMonth() !== monthNum - 1 || date.getFullYear() !== fullYear) {
     return {
       isValid: false,
       message: 'Nieprawidłowa data (np. 31.02.2024)'
