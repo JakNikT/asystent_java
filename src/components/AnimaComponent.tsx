@@ -504,7 +504,7 @@ const AnimaComponent: React.FC = () => {
 
   // USUNIĘTO: clearEquipmentFilters - nie jest już potrzebna (brak przycisku "Wszystkie")
 
-  // Funkcja do parsowania daty z formularza
+  // Funkcja do parsowania daty z formularza (obsługuje 2-cyfrowy rok)
   const parseDate = (dateObj: { day: string; month: string; year: string }): Date | undefined => {
     if (!dateObj.day || !dateObj.month || !dateObj.year) {
       return undefined;
@@ -512,9 +512,17 @@ const AnimaComponent: React.FC = () => {
     
     const day = parseInt(dateObj.day);
     const month = parseInt(dateObj.month);
-    const year = parseInt(dateObj.year);
+    let year = parseInt(dateObj.year);
     
     if (isNaN(day) || isNaN(month) || isNaN(year)) {
+      return undefined;
+    }
+    
+    // Konwertuj 2-cyfrowy rok na pełny format (24 → 2024, 25 → 2025, itd.)
+    if (year >= 24 && year <= 30) {
+      year = 2000 + year;
+    } else if (year < 24 || year > 2030) {
+      // Nieprawidłowy rok
       return undefined;
     }
     
@@ -725,8 +733,16 @@ const AnimaComponent: React.FC = () => {
           nextInput.focus();
         }
       }
-      // Miesiąc "od" → Dzień "do"
+      // Miesiąc "od" → Rok "od"
       else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do roku "od"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Rok "od" → Dzień "do"
+      else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do dnia "do"`);
         const nextInput = dayToRef.current;
         if (nextInput) {
@@ -741,8 +757,16 @@ const AnimaComponent: React.FC = () => {
           nextInput.focus();
         }
       }
-      // Miesiąc "do" → Wzrost
+      // Miesiąc "do" → Rok "do"
       else if (section === 'dateTo' && field === 'month' && value.length === 2) {
+        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do roku "do"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
+        if (nextInput) {
+          nextInput.focus();
+        }
+      }
+      // Rok "do" → Wzrost
+      else if (section === 'dateTo' && field === 'year' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do wzrostu`);
         const nextInput = heightRef.current;
         if (nextInput) {
@@ -1072,13 +1096,13 @@ const AnimaComponent: React.FC = () => {
         </div>
         
         {/* Main Content Container - responsywny */}
-        <div className="w-full lg:w-[700px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2">
+        <div className="w-full lg:w-[700px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
             
             {/* Left Section - Personal Data - responsywna szerokość */}
-            <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5">
+            <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
               {/* Date From - responsywne inputy */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] border border-white flex items-center justify-center px-1">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] border border-white flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
                   <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data od:</span>
                 </div>
                 <input
@@ -1090,6 +1114,7 @@ const AnimaComponent: React.FC = () => {
                   className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                     formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
+                  style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
                 />
                 <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
                 <input
@@ -1098,27 +1123,25 @@ const AnimaComponent: React.FC = () => {
                   placeholder="MM"
                   value={formData.dateFrom.month}
                   onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
                 <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
-                <select
+                <input
+                  type="text"
+                  placeholder="25"
                   value={formData.dateFrom.year}
-                  onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value)}
-                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value, e.target)}
+                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
-                >
-                  <option value="">Rok</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
-                </select>
+                />
             </div>
 
               {/* Date To - responsywne inputy */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
                   <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data do:</span>
                 </div>
                 <input
@@ -1127,7 +1150,7 @@ const AnimaComponent: React.FC = () => {
                   placeholder="DD"
                   value={formData.dateTo.day}
                   onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
@@ -1138,27 +1161,25 @@ const AnimaComponent: React.FC = () => {
                   placeholder="MM"
                   value={formData.dateTo.month}
                   onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
                 <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
-                <select
+                <input
+                  type="text"
+                  placeholder="25"
                   value={formData.dateTo.year}
-                  onChange={(e) => handleInputChange('dateTo', 'year', e.target.value)}
-                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  onChange={(e) => handleInputChange('dateTo', 'year', e.target.value, e.target)}
+                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
-                >
-                  <option value="">Rok</option>
-                  <option value="2025">2025</option>
-                  <option value="2026">2026</option>
-                </select>
+                />
               </div>
 
               {/* Height - responsywne */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                   <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">📏 Wzrost:</span>
                 </div>
                 <input
@@ -1167,18 +1188,18 @@ const AnimaComponent: React.FC = () => {
                   placeholder="180"
                   value={formData.height.value}
                   onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
-                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                   <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">cm</span>
                 </div>
               </div>
 
               {/* Weight - responsywne */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                   <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">⚖️ Waga:</span>
                 </div>
                 <input
@@ -1187,11 +1208,11 @@ const AnimaComponent: React.FC = () => {
                   placeholder="70"
                   value={formData.weight.value}
                   onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
-                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                     formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                   <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">kg</span>
                 </div>
               </div>
@@ -1200,10 +1221,10 @@ const AnimaComponent: React.FC = () => {
             {/* Center Section - Level, Gender and Shoe Size - responsywna szerokość */}
             <div className="w-full lg:w-[230px] h-auto lg:h-[160px] flex flex-col justify-start items-center">
               {/* Level, Gender and Shoe Size Section - responsywny */}
-              <div className="w-full lg:w-[230px] h-auto lg:h-[160px] py-[21.5px] px-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5">
+              <div className="w-full lg:w-[230px] h-auto lg:h-[160px] py-[21.5px] px-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
                 {/* Level - responsywny */}
                 <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Poziom:</span>
                   </div>
                   <input
@@ -1212,7 +1233,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="1-6"
                     value={formData.level}
                     onChange={(e) => handleInputChange('level', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] ${
+                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1220,7 +1241,7 @@ const AnimaComponent: React.FC = () => {
 
                 {/* Gender - responsywny */}
                 <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">👤 Płeć:</span>
                   </div>
                   <input
@@ -1229,7 +1250,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="M/K"
                     value={formData.gender}
                     onChange={(e) => handleInputChange('gender', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] ${
+                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1237,7 +1258,7 @@ const AnimaComponent: React.FC = () => {
 
                 {/* Shoe Size - responsywny */}
                 <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center">
+                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Rozmiar 👟:</span>
                   </div>
                   <input
@@ -1246,7 +1267,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="23-35"
                     value={formData.shoeSize || ''}
                     onChange={(e) => handleInputChange('shoeSize', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] ${
+                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.shoeSize ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1255,23 +1276,26 @@ const AnimaComponent: React.FC = () => {
             </div>
 
             {/* Right Section - Action Buttons PIONOWO - style przeniesione nad wyniki */}
-            <div className="w-full lg:w-[120px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-2">
+            <div className="w-full lg:w-[120px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
               {/* Action Buttons - PIONOWO w jednej kolumnie */}
               <button
                 onClick={handleClear}
-                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-colors"
+                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+                style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
+                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
+                onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
               >
                 <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
               </button>
               <button 
                 onClick={() => setAppMode('browse')}
-                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-colors"
+                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
               >
                 <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
               </button>
               <button 
                 onClick={() => setAppMode('reservations')}
-                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-colors cursor-pointer"
+                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
               >
                 <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
               </button>
@@ -1282,7 +1306,7 @@ const AnimaComponent: React.FC = () => {
       {/* Results Section - responsywna */}
       <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
         {/* Przyciski filtrowania kategorii sprzętu - NOWY LAYOUT: JEDEN WIERSZ */}
-        <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3">
+        <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3" style={{ boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5)' }}>
           {/* Wszystkie przyciski w jednym wierszu - responsywne */}
           <div className="flex flex-wrap gap-2 justify-center items-center">
             <button
@@ -1290,7 +1314,7 @@ const AnimaComponent: React.FC = () => {
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 equipmentTypeFilter === 'NARTY' && (categoryFilter === 'TOP' || categoryFilter === 'VIP' || categoryFilter === 'TOP_VIP')
                   ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
               }`}
             >
               🎿 Narty (TOP+VIP)
@@ -1300,7 +1324,7 @@ const AnimaComponent: React.FC = () => {
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
                   ? 'bg-green-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
               }`}
             >
               👶 Narty Jr
@@ -1310,7 +1334,7 @@ const AnimaComponent: React.FC = () => {
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
                   ? 'bg-green-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
               }`}
             >
               👶 Buty Jr
@@ -1320,7 +1344,7 @@ const AnimaComponent: React.FC = () => {
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
                   ? 'bg-purple-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
               }`}
             >
               🥾 Buty
@@ -1330,7 +1354,7 @@ const AnimaComponent: React.FC = () => {
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 equipmentTypeFilter === 'DESKI'
                   ? 'bg-orange-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
               }`}
             >
               🏂 Deski
@@ -1340,7 +1364,7 @@ const AnimaComponent: React.FC = () => {
               className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
                 equipmentTypeFilter === 'BUTY_SNOWBOARD'
                   ? 'bg-red-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
               }`}
             >
               👢 Buty SB
@@ -1449,7 +1473,7 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {groupedResults.idealne.map((match, idx) => (
                           <div key={idx} className="bg-white/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2 h-12">
+                            <div className="flex items-start justify-between mb-2">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
                               <div className="flex flex-col items-center space-y-1">
                                 <SkiStyleBadge 
@@ -1461,9 +1485,14 @@ const AnimaComponent: React.FC = () => {
                                 </div>
                               </div>
                               
-                              {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
-                                {match.ski.MARKA} {match.ski.MODEL}
+                              {/* Środek - Nazwa narty i kod */}
+                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                <div className="font-black text-base">
+                                  {match.ski.MARKA} {match.ski.MODEL}
+                                </div>
+                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                  KOD: {match.ski.KOD}
+                                </div>
                               </div>
                               
                               {/* Prawa strona - procent dopasowania */}
@@ -1500,7 +1529,7 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.alternatywy ? groupedResults.alternatywy : groupedResults.alternatywy.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-white/15 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2 h-12">
+                            <div className="flex items-start justify-between mb-2">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
                               <div className="flex flex-col items-center space-y-1">
                                 <SkiStyleBadge 
@@ -1512,9 +1541,14 @@ const AnimaComponent: React.FC = () => {
                                 </div>
                               </div>
                               
-                              {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
-                                {match.ski.MARKA} {match.ski.MODEL}
+                              {/* Środek - Nazwa narty i kod */}
+                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                <div className="font-black text-base">
+                                  {match.ski.MARKA} {match.ski.MODEL}
+                                </div>
+                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                  KOD: {match.ski.KOD}
+                                </div>
                               </div>
                               
                               {/* Prawa strona - procent dopasowania */}
@@ -1559,7 +1593,7 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.inna_plec ? groupedResults.inna_plec : groupedResults.inna_plec.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2 h-12">
+                            <div className="flex items-start justify-between mb-2">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
                               <div className="flex flex-col items-center space-y-1">
                                 <SkiStyleBadge 
@@ -1571,9 +1605,14 @@ const AnimaComponent: React.FC = () => {
                                 </div>
                               </div>
                               
-                              {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
-                                {match.ski.MARKA} {match.ski.MODEL}
+                              {/* Środek - Nazwa narty i kod */}
+                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                <div className="font-black text-base">
+                                  {match.ski.MARKA} {match.ski.MODEL}
+                                </div>
+                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                  KOD: {match.ski.KOD}
+                                </div>
                               </div>
                               
                               {/* Prawa strona - procent dopasowania */}
@@ -1618,7 +1657,7 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.poziom_za_nisko ? groupedResults.poziom_za_nisko : groupedResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2 h-12">
+                            <div className="flex items-start justify-between mb-2">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
                               <div className="flex flex-col items-center space-y-1">
                                 <SkiStyleBadge 
@@ -1630,9 +1669,14 @@ const AnimaComponent: React.FC = () => {
                                 </div>
                               </div>
                               
-                              {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
-                                {match.ski.MARKA} {match.ski.MODEL}
+                              {/* Środek - Nazwa narty i kod */}
+                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                <div className="font-black text-base">
+                                  {match.ski.MARKA} {match.ski.MODEL}
+                                </div>
+                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                  KOD: {match.ski.KOD}
+                                </div>
                               </div>
                               
                               {/* Prawa strona - procent dopasowania */}
@@ -1677,7 +1721,7 @@ const AnimaComponent: React.FC = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
                         {(expandedCategories.na_sile ? groupedResults.na_sile : groupedResults.na_sile.slice(0, 8)).map((match, idx) => (
                           <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2 h-12">
+                            <div className="flex items-start justify-between mb-2">
                               {/* Lewa strona - badge ze stylem i długość pod nim */}
                               <div className="flex flex-col items-center space-y-1">
                                 <SkiStyleBadge 
@@ -1689,9 +1733,14 @@ const AnimaComponent: React.FC = () => {
                                 </div>
                               </div>
                               
-                              {/* Środek - Nazwa narty */}
-                              <div className="text-white font-black text-base text-center flex-1 h-12 flex items-center justify-center">
-                                {match.ski.MARKA} {match.ski.MODEL}
+                              {/* Środek - Nazwa narty i kod */}
+                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                <div className="font-black text-base">
+                                  {match.ski.MARKA} {match.ski.MODEL}
+                                </div>
+                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                  KOD: {match.ski.KOD}
+                                </div>
                               </div>
                               
                               {/* Prawa strona - procent dopasowania */}
@@ -1742,8 +1791,10 @@ const AnimaComponent: React.FC = () => {
               wzrost: 170,
               waga: 70,
               poziom: 3,
-              plec: 'W'
-              // Brak dateFrom i dateTo - wszystkie narty będą zielone
+              plec: 'W',
+              // WAŻNE: Przekaż daty z formularza (jeśli są wypełnione)
+              dateFrom: parseDate(formData.dateFrom),
+              dateTo: parseDate(formData.dateTo)
             }}
             onBackToSearch={() => setAppMode('search')}
             onRefreshData={loadDatabase}
