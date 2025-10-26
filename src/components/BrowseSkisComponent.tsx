@@ -218,6 +218,56 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     setIsModalOpen(true);
   };
 
+  // Odśwież dane (wymusza pobranie świeżych danych z serwera)
+  const handleRefresh = async () => {
+    try {
+      console.log('BrowseSkisComponent: Odświeżanie danych...');
+      showToast('🔄 Odświeżanie danych...', 'success');
+      
+      // Wyczyść cache w ReservationApiClient (wymusza pobranie świeżych danych)
+      // @ts-ignore - dostęp do prywatnego pola dla wymuszenia odświeżenia
+      ReservationApiClient.cache = [];
+      // @ts-ignore
+      ReservationApiClient.lastFetch = 0;
+      
+      // Odśwież bazę nart
+      if (onRefreshData) {
+        await onRefreshData();
+      }
+      
+      // Przeładuj statusy dostępności
+      const statusMap = new Map<string, any>();
+      const hasUserDates = userCriteria?.dateFrom && userCriteria?.dateTo;
+      
+      if (hasUserDates) {
+        const startDate = userCriteria!.dateFrom!;
+        const endDate = userCriteria!.dateTo!;
+        
+        for (const ski of skisDatabase) {
+          if (ski.KOD && ski.KOD !== 'NO_CODE') {
+            try {
+              const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
+                ski.KOD,
+                startDate,
+                endDate
+              );
+              statusMap.set(ski.KOD, availabilityInfo);
+            } catch (error) {
+              console.error(`Błąd sprawdzania dostępności dla narty ${ski.KOD}:`, error);
+            }
+          }
+        }
+      }
+      
+      setAvailabilityStatuses(statusMap);
+      showToast('✅ Dane odświeżone pomyślnie!', 'success');
+      console.log('BrowseSkisComponent: Dane odświeżone');
+    } catch (error) {
+      console.error('BrowseSkisComponent: Błąd odświeżania:', error);
+      showToast('❌ Błąd odświeżania danych', 'error');
+    }
+  };
+
   // Zamknij modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
@@ -576,6 +626,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 ➕ Dodaj
+              </button>
+              <button
+                onClick={handleRefresh}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+              >
+                🔄 Odśwież
               </button>
               <button
                 onClick={onBackToSearch}
