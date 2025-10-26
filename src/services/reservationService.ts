@@ -16,6 +16,7 @@ export interface ReservationData {
   cena?: string;        // Cena (opcjonalna, domyślnie 0)
   zaplacono?: string;   // Zapłacono (opcjonalne, domyślnie 0)
   uwagi?: string;       // Uwagi (opcjonalne)
+  source?: 'reservation' | 'rental'; // Źródło danych: rezerwacja lub wypożyczenie
 }
 
 export interface ReservationInfo {

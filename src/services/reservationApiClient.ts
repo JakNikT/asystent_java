@@ -56,6 +56,57 @@ export class ReservationApiClient {
   }
 
   /**
+   * Pobiera wszystkie wypożyczenia z serwera
+   */
+  static async loadRentals(): Promise<ReservationData[]> {
+    try {
+      console.log('ReservationApiClient: Pobieram wypożyczenia z serwera...');
+      const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const rentals = await response.json();
+      console.log(`ReservationApiClient: Pobrano ${rentals.length} wypożyczeń`);
+      
+      // Dodaj pole source='rental' do każdego wypożyczenia
+      return rentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
+    } catch (error) {
+      console.error('ReservationApiClient: Błąd pobierania wypożyczeń:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Pobiera wszystkie dane (rezerwacje + wypożyczenia)
+   */
+  static async loadAll(): Promise<ReservationData[]> {
+    try {
+      console.log('ReservationApiClient: Pobieram wszystkie dane (rezerwacje + wypożyczenia)...');
+      
+      const [reservations, rentals] = await Promise.all([
+        this.loadReservations(),
+        this.loadRentals()
+      ]);
+      
+      // Dodaj pole source='reservation' do rezerwacji (jeśli jeszcze nie ma)
+      const reservationsWithSource = reservations.map(r => ({ 
+        ...r, 
+        source: (r.source || 'reservation') as 'reservation' | 'rental'
+      }));
+      
+      const allData = [...reservationsWithSource, ...rentals];
+      console.log(`ReservationApiClient: Pobrano łącznie ${allData.length} pozycji (${reservationsWithSource.length} rezerwacji + ${rentals.length} wypożyczeń)`);
+      
+      return allData;
+    } catch (error) {
+      console.error('ReservationApiClient: Błąd pobierania wszystkich danych:', error);
+      return [];
+    }
+  }
+
+  /**
    * Sprawdza czy konkretna narta jest zarezerwowana w danym okresie (po kodzie)
    */
   static async isSkiReservedByCode(

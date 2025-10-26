@@ -17,7 +17,7 @@ const app = express();
 const PORT = 3000;
 
 // FireSnow API Configuration
-const FIRESNOW_API_URL = 'http://192.168.8.48:8080'; // ZMIEŃ NA IP KOMPUTERA 1!
+const FIRESNOW_API_URL = 'http://localhost:8080'; // Localhost - FireSnowBridge działa na tym samym komputerze
 const USE_FIRESNOW_API = true; // Zmień na false żeby używać CSV
 
 // Middleware
@@ -27,6 +27,7 @@ app.use(express.static(path.join(__dirname, 'dist')));
 
 // Ścieżki do plików CSV
 const RESERVATIONS_CSV_PATH = path.join(__dirname, 'public', 'data', 'rezerwacja.csv');
+const RENTALS_CSV_PATH = path.join(__dirname, 'public', 'data', 'wyp.csv');
 // Stara baza (backup):
 // const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWABAZA_final.csv');
 // Nowa baza z butami i deskami:
@@ -244,6 +245,153 @@ function convertFromFirefnow(csvText) {
   return convertedLines.join('\n');
 }
 
+/**
+ * Wczytuje wypożyczenia z FireSnow API
+ * Mapuje dane z formatu API FireSnow na format używany w aplikacji
+ */
+async function loadRentalsFromFireSnowAPI() {
+  try {
+    console.log('Server: Pobieranie wypożyczeń z FireSnow API:', FIRESNOW_API_URL);
+    
+    const response = await fetch(`${FIRESNOW_API_URL}/api/wypozyczenia/aktualne`);
+    
+    if (!response.ok) {
+      throw new Error(`FireSnow API error: ${response.status}`);
+    }
+    
+    const fireSnowData = await response.json();
+    console.log(`Server: Otrzymano ${fireSnowData.length} wypożyczeń z FireSnow API`);
+    console.log('Server: Przykładowy rekord z API:', JSON.stringify(fireSnowData[0], null, 2));
+    
+    // Mapuj dane z formatu FireSnow API na format aplikacji
+    const rentals = fireSnowData.map(item => {
+      // Nazwa klienta - obsługa różnych formatów API
+      let klient = item.klient_nazwa || item.imie_nazwisko || '';
+      
+      if (!klient) {
+        klient = `Klient #${item.klient_id || '?'}`;
+      }
+      
+      // Daty - obsługa różnych formatów API
+      let dataOd = '';
+      let dataDo = '';
+      
+      // Format 1: timestamp (milisekundy)
+      if (item.data_od && typeof item.data_od === 'number') {
+        dataOd = new Date(item.data_od).toISOString().split('T')[0];
+      }
+      // Format 2: string "YYYY-MM-DD HH:MM:SS"
+      else if (item.data_rozpoczecia) {
+        dataOd = item.data_rozpoczecia.split(' ')[0]; // Bierz tylko datę
+      }
+      
+      if (item.data_do && typeof item.data_do === 'number') {
+        dataDo = item.data_do === 0 ? '' : new Date(item.data_do).toISOString().split('T')[0];
+      }
+      else if (item.data_zakonczenia) {
+        dataDo = item.data_zakonczenia.split(' ')[0]; // Bierz tylko datę
+      }
+      
+      return {
+        klient: klient,
+        sprzet: item.nazwa_sprzetu || '',
+        kod: item.kod_sprzetu || '',
+        od: dataOd,
+        do: dataDo,
+        cena: item.cena ? item.cena.toString() : '0',
+        zaplacono: item.zaplacono ? item.zaplacono.toString() : '0',
+        numer: item.numer_dokumentu || `WYP-${item.session_id || '?'}`,
+        typumowy: 'STANDARD',
+        obiekt_id: item.obiekt_id,
+        klient_id: item.klient_id
+      };
+    });
+    
+    console.log(`Server: Zmapowano ${rentals.length} wypożyczeń`);
+    console.log('Server: Przykładowy zmapowany rekord:', JSON.stringify(rentals[0], null, 2));
+    return rentals;
+    
+  } catch (error) {
+    console.error('Server: Błąd pobierania wypożyczeń z FireSnow API:', error);
+    throw error;
+  }
+}
+
+/**
+ * Wczytuje wypożyczenia z pliku CSV (fallback gdy API nie działa)
+ * Mapuje format wypożyczeń na format rezerwacji dla zgodności z aplikacją
+ */
+async function loadRentalsFromCSV() {
+  try {
+    console.log('Server: Wczytuję wypożyczenia z pliku CSV:', RENTALS_CSV_PATH);
+    
+    const csvContent = await fs.readFile(RENTALS_CSV_PATH, 'utf-8');
+    console.log('Server: Wczytano plik CSV, długość:', csvContent.length, 'znaków');
+    console.log('Server: Pierwsze 200 znaków:', csvContent.substring(0, 200));
+    
+    // Wykryj format FireFnow (średniki + zniekształcone znaki)
+    const isFirefnow = detectFirefnowFormat(csvContent);
+    console.log('Server: Format FireFnow wykryty:', isFirefnow);
+    
+    let processedContent = csvContent;
+    if (isFirefnow) {
+      console.log('Server: Wykryto format FireFnow w wypożyczeniach - konwertuję...');
+      processedContent = convertFromFirefnow(csvContent);
+      console.log('Server: Po konwersji, pierwsze 200 znaków:', processedContent.substring(0, 200));
+    }
+    
+    const result = Papa.parse(processedContent, {
+      header: true,
+      skipEmptyLines: true,
+      delimiter: ',',
+      transformHeader: (header) => {
+        // Mapuj nagłówki z formatu wypożyczeń na format rezerwacji
+        // Obsługuje zarówno poprawne jak i zniekształcone znaki (FireFnow encoding)
+        const headerMap = {
+          'Klient': 'klient',
+          'Sprzęt': 'sprzet',
+          'Sprz�t': 'sprzet',  // Zniekształcony znak
+          'Kod': 'kod',
+          'Rozpoczęto': 'od',  // Data rozpoczęcia wypożyczenia
+          'Rozpocz�to': 'od',  // Zniekształcony znak
+          'Koniec': 'do',       // Data zakończenia wypożyczenia
+          'Pozostało': 'pozostalo',
+          'Pozosta�o': 'pozostalo',  // Zniekształcony znak
+          'Gratis': 'gratis',
+          'Cena': 'cena',
+          'Rabat': 'rabat',
+          'Rabat %': 'rabat_procent',
+          'Zapłacono': 'zaplacono',
+          'Zap�acono': 'zaplacono',  // Zniekształcony znak
+          'Uwagi': 'uwagi',
+          'Użytkownik': 'uzytkownik',
+          'U�ytkownik': 'uzytkownik'  // Zniekształcony znak
+        };
+        return headerMap[header] || header.toLowerCase();
+      }
+    });
+    
+    // Filtruj prawdziwe wypożyczenia (wyklucz wiersze podsumowujące)
+    const rentals = result.data.filter(rental => {
+      if (!rental.klient || !rental.sprzet) return false;
+      if (rental.klient.includes && rental.klient.includes('Suma:')) return false;
+      if (rental.sprzet.includes && rental.sprzet.includes('Suma:')) return false;
+      if (!rental.od || !rental.do) return false;
+      return true;
+    }).map(rental => ({
+      ...rental,
+      typumowy: 'STANDARD', // Wypożyczenia są zawsze STANDARD
+      numer: rental.kod || `WYP-${Date.now()}` // Użyj kodu lub wygeneruj numer
+    }));
+    
+    console.log(`Server: Wczytano ${rentals.length} wypożyczeń`);
+    return rentals;
+  } catch (error) {
+    console.error('Server: Błąd wczytywania wypożyczeń:', error);
+    return [];
+  }
+}
+
 // API Routes
 
 /**
@@ -277,6 +425,40 @@ app.get('/api/reservations', async (req, res) => {
   } catch (error) {
     console.error('Server: Błąd pobierania rezerwacji:', error);
     res.status(500).json({ error: 'Błąd pobierania rezerwacji' });
+  }
+});
+
+/**
+ * GET /api/wypozyczenia/aktualne - Pobierz wszystkie wypożyczenia
+ * Używa FireSnow API z fallback do CSV
+ */
+app.get('/api/wypozyczenia/aktualne', async (req, res) => {
+  try {
+    console.log('Server: GET /api/wypozyczenia/aktualne');
+    
+    let rentals = [];
+    
+    if (USE_FIRESNOW_API) {
+      try {
+        // Próbuj pobrać z API
+        rentals = await loadRentalsFromFireSnowAPI();
+        console.log(`Server: Zwracam ${rentals.length} wypożyczeń z FireSnow API`);
+      } catch (apiError) {
+        console.warn('Server: FireSnow API niedostępne dla wypożyczeń, fallback do CSV:', apiError.message);
+        // Fallback do CSV jeśli API nie działa
+        rentals = await loadRentalsFromCSV();
+        console.log(`Server: Zwracam ${rentals.length} wypożyczeń z CSV (fallback)`);
+      }
+    } else {
+      // Używaj CSV jeśli USE_FIRESNOW_API = false
+      rentals = await loadRentalsFromCSV();
+      console.log(`Server: Zwracam ${rentals.length} wypożyczeń z CSV`);
+    }
+    
+    res.json(rentals);
+  } catch (error) {
+    console.error('Server: Błąd pobierania wypożyczeń:', error);
+    res.status(500).json({ error: 'Błąd pobierania wypożyczeń' });
   }
 });
 
@@ -680,10 +862,12 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log('📡 FireSnow API Integration:');
   console.log(`   Status: ${USE_FIRESNOW_API ? 'ENABLED ✅' : 'DISABLED (używa CSV)'}`);
   console.log(`   URL: ${FIRESNOW_API_URL}`);
-  console.log(`   Fallback: CSV (${RESERVATIONS_CSV_PATH})`);
+  console.log(`   Fallback rezerwacje: CSV (${RESERVATIONS_CSV_PATH})`);
+  console.log(`   Fallback wypożyczenia: CSV (${RENTALS_CSV_PATH})`);
   console.log('');
   console.log('💡 Endpointy:');
   console.log('   GET  /api/reservations - Pobierz rezerwacje');
+  console.log('   GET  /api/wypozyczenia/aktualne - Pobierz wypożyczenia');
   console.log('   GET  /api/firesnow/status - Status FireSnow API');
   console.log('   POST /api/firesnow/refresh - Odśwież cache API');
   console.log('');
