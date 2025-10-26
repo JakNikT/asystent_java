@@ -13,6 +13,7 @@ interface GroupedReservation {
   od: string;
   do: string;
   typumowy: string; // Typ umowy: "PROMOTOR" lub "STANDARD"
+  source?: 'reservation' | 'rental'; // Źródło danych: rezerwacja lub wypożyczenie
   items: {
     category: string; // NARTY, BUTY, KIJKI
     equipment: string; // Full equipment name
@@ -36,28 +37,40 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [filterText, setFilterText] = useState('');
   const [expandedReservations, setExpandedReservations] = useState<Set<string>>(new Set());
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals'>('all');
   const [toast, setToast] = useState({
     message: '',
     type: 'info' as 'info' | 'success' | 'error',
     isVisible: false
   });
 
-  // Funkcja do wczytywania/odświeżania rezerwacji
-    const loadReservations = async () => {
+  // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
+    const loadReservations = async (type: 'all' | 'reservations' | 'rentals' = viewType) => {
       setIsLoading(true);
       try {
-        // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
-        const data = await ReservationApiClient.loadReservations();
-      console.log('ReservationsView: Wczytano', data.length, 'rezerwacji (tylko pierwsze 5 kolumn)');
+        let data: ReservationData[];
+        
+        if (type === 'all') {
+          // Pobierz wszystko (rezerwacje + wypożyczenia)
+          data = await ReservationApiClient.loadAll();
+        } else if (type === 'rentals') {
+          // Pobierz tylko wypożyczenia
+          data = await ReservationApiClient.loadRentals();
+        } else {
+          // Pobierz tylko rezerwacje
+          data = await ReservationApiClient.loadReservations();
+        }
+        
+        console.log(`ReservationsView: Wczytano ${data.length} pozycji (typ: ${type})`);
         console.log('ReservationsView: Przykładowe dane:', data.slice(0, 3));
         setReservations(data);
       } catch (error) {
-        console.error('Błąd wczytywania rezerwacji:', error);
-      setToast({
-        message: 'Błąd wczytywania pliku rez.csv',
-        type: 'error',
-        isVisible: true
-      });
+        console.error('Błąd wczytywania danych:', error);
+        setToast({
+          message: 'Błąd wczytywania danych',
+          type: 'error',
+          isVisible: true
+        });
       } finally {
         setIsLoading(false);
       }
@@ -67,8 +80,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
   useEffect(() => {
-    loadReservations();
-  }, []);
+    loadReservations(viewType);
+  }, [viewType]);
 
   // Helper function to determine equipment category
   const getEquipmentCategory = (sprzet: string): string => {
@@ -97,6 +110,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           od: res.od,
           do: res.do,
           typumowy: res.typumowy || 'STANDARD',
+          source: res.source, // Zachowaj źródło danych (rezerwacja lub wypożyczenie)
           items: []
         });
       }
@@ -294,13 +308,43 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         {/* Header - responsywny */}
         <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
-            <div>
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                🔄 Rezerwacje
-              </h1>
+            <div className="w-full lg:w-auto">
+              {/* Przyciski filtrowania - zastępują napis "Rezerwacje" */}
+              <div className="flex flex-wrap gap-3 mb-4">
+                <button
+                  onClick={() => setViewType('all')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    viewType === 'all'
+                      ? 'bg-white text-[#194576] shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                  }`}
+                >
+                  📋 Wszystko
+                </button>
+                <button
+                  onClick={() => setViewType('reservations')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    viewType === 'reservations'
+                      ? 'bg-white text-[#194576] shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                  }`}
+                >
+                  📅 Rezerwacje
+                </button>
+                <button
+                  onClick={() => setViewType('rentals')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    viewType === 'rentals'
+                      ? 'bg-white text-[#194576] shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                  }`}
+                >
+                  🎿 Wypożyczenia
+                </button>
+              </div>
               <div className="space-y-1">
                 <p className="text-[#A6C2EF] text-sm lg:text-base">
-                  📋 Liczba rezerwacji: <strong>{totalReservations}</strong>
+                  📋 Liczba pozycji: <strong>{totalReservations}</strong>
                   {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
                 </p>
                 <p className="text-[#A6C2EF] text-sm lg:text-base">
@@ -409,16 +453,30 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                     const isReservationExpanded = expandedReservations.has(rowKey);
 
                     return (
-                      <tr key={rowKey} className="hover:bg-[#8BAED8] transition-colors">
-                        <td className="px-2 py-4 whitespace-nowrap text-sm text-[#194576] font-bold w-20 align-top">
+                      <tr 
+                        key={rowKey} 
+                        className={`transition-colors ${
+                          group.source === 'rental'
+                            ? 'bg-[#3A7BAF] hover:bg-[#2E6A9A]'  // Wypożyczenia - jaśniejszy niebieski
+                            : 'bg-[#2C5F8D] hover:bg-[#1A4A6F]'  // Rezerwacje - ciemniejszy niebieski
+                        }`}
+                      >
+                        <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">
                           {formatDate(group.od)}
                         </td>
-                        <td className="px-2 py-4 whitespace-nowrap text-sm text-[#194576] font-bold w-20 align-top">
+                        <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">
                           {formatDate(group.do)}
                         </td>
-                        <td className="px-2 py-4 text-sm text-[#194576] font-medium w-32 align-top">
+                        <td className="px-2 py-4 text-sm text-white font-medium w-32 align-top">
                           <div>
-                            <div className="mb-2">{group.klient || '-'}</div>
+                            <div className="mb-2 flex items-center gap-2">
+                              <span>{group.klient || '-'}</span>
+                              {group.source === 'rental' && (
+                                <span className="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded font-bold whitespace-nowrap">
+                                  WYPOŻYCZENIE
+                                </span>
+                              )}
+                            </div>
                             {/* Mały przycisk do rozwijania wszystkich kompletów */}
                             <button
                               onClick={() => toggleReservation(rowKey)}
