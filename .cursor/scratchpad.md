@@ -2,7 +2,100 @@
 
 ## Background and Motivation
 
-**AKTUALNY CEL**: PRZYGOTOWANIE UI POD SYSTEM DOBIERANIA BUTÓW NARCIARSKICH
+**AKTUALNY CEL**: SYSTEM WYPOŻYCZEŃ W DOSTĘPNOŚCI + PRZESZŁE REZERWACJE
+
+**Data rozpoczęcia**: 2025-10-27
+
+Użytkownik poprosił o dwa główne ulepszenia:
+1. **Czerwone kwadraty dla wypożyczeń** - aktywne wypożyczenia (STOPTIME=0) powinny wpływać na wyświetlanie czerwonych kwadratów dostępności (tak samo jak rezerwacje)
+2. **Przeszłe rezerwacje** - nowa zakładka "Przeszłe" obok "Rezerwacje" i "Wypożyczenia" pokazująca:
+   - Rezerwacje z datą rozpoczęcia ≤ dzisiaj
+   - Wypożyczenia zwrócone (STOPTIME != 0)
+   - Połączone pary rezerwacja+wypożyczenie (ten sam kod/klient)
+
+## Project Status Board
+
+### ✅ Ukończone zadania (2025-10-27)
+
+#### Backend (FireSnowBridge + server.js)
+- ✅ Dodano endpoint `/api/wypozyczenia/przeszle` w FireSnowBridge.java
+  - Query: `WHERE si.STOPTIME != 0` (zwrócone wypożyczenia)
+  - Handler: `PrzeszleWypozyczeniaHandler`
+  - Zarejestrowano w main() i dodano do dokumentacji
+- ✅ Dodano proxy w server.js dla `/api/wypozyczenia/przeszle`
+  - Funkcja: `loadPastRentalsFromFireSnowAPI()`
+  - Route: `GET /api/wypozyczenia/przeszle`
+  - Fallback: pusta lista jeśli API niedostępne
+
+#### Frontend (Services)
+- ✅ Zaktualizowano `reservationApiClient.ts`:
+  - Dodano `loadPastRentals()` - pobiera zwrócone wypożyczenia
+  - Dodano `loadPastReservations()` - filtruje rezerwacje gdzie data rozpoczęcia ≤ dzisiaj
+  - **KLUCZOWE**: Zaktualizowano `getSkiAvailabilityStatus()` - teraz sprawdza rezerwacje + aktywne wypożyczenia
+  - Używa `loadAll()` zamiast `loadReservations()` → czerwone kwadraty działają dla wypożyczeń!
+
+#### Frontend (UI)
+- ✅ Zaktualizowano `ReservationsView.tsx`:
+  - Rozszerzono `viewType` o typ `'past'`
+  - Dodano obsługę ładowania przeszłych danych w `loadReservations()`
+  - **LOGIKA ŁĄCZENIA**: Rezerwacje są łączone z wypożyczeniami gdy:
+    - Ten sam klient (case-insensitive)
+    - Ten sam kod sprzętu
+    - Daty w tolerancji ±3 dni
+    - Wizualne oznaczenie: ikona 🔄 + info o dacie zwrotu
+  - Dodano przycisk "🕒 Przeszłe" w nawigacji
+
+### 🔄 Status implementacji
+
+**Czerwone kwadraty dla wypożyczeń**: ✅ GOTOWE
+- Aktywne wypożyczenia (STOPTIME=0) wpływają na dostępność
+- System 3-kolorowy działa dla wypożyczeń tak samo jak dla rezerwacji
+
+**Przeszłe rezerwacje**: ✅ GOTOWE
+- Nowa zakładka "Przeszłe" dodana
+- Pokazuje przeszłe rezerwacje + zwrócone wypożyczenia
+- Łączy pary rezerwacja+wypożyczenie z wizualnym oznaczeniem
+
+### 📋 Do wykonania na serwerze produkcyjnym
+
+1. **Na komputerze development** (tutaj):
+   - ✅ Wszystkie zmiany zakończone
+   - ⏳ Commit i push do git
+
+2. **Na komputerze z FireSnow** (tam):
+   - ⏳ `git pull origin feature/new_base`
+   - ⏳ Przekompiluj FireSnowBridge: `cd FireSnowBridge/src && javac -cp .;../../lib/* FireSnowBridge.java`
+   - ⏳ Zrestartuj FireSnowBridge API
+   - ⏳ Opcjonalnie: zrestartuj server.js
+   - ⏳ Testowanie
+
+### 🧪 Plan testowania
+
+1. **Test czerwonych kwadratów**:
+   - Wpisz daty w formularzu wyszukiwania
+   - Sprawdź czy sprzęt aktywnie wypożyczony pokazuje czerwony kwadrat
+   
+2. **Test zakładki "Przeszłe"**:
+   - Kliknij przycisk "Przeszłe"
+   - Sprawdź czy pokazują się przeszłe rezerwacje (data ≤ dzisiaj)
+   - Sprawdź czy pokazują się zwrócone wypożyczenia (STOPTIME != 0)
+   - Sprawdź czy pary rezerwacja+wypożyczenie mają ikonę 🔄
+
+3. **Test łączenia**:
+   - Znajdź rezerwację która była odebrana (wypożyczenie z tym samym kodem/klientem)
+   - Sprawdź czy są połączone w jedną pozycję z ikoną 🔄
+
+## Executor's Feedback or Assistance Requests
+
+**Status**: ✅ Implementacja zakończona - gotowe do commit i deployment
+
+**Następne kroki**:
+1. Proszę o potwierdzenie czy mam zrobić commit i push
+2. Po deployment'cie na serwerze produkcyjnym będzie potrzebny test funkcjonalności
+
+---
+
+**POPRZEDNI CEL**: PRZYGOTOWANIE UI POD SYSTEM DOBIERANIA BUTÓW NARCIARSKICH
 
 **Data rozpoczęcia**: 2025-10-23
 
