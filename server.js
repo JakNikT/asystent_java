@@ -318,6 +318,70 @@ async function loadRentalsFromFireSnowAPI() {
 }
 
 /**
+ * Wczytuje przeszłe wypożyczenia (zwrócone) z FireSnow API
+ * Mapuje dane z formatu API FireSnow na format używany w aplikacji
+ */
+async function loadPastRentalsFromFireSnowAPI() {
+  try {
+    console.log('Server: Pobieranie przeszłych wypożyczeń z FireSnow API:', FIRESNOW_API_URL);
+    
+    const response = await fetch(`${FIRESNOW_API_URL}/api/wypozyczenia/przeszle`);
+    
+    if (!response.ok) {
+      throw new Error(`FireSnow API error: ${response.status}`);
+    }
+    
+    const fireSnowData = await response.json();
+    console.log(`Server: Otrzymano ${fireSnowData.length} przeszłych wypożyczeń z FireSnow API`);
+    
+    // Mapuj dane z formatu FireSnow API na format aplikacji
+    const pastRentals = fireSnowData.map(item => {
+      // Nazwa klienta
+      let klient = item.klient_nazwa || item.imie_nazwisko || '';
+      
+      if (!klient) {
+        klient = `Klient #${item.klient_id || '?'}`;
+      }
+      
+      // Daty - obsługa różnych formatów API
+      let dataOd = '';
+      let dataDo = '';
+      
+      // Format 1: timestamp (milisekundy)
+      if (item.data_od && typeof item.data_od === 'number') {
+        dataOd = new Date(item.data_od).toISOString().split('T')[0];
+      }
+      
+      if (item.data_do && typeof item.data_do === 'number') {
+        dataDo = item.data_do === 0 ? '' : new Date(item.data_do).toISOString().split('T')[0];
+      }
+      
+      return {
+        klient: klient,
+        sprzet: item.nazwa_sprzetu || '',
+        kod: item.kod_sprzetu || '',
+        od: dataOd,
+        do: dataDo,
+        cena: item.cena ? item.cena.toString() : '0',
+        zaplacono: item.zaplacono ? item.zaplacono.toString() : '0',
+        numer: item.numer_dokumentu || `WYP-${item.session_id || '?'}`,
+        typumowy: 'STANDARD',
+        obiekt_id: item.obiekt_id,
+        klient_id: item.klient_id,
+        source: 'rental' // Mark as rental
+      };
+    });
+    
+    console.log(`Server: Zmapowano ${pastRentals.length} przeszłych wypożyczeń`);
+    return pastRentals;
+    
+  } catch (error) {
+    console.error('Server: Błąd pobierania przeszłych wypożyczeń z FireSnow API:', error);
+    throw error;
+  }
+}
+
+/**
  * Wczytuje wypożyczenia z pliku CSV (fallback gdy API nie działa)
  * Mapuje format wypożyczeń na format rezerwacji dla zgodności z aplikacją
  */
@@ -459,6 +523,40 @@ app.get('/api/wypozyczenia/aktualne', async (req, res) => {
   } catch (error) {
     console.error('Server: Błąd pobierania wypożyczeń:', error);
     res.status(500).json({ error: 'Błąd pobierania wypożyczeń' });
+  }
+});
+
+/**
+ * GET /api/wypozyczenia/przeszle - Pobierz przeszłe wypożyczenia (zwrócone)
+ * Używa FireSnow API z fallback do CSV
+ */
+app.get('/api/wypozyczenia/przeszle', async (req, res) => {
+  try {
+    console.log('Server: GET /api/wypozyczenia/przeszle');
+    
+    let pastRentals = [];
+    
+    if (USE_FIRESNOW_API) {
+      try {
+        // Próbuj pobrać z API
+        pastRentals = await loadPastRentalsFromFireSnowAPI();
+        console.log(`Server: Zwracam ${pastRentals.length} przeszłych wypożyczeń z FireSnow API`);
+      } catch (apiError) {
+        console.warn('Server: FireSnow API niedostępne dla przeszłych wypożyczeń, fallback do pustej listy:', apiError.message);
+        // Fallback do pustej listy jeśli API nie działa (CSV nie ma tej informacji)
+        pastRentals = [];
+        console.log('Server: Zwracam pustą listę przeszłych wypożyczeń (fallback)');
+      }
+    } else {
+      // Używaj pustej listy jeśli USE_FIRESNOW_API = false (CSV nie ma tej informacji)
+      pastRentals = [];
+      console.log('Server: Zwracam pustą listę przeszłych wypożyczeń (API wyłączone)');
+    }
+    
+    res.json(pastRentals);
+  } catch (error) {
+    console.error('Server: Błąd pobierania przeszłych wypożyczeń:', error);
+    res.status(500).json({ error: 'Błąd pobierania przeszłych wypożyczeń' });
   }
 });
 
