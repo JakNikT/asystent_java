@@ -249,11 +249,21 @@ export class ReservationApiClient {
     userDateFrom: Date,
     userDateTo: Date
   ): Promise<AvailabilityInfo> {
-    // ZMIENIONE: Pobierz rezerwacje + aktywne wypożyczenia
-    const allData = await this.loadAll();
+    // TEST DIAGNOSTYCZNY: Tymczasowo sprawdzamy TYLKO rezerwacje (bez wypożyczeń)
+    const allData = await this.loadReservations();
+    console.log('🔍 TEST: Sprawdzam TYLKO rezerwacje (bez wypożyczeń)');
+    
+    // DIAGNOSTYKA: Pokaż pierwsze 5 rezerwacji żeby zobaczyć format kodów
+    console.log('📋 Pierwsze 5 rezerwacji (próbka):', allData.slice(0, 5).map(r => ({
+      kod: r.kod,
+      sprzet: r.sprzet,
+      klient: r.klient,
+      od: r.od,
+      do: r.do
+    })));
     
     console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam kod ${kod} dla okresu ${userDateFrom.toLocaleDateString()} - ${userDateTo.toLocaleDateString()}`);
-    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam ${allData.length} pozycji (rezerwacje + wypożyczenia)`);
+    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam ${allData.length} pozycji (TYLKO rezerwacje)`);
     
     const allReservations: ReservationInfo[] = [];
     let hasDirectConflict = false;
@@ -261,8 +271,18 @@ export class ReservationApiClient {
     
     for (const reservation of allData) {
       if (reservation.kod === kod) {
+        console.log(`✓ Znaleziono dla kodu ${kod}:`, {
+          od: reservation.od,
+          do: reservation.do,
+          klient: reservation.klient,
+          source: reservation.source || 'reservation'
+        });
+        
         const resStart = new Date(reservation.od);
         const resEnd = new Date(reservation.do);
+        
+        console.log(`  Parsed dates: resStart=${resStart.toISOString()}, resEnd=${resEnd.toISOString()}`);
+        console.log(`  User dates: userDateFrom=${userDateFrom.toISOString()}, userDateTo=${userDateTo.toISOString()}`);
         
         const reservationInfo: ReservationInfo = {
           id: reservation.kod,
@@ -277,7 +297,12 @@ export class ReservationApiClient {
         };
         
         // Sprawdź CZERWONY (bezpośredni konflikt)
-        if (resStart <= userDateTo && resEnd >= userDateFrom) {
+        const overlaps = resStart <= userDateTo && resEnd >= userDateFrom;
+        console.log(`  Checking overlap: resStart(${resStart.toLocaleDateString()}) <= userDateTo(${userDateTo.toLocaleDateString()}) = ${resStart <= userDateTo}`);
+        console.log(`  Checking overlap: resEnd(${resEnd.toLocaleDateString()}) >= userDateFrom(${userDateFrom.toLocaleDateString()}) = ${resEnd >= userDateFrom}`);
+        console.log(`  OVERLAPS = ${overlaps}`);
+        
+        if (overlaps) {
           hasDirectConflict = true;
           allReservations.push(reservationInfo);
           console.log(`  🔴 CZERWONY: Rezerwacja ${resStart.toLocaleDateString()}-${resEnd.toLocaleDateString()} nachodzi na okres klienta`);
