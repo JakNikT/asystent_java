@@ -185,6 +185,7 @@ public class FireSnowBridge {
                     "SELECT " +
                     "  rp.ID as rezerwacja_id, " +
                     "  p.NAME as nazwa_sprzetu, " +
+                    "  ae.CODE as kod_sprzetu, " +
                     "  rp.BEGINDATE as data_od, " +
                     "  rp.ENDDATE as data_do, " +
                     "  rp.PRICE as cena, " +
@@ -195,6 +196,7 @@ public class FireSnowBridge {
                     "  rc.PHONE1 as telefon " +
                     "FROM RESERVATIONPOSITION rp " +
                     "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
                     "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
                     "ORDER BY rp.BEGINDATE";
@@ -212,6 +214,7 @@ public class FireSnowBridge {
                     json.append("{");
                     json.append("\"rezerwacja_id\":").append(rs.getLong("rezerwacja_id")).append(",");
                     json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
+                    json.append("\"kod_sprzetu\":\"").append(escapeJson(rs.getString("kod_sprzetu"))).append("\",");
                     json.append("\"data_od\":\"").append(rs.getTimestamp("data_od")).append("\",");
                     json.append("\"data_do\":\"").append(rs.getTimestamp("data_do")).append("\",");
                     json.append("\"cena\":").append(rs.getDouble("cena")).append(",");

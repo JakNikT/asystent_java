@@ -8,6 +8,14 @@ export default defineConfig({
     fs: {
       // Pozwól na dostęp do plików poza root
       allow: ['..']
+    },
+    // Proxy API requests to backend server
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3000',
+        changeOrigin: true,
+        secure: false
+      }
     }
   },
   // Konfiguracja dla plików statycznych
