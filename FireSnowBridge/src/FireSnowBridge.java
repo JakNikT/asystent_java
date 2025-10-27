@@ -256,6 +256,106 @@ public class FireSnowBridge {
     }
     
     /**
+     * Handler for endpoint /api/wypozyczenia/przeszle
+     * Returns list of past rentals (returned items, STOPTIME != 0)
+     */
+    static class PrzeszleWypozyczeniaHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            System.out.println("FireSnowBridge: Past rentals requested");
+            
+            setCorsHeaders(exchange);
+            
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            
+            try (Connection conn = getConnection()) {
+                
+                // SQL query for past rentals from SESSIONINFOFGHJ table
+                String sql = 
+                    "SELECT " +
+                    "  si.ID as session_id, " +
+                    "  si.STARTTIME as data_od, " +
+                    "  si.STOPTIME as data_do, " +
+                    "  si.REMAININGTIME as pozostaly_czas, " +
+                    "  si.PRICE as cena, " +
+                    "  si.PAYMENT as zaplacono, " +
+                    "  si.RENTOBJECT_ID as obiekt_id, " +
+                    "  si.CUSTOMER_ID as klient_id, " +
+                    "  si.RENTDOCUMENT_ID as dokument_id, " +
+                    "  ae_customer.NAME as klient_nazwa, " +
+                    "  ae_equipment.NAME as nazwa_sprzetu, " +
+                    "  ae_equipment.CODE as kod_sprzetu, " +
+                    "  doc.NUMBER as numer_dokumentu " +
+                    "FROM SESSIONINFOFGHJ si " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
+                    "LEFT JOIN ABSTRACTDOCUMENT doc ON doc.ID = si.RENTDOCUMENT_ID " +
+                    "WHERE si.STOPTIME != 0 " +  // != 0 = returned rental
+                    "ORDER BY si.STOPTIME DESC";
+                
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql);
+                
+                StringBuilder json = new StringBuilder("[");
+                boolean first = true;
+                
+                while (rs.next()) {
+                    if (!first) json.append(",");
+                    first = false;
+                    
+                    json.append("{");
+                    json.append("\"session_id\":").append(rs.getLong("session_id")).append(",");
+                    json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
+                    json.append("\"kod_sprzetu\":\"").append(escapeJson(rs.getString("kod_sprzetu"))).append("\",");
+                    json.append("\"data_od\":").append(rs.getLong("data_od")).append(",");
+                    json.append("\"data_do\":").append(rs.getLong("data_do")).append(",");
+                    json.append("\"pozostaly_czas\":").append(rs.getLong("pozostaly_czas")).append(",");
+                    json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
+                    json.append("\"zaplacono\":").append(rs.getDouble("zaplacono")).append(",");
+                    json.append("\"obiekt_id\":").append(rs.getLong("obiekt_id")).append(",");
+                    json.append("\"klient_id\":").append(rs.getLong("klient_id")).append(",");
+                    json.append("\"dokument_id\":").append(rs.getLong("dokument_id")).append(",");
+                    json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\",");
+                    json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\"");
+                    json.append("}");
+                }
+                
+                json.append("]");
+                
+                rs.close();
+                stmt.close();
+                
+                String response = json.toString();
+                
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
+                
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+                
+                System.out.println("FireSnowBridge: Returned past rentals");
+                
+            } catch (SQLException e) {
+                System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+                e.printStackTrace();
+                
+                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
+                
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
+                
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+            }
+        }
+    }
+    
+    /**
      * Handler for endpoint /api/narty/zarezerwowane
      * Returns list of reserved skis (grouped, which are occupied)
      */
@@ -538,6 +638,7 @@ public class FireSnowBridge {
             server.createContext("/api/refresh", new RefreshHandler());
             server.createContext("/api/rezerwacje/aktywne", new AktywnRezerwacjeHandler());
             server.createContext("/api/wypozyczenia/aktualne", new AktywneWypozyczeniaHandler());
+            server.createContext("/api/wypozyczenia/przeszle", new PrzeszleWypozyczeniaHandler());
             server.createContext("/api/narty/zarezerwowane", new ZarezerwowaneNartyHandler());
             
             // Start server
@@ -556,6 +657,7 @@ public class FireSnowBridge {
             System.out.println("  GET /api/refresh                   - Refresh database cache");
             System.out.println("  GET /api/rezerwacje/aktywne       - Get active reservations");
             System.out.println("  GET /api/wypozyczenia/aktualne    - Get active rentals");
+            System.out.println("  GET /api/wypozyczenia/przeszle    - Get past rentals (returned)");
             System.out.println("  GET /api/narty/zarezerwowane      - Get reserved skis");
             System.out.println();
             System.out.println("Press Ctrl+C to stop the server");

@@ -107,6 +107,57 @@ export class ReservationApiClient {
   }
 
   /**
+   * Pobiera przeszłe wypożyczenia (zwrócone) z serwera
+   */
+  static async loadPastRentals(): Promise<ReservationData[]> {
+    try {
+      console.log('ReservationApiClient: Pobieram przeszłe wypożyczenia z serwera...');
+      const response = await fetch(`${API_BASE_URL}/wypozyczenia/przeszle`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const pastRentals = await response.json();
+      console.log(`ReservationApiClient: Pobrano ${pastRentals.length} przeszłych wypożyczeń`);
+      
+      // Dodaj pole source='rental' do każdego wypożyczenia
+      return pastRentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
+    } catch (error) {
+      console.error('ReservationApiClient: Błąd pobierania przeszłych wypożyczeń:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Pobiera przeszłe rezerwacje (data rozpoczęcia <= dzisiaj)
+   */
+  static async loadPastReservations(): Promise<ReservationData[]> {
+    try {
+      console.log('ReservationApiClient: Filtuję przeszłe rezerwacje...');
+      const allReservations = await this.loadReservations();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset do początku dnia
+      
+      const pastReservations = allReservations.filter(reservation => {
+        const startDate = new Date(reservation.od);
+        return startDate <= today;
+      });
+      
+      console.log(`ReservationApiClient: Znaleziono ${pastReservations.length} przeszłych rezerwacji`);
+      
+      // Dodaj pole source='reservation'
+      return pastReservations.map(r => ({ 
+        ...r, 
+        source: (r.source || 'reservation') as 'reservation' | 'rental'
+      }));
+    } catch (error) {
+      console.error('ReservationApiClient: Błąd filtrowania przeszłych rezerwacji:', error);
+      return [];
+    }
+  }
+
+  /**
    * Sprawdza czy konkretna narta jest zarezerwowana w danym okresie (po kodzie)
    */
   static async isSkiReservedByCode(
@@ -191,21 +242,24 @@ export class ReservationApiClient {
 
   /**
    * Sprawdza status dostępności narty z systemem 3-kolorowym
+   * UWAGA: Sprawdza zarówno rezerwacje JAK I aktywne wypożyczenia!
    */
   static async getSkiAvailabilityStatus(
     kod: string,
     userDateFrom: Date,
     userDateTo: Date
   ): Promise<AvailabilityInfo> {
-    const reservations = await this.loadReservations();
+    // ZMIENIONE: Pobierz rezerwacje + aktywne wypożyczenia
+    const allData = await this.loadAll();
     
     console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam kod ${kod} dla okresu ${userDateFrom.toLocaleDateString()} - ${userDateTo.toLocaleDateString()}`);
+    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam ${allData.length} pozycji (rezerwacje + wypożyczenia)`);
     
     const allReservations: ReservationInfo[] = [];
     let hasDirectConflict = false;
     let hasWarningConflict = false;
     
-    for (const reservation of reservations) {
+    for (const reservation of allData) {
       if (reservation.kod === kod) {
         const resStart = new Date(reservation.od);
         const resEnd = new Date(reservation.do);

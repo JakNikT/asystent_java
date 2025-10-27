@@ -37,7 +37,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [filterText, setFilterText] = useState('');
   const [expandedReservations, setExpandedReservations] = useState<Set<string>>(new Set());
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals'>('all');
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past'>('all');
   const [toast, setToast] = useState({
     message: '',
     type: 'info' as 'info' | 'success' | 'error',
@@ -45,7 +45,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   });
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
-    const loadReservations = async (type: 'all' | 'reservations' | 'rentals' = viewType) => {
+    const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past' = viewType) => {
       setIsLoading(true);
       try {
         let data: ReservationData[];
@@ -56,6 +56,71 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         } else if (type === 'rentals') {
           // Pobierz tylko wypożyczenia
           data = await ReservationApiClient.loadRentals();
+        } else if (type === 'past') {
+          // Pobierz przeszłe rezerwacje + zwrócone wypożyczenia
+          const [pastReservations, pastRentals] = await Promise.all([
+            ReservationApiClient.loadPastReservations(),
+            ReservationApiClient.loadPastRentals()
+          ]);
+          
+          // Połącz rezerwacje z wypożyczeniami (merge logic)
+          // Szukamy par: ta sama osoba + ten sam sprzęt/kod + daty blisko siebie (±3 dni)
+          const merged: ReservationData[] = [];
+          const usedRentalIndices = new Set<number>();
+          
+          pastReservations.forEach(reservation => {
+            let matchedRental: ReservationData | null = null;
+            let matchedIndex = -1;
+            
+            // Szukaj pasującego wypożyczenia
+            for (let i = 0; i < pastRentals.length; i++) {
+              if (usedRentalIndices.has(i)) continue; // Już użyte
+              
+              const rental = pastRentals[i];
+              
+              // Sprawdź czy pasują: ten sam klient i kod
+              const sameClient = reservation.klient.trim().toLowerCase() === rental.klient.trim().toLowerCase();
+              const sameEquipment = reservation.kod && rental.kod && reservation.kod === rental.kod;
+              
+              if (sameClient && sameEquipment) {
+                // Sprawdź czy daty są blisko (±3 dni)
+                const resStart = new Date(reservation.od);
+                const rentStart = new Date(rental.od);
+                const daysDiff = Math.abs((resStart.getTime() - rentStart.getTime()) / (1000 * 60 * 60 * 24));
+                
+                if (daysDiff <= 3) {
+                  matchedRental = rental;
+                  matchedIndex = i;
+                  break;
+                }
+              }
+            }
+            
+            if (matchedRental) {
+              // Połącz rezerwację z wypożyczeniem - oznacz wizualnie
+              merged.push({
+                ...reservation,
+                sprzet: `🔄 ${reservation.sprzet}`, // Dodaj ikonę cyklu (rezerwacja→wypożyczenie→zwrot)
+                uwagi: (reservation.uwagi || '') + ` [Zwrócono: ${matchedRental.do}]`
+              });
+              usedRentalIndices.add(matchedIndex);
+            } else {
+              // Rezerwacja bez wypożyczenia
+              merged.push(reservation);
+            }
+          });
+          
+          // Dodaj wypożyczenia które nie zostały połączone z rezerwacjami
+          pastRentals.forEach((rental, index) => {
+            if (!usedRentalIndices.has(index)) {
+              merged.push(rental);
+            }
+          });
+          
+          data = merged;
+          
+          console.log(`ReservationsView: Znaleziono ${pastReservations.length} przeszłych rezerwacji + ${pastRentals.length} zwróconych wypożyczeń`);
+          console.log(`ReservationsView: Połączono ${usedRentalIndices.size} par rezerwacja+wypożyczenie`);
         } else {
           // Pobierz tylko rezerwacje
           data = await ReservationApiClient.loadReservations();
@@ -340,6 +405,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   }`}
                 >
                   🎿 Wypożyczenia
+                </button>
+                <button
+                  onClick={() => setViewType('past')}
+                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                    viewType === 'past'
+                      ? 'bg-white text-[#194576] shadow-lg'
+                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                  }`}
+                >
+                  🕒 Przeszłe
                 </button>
               </div>
               <div className="space-y-1">
