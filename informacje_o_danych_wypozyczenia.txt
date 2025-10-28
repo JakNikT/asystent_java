@@ -1,0 +1,251 @@
+═══════════════════════════════════════════════════════════════════════════════
+LOKALIZACJA DANYCH WYPOŻYCZENIA W BAZIE HSQLDB
+═══════════════════════════════════════════════════════════════════════════════
+
+PLIK: c:\Users\wacia\Desktop\pliki\database\FireSport_database_4.script
+
+═══════════════════════════════════════════════════════════════════════════════
+PRZYKŁAD: Wypożyczenie "WP 13/10/2025" - KOWALCZAK SZYMON
+═══════════════════════════════════════════════════════════════════════════════
+
+📅 DATY WYPOŻYCZENIA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Data rozpoczęcia (OD):      27 października 2025, godz. 13:51:03
+Planowana data zwrotu (DO): 28 października 2025, godz. 19:00:03
+Czas trwania wypożyczenia:  29,15 godzin (około 1 dzień i 5 godzin)
+
+👤 DANE KLIENTA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Nazwisko i imię:  KOWALCZAK SZYMON
+Kod klienta:      C03122
+ID w systemie:    83903
+Adres:            xxxxxxx
+Telefon:          xxxxxxx
+Dokument:         xxxxxxx
+
+🎿 SZCZEGÓŁY WYPOŻYCZENIA:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Numer dokumentu:              WP 13/10/2025
+Status:                       Wypożyczenie aktywne (sprzęt nie zwrócony)
+Liczba wypożyczonych pozycji: 3
+Cena:                         55,00 PLN
+
+
+═══════════════════════════════════════════════════════════════════════════════
+SZCZEGÓŁOWA LOKALIZACJA DANYCH W PLIKU
+═══════════════════════════════════════════════════════════════════════════════
+
+1. DANE KLIENTA KOWALCZAK SZYMON
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tabela:     RENT_CUSTOMERS
+Linia:      285053
+ID klienta: 83903
+
+SQL:
+INSERT INTO RENT_CUSTOMERS VALUES(83903,3,0,'1',0.0E0,0.0E0,0.0E0,30,NULL,NULL,
+NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+NULL,NULL,NULL,NULL,NULL,NULL,NULL,3,2,0,2,0,0,'Polska',NULL,NULL,NULL,NULL,NULL,
+NULL,'DĄBROWSKIEGO','58','49',NULL,'POZNAŃ',NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,'DFK123495',NULL,NULL,NULL,NULL,NULL,NULL,
+NULL,'790697793',NULL,NULL,NULL,NULL,NULL,NULL,'1','0','0','2025-09-18 11:53:27.700000',
+NULL,NULL,17,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,5.0E0,NULL,NULL,NULL,NULL,
+NULL,NULL,NULL,NULL)
+
+
+2. NAZWA KLIENTA W TABELI ENCJI
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tabela: ABSTRACTENTITYCM
+Linia:  80708
+ID:     83903
+
+SQL:
+INSERT INTO ABSTRACTENTITYCM VALUES(83903,'KOWALCZAK SZYMON','C03122',NULL,'1',
+NULL,NULL,NULL,'0',NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,
+NULL,NULL,NULL)
+
+
+3. DOKUMENT WYPOŻYCZENIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tabela:         ABSTRACTDOCUMENT
+Linia:          72240
+ID dokumentu:   86213
+Numer dokumentu: WP 13/10/2025
+
+SQL:
+INSERT INTO ABSTRACTDOCUMENT VALUES(86213,'2025-10-27 13:50:07.106000','WP 13/10/2025',
+NULL,NULL,NULL,NULL,NULL,NULL)
+
+
+4. OZNACZENIE JAKO DOKUMENT WYPOŻYCZENIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tabela: RENT_DOCUMENTS
+Linia:  288934
+ID:     86213
+
+SQL:
+INSERT INTO RENT_DOCUMENTS VALUES(86213)
+
+
+5. DANE WYPOŻYCZENIA Z DATAMI (3 POZYCJE)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Tabela: SESSIONINFOFGHJ
+
+▼ Pozycja 1 (ID: 86210) - Linia 323939:
+INSERT INTO SESSIONINFOFGHJ VALUES(86210,'1',1761569463107,0,0,0,104940000,0,
+104940000,NULL,0.23E0,0.0E0,0.0E0,55.0E0,55.0E0,NULL,0,1.0E0,0,84298,NULL,86213,
+NULL,84340,83903,0,NULL)
+
+▼ Pozycja 2 (ID: 86211) - Linia 323940:
+INSERT INTO SESSIONINFOFGHJ VALUES(86211,'1',1761569463107,0,0,0,104940000,0,
+104940000,NULL,0.23E0,0.0E0,0.0E0,0.0E0,0.0E0,NULL,0,1.0E0,0,84306,NULL,86213,
+NULL,38394,83903,1,NULL)
+
+▼ Pozycja 3 (ID: 86212) - Linia 323941:
+INSERT INTO SESSIONINFOFGHJ VALUES(86212,'1',1761569463107,0,0,0,104940000,0,
+104940000,NULL,0.23E0,0.0E0,0.0E0,0.0E0,0.0E0,NULL,0,1.0E0,0,25,NULL,86213,NULL,
+38564,83903,2,NULL)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+KLUCZOWE POLA W TABELI SESSIONINFOFGHJ
+═══════════════════════════════════════════════════════════════════════════════
+
+W kolejności występowania w rekordzie:
+
+1.  ID                  - ID pozycji wypożyczenia (86210, 86211, 86212)
+2.  USEBONUSRATER       - '1' (true)
+3.  STARTTIME           - 1761569463107 ← DATA ROZPOCZĘCIA w milisekundach
+4.  STOPTIME            - 0 (wypożyczenie aktywne, nie zwrócono)
+5.  BONUSTIME           - 0
+6.  PAUSETIME           - 0
+7.  RESERVATIONTIME     - 104940000 ← CZAS TRWANIA WYPOŻYCZENIA w milisekundach
+8.  SESSIONTIME         - 0
+9.  REMAININGTIME       - 104940000
+10. DIN                 - NULL
+11. STORETAXHIB         - 0.23E0 (23% VAT)
+12. PERCENTDISCOUNTHIB  - 0.0E0
+13. VALUEDISCOUNTHIB    - 0.0E0
+14. PRICE               - 55.0E0 (tylko pierwsza pozycja, reszta 0)
+15. PAYMENT             - 55.0E0 (tylko pierwsza pozycja, reszta 0)
+16. PREPAID             - NULL
+17. STATUS              - 0
+18. QUANTITY            - 1.0E0
+19. REPLACEPOSITIONCOUNT- 0
+20. RATER_ID            - (różne ID)
+21. PRICELIST_ID        - NULL
+22. RENTDOCUMENT_ID     - 86213 ← POWIĄZANIE Z DOKUMENTEM "WP 13/10/2025"
+23. RETURNDOCUMENT_ID   - NULL
+24. RENTOBJECT_ID       - (różne ID przedmiotów)
+25. CUSTOMER_ID         - 83903 ← POWIĄZANIE Z KLIENTEM KOWALCZAK SZYMON
+26. RENTDOCUMENTLISINDEX- pozycja na liście (0, 1, 2)
+27. RETURNDOCUMENTLISTINDEX - NULL
+
+
+═══════════════════════════════════════════════════════════════════════════════
+JAK OBLICZYĆ DATY
+═══════════════════════════════════════════════════════════════════════════════
+
+Data rozpoczęcia (OD):
+────────────────────────────────────────────────────────────────────────────────
+STARTTIME = 1761569463107 milisekund
+= 27 października 2025, 13:51:03
+
+
+Data zakończenia (DO):
+────────────────────────────────────────────────────────────────────────────────
+STARTTIME + RESERVATIONTIME = 1761569463107 + 104940000
+= 1761674403107 milisekund
+= 28 października 2025, 19:00:03
+
+
+Czas trwania:
+────────────────────────────────────────────────────────────────────────────────
+RESERVATIONTIME = 104940000 milisekund
+= 104940 sekund
+= 1749 minut
+= 29,15 godzin
+≈ 1 dzień i 5 godzin
+
+
+═══════════════════════════════════════════════════════════════════════════════
+STRUKTURA BAZY DANYCH
+═══════════════════════════════════════════════════════════════════════════════
+
+Baza FireSnow (FireSport) używa HSQLDB w formacie plików tekstowych.
+Dane są przechowywane w kilku plikach:
+
+1. FireSport_database_4.properties  - konfiguracja bazy danych
+2. FireSport_database_4.script      - definicje tabel i dane (główny plik)
+3. FireSport_database_4.log         - dziennik zmian
+
+Wszystkie dane są w formacie SQL INSERT INTO.
+
+
+═══════════════════════════════════════════════════════════════════════════════
+POWIĄZANIA MIĘDZY TABELAMI
+═══════════════════════════════════════════════════════════════════════════════
+
+RENT_CUSTOMERS (83903)
+   │
+   └─► ABSTRACTENTITYCM (83903) - nazwa klienta
+   │
+   └─► SESSIONINFOFGHJ (86210, 86211, 86212)
+           │
+           ├─► RENTDOCUMENT_ID → RENT_DOCUMENTS (86213)
+           │                         │
+           │                         └─► ABSTRACTDOCUMENT (86213) - numer WP 13/10/2025
+           │
+           └─► CUSTOMER_ID → RENT_CUSTOMERS (83903)
+
+
+═══════════════════════════════════════════════════════════════════════════════
+WYSZUKIWANIE DANYCH W PLIKU
+═══════════════════════════════════════════════════════════════════════════════
+
+Aby znaleźć wypożyczenie po numerze (np. "WP 13/10/202"):
+
+PowerShell:
+Select-String -Path "c:\Users\wacia\Desktop\pliki\database\FireSport_database_4.script" -Pattern "WP 13/10/202" -Context 2
+
+
+Aby znaleźć klienta po nazwisku:
+
+PowerShell:
+Select-String -Path "c:\Users\wacia\Desktop\pliki\database\FireSport_database_4.script" -Pattern "KOWALCZAK" -Context 2
+
+
+Aby znaleźć szczegóły wypożyczenia po ID dokumentu (np. 86213):
+
+PowerShell:
+Select-String -Path "c:\Users\wacia\Desktop\pliki\database\FireSport_database_4.script" -Pattern "86213" -Context 1
+
+
+═══════════════════════════════════════════════════════════════════════════════
+KONWERSJA TIMESTAMP NA DATĘ
+═══════════════════════════════════════════════════════════════════════════════
+
+PowerShell - konwersja milisekund na datę:
+
+$timestamp = 1761569463107
+$date = [DateTimeOffset]::FromUnixTimeMilliseconds($timestamp).LocalDateTime
+Write-Host "Data: $date"
+
+
+PowerShell - obliczenie daty zakończenia:
+
+$starttime = 1761569463107
+$reservationTime = 104940000
+$endtime = $starttime + $reservationTime
+$dateStart = [DateTimeOffset]::FromUnixTimeMilliseconds($starttime).LocalDateTime
+$dateEnd = [DateTimeOffset]::FromUnixTimeMilliseconds($endtime).LocalDateTime
+Write-Host "Data rozpoczęcia: $dateStart"
+Write-Host "Data zakończenia: $dateEnd"
+
+
+═══════════════════════════════════════════════════════════════════════════════
+Data wygenerowania dokumentu: 28 października 2025
+═══════════════════════════════════════════════════════════════════════════════
+
+
+
+
