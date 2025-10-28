@@ -8,7 +8,7 @@ $CHECK_INTERVAL = 5  # Sprawdzaj co 5 sekund
 
 Write-Host ""
 Write-Host "========================================" -ForegroundColor Cyan
-Write-Host "  FireSnow Bridge API Watchdog" -ForegroundColor Cyan
+Write-Host "  FireSnow Bridge API Watchdog" -ForegroundColor Cyan                                                                                               
 Write-Host "  Auto-restart on database changes" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host ""

@@ -17,7 +17,7 @@ const app = express();
 const PORT = 3000;
 
 // FireSnow API Configuration
-const FIRESNOW_API_URL = 'http://192.168.8.48:8080'; // Localhost - FireSnowBridge działa na tym samym komputerze
+const FIRESNOW_API_URL = 'http://localhost:8080'; // Localhost - FireSnowBridge działa na tym samym komputerze
 const USE_FIRESNOW_API = true; // Zmień na false żeby używać CSV
 
 // Middleware
