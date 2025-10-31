@@ -12,6 +12,9 @@ import java.net.InetSocketAddress;
 import java.sql.*;
 import java.util.Properties;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
+import java.sql.PreparedStatement;
 
 public class FireSnowBridge {
     
@@ -553,6 +556,200 @@ public class FireSnowBridge {
             }
         }
     }
+    /**
+ * Handler for endpoint /api/dostepnosc/okres
+ * Returns reservations and rentals that conflict or are close to the given date range
+ * Used for "Przeglądaj" - optimized for performance
+ */
+static class DostepnoscOkresHandler implements HttpHandler {
+    @Override
+    public void handle(HttpExchange exchange) throws IOException {
+        System.out.println("FireSnowBridge: Availability check for date range requested");
+        
+        setCorsHeaders(exchange);
+        
+        if ("OPTIONS".equals(exchange.getRequestMethod())) {
+            exchange.sendResponseHeaders(204, -1);
+            return;
+        }
+        
+        try (Connection conn = getConnection()) {
+            // Get query parameters
+            String query = exchange.getRequestURI().getQuery();
+            Map<String, String> params = parseQuery(query);
+            
+            // Default: current year if no dates provided
+            long dateFrom = params.containsKey("from") ? 
+                Long.parseLong(params.get("from")) : 1735689600000L; // 2025-01-01
+            long dateTo = params.containsKey("to") ? 
+                Long.parseLong(params.get("to")) : Long.MAX_VALUE;
+            
+            // Calculate buffer dates (±2 days for yellow warnings)
+            long bufferBefore = dateFrom - (2L * 24 * 60 * 60 * 1000); // -2 days
+            long bufferAfter = dateTo + (2L * 24 * 60 * 60 * 1000);   // +2 days
+            
+            // Convert timestamps to Date objects for SQL
+            java.util.Date dateFromDate = new java.util.Date(dateFrom);
+            java.util.Date dateToDate = new java.util.Date(dateTo);
+            java.util.Date bufferBeforeDate = new java.util.Date(bufferBefore);
+            java.util.Date bufferAfterDate = new java.util.Date(bufferAfter);
+            
+            // SQL dla rezerwacji - tylko te które mogą kolidować
+            String sqlReservations = 
+                "SELECT " +
+                "  rp.ID as rezerwacja_id, " +
+                "  p.NAME as nazwa_sprzetu, " +
+                "  ae.CODE as kod_sprzetu, " +
+                "  rp.BEGINDATE as data_od, " +
+                "  rp.ENDDATE as data_do, " +
+                "  rp.CUSTOMER_ID as klient_id, " +
+                "  ae_customer.NAME as klient_nazwa, " +
+                "  rc.FORENAME as imie, " +
+                "  rc.SURNAME as nazwisko " +
+                "FROM RESERVATIONPOSITION rp " +
+                "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
+                "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
+                "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
+                "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
+                "WHERE rp.ENDDATE >= ? " +  // Koniec rezerwacji >= początek bufora
+                "  AND rp.BEGINDATE <= ? " +  // Początek rezerwacji <= koniec bufora
+                "  AND rp.BEGINDATE >= TIMESTAMP '2025-01-01 00:00:00' " +
+                "ORDER BY rp.BEGINDATE";
+            
+            // SQL dla wypożyczeń aktywnych
+            String sqlRentals = 
+                "SELECT " +
+                "  si.ID as session_id, " +
+                "  si.STARTTIME as data_od, " +
+                "  si.STOPTIME as data_do, " +
+                "  si.REMAININGTIME as pozostaly_czas, " +
+                "  si.RENTOBJECT_ID as obiekt_id, " +
+                "  si.CUSTOMER_ID as klient_id, " +
+                "  ae_customer.NAME as klient_nazwa, " +
+                "  ae_equipment.NAME as nazwa_sprzetu, " +
+                "  ae_equipment.CODE as kod_sprzetu " +
+                "FROM SESSIONINFOFGHJ si " +
+                "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
+                "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
+                "WHERE si.STOPTIME = 0 " +
+                "  AND si.STARTTIME >= 1735689600000 " +  // 2025-01-01
+                "  AND (si.STARTTIME + COALESCE(si.REMAININGTIME, 0)) >= ? " +  // Koniec wypożyczenia >= początek bufora
+                "  AND si.STARTTIME <= ? " +  // Początek wypożyczenia <= koniec bufora
+                "ORDER BY si.STARTTIME DESC";
+            
+            // Execute queries
+            PreparedStatement stmtRes = conn.prepareStatement(sqlReservations);
+            stmtRes.setTimestamp(1, new Timestamp(bufferBeforeDate.getTime()));
+            stmtRes.setTimestamp(2, new Timestamp(bufferAfterDate.getTime()));
+            
+            PreparedStatement stmtRent = conn.prepareStatement(sqlRentals);
+            stmtRent.setLong(1, bufferBefore);
+            stmtRent.setLong(2, bufferAfter);
+            
+            ResultSet rsRes = stmtRes.executeQuery();
+            ResultSet rsRent = stmtRent.executeQuery();
+            
+            // Build JSON response
+            StringBuilder json = new StringBuilder("{\"reservations\":[");
+            boolean firstRes = true;
+            
+            while (rsRes.next()) {
+                if (!firstRes) json.append(",");
+                firstRes = false;
+                
+                String klientNazwa = rsRes.getString("klient_nazwa");
+                if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
+                    String imie = rsRes.getString("imie");
+                    String nazwisko = rsRes.getString("nazwisko");
+                    if (imie != null || nazwisko != null) {
+                        klientNazwa = ((imie != null ? imie : "") + " " + (nazwisko != null ? nazwisko : "")).trim();
+                    }
+                }
+                if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
+                    klientNazwa = "Klient #" + rsRes.getLong("klient_id");
+                }
+                
+                json.append("{");
+                json.append("\"kod\":\"").append(escapeJson(rsRes.getString("kod_sprzetu"))).append("\",");
+                json.append("\"od\":\"").append(rsRes.getTimestamp("data_od")).append("\",");
+                json.append("\"do\":\"").append(rsRes.getTimestamp("data_do")).append("\",");
+                json.append("\"klient\":\"").append(escapeJson(klientNazwa)).append("\",");
+                json.append("\"sprzet\":\"").append(escapeJson(rsRes.getString("nazwa_sprzetu"))).append("\"");
+                json.append("}");
+            }
+            
+            json.append("],\"rentals\":[");
+            boolean firstRent = true;
+            
+            while (rsRent.next()) {
+                if (!firstRent) json.append(",");
+                firstRent = false;
+                
+                long dataOd = rsRent.getLong("data_od");
+                long dataDo = rsRent.getLong("data_do");
+                long pozostalyCzas = rsRent.getLong("pozostaly_czas");
+                
+                if (dataDo == 0 && pozostalyCzas > 0) {
+                    dataDo = dataOd + pozostalyCzas;
+                }
+                
+                String klientNazwa = rsRent.getString("klient_nazwa");
+                if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
+                    klientNazwa = "Klient #" + rsRent.getLong("klient_id");
+                }
+                
+                json.append("{");
+                json.append("\"kod\":\"").append(escapeJson(rsRent.getString("kod_sprzetu"))).append("\",");
+                json.append("\"od\":").append(dataOd).append(",");
+                json.append("\"do\":").append(dataDo).append(",");
+                json.append("\"klient\":\"").append(escapeJson(klientNazwa)).append("\",");
+                json.append("\"sprzet\":\"").append(escapeJson(rsRent.getString("nazwa_sprzetu"))).append("\"");
+                json.append("}");
+            }
+            
+            json.append("]}");
+            
+            rsRes.close();
+            rsRent.close();
+            stmtRes.close();
+            stmtRent.close();
+            
+            String response = json.toString();
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
+            
+            OutputStream os = exchange.getResponseBody();
+            os.write(response.getBytes(StandardCharsets.UTF_8));
+            os.close();
+            
+            System.out.println("FireSnowBridge: Returned availability data for date range");
+            
+        } catch (SQLException e) {
+            System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+            e.printStackTrace();
+            
+            String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
+            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+            exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
+            
+            OutputStream os = exchange.getResponseBody();
+            os.write(response.getBytes(StandardCharsets.UTF_8));
+            os.close();
+        }
+    }
+    
+    private static Map<String, String> parseQuery(String query) {
+        Map<String, String> params = new HashMap<>();
+        if (query == null) return params;
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=");
+            if (pair.length == 2) {
+                params.put(pair[0], pair[1]);
+            }
+        }
+        return params;
+    }
+}
     
     /**
      * Sets CORS headers to allow frontend connection
@@ -657,7 +854,7 @@ public class FireSnowBridge {
             server.createContext("/api/wypozyczenia/aktualne", new AktywneWypozyczeniaHandler());
             server.createContext("/api/wypozyczenia/przeszle", new PrzeszleWypozyczeniaHandler());
             server.createContext("/api/narty/zarezerwowane", new ZarezerwowaneNartyHandler());
-            
+            server.createContext("/api/dostepnosc/okres", new DostepnoscOkresHandler());
             // Start server
             server.setExecutor(null); // Default executor
             server.start();
@@ -676,6 +873,7 @@ public class FireSnowBridge {
             System.out.println("  GET /api/wypozyczenia/aktualne    - Get active rentals");
             System.out.println("  GET /api/wypozyczenia/przeszle    - Get past rentals (returned)");
             System.out.println("  GET /api/narty/zarezerwowane      - Get reserved skis");
+            System.out.println("  GET /api/dostepnosc/okres         - Get availability for date range"); // NOWY
             System.out.println();
             System.out.println("Press Ctrl+C to stop the server");
             System.out.println("===========================================");

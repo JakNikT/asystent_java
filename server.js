@@ -544,6 +544,60 @@ app.get('/api/wypozyczenia/aktualne', async (req, res) => {
 });
 
 /**
+ * GET /api/dostepnosc/okres?from=timestamp&to=timestamp - Pobierz dostępność dla okresu
+ * Optimized endpoint for "Przeglądaj" - returns only relevant data
+ */
+app.get('/api/dostepnosc/okres', async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { from, to } = req.query;
+    
+    // Konwertuj timestampy na daty dla logowania
+    const fromDate = from ? new Date(parseInt(from)).toLocaleString('pl-PL') : 'nie podano';
+    const toDate = to ? new Date(parseInt(to)).toLocaleString('pl-PL') : 'nie podano';
+    
+    console.log('═══════════════════════════════════════════════════════');
+    console.log('Server: 📋 PRZEGLĄDAJ - Pobieranie dostępności dla okresu');
+    console.log('Server:   Data od:', fromDate);
+    console.log('Server:   Data do:', toDate);
+    console.log('Server:   Timestamp from:', from);
+    console.log('Server:   Timestamp to:', to);
+    
+    const queryParams = new URLSearchParams();
+    if (from) queryParams.append('from', from);
+    if (to) queryParams.append('to', to);
+    
+    console.log('Server:   Wywołuję FireSnow API...');
+    const response = await fetch(`${FIRESNOW_API_URL}/api/dostepnosc/okres?${queryParams.toString()}`);
+    
+    if (!response.ok) {
+      throw new Error(`FireSnow API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    const reservationsCount = data.reservations ? data.reservations.length : 0;
+    const rentalsCount = data.rentals ? data.rentals.length : 0;
+    const totalCount = reservationsCount + rentalsCount;
+    const duration = Date.now() - startTime;
+    
+    console.log('Server:   ✅ Pobrano dane z FireSnow API:');
+    console.log('Server:      - Rezerwacje:', reservationsCount);
+    console.log('Server:      - Wypożyczenia:', rentalsCount);
+    console.log('Server:      - Łącznie:', totalCount, 'pozycji');
+    console.log('Server:   ⏱️  Czas wykonania:', duration, 'ms');
+    console.log('═══════════════════════════════════════════════════════');
+    
+    res.json(data);
+  } catch (error) {
+    const duration = Date.now() - startTime;
+    console.error('Server:   ❌ Błąd pobierania dostępności:', error.message);
+    console.error('Server:   ⏱️  Czas przed błędem:', duration, 'ms');
+    console.log('═══════════════════════════════════════════════════════');
+    res.status(500).json({ error: 'Błąd pobierania dostępności' });
+  }
+});
+
+/**
  * GET /api/wypozyczenia/przeszle - Pobierz przeszłe wypożyczenia (zwrócone)
  * Używa FireSnow API z fallback do CSV
  */
