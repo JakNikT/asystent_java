@@ -1,0 +1,79 @@
+Lista instalacji na nowym komputerze
+Wymagane (obowiązkowe)
+1. Node.js (LTS)
+Wersja: 18.x lub 20.x
+Do pobrania: https://nodejs.org/
+Instalacja: Pobierz "LTS" i zainstaluj z domyślnymi ustawieniami
+Weryfikacja:
+  node --version    # Powinno pokazać v18.x.x lub v20.x.x  npm --version     # Powinno pokazać 10.x.x lub wyżej
+2. Java JDK (Java Development Kit)
+Wersja: Java 8 lub nowsza (rekomendowane Java 11+)
+Do pobrania: https://adoptium.net/ (lub Oracle JDK)
+Instalacja: Zainstaluj z domyślnymi ustawieniami
+Weryfikacja:
+  java -version  javac -version
+3. Git (opcjonalnie, ale zalecane)
+Do pobrania: https://git-scm.com/download/win
+Instalacja: Zainstaluj z domyślnymi ustawieniami
+Weryfikacja:
+  git --version
+Instalacja projektu
+KROK 1: Skopiuj projekt
+# Opcja A: Z repozytorium Gitgit clone [URL_REPOZYTORIUM]cd asystent_java# Opcja B: Skopiuj cały folder przez pendrive/sieć# Skopiuj folder na nowy komputer
+KROK 2: Zainstaluj zależności Node.js
+# W folderze projektunpm install
+To zainstaluje wszystkie pakiety z package.json (React, Express, itp.)
+KROK 3: Skompiluj aplikację React (opcjonalne)
+npm run build
+Uruchomienie aplikacji
+Warstwa 1: FireSnow Bridge API (Java)
+cd FireSnowBridgestart.bat
+Port: 8080
+Wymaga: Java JDK + skonfigurowany config.properties
+Warstwa 2: Express Server (Node.js)
+# W głównym folderze projektunpm run server# LUBnode server.js
+Port: 3000
+Wymaga: Node.js + npm install
+Warstwa 3: React Frontend (Development)
+# W głównym folderze projektunpm run dev
+Port: 5173 (Vite dev server)
+Alternatywnie: Express serwuje już zbudowaną wersję z dist/
+Konfiguracja (po instalacji)
+1. FireSnow Bridge - FireSnowBridge/config.properties
+Zmień ścieżkę do bazy danych na nowym komputerze:
+db.url=jdbc:hsqldb:file:C:/ścieżka/do/bazy/database/FireSport_database_4;readonly=true;ifexists=truedb.user=SAdb.password=api.port=8080
+2. Skopiuj plik JDBC driver (jeśli brakuje)
+Jeśli brakuje hsqldb.jar:
+# Skopiuj z:C:\FireSoft\FireSnowServer20\lib\hsqldb.jar# Do:FireSnowBridge\lib\hsqldb.jar
+3. Skopiuj dane CSV (jeśli nie używasz FireSnow API)
+# Skopiuj pliki CSV z folderu public/data/# Na nowy komputer w ten sam folder
+Edytor kodu (opcjonalnie)
+VS Code: https://code.visualstudio.com/
+Cursor: https://cursor.sh/ (używasz tego)
+Rozszerzenia:
+ES7+ React/Redux/React-Native snippets
+ESLint
+Prettier
+TypeScript and JavaScript Language Features
+Checklist — gotowość do pracy
+[ ] Node.js zainstalowany i działa (node --version)
+[ ] Java JDK zainstalowany (java -version)
+[ ] Projekt skopiowany na nowy komputer
+[ ] npm install wykonany pomyślnie
+[ ] FireSnowBridge/config.properties skonfigurowany
+[ ] hsqldb.jar skopiowany do FireSnowBridge/lib/
+[ ] FireSnow Bridge uruchomiony (start.bat)
+[ ] Express Server uruchomiony (npm run server)
+[ ] Aplikacja działa w przeglądarce (http://localhost:3000)
+Szybki start (kopiuj-wklej)
+# 1. Sprawdź czy masz Node.js i Javanode --versionjava -version# 2. Zainstaluj zależnościnpm install# 3. Skonfiguruj FireSnow Bridge# Edytuj: FireSnowBridge/config.properties# 4. Uruchom aplikację# Terminal 1 - FireSnow Bridge:cd FireSnowBridge && start.bat# Terminal 2 - Express Server:npm run server# 5. Otwórz w przeglądarce:# http://localhost:3000
+Problemy?
+Błąd "node: command not found"
+→ Zainstaluj Node.js i dodaj do PATH
+Błąd "java: command not found"
+→ Zainstaluj Java JDK i dodaj do PATH
+Błąd "Cannot find module"
+→ Uruchom npm install
+Błąd połączenia z bazą danych
+→ Sprawdź ścieżkę w config.properties
+Potrzebujesz bardziej szczegółowej instrukcji dla któregoś z kroków?
