@@ -55,6 +55,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Ładowanie statusów dostępności dla wszystkich nart (NOWY SYSTEM 3-KOLOROWY)
   useEffect(() => {
     const loadAvailabilityStatuses = async () => {
+      const startTime = Date.now();
       const statusMap = new Map<string, any>();
       
       try {
@@ -71,29 +72,65 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const startDate = userCriteria!.dateFrom!;
         const endDate = userCriteria!.dateTo!;
         
-        console.log('BrowseSkisComponent: Sprawdzam dostępność w okresie:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
+        // Policz ile nart ma kod
+        const skisWithCode = skisDatabase.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
+        const totalSkis = skisWithCode.length;
+        
+        console.log('═══════════════════════════════════════════════════════');
+        console.log('BrowseSkisComponent: 📋 PRZEGLĄDAJ - Rozpoczęcie sprawdzania dostępności');
+        console.log('BrowseSkisComponent:   Okres:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
+        console.log('BrowseSkisComponent:   Nart do sprawdzenia:', totalSkis);
+        
+        // OPTYMALIZACJA: Pobierz dane dostępności RAZ dla całego okresu
+        console.log('BrowseSkisComponent:   Pobieram dane dostępności z API (jedno zapytanie)...');
+        const allAvailabilityData = await ReservationApiClient.loadAvailabilityForPeriod(startDate, endDate);
+        console.log(`BrowseSkisComponent:   ✅ Pobrano ${allAvailabilityData.length} pozycji (dostępne dla wszystkich nart)`);
+        console.log('BrowseSkisComponent:   Rozpoczynam sprawdzanie dostępności...');
+        
+        let checkedCount = 0;
+        let availableCount = 0;
+        let warningCount = 0;
+        let reservedCount = 0;
         
         // Sprawdź status dla każdej narty z kodem (NOWY SYSTEM 3-KOLOROWY)
-        for (const ski of skisDatabase) {
-          if (ski.KOD && ski.KOD !== 'NO_CODE') {
-            try {
-              // ZMIENIONE: Używaj ReservationApiClient zamiast ReservationService (API zamiast CSV)
-              const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
-                ski.KOD,
-                startDate,
-                endDate
-              );
-              statusMap.set(ski.KOD, availabilityInfo);
-              console.log(`BrowseSkisComponent: Status dla ${ski.KOD}:`, availabilityInfo.emoji, availabilityInfo.message);
-            } catch (error) {
-              console.error(`Błąd sprawdzania dostępności dla narty ${ski.KOD}:`, error);
+        // Używamy już pobranych danych zamiast pobierać dla każdej narty osobno
+        for (const ski of skisWithCode) {
+          try {
+            checkedCount++;
+            // OPTYMALIZACJA: Przekaż już pobrane dane zamiast pobierać ponownie
+            const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
+              ski.KOD,
+              startDate,
+              endDate,
+              allAvailabilityData  // Użyj już pobranych danych
+            );
+            statusMap.set(ski.KOD, availabilityInfo);
+            
+            if (availabilityInfo.status === 'available') availableCount++;
+            else if (availabilityInfo.status === 'warning') warningCount++;
+            else if (availabilityInfo.status === 'reserved') reservedCount++;
+            
+            // Loguj co 100 nart (żeby nie spamować konsoli)
+            if (checkedCount % 100 === 0 || checkedCount === totalSkis) {
+              console.log(`BrowseSkisComponent:   Postęp: ${checkedCount}/${totalSkis} nart sprawdzonych`);
             }
+          } catch (error) {
+            console.error(`BrowseSkisComponent:   ❌ Błąd dla kodu ${ski.KOD}:`, error);
           }
         }
         
+        const duration = Date.now() - startTime;
+        console.log('BrowseSkisComponent:   ✅ Zakończono sprawdzanie dostępności:');
+        console.log('BrowseSkisComponent:      - Sprawdzonych nart:', checkedCount);
+        console.log('BrowseSkisComponent:      - 🟢 Dostępne:', availableCount);
+        console.log('BrowseSkisComponent:      - 🟡 Ostrzeżenie:', warningCount);
+        console.log('BrowseSkisComponent:      - 🔴 Zarezerwowane:', reservedCount);
+        console.log('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
+        console.log('═══════════════════════════════════════════════════════');
+        
         setAvailabilityStatuses(statusMap);
       } catch (error) {
-        console.error('Błąd ładowania statusów dostępności:', error);
+        console.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
       }
     };
 

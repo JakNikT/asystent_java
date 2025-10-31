@@ -12,7 +12,9 @@ const API_BASE_URL = '/api';
  */
 export class ReservationApiClient {
   private static cache: ReservationData[] = [];
+  private static cacheRentals: ReservationData[] = []; // NOWY: cache dla wypożyczeń
   private static lastFetch: number = 0;
+  private static lastFetchRentals: number = 0; // NOWY: timestamp dla wypożyczeń
   private static readonly CACHE_DURATION = 30000; // 30 sekund
 
   /**
@@ -56,9 +58,17 @@ export class ReservationApiClient {
   }
 
   /**
-   * Pobiera wszystkie wypożyczenia z serwera
+   * Pobiera wszystkie wypożyczenia z serwera (z cache)
    */
   static async loadRentals(): Promise<ReservationData[]> {
+    const now = Date.now();
+    
+    // Użyj cache jeśli dane są świeże
+    if (this.cacheRentals.length > 0 && (now - this.lastFetchRentals) < this.CACHE_DURATION) {
+      console.log('ReservationApiClient: Używam danych z cache (wypożyczenia)');
+      return this.cacheRentals;
+    }
+
     try {
       console.log('ReservationApiClient: Pobieram wypożyczenia z serwera...');
       const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`);
@@ -68,13 +78,22 @@ export class ReservationApiClient {
       }
       
       const rentals = await response.json();
-      console.log(`ReservationApiClient: Pobrano ${rentals.length} wypożyczeń`);
+      this.cacheRentals = rentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
+      this.lastFetchRentals = now;
       
-      // Dodaj pole source='rental' do każdego wypożyczenia
-      return rentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
+      console.log(`ReservationApiClient: Pobrano ${rentals.length} wypożyczeń`);
+      return this.cacheRentals;
     } catch (error) {
       console.error('ReservationApiClient: Błąd pobierania wypożyczeń:', error);
-      return [];
+      
+      // Jeśli cache jest pusty, zwróć pustą tablicę
+      if (this.cacheRentals.length === 0) {
+        return [];
+      }
+      
+      // W przeciwnym razie użyj cache (może być nieaktualny)
+      console.log('ReservationApiClient: Używam cache mimo błędu (wypożyczenia)');
+      return this.cacheRentals;
     }
   }
 
@@ -105,6 +124,78 @@ export class ReservationApiClient {
       return [];
     }
   }
+
+  /**
+ * Pobiera dostępność dla okresu (zoptymalizowane dla "Przeglądaj")
+ * Zwraca tylko rezerwacje i wypożyczenia które mogą kolidować z okresem
+ */
+static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<ReservationData[]> {
+  try {
+    const fromTimestamp = dateFrom.getTime();
+    const toTimestamp = dateTo.getTime();
+    
+    console.log(`ReservationApiClient: Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
+    
+    const response = await fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json() as { reservations?: Array<{ kod?: string; sprzet?: string; klient?: string; od?: string; do?: string }>; rentals?: Array<{ kod?: string; sprzet?: string; klient?: string; od?: number; do?: number }> };
+    
+    // Mapuj dane do formatu ReservationData
+    const reservations = (data.reservations || []).map((r) => ({
+      kod: r.kod || '',
+      sprzet: r.sprzet || '',
+      klient: r.klient || '',
+      od: this.formatFireSnowDateString(r.od),
+      do: this.formatFireSnowDateString(r.do),
+      cena: '0',
+      zaplacono: '0',
+      numer: '',
+      typumowy: 'STANDARD',
+      source: 'reservation' as const
+    }));
+    
+    const rentals = (data.rentals || []).map((r) => ({
+      kod: r.kod || '',
+      sprzet: r.sprzet || '',
+      klient: r.klient || '',
+      od: typeof r.od === 'number' ? new Date(r.od).toISOString().split('T')[0] : r.od || '',
+      do: typeof r.do === 'number' && r.do > 0 ? new Date(r.do).toISOString().split('T')[0] : '',
+      cena: '0',
+      zaplacono: '0',
+      numer: '',
+      typumowy: 'STANDARD',
+      source: 'rental' as const
+    }));
+    
+    const allData = [...reservations, ...rentals];
+    console.log(`ReservationApiClient: Pobrano ${allData.length} pozycji (${reservations.length} rezerwacji + ${rentals.length} wypożyczeń)`);
+    
+    return allData;
+  } catch (error) {
+    console.error('ReservationApiClient: Błąd pobierania dostępności dla okresu:', error);
+    return [];
+  }
+}
+
+// Helper function for date formatting
+private static formatFireSnowDateString(dateStr: string | null | undefined): string {
+  if (!dateStr) return '';
+  try {
+    // Format z API: "2026-02-13 11:00:00.000000"
+    const isoString = dateStr.split('.')[0].replace(' ', 'T');
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      return dateStr;
+    }
+    return isoString;
+  } catch {
+    return dateStr || '';
+  }
+}
 
   /**
    * Pobiera przeszłe wypożyczenia (zwrócone) z serwera
@@ -158,207 +249,99 @@ export class ReservationApiClient {
   }
 
   /**
-   * Sprawdza czy konkretna narta jest zarezerwowana w danym okresie (po kodzie)
-   */
-  static async isSkiReservedByCode(
-    kod: string,
-    startDate: Date,
-    endDate: Date
-  ): Promise<ReservationInfo[]> {
-    const reservations = await this.loadReservations();
-    
-    console.log(`ReservationApiClient.isSkiReservedByCode: Sprawdzam kod ${kod} w okresie ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
-    
-    const matchingReservations: ReservationInfo[] = [];
-    
-    for (const reservation of reservations) {
-      if (reservation.kod === kod) {
-        console.log(`ReservationApiClient: Znaleziono rezerwację dla kodu ${kod}:`, reservation);
-        
-        if (this.isDateRangeOverlapping(
-          new Date(reservation.od),
-          new Date(reservation.do),
-          startDate,
-          endDate
-        )) {
-          console.log(`ReservationApiClient: Okresy się nakładają dla kodu ${kod}`);
-          matchingReservations.push({
-            id: reservation.kod,
-            clientName: reservation.klient,
-            equipment: reservation.sprzet,
-            startDate: new Date(reservation.od),
-            endDate: new Date(reservation.do),
-            notes: reservation.uwagi || '',
-            price: parseFloat(String(reservation.cena)) || 0,
-            paid: parseFloat(String(reservation.zaplacono)) || 0,
-            status: this.getReservationStatus(reservation)
-          });
-        }
-      }
-    }
-    
-    console.log(`ReservationApiClient: Zwracam ${matchingReservations.length} rezerwacji dla kodu ${kod}`);
-    return matchingReservations;
+ * Sprawdza status dostępności narty z systemem 3-kolorowym
+ * UWAGA: Sprawdza zarówno rezerwacje JAK I aktywne wypożyczenia!
+ * OPTYMALIZACJA: Używa dedykowanego endpointu dla okresu użytkownika
+ * @param cachedData - Opcjonalne dane z cache (jeśli przekazane, nie pobiera ponownie z API)
+ */
+static async getSkiAvailabilityStatus(
+  kod: string,
+  userDateFrom: Date,
+  userDateTo: Date,
+  cachedData?: ReservationData[]
+): Promise<AvailabilityInfo> {
+  // OPTYMALIZACJA: Użyj cache jeśli dostępny, w przeciwnym razie pobierz
+  const allData = cachedData || await this.loadAvailabilityForPeriod(userDateFrom, userDateTo);
+  
+  // Loguj tylko przy pierwszym wywołaniu (gdy nie ma cache)
+  if (!cachedData) {
+    console.log('🔍 Sprawdzam rezerwacje i wypożyczenia dla okresu użytkownika (zoptymalizowane)');
+    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Pobrano ${allData.length} pozycji (tylko istotne dla okresu)`);
   }
-
-  /**
-   * Sprawdza czy konkretna narta jest zarezerwowana w danym okresie (po nazwie)
-   */
-  static async isSkiReserved(
-    marka: string, 
-    model: string, 
-    dlugosc: string, 
-    startDate: Date, 
-    endDate: Date
-  ): Promise<ReservationInfo[]> {
-    const reservations = await this.loadReservations();
-    const matchingReservations: ReservationInfo[] = [];
     
-    for (const reservation of reservations) {
-      if (this.matchesSki(reservation.sprzet, marka, model, dlugosc)) {
-        if (this.isDateRangeOverlapping(
-          new Date(reservation.od),
-          new Date(reservation.do),
-          startDate,
-          endDate
-        )) {
-          matchingReservations.push({
-            id: reservation.numer,
-            clientName: reservation.klient,
-            equipment: reservation.sprzet,
-            startDate: new Date(reservation.od),
-            endDate: new Date(reservation.do),
-            notes: reservation.uwagi || '',
-            price: parseFloat(String(reservation.cena)) || 0,
-            paid: parseFloat(String(reservation.zaplacono)) || 0,
-            status: this.getReservationStatus(reservation)
-          });
-        }
+  const allReservations: ReservationInfo[] = [];
+  let hasDirectConflict = false;
+  let hasWarningConflict = false;
+  
+  for (const reservation of allData) {
+    if (reservation.kod === kod) {
+      const resStart = new Date(reservation.od);
+      const resEnd = new Date(reservation.do);
+      
+      const reservationInfo: ReservationInfo = {
+        id: reservation.kod,
+        clientName: reservation.klient,
+        equipment: reservation.sprzet,
+        startDate: resStart,
+        endDate: resEnd,
+        notes: reservation.uwagi || '',
+        price: parseFloat(String(reservation.cena)) || 0,
+        paid: parseFloat(String(reservation.zaplacono)) || 0,
+        status: this.getReservationStatus(reservation)
+      };
+      
+      // Sprawdź CZERWONY (bezpośredni konflikt)
+      const overlaps = resStart <= userDateTo && resEnd >= userDateFrom;
+      
+      if (overlaps) {
+        hasDirectConflict = true;
+        allReservations.push(reservationInfo);
       }
-    }
-    
-    return matchingReservations;
-  }
-
-  /**
-   * Sprawdza status dostępności narty z systemem 3-kolorowym
-   * UWAGA: Sprawdza zarówno rezerwacje JAK I aktywne wypożyczenia!
-   */
-  static async getSkiAvailabilityStatus(
-    kod: string,
-    userDateFrom: Date,
-    userDateTo: Date
-  ): Promise<AvailabilityInfo> {
-    // TEST DIAGNOSTYCZNY: Tymczasowo sprawdzamy TYLKO rezerwacje (bez wypożyczeń)
-    const allData = await this.loadReservations();
-    console.log('🔍 TEST: Sprawdzam TYLKO rezerwacje (bez wypożyczeń)');
-    
-    // DIAGNOSTYKA: Pokaż pierwsze 5 rezerwacji żeby zobaczyć format kodów
-    console.log('📋 Pierwsze 5 rezerwacji (próbka):', allData.slice(0, 5).map(r => ({
-      kod: r.kod,
-      sprzet: r.sprzet,
-      klient: r.klient,
-      od: r.od,
-      do: r.do
-    })));
-    
-    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam kod ${kod} dla okresu ${userDateFrom.toLocaleDateString()} - ${userDateTo.toLocaleDateString()}`);
-    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Sprawdzam ${allData.length} pozycji (TYLKO rezerwacje)`);
-    
-    const allReservations: ReservationInfo[] = [];
-    let hasDirectConflict = false;
-    let hasWarningConflict = false;
-    
-    for (const reservation of allData) {
-      if (reservation.kod === kod) {
-        console.log(`✓ Znaleziono dla kodu ${kod}:`, {
-          od: reservation.od,
-          do: reservation.do,
-          klient: reservation.klient,
-          source: reservation.source || 'reservation'
-        });
+      // Sprawdź ŻÓŁTY (bufor 1-2 dni)
+      else {
+        const daysBefore = this.differenceInDays(userDateFrom, resEnd);
+        const daysAfter = this.differenceInDays(resStart, userDateTo);
         
-        const resStart = new Date(reservation.od);
-        const resEnd = new Date(reservation.do);
+        const isBeforeWarning = daysBefore >= 1 && daysBefore <= 2;
+        const isAfterWarning = daysAfter >= 1 && daysAfter <= 2;
         
-        console.log(`  Parsed dates: resStart=${resStart.toISOString()}, resEnd=${resEnd.toISOString()}`);
-        console.log(`  User dates: userDateFrom=${userDateFrom.toISOString()}, userDateTo=${userDateTo.toISOString()}`);
-        
-        const reservationInfo: ReservationInfo = {
-          id: reservation.kod,
-          clientName: reservation.klient,
-          equipment: reservation.sprzet,
-          startDate: resStart,
-          endDate: resEnd,
-          notes: reservation.uwagi || '',
-          price: parseFloat(String(reservation.cena)) || 0,
-          paid: parseFloat(String(reservation.zaplacono)) || 0,
-          status: this.getReservationStatus(reservation)
-        };
-        
-        // Sprawdź CZERWONY (bezpośredni konflikt)
-        const overlaps = resStart <= userDateTo && resEnd >= userDateFrom;
-        console.log(`  Checking overlap: resStart(${resStart.toLocaleDateString()}) <= userDateTo(${userDateTo.toLocaleDateString()}) = ${resStart <= userDateTo}`);
-        console.log(`  Checking overlap: resEnd(${resEnd.toLocaleDateString()}) >= userDateFrom(${userDateFrom.toLocaleDateString()}) = ${resEnd >= userDateFrom}`);
-        console.log(`  OVERLAPS = ${overlaps}`);
-        
-        if (overlaps) {
-          hasDirectConflict = true;
+        if (isBeforeWarning || isAfterWarning) {
+          hasWarningConflict = true;
           allReservations.push(reservationInfo);
-          console.log(`  🔴 CZERWONY: Rezerwacja ${resStart.toLocaleDateString()}-${resEnd.toLocaleDateString()} nachodzi na okres klienta`);
-        }
-        // Sprawdź ŻÓŁTY (bufor 1-2 dni)
-        else {
-          const daysBefore = this.differenceInDays(userDateFrom, resEnd);
-          const daysAfter = this.differenceInDays(resStart, userDateTo);
-          
-          const isBeforeWarning = daysBefore >= 1 && daysBefore <= 2;
-          const isAfterWarning = daysAfter >= 1 && daysAfter <= 2;
-          
-          if (isBeforeWarning || isAfterWarning) {
-            hasWarningConflict = true;
-            allReservations.push(reservationInfo);
-            
-            if (isBeforeWarning) {
-              console.log(`  🟡 ŻÓŁTY: Rezerwacja kończy się ${daysBefore} dni przed okresem klienta`);
-            }
-            if (isAfterWarning) {
-              console.log(`  🟡 ŻÓŁTY: Rezerwacja zaczyna się ${daysAfter} dni po okresie klienta`);
-            }
-          }
         }
       }
     }
-    
-    // Określ końcowy status
-    if (hasDirectConflict) {
-      return {
-        status: 'reserved',
-        color: 'red',
-        emoji: '🔴',
-        message: 'Zarezerwowane w wybranym terminie',
-        reservations: allReservations
-      };
-    }
-    
-    if (hasWarningConflict) {
-      return {
-        status: 'warning',
-        color: 'yellow',
-        emoji: '🟡',
-        message: 'Rezerwacja blisko terminu (za mało czasu na serwis)',
-        reservations: allReservations
-      };
-    }
-    
+  }
+  
+  // Określ końcowy status
+  if (hasDirectConflict) {
     return {
-      status: 'available',
-      color: 'green',
-      emoji: '🟢',
-      message: 'Dostępne - wystarczająco czasu na serwis',
-      reservations: []
+      status: 'reserved',
+      color: 'red',
+      emoji: '🔴',
+      message: 'Zarezerwowane w wybranym terminie',
+      reservations: allReservations
     };
   }
+  
+  if (hasWarningConflict) {
+    return {
+      status: 'warning',
+      color: 'yellow',
+      emoji: '🟡',
+      message: 'Rezerwacja blisko terminu (za mało czasu na serwis)',
+      reservations: allReservations
+    };
+  }
+  
+  return {
+    status: 'available',
+    color: 'green',
+    emoji: '🟢',
+    message: 'Dostępne - wystarczająco czasu na serwis',
+    reservations: []
+  };
+}
 
   /**
    * Tworzy nową rezerwację
@@ -511,6 +494,45 @@ export class ReservationApiClient {
     }
     
     return periodReservations;
+  }
+
+  /**
+   * Sprawdza czy konkretna narta jest zarezerwowana w danym okresie (po nazwie)
+   */
+  static async isSkiReserved(
+    marka: string, 
+    model: string, 
+    dlugosc: string, 
+    startDate: Date, 
+    endDate: Date
+  ): Promise<ReservationInfo[]> {
+    const reservations = await this.loadReservations();
+    const matchingReservations: ReservationInfo[] = [];
+    
+    for (const reservation of reservations) {
+      if (this.matchesSki(reservation.sprzet, marka, model, dlugosc)) {
+        if (this.isDateRangeOverlapping(
+          new Date(reservation.od),
+          new Date(reservation.do),
+          startDate,
+          endDate
+        )) {
+          matchingReservations.push({
+            id: reservation.numer,
+            clientName: reservation.klient,
+            equipment: reservation.sprzet,
+            startDate: new Date(reservation.od),
+            endDate: new Date(reservation.do),
+            notes: reservation.uwagi || '',
+            price: parseFloat(String(reservation.cena)) || 0,
+            paid: parseFloat(String(reservation.zaplacono)) || 0,
+            status: this.getReservationStatus(reservation)
+          });
+        }
+      }
+    }
+    
+    return matchingReservations;
   }
 
   /**
