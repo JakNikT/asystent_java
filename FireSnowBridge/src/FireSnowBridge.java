@@ -495,6 +495,15 @@ public class FireSnowBridge {
                 while (rs.next()) {
                     if (!first) json.append(",");
                     first = false;
+
+                    long dataOd = rs.getLong("data_od");
+                    long dataDo = rs.getLong("data_do");
+                    long pozostalyCzas = rs.getLong("pozostaly_czas");
+                    
+                    // Oblicz data_do dla aktywnych wypożyczeń (gdy data_do = 0)
+                    if (dataDo == 0 && pozostalyCzas > 0) {
+                        dataDo = dataOd + pozostalyCzas;
+                    }
                     
                     json.append("{");
                     json.append("\"session_id\":").append(rs.getLong("session_id")).append(",");
