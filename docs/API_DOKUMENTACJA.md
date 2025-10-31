@@ -174,6 +174,16 @@ UŻYCIE W APLIKACJI:
 - Express Server → loadReservationsFromFireSnowAPI()
 - Używane w GET /api/reservations (warstwa Express)
 
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- imie + nazwisko → Kolumna "Klient" w widoku rezerwacji
+- nazwa_sprzetu → Kolumna "Sprzęt" w widoku rezerwacji
+- kod_sprzetu → Kolumna "Kod" w widoku rezerwacji
+- data_od → Kolumna "Od" (data rozpoczęcia rezerwacji)
+- data_do → Kolumna "Do" (data zakończenia rezerwacji)
+- cena → Kolumna "Cena" w widoku rezerwacji
+- telefon → Kolumna "Telefon" lub szczegóły rezerwacji
+- rezerwacja_id → Kolumna "Numer" rezerwacji
+
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 2.4. GET /api/wypozyczenia/aktualne                                         │
@@ -237,6 +247,17 @@ UŻYCIE W APLIKACJI:
 - Express Server → loadRentalsFromFireSnowAPI()
 - Używane w GET /api/wypozyczenia/aktualne (warstwa Express)
 
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- klient_nazwa → Kolumna "Klient" w widoku wypożyczeń
+- nazwa_sprzetu → Kolumna "Sprzęt" w widoku wypożyczeń
+- kod_sprzetu → Kolumna "Kod" w widoku wypożyczeń
+- data_od → Kolumna "Od" (data rozpoczęcia wypożyczenia, format timestamp)
+- data_do → Kolumna "Do" (0 = aktywne, nie zwrócone)
+- cena → Kolumna "Cena" w widoku wypożyczeń
+- zaplacono → Kolumna "Zapłacono" w widoku wypożyczeń
+- numer_dokumentu → Kolumna "Numer" dokumentu wypożyczenia
+- obiekt_id → Używane do weryfikacji dostępności w systemie doboru nart
+
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 2.5. GET /api/wypozyczenia/przeszle                                         │
@@ -277,6 +298,16 @@ RESPONSE (200 OK):
 UŻYCIE W APLIKACJI:
 - Express Server → loadPastRentalsFromFireSnowAPI()
 - Używane w GET /api/wypozyczenia/przeszle (warstwa Express)
+
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- klient_nazwa → Kolumna "Klient" w historii wypożyczeń
+- nazwa_sprzetu → Kolumna "Sprzęt" w historii wypożyczeń
+- kod_sprzetu → Kolumna "Kod" w historii wypożyczeń
+- data_od → Kolumna "Od" (data rozpoczęcia)
+- data_do → Kolumna "Do" (data zwrotu sprzętu)
+- cena → Kolumna "Cena" w historii
+- zaplacono → Kolumna "Zapłacono"
+- numer_dokumentu → Kolumna "Numer" dokumentu
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -323,6 +354,11 @@ RESPONSE (200 OK):
 UŻYCIE W APLIKACJI:
 - Obecnie nieużywane w frontend
 - Może być użyte do szybkiego sprawdzenia dostępności
+
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- obiekt_id → ID używane wewnętrznie do weryfikacji
+- nazwa → Pełna nazwa sprzętu w liście dostępności
+- kod → Kod sprzętu używany do identyfikacji w systemie
 
 
 ═══════════════════════════════════════════════════════════════════════════════
@@ -373,7 +409,7 @@ Pobiera rezerwacje z FireSnow API. Jeśli API nie działa, używa CSV fallback.
 
 MAPOWANIE DANYCH (FireSnow → Frontend):
 {
-  klient: item.imie_nazwisko || `Klient #${item.klient_id}`,
+  klient: `${item.imie || ''} ${item.nazwisko || ''}`.trim() || `Klient #${item.klient_id}`,
   sprzet: item.nazwa_sprzetu,
   kod: item.kod_sprzetu,
   od: formatFireSnowDate(item.data_od),      // "2026-02-13 11:00:00" → "2026-02-13T11:00:00"
@@ -381,10 +417,15 @@ MAPOWANIE DANYCH (FireSnow → Frontend):
   cena: item.cena.toString(),
   zaplacono: "",
   numer: item.rezerwacja_id.toString(),
-  telefon: item.telefon,
+  // telefon: USUNIĘTE ze względów prywatności
   obiekt_id: item.obiekt_id,
   klient_id: item.klient_id
 }
+
+UWAGA - MAPOWANIE IMIENIA I NAZWISKA:
+- FireSnow API zwraca osobno: `imie` (FORENAME) i `nazwisko` (SURNAME)
+- W aplikacji łączymy je w jedno pole `klient`: "SZYMON KOWALCZAK"
+- Jeśli brak imienia/nazwiska → fallback: "Klient #12345" (BEZ telefonu!)
 
 RESPONSE (200 OK):
 [
@@ -404,6 +445,16 @@ RESPONSE (200 OK):
 UŻYCIE W APLIKACJI:
 - src/services/reservationApiClient.ts → loadReservations()
 - Komponent: src/components/ReservationsView.tsx
+
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- klient → Kolumna "Klient" w widoku rezerwacji (ReservationsView) - wyświetla imię i nazwisko razem: "SZYMON KOWALCZAK"
+- sprzet → Kolumna "Sprzęt" - nazwa wyposażenia
+- kod → Kolumna "Kod" - krótki identyfikator sprzętu
+- od → Kolumna "Od" - data rozpoczęcia rezerwacji
+- do → Kolumna "Do" - data zakończenia rezerwacji
+- cena → Kolumna "Cena" - koszt rezerwacji
+- zaplacono → Kolumna "Zapłacono" - kwota wpłacona
+- numer → Kolumna "Numer" - numer rezerwacji/dokumentu
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -456,6 +507,17 @@ UŻYCIE W APLIKACJI:
 - src/services/reservationApiClient.ts → loadRentals()
 - Używane do sprawdzania dostępności nart
 
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- klient → Kolumna "Klient" w widoku wypożyczeń
+- sprzet → Kolumna "Sprzęt" - nazwa nart/sprzętu
+- kod → Kolumna "Kod" - identyfikator używany w systemie doboru
+- od → Kolumna "Od" - data wypożyczenia
+- do → Kolumna "Do" - puste dla aktywnych wypożyczeń
+- cena → Kolumna "Cena" - koszt wypożyczenia
+- zaplacono → Kolumna "Zapłacono" - kwota uiszczona
+- numer → Kolumna "Numer" - numer dokumentu WP
+- typumowy → Typ umowy (STANDARD/PROMOTOR) - może być wyświetlany jako badge
+
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │ 3.4. GET /api/wypozyczenia/przeszle                                         │
@@ -491,6 +553,18 @@ RESPONSE (200 OK):
 
 UŻYCIE W APLIKACJI:
 - src/services/reservationApiClient.ts → loadPastRentals()
+
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- klient → Kolumna "Klient" w historii wypożyczeń
+- sprzet → Kolumna "Sprzęt" - nazwa nart
+- kod → Kolumna "Kod" - identyfikator sprzętu
+- od → Kolumna "Od" - data wypożyczenia
+- do → Kolumna "Do" - data zwrotu
+- cena → Kolumna "Cena" - koszt
+- zaplacono → Kolumna "Zapłacono" - zapłacona kwota
+- numer → Kolumna "Numer" - numer dokumentu
+- typumowy → Typ umowy - wyświetlany jako badge lub etykieta
+- source → Wewnętrzne (oznaczenie że to wypożyczenie, nie rezerwacja)
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -638,6 +712,23 @@ RESPONSE (200 OK):
 UŻYCIE W APLIKACJI:
 - src/services/skiDataService.ts → getAllSkis()
 - Wszystkie komponenty wyświetlające listę nart
+
+GDZIE WYŚWIETLAJĄ SIĘ DANE W UI:
+- ID → Używane wewnętrznie jako unikalny identyfikator
+- TYP_SPRZETU → Filtr typu (NARTY/SNOWBOARD/BUTY) w systemie doboru
+- KATEGORIA → Filtr kategorii (SPORT/JUNIOR/VIP/OGÓLNE)
+- MARKA → Wyświetlana w karcie narty, nazwa producenta
+- MODEL → Wyświetlany w karcie narty, model
+- DLUGOSC → Wyświetlana w szczegółach narty (cm), używana w algorytmie
+- ILOSC → Liczba dostępnych sztuk (administracja)
+- POZIOM → Filtr poziomu narciarza w systemie doboru
+- PLEC → Filtr płci w systemie doboru
+- WAGA_MIN/WAGA_MAX → Używane w algorytmie dopasowania nart
+- WZROST_MIN/WZROST_MAX → Używane w algorytmie dopasowania nart
+- PRZEZNACZENIE → Filtr typu terenu (STOK/FREERIDE/PARK)
+- ATUTY → Wyświetlane w karcie narty jako opis/zalety
+- ROK → Rok produkcji, wyświetlany w szczegółach
+- KOD → Kod sprzętu wyświetlany w liście nart, używany do rezerwacji
 
 
 ┌─────────────────────────────────────────────────────────────────────────────┐

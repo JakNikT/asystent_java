@@ -181,6 +181,8 @@ public class FireSnowBridge {
             try (Connection conn = getConnection()) {
                 
                 // Fixed SQL with correct column names (discovered via Database Manager)
+                // Używamy ABSTRACTENTITYCM dla nazwy klienta (tak jak w wypożyczeniach)
+                // i RENT_CUSTOMERS dla imienia/nazwiska jako fallback
                 String sql = 
                     "SELECT " +
                     "  rp.ID as rezerwacja_id, " +
@@ -191,12 +193,14 @@ public class FireSnowBridge {
                     "  rp.PRICE as cena, " +
                     "  rp.RENTOBJECT_ID as obiekt_id, " +
                     "  rp.CUSTOMER_ID as klient_id, " +
+                    "  ae_customer.NAME as klient_nazwa, " +
                     "  rc.FORENAME as imie, " +
                     "  rc.SURNAME as nazwisko, " +
                     "  rc.PHONE1 as telefon " +
                     "FROM RESERVATIONPOSITION rp " +
                     "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
                     "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
                     "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
                     "ORDER BY rp.BEGINDATE";
@@ -220,6 +224,7 @@ public class FireSnowBridge {
                     json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
                     json.append("\"obiekt_id\":").append(rs.getLong("obiekt_id")).append(",");
                     json.append("\"klient_id\":").append(rs.getLong("klient_id")).append(",");
+                    json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\",");
                     json.append("\"imie\":\"").append(escapeJson(rs.getString("imie"))).append("\",");
                     json.append("\"nazwisko\":\"").append(escapeJson(rs.getString("nazwisko"))).append("\",");
                     json.append("\"telefon\":\"").append(escapeJson(rs.getString("telefon"))).append("\"");

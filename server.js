@@ -52,13 +52,28 @@ async function loadReservationsFromFireSnowAPI() {
     
     // Mapuj dane z formatu FireSnow API na format aplikacji
     const reservations = fireSnowData.map(item => {
-      // Użyj imie_nazwisko z API (już połączone w SQL)
-      let klient = item.imie_nazwisko || '';
+      // Priorytet 1: Użyj klient_nazwa (z ABSTRACTENTITYCM) - tak jak w wypożyczeniach
+      // Priorytet 2: Połącz imię i nazwisko (z RENT_CUSTOMERS)
+      // Priorytet 3: Fallback do klient_id
       
-      // Fallback jeśli brak imienia
-      if (!klient && item.telefon) {
-        klient = `Tel: ${item.telefon}`;
-      } else if (!klient) {
+      let klient = '';
+      
+      // Priorytet 1: klient_nazwa z ABSTRACTENTITYCM (najbardziej niezawodne)
+      if (item.klient_nazwa && item.klient_nazwa.trim()) {
+        klient = item.klient_nazwa.trim();
+      }
+      // Priorytet 2: Połącz imię i nazwisko (z RENT_CUSTOMERS)
+      else {
+        const imie = (item.imie && item.imie.trim()) || '';
+        const nazwisko = (item.nazwisko && item.nazwisko.trim()) || '';
+        
+        if (imie || nazwisko) {
+          klient = `${imie} ${nazwisko}`.trim();
+        }
+      }
+      
+      // Priorytet 3: Fallback jeśli brak wszystkich danych (BEZ telefonu!)
+      if (!klient) {
         klient = `Klient #${item.klient_id || '?'}`;
       }
       
@@ -72,7 +87,7 @@ async function loadReservationsFromFireSnowAPI() {
         cena: item.cena ? item.cena.toString() : '0',
         zaplacono: '', // FireSnow API nie zwraca tego pola
         numer: item.rezerwacja_id ? item.rezerwacja_id.toString() : '',
-        telefon: item.telefon || '',
+        // telefon: item.telefon || '', // USUNIĘTE - nie wyświetlamy numeru telefonu
         // Dodatkowe pola z API
         obiekt_id: item.obiekt_id,
         klient_id: item.klient_id
