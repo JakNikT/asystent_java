@@ -1102,8 +1102,8 @@ const AnimaComponent: React.FC = () => {
             <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
               {/* Date From - responsywne inputy */}
               <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] border border-white flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
-                  <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data od:</span>
+                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
+                  <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
                 </div>
                 <input
                   ref={dayFromRef}
@@ -1116,7 +1116,7 @@ const AnimaComponent: React.FC = () => {
                   }`}
                   style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
                 />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
                 <input
                   ref={monthFromRef}
                   type="text"
@@ -1127,7 +1127,7 @@ const AnimaComponent: React.FC = () => {
                     formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
                 <input
                   type="text"
                   placeholder="25"
@@ -1142,7 +1142,7 @@ const AnimaComponent: React.FC = () => {
               {/* Date To - responsywne inputy */}
               <div className="w-full flex items-center gap-1">
                 <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
-                  <span className="text-white text-sm font-black font-['Inter'] italic underline leading-tight">📅 Data do:</span>
+                  <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
                 </div>
                 <input
                   ref={dayToRef}
@@ -1154,7 +1154,7 @@ const AnimaComponent: React.FC = () => {
                     formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
                 <input
                   ref={monthToRef}
                   type="text"
@@ -1165,7 +1165,7 @@ const AnimaComponent: React.FC = () => {
                     formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                   }`}
                 />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">/</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
                 <input
                   type="text"
                   placeholder="25"
@@ -1180,7 +1180,7 @@ const AnimaComponent: React.FC = () => {
               {/* Height - responsywne */}
               <div className="w-full flex items-center gap-1">
                 <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">📏 Wzrost:</span>
+                  <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
                 </div>
                 <input
                   ref={heightRef}
@@ -1193,14 +1193,14 @@ const AnimaComponent: React.FC = () => {
                   }`}
                 />
                 <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">cm</span>
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">cm</span>
                 </div>
               </div>
 
               {/* Weight - responsywne */}
               <div className="w-full flex items-center gap-1">
                 <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-base font-black font-['Inter'] italic underline leading-snug">⚖️ Waga:</span>
+                  <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
                 </div>
                 <input
                   ref={weightRef}
@@ -1213,7 +1213,7 @@ const AnimaComponent: React.FC = () => {
                   }`}
                 />
                 <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-none">kg</span>
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">kg</span>
                 </div>
               </div>
             </div>
@@ -1225,7 +1225,7 @@ const AnimaComponent: React.FC = () => {
                 {/* Level - responsywny */}
                 <div className="w-full flex items-center gap-2">
                   <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Poziom:</span>
+                    <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">🎖️ Poziom:</span>
                   </div>
                   <input
                     ref={levelRef}
@@ -1242,7 +1242,7 @@ const AnimaComponent: React.FC = () => {
                 {/* Gender - responsywny */}
                 <div className="w-full flex items-center gap-2">
                   <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">👤 Płeć:</span>
+                    <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👤 Płeć:</span>
                   </div>
                   <input
                     ref={genderRef}
@@ -1259,7 +1259,7 @@ const AnimaComponent: React.FC = () => {
                 {/* Shoe Size - responsywny */}
                 <div className="w-full flex items-center gap-2">
                   <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-lg font-black font-['Inter'] italic underline leading-[25px]">Rozmiar 👟:</span>
+                    <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👟 Rozmiar:</span>
                   </div>
                   <input
                     ref={shoeSizeRef}
@@ -1285,19 +1285,19 @@ const AnimaComponent: React.FC = () => {
                 onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
                 onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
               >
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight">🗑️ Wyczyść</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
               </button>
               <button 
                 onClick={() => setAppMode('browse')}
                 className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
               >
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
               </button>
               <button 
                 onClick={() => setAppMode('reservations')}
                 className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
               >
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic underline leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
               </button>
             </div>
           </div>
