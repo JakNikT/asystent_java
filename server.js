@@ -294,17 +294,19 @@ async function loadRentalsFromFireSnowAPI() {
       // Format 1: timestamp (milisekundy)
       if (item.data_od && typeof item.data_od === 'number') {
         dataOd = new Date(item.data_od).toISOString().split('T')[0];
+        
+        // Oblicz data_do dla aktywnych wypożyczeń (gdy data_do = 0 i jest pozostaly_czas)
+        if (item.data_do === 0 && item.pozostaly_czas && typeof item.pozostaly_czas === 'number') {
+          const obliczonaDataDo = item.data_od + item.pozostaly_czas;
+          dataDo = new Date(obliczonaDataDo).toISOString().split('T')[0];
+          console.log(`Server: Obliczono data_do dla wypożyczenia ${item.session_id}: ${dataDo} (data_od: ${new Date(item.data_od).toISOString()}, pozostaly_czas: ${item.pozostaly_czas}ms)`);
+        } else if (item.data_do && typeof item.data_do === 'number' && item.data_do !== 0) {
+          dataDo = new Date(item.data_do).toISOString().split('T')[0];
+        }
       }
       // Format 2: string "YYYY-MM-DD HH:MM:SS"
       else if (item.data_rozpoczecia) {
         dataOd = item.data_rozpoczecia.split(' ')[0]; // Bierz tylko datę
-      }
-      
-      if (item.data_do && typeof item.data_do === 'number') {
-        dataDo = item.data_do === 0 ? '' : new Date(item.data_do).toISOString().split('T')[0];
-      }
-      else if (item.data_zakonczenia) {
-        dataDo = item.data_zakonczenia.split(' ')[0]; // Bierz tylko datę
       }
       
       return {
