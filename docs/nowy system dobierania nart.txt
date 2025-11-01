@@ -1,0 +1,30 @@
+//nowy system dobierania nart//
+
+/Wygląd aplikacji/
+
+1.okno główne
+-W nowym systemie nie będzie już okna wyniki wyszukiwania z kartami nart i przyciskami do wyboru typu sprzętu.
+-Polami do wpisywania danych klienta i przyciskami zostanie powiększone i przeniesione na środek strony natomiast logo również zostanie powiększone ale przeniesione ponad pola wpisywania danych
+
+2.Przeglądaj
+-nowy układ kolumn:
+"marka/model/długość/poziom/płeć/rok/przeznaczenie/atut/wzrost(widełki min/max)/waga(widełki min/max)/dostępność"
+
+
+
+/działanie systemu/
+
+*teraz aplikacje będzie wyświetlać dopasowane narty w funkcji "przeglądaj". Zamiast dzielić wyniki na grupy i karty nart po prostu wyświetli narty które klient będzie mógł łatwo przeglądać i filtrować za pomocą przycisków z typami sprzętu, np. "top" -przy każdej narcie kolumny z danymi od dobierania będą zmieniały kolory w zależności od dopasowania-zielono jeśli się mieści ,na żółto jak blisko i czerwono jeśli daleko (podobnie jak to było dotychczas)
+
+(przykład).:Klient: waga 70kg wzrost 141cm   Narta: waga 60-90kg wzrost 145-180cm
+waga-zielona, mieści się w zakresie
+wzrost-zółty, o 4 cm za mało (zółty to 5cm/kg tolerancji)
+(czerwony to wszystko co powyżej 5cm/kg)
+(poziom : zielony-pasuje, zółty-o 1 za mało/dużo, czerwony-o 2 lub więcej poziomów za mało/dużo )
+
+*wpisywanie danych
+
+-Wszystkie pola puste-wszystko na zielono
+-Jeśli klient wpisze którykolwiek z parametrów np. tylko wzrost i datę i przejdzie do przeglądaj, to kolory zmienią się tylko w tych kolumnach 
+
+
