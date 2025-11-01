@@ -14,7 +14,7 @@ Podział aplikacji na dwa interfejsy w zależności od zalogowanego użytkownika
 - **Dostęp**: Pełny dostęp do wszystkich funkcji.
 - **Funkcje**:
   - Widzi przyciski edycji, usuwania i dodawania sprzętu.
-  - Dostęp do pełnych danych rezerwacji (w tym np. ceny, uwagi).
+  - Dostęp do pełnych danych rezerwacji 
   - Dostęp do modułu "Historia Klienta".
   - Możliwość przeglądania i zarządzania całą bazą sprzętu.
 
@@ -24,6 +24,9 @@ Podział aplikacji na dwa interfejsy w zależności od zalogowanego użytkownika
   - Klient może samodzielnie dobrać dla siebie narty, wpisując swoje parametry.
   - Nie widzi danych innych klientów, cen, ani opcji edycji.
   - Wyniki wyszukiwania pokazują tylko dostępne modele, bez szczegółów rezerwacji.
+  - Nie widzi przycisku "rezerwacje"
+  - W przycisku "przeglądaj" może zobaczyć zarezerwowany sprzęt ale bez szczegółowych danych po najechaniu na kwadracik 
+  - W przeglądaj nie widzi przycisków do edycji i dodawania sprzętu
 
 ---
 

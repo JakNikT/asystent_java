@@ -1,26 +1,25 @@
-# 🎿 Asystent Doboru Nart v6.0
+# 🎿 Asystent Doboru Nart - Wersja Web
 
 ## 📋 Opis
-Profesjonalna aplikacja do doboru nart narciarskich z integracją Figma i systemem rezerwacji FireSnow.
+Nowoczesna aplikacja webowa do inteligentnego doboru sprzętu narciarskiego i snowboardowego. Aplikacja została zmigrowana z języka Python (PyQt5) do **React** z **TypeScript**.
 
 ## ✨ Funkcje
-- **Inteligentny dobór nart** - algorytm uwzględniający poziom, wagę, wzrost, płeć
-- **Integracja z Figma** - nowoczesny interfejs zgodny z projektem
-- **System rezerwacji** - integracja z FireSnow
-- **Zaawansowane filtry** - poziom, marka, przeznaczenie
-- **Współczynnik idealności** - ocena dopasowania 0-100%
+- **Inteligentny dobór sprzętu** - zaawansowany algorytm dopasowujący narty, buty i deski snowboardowe na podstawie kryteriów użytkownika (wzrost, waga, poziom, płeć, styl jazdy).
+- **Przeglądanie bazy danych** - interaktywna tabela do przeglądania, sortowania i filtrowania całego dostępnego sprzętu.
+- **Zarządzanie sprzętem** - możliwość dodawania, edytowania i usuwania pozycji z bazy danych bezpośrednio w aplikacji.
+- **System rezerwacji** - integracja z systemem rezerwacji FireSnow, wizualizacja dostępności sprzętu w czasie rzeczywistym.
+- **Nowoczesny interfejs** - zaprojektowany w Figma i zaimplementowany przy użyciu Tailwind CSS.
+- **Responsywność** - aplikacja dostosowana do urządzeń mobilnych i desktopowych.
 
 ## 🚀 Instalacja
 
 ### Wymagania
-- Python 3.7+
-- PyQt5
-- pandas
-- requests
+- Node.js (wersja LTS)
+- npm (instalowany razem z Node.js)
 
 ### Instalacja zależności
 ```bash
-pip install -r requirements.txt
+npm install
 ```
 
 ### Uruchomienie

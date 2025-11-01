@@ -15,7 +15,16 @@ Użytkownik poprosił o dwa główne ulepszenia:
 
 ## Project Status Board
 
-### ✅ Ukończone zadania (2025-10-27)
+### ✅ Ukończone zadania
+
+#### 🔄 Automatyczne wyszukiwanie (2025-11-01)
+- ✅ Dodano automatyczne wyświetlanie wyników gdy wszystkie pola są uzupełnione
+- ✅ Dodano automatyczne odświeżanie wyników przy zmianie parametrów
+- ✅ Zaimplementowano debounce (500ms) dla lepszej wydajności
+- ✅ Integracja z systemem walidacji formularza
+- ✅ Wsparcie dla wielu kart (tabs) - każda karta ma swoje wyniki
+
+#### Wypożyczenia w dostępności + Przeszłe rezerwacje (2025-10-27)
 
 #### Backend (FireSnowBridge + server.js)
 - ✅ Dodano endpoint `/api/wypozyczenia/przeszle` w FireSnowBridge.java
@@ -87,11 +96,34 @@ Użytkownik poprosił o dwa główne ulepszenia:
 
 ## Executor's Feedback or Assistance Requests
 
-**Status**: ✅ Implementacja zakończona - gotowe do commit i deployment
+**Data**: 2025-11-01
+
+**Nowa funkcjonalność**: ✅ AUTOMATYCZNE WYSZUKIWANIE I ODŚWIEŻANIE
+
+Zaimplementowano automatyczne wyszukiwanie które:
+1. **Automatycznie wyświetla wyniki** gdy wszystkie wymagane pola formularza są uzupełnione
+2. **Automatycznie odświeża wyniki** przy zmianie dowolnego parametru (daty, wzrost, waga, poziom, płeć, style jazdy)
+3. **Używa debounce 500ms** - wyszukiwanie następuje 500ms po ostatniej zmianie (aby nie przeciążać systemu)
+4. **Waliduje formularz** przed wyszukiwaniem - wyniki pokazują się tylko gdy wszystkie pola są poprawne
+
+**Zmiany techniczne**:
+- Dodano `useEffect` w `AnimaComponent.tsx` (linie 670-729)
+- Dodano `useRef` dla timera (debounce) i flagi pierwszego renderowania
+- Usunięto starą logikę automatycznego wyszukiwania po wpisaniu płci
+- Automatyczne wyszukiwanie reaguje na: `formData`, `selectedStyles`, `activeTabId`, `skisDatabase.length`
+
+**Testowanie**:
+1. ✅ Wypełnij stopniowo formularz - wyniki powinny pojawić się automatycznie po uzupełnieniu ostatniego wymaganego pola
+2. ✅ Zmień dowolny parametr (np. wzrost, datę) - wyniki powinny się automatycznie odświeżyć po 500ms
+3. ✅ Zmień styl jazdy (dla poziomu 4+) - wyniki powinny się automatycznie przefiltrować
+4. ✅ Przełącz między kartami - każda karta powinna pamiętać swoje wyniki
+
+**Status**: ✅ PRZETESTOWANE I POTWIERDZONE PRZEZ UŻYTKOWNIKA - DZIAŁA POPRAWNIE
 
 **Następne kroki**:
-1. Proszę o potwierdzenie czy mam zrobić commit i push
-2. Po deployment'cie na serwerze produkcyjnym będzie potrzebny test funkcjonalności
+1. ✅ Funkcjonalność przetestowana i potwierdzona
+2. ⏳ Gotowe do commit i push
+3. ⏳ Deployment na serwerze produkcyjnym
 
 ---
 
@@ -4443,6 +4475,10 @@ Dzień od → Miesiąc od → Rok od → Dzień do → Miesiąc do → Rok do �
 
 ## Lessons
 
+- **Automatyczne wyszukiwanie wymaga debounce** - bez debounce (500ms) każda zmiana litery uruchamia wyszukiwanie, co przeciąża system
+- **useEffect z formData wymaga flagi pierwszego renderowania** - bez `isFirstRenderRef` wyszukiwanie uruchamia się przy starcie aplikacji z pustym formularzem
+- **Stara logika automatycznego wyszukiwania musi być usunięta** - jeśli mamy globalny useEffect do automatycznego wyszukiwania, lokalne wywołania handleSubmit powodują konflikty
+- **Zależności useEffect muszą być kompletne** - formData, selectedStyles, activeTabId i skisDatabase.length są kluczowe dla poprawnego działania
 - **Struktura folderów ma kluczowe znaczenie dla utrzymania projektu** - nieuporządkowana struktura utrudnia nawigację i zarządzanie
 - **Duplikacja plików prowadzi do konfuzji** - te same dane w wielu miejscach powodują problemy z synchronizacją
 - **Niepotrzebny kod powinien być usunięty** - jeśli kod Python jest zapisany w osobnym repo, można go bezpiecznie usunąć
