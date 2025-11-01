@@ -13,6 +13,7 @@ interface DetailedCompatibilityProps {
   skisDatabase: SkiData[]; // NOWE: dostęp do bazy nart dla grupowania
   isRowExpanded?: boolean;
   onRowToggle?: () => void;
+  isEmployeeMode?: boolean; // NOWE: tryb pracownika vs klienta
 }
 
 export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ 
@@ -20,7 +21,8 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
   userCriteria, 
   skisDatabase,
   isRowExpanded = false, 
-  onRowToggle 
+  onRowToggle,
+  isEmployeeMode = false // Domyślnie tryb klienta
 }) => {
   console.log('src/components/DetailedCompatibility.tsx: Wyświetlanie szczegółowych informacji:', match);
   
@@ -139,11 +141,14 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       // Dodaj do tooltipa
       detailsForTooltip.push(`Sztuka ${index + 1}: ${statusText}${ski.KOD ? ` (${ski.KOD})` : ''}`);
       
-      // Dodaj szczegóły rezerwacji
-      if (availabilityInfo?.reservations && availabilityInfo.reservations.length > 0) {
+      // Dodaj szczegóły rezerwacji - tylko w trybie pracownika
+      if (isEmployeeMode && availabilityInfo?.reservations && availabilityInfo.reservations.length > 0) {
         availabilityInfo.reservations.forEach((res: any) => {
           detailsForTooltip.push(`  → ${res.clientName}: ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`);
         });
+      } else if (!isEmployeeMode && availabilityInfo?.reservations && availabilityInfo.reservations.length > 0) {
+        // W trybie klienta tylko informacja, że jest zarezerwowane (bez szczegółów)
+        detailsForTooltip.push(`  → Zarezerwowane`);
       }
     });
     

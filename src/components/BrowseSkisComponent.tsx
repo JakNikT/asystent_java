@@ -10,6 +10,7 @@ interface BrowseSkisComponentProps {
   userCriteria?: SearchCriteria; // NOWE: opcjonalne kryteria wyszukiwania z datami
   onBackToSearch: () => void;
   onRefreshData?: () => Promise<void>; // NOWE: callback do odświeżenia danych
+  isEmployeeMode?: boolean; // NOWE: tryb pracownika vs klienta
 }
 
 type SortField = 'ID' | 'TYP_SPRZETU' | 'KATEGORIA' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
@@ -24,7 +25,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   skisDatabase, 
   userCriteria,
   onBackToSearch,
-  onRefreshData
+  onRefreshData,
+  isEmployeeMode = false // Domyślnie tryb klienta
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'ID',
@@ -194,13 +196,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       if (availabilityInfo) {
         tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
         
-        // Dodaj informacje o rezerwacjach
-        if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
+        // Dodaj informacje o rezerwacjach - tylko w trybie pracownika
+        if (isEmployeeMode && availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
           tooltip += '\n\nRezerwacje:';
           availabilityInfo.reservations.forEach((res: any) => {
             tooltip += `\n- ${res.clientName}`;
             tooltip += `\n  ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`;
           });
+        } else if (!isEmployeeMode && availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
+          // W trybie klienta tylko informacja, że jest zarezerwowane (bez szczegółów)
+          tooltip += '\n\nZarezerwowane';
         }
       }
       
@@ -658,12 +663,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
             {/* Prawa strona: Przyciski akcji */}
             <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
-              <button
-                onClick={handleAddSki}
-                className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                ➕ Dodaj
-              </button>
+              {/* Przycisk "Dodaj" - widoczny tylko w trybie pracownika */}
+              {isEmployeeMode && (
+                <button
+                  onClick={handleAddSki}
+                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  ➕ Dodaj
+                </button>
+              )}
               <button
                 onClick={handleRefresh}
                 className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
@@ -802,9 +810,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Atuty
                   </th>
-                  <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
-                    Akcje
-                  </th>
+                  {/* Nagłówek kolumny "Akcje" - widoczny tylko w trybie pracownika */}
+                  {isEmployeeMode && (
+                    <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
+                      Akcje
+                    </th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
@@ -846,15 +857,18 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.ATUTY || '-'}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                      <button
-                        onClick={() => handleEditSki(ski)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                        title="Edytuj nartę"
-                      >
-                        ✏️ Edytuj
-                      </button>
-                    </td>
+                    {/* Przycisk "Edytuj" - widoczny tylko w trybie pracownika */}
+                    {isEmployeeMode && (
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
+                        <button
+                          onClick={() => handleEditSki(ski)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
+                          title="Edytuj nartę"
+                        >
+                          ✏️ Edytuj
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

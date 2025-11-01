@@ -1,18 +1,26 @@
 // src/components/PasswordModal.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 interface PasswordModalProps {
   onClose: () => void;
   onSubmit: (password: string) => void;
+  errorMessage?: string;
 }
 
-const PasswordModal: React.FC<PasswordModalProps> = ({ onClose, onSubmit }) => {
+const PasswordModal: React.FC<PasswordModalProps> = ({ onClose, onSubmit, errorMessage }) => {
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(password);
   };
+
+  // Wyczyść pole hasła gdy pojawia się błąd
+  useEffect(() => {
+    if (errorMessage) {
+      setPassword('');
+    }
+  }, [errorMessage]);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -26,6 +34,11 @@ const PasswordModal: React.FC<PasswordModalProps> = ({ onClose, onSubmit }) => {
             className="w-full p-2 rounded bg-[#194576] text-white border border-gray-400"
             autoFocus
           />
+          {errorMessage && (
+            <div className="mt-2 text-red-300 text-sm font-medium">
+              {errorMessage}
+            </div>
+          )}
           <div className="mt-4 flex justify-end gap-2">
             <button
               type="button"

@@ -118,6 +118,13 @@ const AnimaComponent: React.FC = () => {
   const [categoryFilter, setCategoryFilter] = useState<string>('');
 
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
+  const [passwordError, setPasswordError] = useState<string>('');
+
+  // STAN: Tryb pracownika vs klienta (domyślnie klient)
+  const [isEmployeeMode, setIsEmployeeMode] = useState<boolean>(false);
+  
+  // HASŁO: Hardcoded hasło pracownika
+  const EMPLOYEE_PASSWORD = "0000";
 
   // HELPER: Pobierz aktywną kartę
   const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
@@ -1044,9 +1051,16 @@ const AnimaComponent: React.FC = () => {
   } : null;
 
   const handlePasswordSubmit = (password: string) => {
-    console.log('Wprowadzone hasło:', password);
-    // TODO: dodać logikę weryfikacji hasła
-    setIsPasswordModalOpen(false);
+    console.log('src/components/AnimaComponent.tsx: Weryfikacja hasła pracownika');
+    if (password === EMPLOYEE_PASSWORD) {
+      console.log('src/components/AnimaComponent.tsx: Hasło poprawne - przełączanie na tryb pracownika');
+      setIsEmployeeMode(true);
+      setIsPasswordModalOpen(false);
+      setPasswordError(''); // Wyczyść błąd przy poprawnym haśle
+    } else {
+      console.log('src/components/AnimaComponent.tsx: Hasło błędne - pozostanie w trybie klienta');
+      setPasswordError('Nieprawidłowe hasło. Spróbuj ponownie.');
+    }
   };
 
   return (
@@ -1054,13 +1068,32 @@ const AnimaComponent: React.FC = () => {
       <div>
         {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
         <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
-          {/* Przycisk logowania dla pracownika */}
+          {/* Przycisk logowania/wylogowania dla pracownika */}
           <button
-            onClick={() => setIsPasswordModalOpen(true)}
-            className="absolute top-1/2 right-4 -translate-y-1/2 z-50 bg-blue-900/50 hover:bg-blue-800/70 text-white font-bold p-2 rounded-lg shadow-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-            aria-label="Logowanie pracownika"
+            onClick={() => {
+              if (isEmployeeMode) {
+                // Wyloguj - przełącz na tryb klienta
+                console.log('src/components/AnimaComponent.tsx: Wylogowanie - przełączanie na tryb klienta');
+                setIsEmployeeMode(false);
+                // Jeśli jesteśmy w widoku rezerwacji, wróć do wyszukiwania
+                if (appMode === 'reservations') {
+                  setAppMode('search');
+                }
+              } else {
+                // Zaloguj - otwórz modal z hasłem
+                setIsPasswordModalOpen(true);
+                setPasswordError(''); // Wyczyść błąd przy otwieraniu modala
+              }
+            }}
+            className={`absolute top-1/2 right-4 -translate-y-1/2 z-50 font-bold p-2 rounded-lg shadow-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+              isEmployeeMode 
+                ? 'bg-green-600/80 hover:bg-green-700/90 text-white' 
+                : 'bg-blue-900/50 hover:bg-blue-800/70 text-white'
+            }`}
+            aria-label={isEmployeeMode ? "Wyloguj się (przełącz na tryb klienta)" : "Zaloguj się jako pracownik"}
+            title={isEmployeeMode ? "Kliknij aby wylogować się i przełączyć na tryb klienta" : "Zaloguj się jako pracownik"}
           >
-            <span className="text-xl">🔒</span>
+            <span className="text-xl">{isEmployeeMode ? '🔓' : '🔒'}</span>
           </button>
 
           <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576] pr-16">
@@ -1312,12 +1345,15 @@ const AnimaComponent: React.FC = () => {
                 >
                   <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
                 </button>
-                <button 
-                  onClick={() => setAppMode('reservations')}
-                  className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
-                >
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
-                </button>
+                {/* Przycisk "Rezerwacje" - widoczny tylko w trybie pracownika */}
+                {isEmployeeMode && (
+                  <button 
+                    onClick={() => setAppMode('reservations')}
+                    className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
+                  >
+                    <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -1533,6 +1569,7 @@ const AnimaComponent: React.FC = () => {
                                 skisDatabase={skisDatabase}
                                 isRowExpanded={isCardExpandedInRow('idealne', idx)}
                                 onRowToggle={() => toggleCardInRow('idealne')}
+                                isEmployeeMode={isEmployeeMode}
                               />
                             </div>
                           ))}
@@ -1818,12 +1855,13 @@ const AnimaComponent: React.FC = () => {
             }}
             onBackToSearch={() => setAppMode('search')}
             onRefreshData={loadDatabase}
+            isEmployeeMode={isEmployeeMode}
           />
         </div>
       )}
 
-      {/* Renderowanie widoku rezerwacji */}
-      {appMode === 'reservations' && (
+      {/* Renderowanie widoku rezerwacji - tylko w trybie pracownika */}
+      {isEmployeeMode && appMode === 'reservations' && (
         <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
           <ReservationsView 
             onBackToSearch={() => setAppMode('search')}
@@ -1834,8 +1872,12 @@ const AnimaComponent: React.FC = () => {
       {/* Renderowanie modala hasła */}
       {isPasswordModalOpen && (
         <PasswordModal
-          onClose={() => setIsPasswordModalOpen(false)}
+          onClose={() => {
+            setIsPasswordModalOpen(false);
+            setPasswordError(''); // Wyczyść błąd przy zamykaniu
+          }}
           onSubmit={handlePasswordSubmit}
+          errorMessage={passwordError}
         />
       )}
     </div>
