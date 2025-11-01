@@ -13,7 +13,7 @@ interface BrowseSkisComponentProps {
   isEmployeeMode?: boolean; // NOWE: tryb pracownika vs klienta
 }
 
-type SortField = 'ID' | 'TYP_SPRZETU' | 'KATEGORIA' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
+type SortField = 'KOD' | 'TYP_SPRZETU' | 'KATEGORIA' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -29,7 +29,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   isEmployeeMode = false // Domyślnie tryb klienta
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: 'ID',
+    field: 'KOD',
     direction: 'asc'
   });
   
@@ -430,7 +430,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       let bValue: any = b[config.field];
 
       // Konwersja dla pól numerycznych
-      if (config.field === 'ID' || config.field === 'DLUGOSC' || config.field === 'ILOSC' || config.field === 'ROK') {
+      if (config.field === 'DLUGOSC' || config.field === 'ILOSC' || config.field === 'ROK') {
         aValue = Number(aValue);
         bValue = Number(bValue);
       }
@@ -726,10 +726,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 <tr>
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('ID')}
+                    onClick={() => handleSort('KOD')}
                   >
                     <div className="flex items-center gap-2">
-                      ID {renderSortIcon('ID')}
+                      Kod Sprzętu {renderSortIcon('KOD')}
                     </div>
                   </th>
                   <th 
@@ -822,7 +822,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 {currentSkis.map((ski) => (
                   <tr key={ski.ID} className="hover:bg-[#2C699F]">
                     <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-[#194576]">
-                      {ski.ID}
+                      {ski.KOD}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {formatEquipmentType(ski.TYP_SPRZETU)}
