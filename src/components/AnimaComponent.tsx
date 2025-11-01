@@ -1042,744 +1042,758 @@ const AnimaComponent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#386BB2]">
-      {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
-      <div className="w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
-        <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
-          {/* Renderuj karty */}
-          {tabs.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTabId(tab.id)}
-              className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
-                activeTabId === tab.id
-                  ? 'bg-[#386BB2] text-white'
-                  : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
-              }`}
-            >
-              {tab.label}
-              {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
-              {tabs.length > 1 && (
-                <span
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeTab(tab.id);
-                  }}
-                  className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
-                >
-                  ✕
-                </span>
-              )}
-            </button>
-          ))}
-          
-          {/* Przycisk dodawania nowej karty - sticky na mobile */}
+      <div>
+        {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
+        <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
+          {/* Przycisk logowania dla pracownika */}
           <button
-            onClick={addNewTab}
-            className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
-            title="Dodaj nową osobę"
+            onClick={() => {
+              // TODO: Dodać logikę otwierania modala logowania
+              console.log("Przycisk logowania kliknięty!");
+            }}
+            className="absolute top-1/2 right-4 -translate-y-1/2 z-50 bg-blue-900/50 hover:bg-blue-800/70 text-white font-bold p-2 rounded-lg shadow-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            aria-label="Logowanie pracownika"
           >
-            ➕ Nowa osoba
+            <span className="text-xl">🔒</span>
           </button>
-        </div>
-      </div>
 
-      {/* Header Section - responsywne */}
-      <div className="w-full max-w-[900px] lg:h-[200px] h-auto bg-[#386BB2] flex flex-col lg:flex-row items-center lg:items-start justify-between p-4 lg:p-2 mx-auto gap-4 lg:gap-0">
-        {/* Logo "narty poznań" - okrągłe logo z cieniem */}
-        <div className="w-full lg:w-[180px] flex items-center justify-center lg:h-[180px] h-auto">
-          <img 
-            src="/images/logo.png" 
-            alt="Narty Poznań Logo" 
-            className="w-[160px] h-[160px] rounded-full object-cover shadow-2xl"
-            style={{ clipPath: 'circle(50%)' }}
-          />
-        </div>
-        
-        {/* Main Content Container - responsywny */}
-        <div className="w-full lg:w-[700px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
-            
-            {/* Left Section - Personal Data - responsywna szerokość */}
-            <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-              {/* Date From - responsywne inputy */}
-              <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
-                  <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
-                </div>
-                <input
-                  ref={dayFromRef}
-                  type="text"
-                  placeholder="DD"
-                  value={formData.dateFrom.day}
-                  onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
-                    formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                  style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
-                />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                <input
-                  ref={monthFromRef}
-                  type="text"
-                  placeholder="MM"
-                  value={formData.dateFrom.month}
-                  onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                <input
-                  type="text"
-                  placeholder="25"
-                  value={formData.dateFrom.year}
-                  onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value, e.target)}
-                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-            </div>
-
-              {/* Date To - responsywne inputy */}
-              <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
-                  <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
-                </div>
-                <input
-                  ref={dayToRef}
-                  type="text"
-                  placeholder="DD"
-                  value={formData.dateTo.day}
-                  onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                <input
-                  ref={monthToRef}
-                  type="text"
-                  placeholder="MM"
-                  value={formData.dateTo.month}
-                  onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
-                  className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                <input
-                  type="text"
-                  placeholder="25"
-                  value={formData.dateTo.year}
-                  onChange={(e) => handleInputChange('dateTo', 'year', e.target.value, e.target)}
-                  className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-              </div>
-
-              {/* Height - responsywne */}
-              <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
-                </div>
-                <input
-                  ref={heightRef}
-                  type="text"
-                  placeholder="180"
-                  value={formData.height.value}
-                  onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
-                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">cm</span>
-                </div>
-              </div>
-
-              {/* Weight - responsywne */}
-              <div className="w-full flex items-center gap-1">
-                <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
-                </div>
-                <input
-                  ref={weightRef}
-                  type="text"
-                  placeholder="70"
-                  value={formData.weight.value}
-                  onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
-                  className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                    formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                  }`}
-                />
-                <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">kg</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Center Section - Level, Gender and Shoe Size - responsywna szerokość */}
-            <div className="w-full lg:w-[230px] h-auto lg:h-[160px] flex flex-col justify-start items-center">
-              {/* Level, Gender and Shoe Size Section - responsywny */}
-              <div className="w-full lg:w-[230px] h-auto lg:h-[160px] py-[21.5px] px-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-                {/* Level - responsywny */}
-                <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">🎖️ Poziom:</span>
-                  </div>
-                  <input
-                    ref={levelRef}
-                    type="text"
-                    placeholder="1-6"
-                    value={formData.level}
-                    onChange={(e) => handleInputChange('level', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                </div>
-
-                {/* Gender - responsywny */}
-                <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👤 Płeć:</span>
-                  </div>
-                  <input
-                    ref={genderRef}
-                    type="text"
-                    placeholder="M/K"
-                    value={formData.gender}
-                    onChange={(e) => handleInputChange('gender', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                </div>
-
-                {/* Shoe Size - responsywny */}
-                <div className="w-full flex items-center gap-2">
-                  <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👟 Rozmiar:</span>
-                  </div>
-                  <input
-                    ref={shoeSizeRef}
-                    type="text"
-                    placeholder="23-35"
-                    value={formData.shoeSize || ''}
-                    onChange={(e) => handleInputChange('shoeSize', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.shoeSize ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Right Section - Action Buttons PIONOWO - style przeniesione nad wyniki */}
-            <div className="w-full lg:w-[120px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-              {/* Action Buttons - PIONOWO w jednej kolumnie */}
+          <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576] pr-16">
+            {/* Renderuj karty */}
+            {tabs.map(tab => (
               <button
-                onClick={handleClear}
-                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
-                style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
-                onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
-                onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
+                key={tab.id}
+                onClick={() => setActiveTabId(tab.id)}
+                className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
+                  activeTabId === tab.id
+                    ? 'bg-[#386BB2] text-white'
+                    : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
+                }`}
               >
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
+                {tab.label}
+                {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
+                {tabs.length > 1 && (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeTab(tab.id);
+                    }}
+                    className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
+                  >
+                    ✕
+                  </span>
+                )}
               </button>
-              <button 
-                onClick={() => setAppMode('browse')}
-                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+            ))}
+            
+            {/* Przycisk dodawania nowej karty - sticky na mobile */}
+            <button
+              onClick={addNewTab}
+              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
+              title="Dodaj nową osobę"
+            >
+              ➕ Nowa osoba
+            </button>
+          </div>
+        </div>
+
+        {/* Header Section - responsywne */}
+        <div className="w-full max-w-[900px] lg:h-[200px] h-auto bg-[#386BB2] flex flex-col lg:flex-row items-center lg:items-start justify-between p-4 lg:p-2 mx-auto gap-4 lg:gap-0">
+          {/* Logo "narty poznań" - okrągłe logo z cieniem */}
+          <div className="w-full lg:w-[180px] flex items-center justify-center lg:h-[180px] h-auto">
+            <img 
+              src="/images/logo.png" 
+              alt="Narty Poznań Logo" 
+              className="w-[160px] h-[160px] rounded-full object-cover shadow-2xl"
+              style={{ clipPath: 'circle(50%)' }}
+            />
+          </div>
+          
+          {/* Main Content Container - responsywny */}
+          <div className="w-full lg:w-[700px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
+              
+              {/* Left Section - Personal Data - responsywna szerokość */}
+              <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+                {/* Date From - responsywne inputy */}
+                <div className="w-full flex items-center gap-1">
+                  <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
+                    <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
+                  </div>
+                  <input
+                    ref={dayFromRef}
+                    type="text"
+                    placeholder="DD"
+                    value={formData.dateFrom.day}
+                    onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
+                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                      formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                    style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
+                  />
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
+                  <input
+                    ref={monthFromRef}
+                    type="text"
+                    placeholder="MM"
+                    value={formData.dateFrom.month}
+                    onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
+                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
+                  <input
+                    type="text"
+                    placeholder="25"
+                    value={formData.dateFrom.year}
+                    onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value, e.target)}
+                    className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+              </div>
+
+                {/* Date To - responsywne inputy */}
+                <div className="w-full flex items-center gap-1">
+                  <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
+                    <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
+                  </div>
+                  <input
+                    ref={dayToRef}
+                    type="text"
+                    placeholder="DD"
+                    value={formData.dateTo.day}
+                    onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
+                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
+                  <input
+                    ref={monthToRef}
+                    type="text"
+                    placeholder="MM"
+                    value={formData.dateTo.month}
+                    onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
+                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
+                  <input
+                    type="text"
+                    placeholder="25"
+                    value={formData.dateTo.year}
+                    onChange={(e) => handleInputChange('dateTo', 'year', e.target.value, e.target)}
+                    className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                </div>
+
+                {/* Height - responsywne */}
+                <div className="w-full flex items-center gap-1">
+                  <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                    <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
+                  </div>
+                  <input
+                    ref={heightRef}
+                    type="text"
+                    placeholder="180"
+                    value={formData.height.value}
+                    onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
+                    className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                  <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                    <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">cm</span>
+                  </div>
+                </div>
+
+                {/* Weight - responsywne */}
+                <div className="w-full flex items-center gap-1">
+                  <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                    <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
+                  </div>
+                  <input
+                    ref={weightRef}
+                    type="text"
+                    placeholder="70"
+                    value={formData.weight.value}
+                    onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
+                    className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                      formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                    }`}
+                  />
+                  <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                    <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">kg</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Center Section - Level, Gender and Shoe Size - responsywna szerokość */}
+              <div className="w-full lg:w-[230px] h-auto lg:h-[160px] flex flex-col justify-start items-center">
+                {/* Level, Gender and Shoe Size Section - responsywny */}
+                <div className="w-full lg:w-[230px] h-auto lg:h-[160px] py-[21.5px] px-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+                  {/* Level - responsywny */}
+                  <div className="w-full flex items-center gap-2">
+                    <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                      <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">🎖️ Poziom:</span>
+                    </div>
+                    <input
+                      ref={levelRef}
+                      type="text"
+                      placeholder="1-6"
+                      value={formData.level}
+                      onChange={(e) => handleInputChange('level', 'value', e.target.value, e.target)}
+                      className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
+                        formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Gender - responsywny */}
+                  <div className="w-full flex items-center gap-2">
+                    <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                      <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👤 Płeć:</span>
+                    </div>
+                    <input
+                      ref={genderRef}
+                      type="text"
+                      placeholder="M/K"
+                      value={formData.gender}
+                      onChange={(e) => handleInputChange('gender', 'value', e.target.value, e.target)}
+                      className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
+                        formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Shoe Size - responsywny */}
+                  <div className="w-full flex items-center gap-2">
+                    <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                      <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👟 Rozmiar:</span>
+                    </div>
+                    <input
+                      ref={shoeSizeRef}
+                      type="text"
+                      placeholder="23-35"
+                      value={formData.shoeSize || ''}
+                      onChange={(e) => handleInputChange('shoeSize', 'value', e.target.value, e.target)}
+                      className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
+                        formErrors.shoeSize ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
+                      }`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Section - Action Buttons PIONOWO - style przeniesione nad wyniki */}
+              <div className="w-full lg:w-[120px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+                {/* Action Buttons - PIONOWO w jednej kolumnie */}
+                <button
+                  onClick={handleClear}
+                  className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+                  style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
+                  onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
+                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
+                >
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
+                </button>
+                <button 
+                  onClick={() => setAppMode('browse')}
+                  className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+                >
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+                </button>
+                <button 
+                  onClick={() => setAppMode('reservations')}
+                  className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
+                >
+                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        {/* Results Section - responsywna */}
+        <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
+          {/* Przyciski filtrowania kategorii sprzętu - NOWY LAYOUT: JEDEN WIERSZ */}
+          <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3" style={{ boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5)' }}>
+            {/* Wszystkie przyciski w jednym wierszu - responsywne */}
+            <div className="flex flex-wrap gap-2 justify-center items-center">
+              <button
+                onClick={() => handleQuickFilterInSearch('NARTY', 'TOP_VIP')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'NARTY' && (categoryFilter === 'TOP' || categoryFilter === 'VIP' || categoryFilter === 'TOP_VIP')
+                    ? 'bg-blue-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
               >
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+                🎿 Narty (TOP+VIP)
               </button>
-              <button 
-                onClick={() => setAppMode('reservations')}
-                className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
+              <button
+                onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
+                    ? 'bg-green-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
               >
-                <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+                👶 Narty Jr
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
+                    ? 'bg-green-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
+              >
+                👶 Buty Jr
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
+                    ? 'bg-purple-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
+              >
+                🥾 Buty
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('DESKI', '')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'DESKI'
+                    ? 'bg-orange-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
+              >
+                🏂 Deski
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('BUTY_SNOWBOARD', '')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'BUTY_SNOWBOARD'
+                    ? 'bg-red-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
+              >
+                👢 Buty SB
               </button>
             </div>
           </div>
-        </div>
 
-      {/* Results Section - responsywna */}
-      <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
-        {/* Przyciski filtrowania kategorii sprzętu - NOWY LAYOUT: JEDEN WIERSZ */}
-        <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3" style={{ boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5)' }}>
-          {/* Wszystkie przyciski w jednym wierszu - responsywne */}
-          <div className="flex flex-wrap gap-2 justify-center items-center">
-            <button
-              onClick={() => handleQuickFilterInSearch('NARTY', 'TOP_VIP')}
-              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                equipmentTypeFilter === 'NARTY' && (categoryFilter === 'TOP' || categoryFilter === 'VIP' || categoryFilter === 'TOP_VIP')
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-              }`}
-            >
-              🎿 Narty (TOP+VIP)
-            </button>
-            <button
-              onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
-              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
-                  ? 'bg-green-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-              }`}
-            >
-              👶 Narty Jr
-            </button>
-            <button
-              onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
-              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
-                  ? 'bg-green-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-              }`}
-            >
-              👶 Buty Jr
-            </button>
-            <button
-              onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
-              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
-                  ? 'bg-purple-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-              }`}
-            >
-              🥾 Buty
-            </button>
-            <button
-              onClick={() => handleQuickFilterInSearch('DESKI', '')}
-              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                equipmentTypeFilter === 'DESKI'
-                  ? 'bg-orange-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-              }`}
-            >
-              🏂 Deski
-            </button>
-            <button
-              onClick={() => handleQuickFilterInSearch('BUTY_SNOWBOARD', '')}
-              className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                equipmentTypeFilter === 'BUTY_SNOWBOARD'
-                  ? 'bg-red-500 text-white shadow-lg'
-                  : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-              }`}
-            >
-              👢 Buty SB
-            </button>
-          </div>
-        </div>
+          {/* Inteligentne sugestie */}
+          {suggestions.length > 0 && (
+            <div className="w-full bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-3 rounded mb-2">
+              <h3 className="font-bold mb-2 text-sm">💡 Inteligentne sugestie:</h3>
+              <ul className="list-disc list-inside space-y-1">
+                {suggestions.map((suggestion, index) => (
+                  <li key={index} className="text-xs">{suggestion}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+          
+            {/* Results Container - pełnoekranowy */}
+            <div className="w-full min-h-[400px] bg-[#194576] rounded-[20px] flex justify-center items-start gap-2.5 p-2">
+              <div className="w-full min-h-[380px] bg-[#A6C2EF] rounded-[20px] p-4 overflow-y-auto">
+                {isLoading && (
+                  <div className="flex items-center justify-center h-full">
+                    <span className="text-white text-xl font-black font-['Inter'] italic">
+                      ⏳ Wyszukiwanie nart...
+                    </span>
+                  </div>
+                )}
 
-        {/* Inteligentne sugestie */}
-        {suggestions.length > 0 && (
-          <div className="w-full bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-3 rounded mb-2">
-            <h3 className="font-bold mb-2 text-sm">💡 Inteligentne sugestie:</h3>
-            <ul className="list-disc list-inside space-y-1">
-              {suggestions.map((suggestion, index) => (
-                <li key={index} className="text-xs">{suggestion}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-        
-          {/* Results Container - pełnoekranowy */}
-          <div className="w-full min-h-[400px] bg-[#194576] rounded-[20px] flex justify-center items-start gap-2.5 p-2">
-            <div className="w-full min-h-[380px] bg-[#A6C2EF] rounded-[20px] p-4 overflow-y-auto">
-              {isLoading && (
-                <div className="flex items-center justify-center h-full">
-                  <span className="text-white text-xl font-black font-['Inter'] italic">
-                    ⏳ Wyszukiwanie nart...
-                  </span>
-                </div>
-              )}
+                {error && !isLoading && (
+                  <div className="flex flex-col items-center justify-center h-full space-y-2">
+                    <span className="text-red-600 text-lg font-black font-['Inter'] italic">
+                      ❌ {error}
+                    </span>
+                    
+                    {/* Wyświetl szczegółowe błędy walidacji */}
+                    {(formErrors.height || formErrors.weight || formErrors.level || formErrors.gender || 
+                      formErrors.dateFrom.day || formErrors.dateTo.day) && (
+                      <div className="text-red-400 text-sm font-bold space-y-1">
+                        {formErrors.height && <div>• Wzrost: {formErrors.height}</div>}
+                        {formErrors.weight && <div>• Waga: {formErrors.weight}</div>}
+                        {formErrors.level && <div>• Poziom: {formErrors.level}</div>}
+                        {formErrors.gender && <div>• Płeć: {formErrors.gender}</div>}
+                        {formErrors.dateFrom.day && <div>• Data od: {formErrors.dateFrom.day}</div>}
+                        {formErrors.dateTo.day && <div>• Data do: {formErrors.dateTo.day}</div>}
+                      </div>
+                    )}
+                  </div>
+                )}
 
-              {error && !isLoading && (
-                <div className="flex flex-col items-center justify-center h-full space-y-2">
-                  <span className="text-red-600 text-lg font-black font-['Inter'] italic">
-                    ❌ {error}
-                  </span>
-                  
-                  {/* Wyświetl szczegółowe błędy walidacji */}
-                  {(formErrors.height || formErrors.weight || formErrors.level || formErrors.gender || 
-                    formErrors.dateFrom.day || formErrors.dateTo.day) && (
-                    <div className="text-red-400 text-sm font-bold space-y-1">
-                      {formErrors.height && <div>• Wzrost: {formErrors.height}</div>}
-                      {formErrors.weight && <div>• Waga: {formErrors.weight}</div>}
-                      {formErrors.level && <div>• Poziom: {formErrors.level}</div>}
-                      {formErrors.gender && <div>• Płeć: {formErrors.gender}</div>}
-                      {formErrors.dateFrom.day && <div>• Data od: {formErrors.dateFrom.day}</div>}
-                      {formErrors.dateTo.day && <div>• Data do: {formErrors.dateTo.day}</div>}
-                    </div>
-                  )}
-                </div>
-              )}
+                {!isLoading && !error && !searchResults && (
+                  <div className="flex items-center justify-center h-full text-center px-4">
+                    <span className="text-white text-lg font-black font-['Inter'] italic">
+                      👋 Witaj! Wypełnij formularz i wybierz kategorię sprzętu poniżej 👇
+                    </span>
+                  </div>
+                )}
 
-              {!isLoading && !error && !searchResults && (
-                <div className="flex items-center justify-center h-full text-center px-4">
-                  <span className="text-white text-lg font-black font-['Inter'] italic">
-                    👋 Witaj! Wypełnij formularz i wybierz kategorię sprzętu poniżej 👇
-                  </span>
-                </div>
-              )}
+                {!isLoading && !error && searchResults && (
+                  <div className="space-y-4">
+                    {searchResults.wszystkie.length === 0 && (
+                      <div className="text-center">
+                        <span className="text-white text-lg font-black font-['Inter'] italic">
+                          😔 Nie znaleziono nart pasujących do Twoich kryteriów
+                        </span>
+                      </div>
+                    )}
 
-              {!isLoading && !error && searchResults && (
-                <div className="space-y-4">
-                  {searchResults.wszystkie.length === 0 && (
-                    <div className="text-center">
-                      <span className="text-white text-lg font-black font-['Inter'] italic">
-                        😔 Nie znaleziono nart pasujących do Twoich kryteriów
-                      </span>
-                    </div>
-                  )}
-
-                  {groupedResults && groupedResults.idealne.length > 0 && (
-                    <div>
-                      {/* Style jazdy - tylko dla poziomu 4+ */}
-                      {parseInt(formData.level) >= 4 && equipmentTypeFilter === 'NARTY' && (
-                        <div className="w-full bg-[#194576]/50 rounded-lg p-3 mb-3">
-                          <div className="flex flex-wrap gap-2 justify-center items-center">
-                            {[
-                              { id: 'SL', label: '🎿 Slalom', emoji: 'SL' },
-                              { id: 'G', label: '⛷️ Gigant', emoji: 'G' },
-                              { id: 'SLG', label: '🎯 Pomiędzy', emoji: 'SLG' },
-                              { id: 'OFF', label: '🏔️ Poza trasę', emoji: 'OFF' }
-                            ].map((style) => (
-                              <label 
-                                key={style.id} 
-                                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap cursor-pointer ${
-                                  selectedStyles.includes(style.id)
-                                    ? 'bg-green-500 text-white shadow-lg'
-                                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={selectedStyles.includes(style.id)}
-                                  onChange={() => handleStyleToggle(style.id)}
-                                  className="hidden"
-                                />
-                                {style.label}
-                              </label>
-                            ))}
+                    {groupedResults && groupedResults.idealne.length > 0 && (
+                      <div>
+                        {/* Style jazdy - tylko dla poziomu 4+ */}
+                        {parseInt(formData.level) >= 4 && equipmentTypeFilter === 'NARTY' && (
+                          <div className="w-full bg-[#194576]/50 rounded-lg p-3 mb-3">
+                            <div className="flex flex-wrap gap-2 justify-center items-center">
+                              {[
+                                { id: 'SL', label: '🎿 Slalom', emoji: 'SL' },
+                                { id: 'G', label: '⛷️ Gigant', emoji: 'G' },
+                                { id: 'SLG', label: '🎯 Pomiędzy', emoji: 'SLG' },
+                                { id: 'OFF', label: '🏔️ Poza trasę', emoji: 'OFF' }
+                              ].map((style) => (
+                                <label 
+                                  key={style.id} 
+                                  className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap cursor-pointer ${
+                                    selectedStyles.includes(style.id)
+                                      ? 'bg-green-500 text-white shadow-lg'
+                                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
+                                  }`}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={selectedStyles.includes(style.id)}
+                                    onChange={() => handleStyleToggle(style.id)}
+                                    className="hidden"
+                                  />
+                                  {style.label}
+                                </label>
+                              ))}
+                            </div>
                           </div>
+                        )}
+                        
+                        <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                          🏆 IDEALNE DOPASOWANIE ({groupedResults.idealne.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {groupedResults.idealne.map((match, idx) => (
+                            <div key={idx} className="bg-white/20 p-3 rounded-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                {/* Lewa strona - badge ze stylem i długość pod nim */}
+                                <div className="flex flex-col items-center space-y-1">
+                                  <SkiStyleBadge 
+                                    przeznaczenie={match.ski.PRZEZNACZENIE}
+                                    atuty={match.ski.ATUTY}
+                                  />
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                    {match.ski.DLUGOSC}cm
+                                  </div>
+                                </div>
+                                
+                                {/* Środek - Nazwa narty i kod */}
+                                <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                  <div className="font-black text-base">
+                                    {match.ski.MARKA} {match.ski.MODEL}
+                                  </div>
+                                  <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                    KOD: {match.ski.KOD}
+                                  </div>
+                                </div>
+                                
+                                {/* Prawa strona - procent dopasowania */}
+                                <div className="flex flex-col items-center">
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                    <span className={`${
+                                      match.compatibility >= 90 ? 'text-green-400' :
+                                      match.compatibility >= 70 ? 'text-yellow-400' :
+                                      match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                    }`}>
+                                      {match.compatibility}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                              <DetailedCompatibility 
+                                match={match}
+                                userCriteria={currentCriteria!}
+                                skisDatabase={skisDatabase}
+                                isRowExpanded={isCardExpandedInRow('idealne', idx)}
+                                onRowToggle={() => toggleCardInRow('idealne')}
+                              />
+                            </div>
+                          ))}
                         </div>
-                      )}
-                      
-                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        🏆 IDEALNE DOPASOWANIE ({groupedResults.idealne.length})
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {groupedResults.idealne.map((match, idx) => (
-                          <div key={idx} className="bg-white/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2">
-                              {/* Lewa strona - badge ze stylem i długość pod nim */}
-                              <div className="flex flex-col items-center space-y-1">
-                                <SkiStyleBadge 
-                                  przeznaczenie={match.ski.PRZEZNACZENIE}
-                                  atuty={match.ski.ATUTY}
-                                />
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
-                                  {match.ski.DLUGOSC}cm
-                                </div>
-                              </div>
-                              
-                              {/* Środek - Nazwa narty i kod */}
-                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
-                                <div className="font-black text-base">
-                                  {match.ski.MARKA} {match.ski.MODEL}
-                                </div>
-                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
-                                  KOD: {match.ski.KOD}
-                                </div>
-                              </div>
-                              
-                              {/* Prawa strona - procent dopasowania */}
-                              <div className="flex flex-col items-center">
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
-                                  <span className={`${
-                                    match.compatibility >= 90 ? 'text-green-400' :
-                                    match.compatibility >= 70 ? 'text-yellow-400' :
-                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-                                  }`}>
-                                    {match.compatibility}%
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                            <DetailedCompatibility 
-                              match={match}
-                              userCriteria={currentCriteria!}
-                              skisDatabase={skisDatabase}
-                              isRowExpanded={isCardExpandedInRow('idealne', idx)}
-                              onRowToggle={() => toggleCardInRow('idealne')}
-                            />
-                          </div>
-                        ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {groupedResults && groupedResults.alternatywy.length > 0 && (
-                    <div>
-                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        ⭐ ALTERNATYWY ({groupedResults.alternatywy.length})
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.alternatywy ? groupedResults.alternatywy : groupedResults.alternatywy.slice(0, 8)).map((match, idx) => (
-                          <div key={idx} className="bg-white/15 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2">
-                              {/* Lewa strona - badge ze stylem i długość pod nim */}
-                              <div className="flex flex-col items-center space-y-1">
-                                <SkiStyleBadge 
-                                  przeznaczenie={match.ski.PRZEZNACZENIE}
-                                  atuty={match.ski.ATUTY}
-                                />
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
-                                  {match.ski.DLUGOSC}cm
+                    {groupedResults && groupedResults.alternatywy.length > 0 && (
+                      <div>
+                        <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                          ⭐ ALTERNATYWY ({groupedResults.alternatywy.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {(expandedCategories.alternatywy ? groupedResults.alternatywy : groupedResults.alternatywy.slice(0, 8)).map((match, idx) => (
+                            <div key={idx} className="bg-white/15 p-3 rounded-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                {/* Lewa strona - badge ze stylem i długość pod nim */}
+                                <div className="flex flex-col items-center space-y-1">
+                                  <SkiStyleBadge 
+                                    przeznaczenie={match.ski.PRZEZNACZENIE}
+                                    atuty={match.ski.ATUTY}
+                                  />
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                    {match.ski.DLUGOSC}cm
+                                  </div>
+                                </div>
+                                
+                                {/* Środek - Nazwa narty i kod */}
+                                <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                  <div className="font-black text-base">
+                                    {match.ski.MARKA} {match.ski.MODEL}
+                                  </div>
+                                  <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                    KOD: {match.ski.KOD}
+                                  </div>
+                                </div>
+                                
+                                {/* Prawa strona - procent dopasowania */}
+                                <div className="flex flex-col items-center">
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                    <span className={`${
+                                      match.compatibility >= 90 ? 'text-green-400' :
+                                      match.compatibility >= 70 ? 'text-yellow-400' :
+                                      match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                    }`}>
+                                      {match.compatibility}%
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                              
-                              {/* Środek - Nazwa narty i kod */}
-                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
-                                <div className="font-black text-base">
-                                  {match.ski.MARKA} {match.ski.MODEL}
-                                </div>
-                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
-                                  KOD: {match.ski.KOD}
-                                </div>
-                              </div>
-                              
-                              {/* Prawa strona - procent dopasowania */}
-                              <div className="flex flex-col items-center">
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
-                                  <span className={`${
-                                    match.compatibility >= 90 ? 'text-green-400' :
-                                    match.compatibility >= 70 ? 'text-yellow-400' :
-                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-                                  }`}>
-                                    {match.compatibility}%
-                                  </span>
-                                </div>
-                              </div>
+                              <DetailedCompatibility 
+                                match={match}
+                                userCriteria={currentCriteria!}
+                                skisDatabase={skisDatabase}
+                                isRowExpanded={isCardExpandedInRow('alternatywy', idx)}
+                                onRowToggle={() => toggleCardInRow('alternatywy')}
+                              />
                             </div>
-                            <DetailedCompatibility 
-                              match={match}
-                              userCriteria={currentCriteria!}
-                              skisDatabase={skisDatabase}
-                              isRowExpanded={isCardExpandedInRow('alternatywy', idx)}
-                              onRowToggle={() => toggleCardInRow('alternatywy')}
-                            />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        {groupedResults && groupedResults.alternatywy.length > 8 && (
+                          <button
+                            onClick={() => toggleCategory('alternatywy')}
+                            className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                          >
+                            {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.alternatywy.length - 8})`}
+                          </button>
+                        )}
                       </div>
-                      {groupedResults && groupedResults.alternatywy.length > 8 && (
-                        <button
-                          onClick={() => toggleCategory('alternatywy')}
-                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
-                        >
-                          {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.alternatywy.length - 8})`}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    )}
 
-                  {groupedResults && groupedResults.inna_plec.length > 0 && (
-                    <div>
-                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        👤 INNA PŁEĆ ({groupedResults.inna_plec.length})
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.inna_plec ? groupedResults.inna_plec : groupedResults.inna_plec.slice(0, 8)).map((match, idx) => (
-                          <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2">
-                              {/* Lewa strona - badge ze stylem i długość pod nim */}
-                              <div className="flex flex-col items-center space-y-1">
-                                <SkiStyleBadge 
-                                  przeznaczenie={match.ski.PRZEZNACZENIE}
-                                  atuty={match.ski.ATUTY}
-                                />
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
-                                  {match.ski.DLUGOSC}cm
+                    {groupedResults && groupedResults.inna_plec.length > 0 && (
+                      <div>
+                        <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                          👤 INNA PŁEĆ ({groupedResults.inna_plec.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {(expandedCategories.inna_plec ? groupedResults.inna_plec : groupedResults.inna_plec.slice(0, 8)).map((match, idx) => (
+                            <div key={idx} className="bg-blue-500/20 p-3 rounded-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                {/* Lewa strona - badge ze stylem i długość pod nim */}
+                                <div className="flex flex-col items-center space-y-1">
+                                  <SkiStyleBadge 
+                                    przeznaczenie={match.ski.PRZEZNACZENIE}
+                                    atuty={match.ski.ATUTY}
+                                  />
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                    {match.ski.DLUGOSC}cm
+                                  </div>
+                                </div>
+                                
+                                {/* Środek - Nazwa narty i kod */}
+                                <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                  <div className="font-black text-base">
+                                    {match.ski.MARKA} {match.ski.MODEL}
+                                  </div>
+                                  <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                    KOD: {match.ski.KOD}
+                                  </div>
+                                </div>
+                                
+                                {/* Prawa strona - procent dopasowania */}
+                                <div className="flex flex-col items-center">
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                    <span className={`${
+                                      match.compatibility >= 90 ? 'text-green-400' :
+                                      match.compatibility >= 70 ? 'text-yellow-400' :
+                                      match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                    }`}>
+                                      {match.compatibility}%
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                              
-                              {/* Środek - Nazwa narty i kod */}
-                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
-                                <div className="font-black text-base">
-                                  {match.ski.MARKA} {match.ski.MODEL}
-                                </div>
-                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
-                                  KOD: {match.ski.KOD}
-                                </div>
-                              </div>
-                              
-                              {/* Prawa strona - procent dopasowania */}
-                              <div className="flex flex-col items-center">
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
-                                  <span className={`${
-                                    match.compatibility >= 90 ? 'text-green-400' :
-                                    match.compatibility >= 70 ? 'text-yellow-400' :
-                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-                                  }`}>
-                                    {match.compatibility}%
-                                  </span>
-                                </div>
-                              </div>
+                              <DetailedCompatibility 
+                                match={match}
+                                userCriteria={currentCriteria!}
+                                skisDatabase={skisDatabase}
+                                isRowExpanded={isCardExpandedInRow('inna_plec', idx)}
+                                onRowToggle={() => toggleCardInRow('inna_plec')}
+                              />
                             </div>
-                            <DetailedCompatibility 
-                              match={match}
-                              userCriteria={currentCriteria!}
-                              skisDatabase={skisDatabase}
-                              isRowExpanded={isCardExpandedInRow('inna_plec', idx)}
-                              onRowToggle={() => toggleCardInRow('inna_plec')}
-                            />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        {groupedResults && groupedResults.inna_plec.length > 8 && (
+                          <button
+                            onClick={() => toggleCategory('inna_plec')}
+                            className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                          >
+                            {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.inna_plec.length - 8})`}
+                          </button>
+                        )}
                       </div>
-                      {groupedResults && groupedResults.inna_plec.length > 8 && (
-                        <button
-                          onClick={() => toggleCategory('inna_plec')}
-                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
-                        >
-                          {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.inna_plec.length - 8})`}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    )}
 
-                  {groupedResults && groupedResults.poziom_za_nisko.length > 0 && (
-                    <div>
-                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        📉 POZIOM ZA NISKO ({groupedResults.poziom_za_nisko.length})
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.poziom_za_nisko ? groupedResults.poziom_za_nisko : groupedResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
-                          <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2">
-                              {/* Lewa strona - badge ze stylem i długość pod nim */}
-                              <div className="flex flex-col items-center space-y-1">
-                                <SkiStyleBadge 
-                                  przeznaczenie={match.ski.PRZEZNACZENIE}
-                                  atuty={match.ski.ATUTY}
-                                />
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
-                                  {match.ski.DLUGOSC}cm
+                    {groupedResults && groupedResults.poziom_za_nisko.length > 0 && (
+                      <div>
+                        <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                          📉 POZIOM ZA NISKO ({groupedResults.poziom_za_nisko.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {(expandedCategories.poziom_za_nisko ? groupedResults.poziom_za_nisko : groupedResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
+                            <div key={idx} className="bg-orange-500/20 p-3 rounded-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                {/* Lewa strona - badge ze stylem i długość pod nim */}
+                                <div className="flex flex-col items-center space-y-1">
+                                  <SkiStyleBadge 
+                                    przeznaczenie={match.ski.PRZEZNACZENIE}
+                                    atuty={match.ski.ATUTY}
+                                  />
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                    {match.ski.DLUGOSC}cm
+                                  </div>
+                                </div>
+                                
+                                {/* Środek - Nazwa narty i kod */}
+                                <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                  <div className="font-black text-base">
+                                    {match.ski.MARKA} {match.ski.MODEL}
+                                  </div>
+                                  <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                    KOD: {match.ski.KOD}
+                                  </div>
+                                </div>
+                                
+                                {/* Prawa strona - procent dopasowania */}
+                                <div className="flex flex-col items-center">
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                    <span className={`${
+                                      match.compatibility >= 90 ? 'text-green-400' :
+                                      match.compatibility >= 70 ? 'text-yellow-400' :
+                                      match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                    }`}>
+                                      {match.compatibility}%
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                              
-                              {/* Środek - Nazwa narty i kod */}
-                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
-                                <div className="font-black text-base">
-                                  {match.ski.MARKA} {match.ski.MODEL}
-                                </div>
-                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
-                                  KOD: {match.ski.KOD}
-                                </div>
-                              </div>
-                              
-                              {/* Prawa strona - procent dopasowania */}
-                              <div className="flex flex-col items-center">
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
-                                  <span className={`${
-                                    match.compatibility >= 90 ? 'text-green-400' :
-                                    match.compatibility >= 70 ? 'text-yellow-400' :
-                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-                                  }`}>
-                                    {match.compatibility}%
-                                  </span>
-                                </div>
-                              </div>
+                              <DetailedCompatibility 
+                                match={match}
+                                userCriteria={currentCriteria!}
+                                skisDatabase={skisDatabase}
+                                isRowExpanded={isCardExpandedInRow('poziom_za_nisko', idx)}
+                                onRowToggle={() => toggleCardInRow('poziom_za_nisko')}
+                              />
                             </div>
-                            <DetailedCompatibility 
-                              match={match}
-                              userCriteria={currentCriteria!}
-                              skisDatabase={skisDatabase}
-                              isRowExpanded={isCardExpandedInRow('poziom_za_nisko', idx)}
-                              onRowToggle={() => toggleCardInRow('poziom_za_nisko')}
-                            />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        {groupedResults && groupedResults.poziom_za_nisko.length > 8 && (
+                          <button
+                            onClick={() => toggleCategory('poziom_za_nisko')}
+                            className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                          >
+                            {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.poziom_za_nisko.length - 8})`}
+                          </button>
+                        )}
                       </div>
-                      {groupedResults && groupedResults.poziom_za_nisko.length > 8 && (
-                        <button
-                          onClick={() => toggleCategory('poziom_za_nisko')}
-                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
-                        >
-                          {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.poziom_za_nisko.length - 8})`}
-                        </button>
-                      )}
-                    </div>
-                  )}
+                    )}
 
-                  {groupedResults && groupedResults.na_sile.length > 0 && (
-                    <div>
-                      <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                        💪 NA SIŁĘ ({groupedResults.na_sile.length})
-                      </h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                        {(expandedCategories.na_sile ? groupedResults.na_sile : groupedResults.na_sile.slice(0, 8)).map((match, idx) => (
-                          <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
-                            <div className="flex items-start justify-between mb-2">
-                              {/* Lewa strona - badge ze stylem i długość pod nim */}
-                              <div className="flex flex-col items-center space-y-1">
-                                <SkiStyleBadge 
-                                  przeznaczenie={match.ski.PRZEZNACZENIE}
-                                  atuty={match.ski.ATUTY}
-                                />
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
-                                  {match.ski.DLUGOSC}cm
+                    {groupedResults && groupedResults.na_sile.length > 0 && (
+                      <div>
+                        <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
+                          💪 NA SIŁĘ ({groupedResults.na_sile.length})
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                          {(expandedCategories.na_sile ? groupedResults.na_sile : groupedResults.na_sile.slice(0, 8)).map((match, idx) => (
+                            <div key={idx} className="bg-red-500/20 p-3 rounded-lg">
+                              <div className="flex items-start justify-between mb-2">
+                                {/* Lewa strona - badge ze stylem i długość pod nim */}
+                                <div className="flex flex-col items-center space-y-1">
+                                  <SkiStyleBadge 
+                                    przeznaczenie={match.ski.PRZEZNACZENIE}
+                                    atuty={match.ski.ATUTY}
+                                  />
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-6 px-2 py-1 bg-gray-600 text-white text-xs font-bold rounded border border-gray-400 shadow-sm">
+                                    {match.ski.DLUGOSC}cm
+                                  </div>
+                                </div>
+                                
+                                {/* Środek - Nazwa narty i kod */}
+                                <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
+                                  <div className="font-black text-base">
+                                    {match.ski.MARKA} {match.ski.MODEL}
+                                  </div>
+                                  <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
+                                    KOD: {match.ski.KOD}
+                                  </div>
+                                </div>
+                                
+                                {/* Prawa strona - procent dopasowania */}
+                                <div className="flex flex-col items-center">
+                                  <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
+                                    <span className={`${
+                                      match.compatibility >= 90 ? 'text-green-400' :
+                                      match.compatibility >= 70 ? 'text-yellow-400' :
+                                      match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
+                                    }`}>
+                                      {match.compatibility}%
+                                    </span>
+                                  </div>
                                 </div>
                               </div>
-                              
-                              {/* Środek - Nazwa narty i kod */}
-                              <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
-                                <div className="font-black text-base">
-                                  {match.ski.MARKA} {match.ski.MODEL}
-                                </div>
-                                <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
-                                  KOD: {match.ski.KOD}
-                                </div>
-                              </div>
-                              
-                              {/* Prawa strona - procent dopasowania */}
-                              <div className="flex flex-col items-center">
-                                <div className="ski-badge inline-flex items-center justify-center min-w-[60px] h-12 px-2 py-1 bg-gray-600 text-white text-lg font-bold rounded border border-gray-400 shadow-sm">
-                                  <span className={`${
-                                    match.compatibility >= 90 ? 'text-green-400' :
-                                    match.compatibility >= 70 ? 'text-yellow-400' :
-                                    match.compatibility >= 50 ? 'text-orange-400' : 'text-red-400'
-                                  }`}>
-                                    {match.compatibility}%
-                                  </span>
-                                </div>
-                              </div>
+                              <DetailedCompatibility 
+                                match={match}
+                                userCriteria={currentCriteria!}
+                                skisDatabase={skisDatabase}
+                                isRowExpanded={isCardExpandedInRow('na_sile', idx)}
+                                onRowToggle={() => toggleCardInRow('na_sile')}
+                              />
                             </div>
-                            <DetailedCompatibility 
-                              match={match}
-                              userCriteria={currentCriteria!}
-                              skisDatabase={skisDatabase}
-                              isRowExpanded={isCardExpandedInRow('na_sile', idx)}
-                              onRowToggle={() => toggleCardInRow('na_sile')}
-                            />
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                        {groupedResults && groupedResults.na_sile.length > 8 && (
+                          <button
+                            onClick={() => toggleCategory('na_sile')}
+                            className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
+                          >
+                            {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.na_sile.length - 8})`}
+                          </button>
+                        )}
                       </div>
-                      {groupedResults && groupedResults.na_sile.length > 8 && (
-                        <button
-                          onClick={() => toggleCategory('na_sile')}
-                          className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
-                        >
-                          {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.na_sile.length - 8})`}
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+        </div>
       </div>
       
       {/* Renderowanie komponentu przeglądania */}
