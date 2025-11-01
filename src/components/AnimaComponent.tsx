@@ -21,6 +21,7 @@ import { SkiStyleBadge } from './SkiStyleBadge';
 import { BrowseSkisComponent } from './BrowseSkisComponent';
 import { ReservationsView } from './ReservationsView';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../types/ski.types';
+import PasswordModal from './PasswordModal';
 
 interface FormData {
   dateFrom: {
@@ -115,6 +116,8 @@ const AnimaComponent: React.FC = () => {
   // NOWY STAN: Filtry kategorii sprzętu
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
+
+  const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   // HELPER: Pobierz aktywną kartę
   const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
@@ -1040,6 +1043,12 @@ const AnimaComponent: React.FC = () => {
     na_sile: groupMatchesByModel(filteredSearchResults.na_sile)
   } : null;
 
+  const handlePasswordSubmit = (password: string) => {
+    console.log('Wprowadzone hasło:', password);
+    // TODO: dodać logikę weryfikacji hasła
+    setIsPasswordModalOpen(false);
+  };
+
   return (
     <div className="min-h-screen bg-[#386BB2]">
       <div>
@@ -1047,10 +1056,7 @@ const AnimaComponent: React.FC = () => {
         <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
           {/* Przycisk logowania dla pracownika */}
           <button
-            onClick={() => {
-              // TODO: Dodać logikę otwierania modala logowania
-              console.log("Przycisk logowania kliknięty!");
-            }}
+            onClick={() => setIsPasswordModalOpen(true)}
             className="absolute top-1/2 right-4 -translate-y-1/2 z-50 bg-blue-900/50 hover:bg-blue-800/70 text-white font-bold p-2 rounded-lg shadow-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
             aria-label="Logowanie pracownika"
           >
@@ -1823,6 +1829,14 @@ const AnimaComponent: React.FC = () => {
             onBackToSearch={() => setAppMode('search')}
           />
         </div>
+      )}
+
+      {/* Renderowanie modala hasła */}
+      {isPasswordModalOpen && (
+        <PasswordModal
+          onClose={() => setIsPasswordModalOpen(false)}
+          onSubmit={handlePasswordSubmit}
+        />
       )}
     </div>
   );
