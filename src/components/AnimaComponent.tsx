@@ -1233,9 +1233,9 @@ const AnimaComponent: React.FC = () => {
           <div className="w-auto h-auto bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch justify-start gap-3 p-3 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
               
               {/* Left Section - Personal Data - POWIĘKSZONA responsywna szerokość */}
-              <div className="w-full lg:w-[360px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+              <div className="w-auto h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
                 {/* Date From - responsywne inputy */}
-                <div className="w-full flex items-center gap-1">
+                <div className="w-auto flex items-center gap-1">
                   <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
                     <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
                   </div>
@@ -1274,7 +1274,7 @@ const AnimaComponent: React.FC = () => {
               </div>
 
                 {/* Date To - responsywne inputy */}
-                <div className="w-full flex items-center gap-1">
+                <div className="w-auto flex items-center gap-1">
                   <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
                     <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
                   </div>
@@ -1312,7 +1312,7 @@ const AnimaComponent: React.FC = () => {
                 </div>
 
                 {/* Height - responsywne */}
-                <div className="w-full flex items-center gap-1">
+                <div className="w-auto flex items-center gap-1">
                   <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
                   </div>
@@ -1322,7 +1322,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="180"
                     value={formData.height.value}
                     onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[145px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-20 lg:w-[102px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1332,7 +1332,7 @@ const AnimaComponent: React.FC = () => {
                 </div>
 
                 {/* Weight - responsywne */}
-                <div className="w-full flex items-center gap-1">
+                <div className="w-auto flex items-center gap-1">
                   <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
                   </div>
@@ -1342,7 +1342,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="70"
                     value={formData.weight.value}
                     onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[145px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-20 lg:w-[102px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
