@@ -5,11 +5,21 @@ import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 
+interface TabInfo {
+  id: string;
+  label: string;
+}
+
 interface BrowseSkisComponentProps {
   allSkis: SkiData[];
   browseCriteria: Partial<SearchCriteria>;
   onBack: () => void;
   initialFilter?: string;
+  tabs?: TabInfo[];
+  activeTabId?: string;
+  onTabChange?: (tabId: string) => void;
+  onAddTab?: () => void;
+  onRemoveTab?: (tabId: string) => void;
   // onRefreshData?: () => Promise<void>;
   // isEmployeeMode?: boolean;
 }
@@ -27,6 +37,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   browseCriteria,
   onBack,
   initialFilter = 'all',
+  tabs = [],
+  activeTabId,
+  onTabChange,
+  onAddTab,
+  onRemoveTab,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'MARKA',
@@ -394,10 +409,56 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
-      <div className="max-w-8xl mx-auto">
-        {/* Header z wyszukiwaniem - responsywny */}
-        <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
+    <div className="min-h-screen bg-[#386BB2]">
+      {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
+      {tabs.length > 0 && (
+        <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
+          <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
+            {/* Renderuj karty */}
+            {tabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => onTabChange?.(tab.id)}
+                className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
+                  activeTabId === tab.id
+                    ? 'bg-[#386BB2] text-white'
+                    : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
+                }`}
+              >
+                {tab.label}
+                {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
+                {tabs.length > 1 && (
+                  <span
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemoveTab?.(tab.id);
+                    }}
+                    className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
+                  >
+                    ✕
+                  </span>
+                )}
+              </button>
+            ))}
+            
+            {/* Przycisk dodawania nowej karty - sticky na mobile */}
+            {onAddTab && (
+              <button
+                onClick={onAddTab}
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
+                title="Dodaj nową osobę"
+              >
+                ➕ Nowa osoba
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+      
+      <div className="p-3 lg:p-6">
+        <div className="max-w-8xl mx-auto">
+          {/* Header z wyszukiwaniem - responsywny */}
+          <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
             <div className="flex-shrink-0">
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
@@ -651,6 +712,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
           </p>
         </div>
+      </div>
       </div>
 
       {/* Modal edycji/dodawania */}
