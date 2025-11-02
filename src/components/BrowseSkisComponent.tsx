@@ -51,7 +51,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
-  const itemsPerPage = 20;
+  // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
+  // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
+  const itemsPerPage = 10000;
   
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
@@ -193,8 +195,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
     // Znajdź wszystkie narty tego samego modelu i długości
     const sameModelSkis = allSkis.filter(s => 
-      s.MARKA === ski.MARKA && 
-      s.MODEL === ski.MODEL && 
+      s && ski &&
+      (s.MARKA || '') === (ski.MARKA || '') && 
+      (s.MODEL || '') === (ski.MODEL || '') && 
       s.DLUGOSC === ski.DLUGOSC
     );
     
@@ -257,23 +260,34 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     searchTerm: string,
     activeFilter: string
   ): SkiData[] => {
+    // Zabezpieczenie: sprawdź czy skis jest tablicą
+    if (!Array.isArray(skis) || skis.length === 0) {
+      console.warn('BrowseSkisComponent: filterSkis otrzymał pustą tablicę lub nie-tablicę:', skis);
+      return [];
+    }
+
     let filtered = skis;
 
     // Filtruj po przyciskach
     if (activeFilter !== 'all') {
       filtered = filtered.filter(ski => {
+        // Zabezpieczenie: sprawdź czy ski ma wymagane pola
+        if (!ski || !ski.TYP_SPRZETU) {
+          return false;
+        }
+        
         // Filtrowanie według typu sprzętu i kategorii (zgodne z AnimaComponent)
         switch (activeFilter) {
           case 'TOP':
-            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'TOP';
+            return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'TOP';
           case 'VIP':
-            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'VIP';
+            return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'VIP';
           case 'JUNIOR':
-            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'JUNIOR';
+            return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'JUNIOR';
           case 'BUTY_JUNIOR':
-            return ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'JUNIOR';
+            return ski.TYP_SPRZETU === 'BUTY' && (ski.KATEGORIA || '') === 'JUNIOR';
           case 'DOROSLE':
-            return ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE';
+            return ski.TYP_SPRZETU === 'BUTY' && (ski.KATEGORIA || '') === 'DOROSLE';
           case 'DESKI':
             return ski.TYP_SPRZETU === 'DESKI';
           case 'BUTY_SNOWBOARD':
@@ -288,16 +302,40 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     // Filtruj po tekście wyszukiwania
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(ski => 
-        ski.MARKA.toLowerCase().includes(term) ||
-        ski.MODEL.toLowerCase().includes(term) ||
-        ski.POZIOM.toLowerCase().includes(term) ||
-        ski.PLEC.toLowerCase().includes(term) ||
-        ski.PRZEZNACZENIE.toLowerCase().includes(term) ||
-        ski.ATUTY.toLowerCase().includes(term) ||
-        ski.DLUGOSC.toString().includes(term) ||
-        ski.ROK.toString().includes(term)
-      );
+      // Pomocnicza funkcja do mapowania przeznaczenia na pełne nazwy (dla wyszukiwania)
+      const getPurposeFullName = (purpose: string): string => {
+        switch (purpose) {
+          case 'SL': return 'slalom';
+          case 'G': return 'gigant';
+          case 'SLG': return 'pomiędzy';
+          case 'OFF': return 'poza trasę';
+          default: return purpose.toLowerCase();
+        }
+      };
+      
+      filtered = filtered.filter(ski => {
+        // Zabezpieczenie: wszystkie pola mogą być null/undefined z MySQL
+        const marka = (ski.MARKA || '').toLowerCase();
+        const model = (ski.MODEL || '').toLowerCase();
+        const poziom = (ski.POZIOM || '').toLowerCase();
+        const plec = (ski.PLEC || '').toLowerCase();
+        const przeznaczenieRaw = (ski.PRZEZNACZENIE || '').toLowerCase();
+        // Dodatkowe: sprawdź również pełne nazwy przeznaczenia (dla lepszego wyszukiwania)
+        const przeznaczenieFormatted = getPurposeFullName(ski.PRZEZNACZENIE || '');
+        const atuty = (ski.ATUTY || '').toLowerCase();
+        const dlugosc = (ski.DLUGOSC !== null && ski.DLUGOSC !== undefined) ? ski.DLUGOSC.toString() : '';
+        const rok = (ski.ROK !== null && ski.ROK !== undefined) ? ski.ROK.toString() : '';
+        
+        return marka.includes(term) ||
+          model.includes(term) ||
+          poziom.includes(term) ||
+          plec.includes(term) ||
+          przeznaczenieRaw.includes(term) ||
+          przeznaczenieFormatted.includes(term) || // Wyszukiwanie po pełnych nazwach (Slalom, Gigant, itp.)
+          atuty.includes(term) ||
+          dlugosc.includes(term) ||
+          rok.includes(term);
+      });
     }
 
     return filtered;
@@ -315,10 +353,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         bValue = Number(bValue);
       }
 
-      // Konwersja dla pól tekstowych
-      if (typeof aValue === 'string') {
+      // Konwersja dla pól tekstowych (zabezpieczenie przed null/undefined)
+      if (typeof aValue === 'string' && aValue) {
         aValue = aValue.toLowerCase();
+      } else if (aValue === null || aValue === undefined) {
+        aValue = '';
+      }
+      if (typeof bValue === 'string' && bValue) {
         bValue = bValue.toLowerCase();
+      } else if (bValue === null || bValue === undefined) {
+        bValue = '';
       }
 
       if (aValue < bValue) {
@@ -339,9 +383,27 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }));
   };
 
+  // Funkcja grupowania nart po modelu (MARKA + MODEL + DLUGOSC)
+  const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
+    const grouped = new Map<string, SkiData>();
+    
+    skis.forEach(ski => {
+      // Klucz grupowania: MARKA + MODEL + DLUGOSC
+      const key = `${ski.MARKA || ''}|${ski.MODEL || ''}|${ski.DLUGOSC || ''}`;
+      
+      // Jeśli nie ma jeszcze tej grupy, dodaj pierwszą nartę jako reprezentanta
+      if (!grouped.has(key)) {
+        grouped.set(key, ski);
+      }
+    });
+    
+    // Zwróć tylko reprezentantów grup (jedna narta na model)
+    return Array.from(grouped.values());
+  };
+
   // Sortowanie i paginacja z grupowaniem
   const filteredSkis = filterSkis(allSkis, searchTerm, activeFilter);
-  const groupedSkis = filteredSkis; // Bez grupowania po modelu
+  const groupedSkis = groupSkisByModel(filteredSkis); // Grupowanie po modelu
   const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -502,7 +564,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1); // Reset do pierwszej strony przy wyszukiwaniu
               }}
-              placeholder="Wpisz markę, model, poziom, płeć..."
+              placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
               className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
             />
             {searchTerm && (
