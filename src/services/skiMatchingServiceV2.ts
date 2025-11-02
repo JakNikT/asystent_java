@@ -1,6 +1,6 @@
 // Serwis dopasowywania nart - UPROSZCZONA WERSJA
-import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails } from '../types/ski.types';
-import { ReservationApiClient } from './reservationApiClient';
+import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails, MatchDetails } from '../types/ski.types';
+import { ReservationApiClient } from './reservationApiClient'; // eslint-disable-line @typescript-eslint/no-unused-vars
 
 // Konfiguracja tolerancji - uproszczona logika
 interface ToleranceConfig {
@@ -51,7 +51,7 @@ export class SkiMatchingServiceV2 {
    * Etap 1: Wyszukiwanie podstawowe (bez filtrów stylu)
    * Etap 2: Opcjonalne filtrowanie po stylu
    */
-  static findMatchingSkis(skis: SkiData[], criteria: SearchCriteria): SearchResults {
+  public static findMatchingSkis(skis: SkiData[], criteria: SearchCriteria): SearchResults {
     console.log(`SkiMatchingServiceV2: Wyszukiwanie nart dla kryteriów:`, criteria);
     
     // ETAP 1: Wyszukiwanie podstawowe (ignoruj styl_jazdy)
@@ -548,108 +548,115 @@ export class SkiMatchingServiceV2 {
    * Klient poziom 4, narta poziom 3 = narta trudniejsza (poziom narty niżej) ↑
    * Klient poziom 4, narta poziom 4 = idealne
    * Klient poziom 4, narta poziom 5 = narta łatwiejsza (niższy poziom narty) ↓
+   * ZWRACA: { status, points, color, diff }
    */
-  private static checkPoziom(userPoziom: number, skiPoziomMin: number): { status: string; points: number } | null {
+  private static checkPoziom(userPoziom: number, skiPoziomMin: number): { status: string; points: number; color: 'green' | 'yellow' | 'red'; diff: number } | null {
+    const diff = userPoziom - skiPoziomMin;
+
     if (userPoziom >= skiPoziomMin) {
       // Narta jest łatwiejsza (poziom narty jest niżej)
       if (userPoziom >= skiPoziomMin + TOLERANCE_CONFIG.poziom.yellowThreshold) {
-        const diff = userPoziom - skiPoziomMin;
-        return { status: `🟡 żółty (niższy poziom narty ${diff}↓)`, points: 0 };
+        return { status: `🟡 żółty (niższy poziom narty ${Math.abs(diff)}↓)`, points: 0, color: 'yellow', diff };
       }
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green', diff: 0 };
     } else if (userPoziom >= skiPoziomMin - TOLERANCE_CONFIG.poziom.yellowThreshold) {
       // Narta jest trudniejsza (poziom narty wyżej)
-      const diff = skiPoziomMin - userPoziom;
-      return { status: `🟡 żółty (poziom za wysoki ${diff}↑)`, points: 0 };
+      return { status: `🟡 żółty (poziom za wysoki ${Math.abs(diff)}↑)`, points: 0, color: 'yellow', diff };
     } else if (userPoziom >= skiPoziomMin - TOLERANCE_CONFIG.poziom.maxDifference) {
-      const diff = skiPoziomMin - userPoziom;
-      return { status: `🔴 czerwony (poziom za wysoki ${diff}↑)`, points: 0 };
+      return { status: `🔴 czerwony (poziom za wysoki ${Math.abs(diff)}↑)`, points: 0, color: 'red', diff };
     }
     return null;
   }
 
   /**
    * Sprawdza dopasowanie płci
-   * Obsługuje: M (męski), K (kobiecy), D (damski - stary format), U (unisex), W (wszyscy)
+   * ZWRACA: { status, points, color }
    */
-  private static checkPlec(userPlec: string, skiPlec: string): { status: string; points: number } {
+  private static checkPlec(userPlec: string, skiPlec: string): { status: string; points: number; color: 'green' | 'yellow' | 'red' } {
     // Normalizuj stary format D → K
     const normalizedSkiPlec = skiPlec === 'D' ? 'K' : skiPlec;
     const normalizedUserPlec = userPlec === 'D' ? 'K' : userPlec;
     
     // Jeśli użytkownik wybrał 'W' (wszyscy) - wszystko pasuje
     if (normalizedUserPlec === 'W') {
-      return { status: '✅ zielony (wszyscy)', points: 1 };
+      return { status: '✅ zielony (wszyscy)', points: 1, color: 'green' };
     }
     
     if (normalizedSkiPlec === 'U' || normalizedSkiPlec === 'W') {
-      return { status: '✅ zielony (unisex)', points: 1 };
+      return { status: '✅ zielony (unisex)', points: 1, color: 'green' };
     } else if (normalizedUserPlec === 'M' && normalizedSkiPlec === 'M') {
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green' };
     } else if (normalizedUserPlec === 'K' && normalizedSkiPlec === 'K') {
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green' };
     } else if (normalizedUserPlec === 'M' && normalizedSkiPlec === 'K') {
-      return { status: '🟡 żółty - Narta kobieca', points: 0 };
+      return { status: '🟡 żółty - Narta kobieca', points: 0, color: 'yellow' };
     } else if (normalizedUserPlec === 'K' && normalizedSkiPlec === 'M') {
-      return { status: '🟡 żółty - Narta męska', points: 0 };
+      return { status: '🟡 żółty - Narta męska', points: 0, color: 'yellow' };
     } else {
-      return { status: '🔴 czerwony (niezgodna płeć)', points: 0 };
+      return { status: '🔴 czerwony (niezgodna płeć)', points: 0, color: 'red' };
     }
   }
 
   /**
    * Sprawdza dopasowanie wagi
+   * ZWRACA: { status, points, color, diff }
    */
-  private static checkWaga(userWaga: number, wagaMin: number, wagaMax: number): { status: string; points: number } {
+  private static checkWaga(userWaga: number, wagaMin: number, wagaMax: number): { status: string; points: number; color: 'green' | 'yellow' | 'red'; diff: number } {
+    let diff = 0;
     if (userWaga >= wagaMin && userWaga <= wagaMax) {
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green', diff: 0 };
     } else if (userWaga > wagaMax && userWaga <= wagaMax + TOLERANCE_CONFIG.waga.yellowTolerance) {
-      const diff = userWaga - wagaMax;
-      return { status: `🟡 żółty (${diff}↑ kg za duża)`, points: 0 };
+      diff = userWaga - wagaMax;
+      return { status: `🟡 żółty (${diff}↑ kg za duża)`, points: 0, color: 'yellow', diff };
     } else if (userWaga < wagaMin && userWaga >= wagaMin - TOLERANCE_CONFIG.waga.yellowTolerance) {
-      const diff = wagaMin - userWaga;
-      return { status: `🟡 żółty (${diff}↓ kg za mała)`, points: 0 };
+      diff = wagaMin - userWaga;
+      return { status: `🟡 żółty (${diff}↓ kg za mała)`, points: 0, color: 'yellow', diff };
     } else if (userWaga > wagaMax && userWaga <= wagaMax + TOLERANCE_CONFIG.waga.redTolerance) {
-      const diff = userWaga - wagaMax;
-      return { status: `🔴 czerwony (${diff}↑ kg za duża)`, points: 0 };
+      diff = userWaga - wagaMax;
+      return { status: `🔴 czerwony (${diff}↑ kg za duża)`, points: 0, color: 'red', diff };
     } else if (userWaga < wagaMin && userWaga >= wagaMin - TOLERANCE_CONFIG.waga.redTolerance) {
-      const diff = wagaMin - userWaga;
-      return { status: `🔴 czerwony (${diff}↓ kg za mała)`, points: 0 };
+      diff = wagaMin - userWaga;
+      return { status: `🔴 czerwony (${diff}↓ kg za mała)`, points: 0, color: 'red', diff };
     } else {
-      return { status: '🔴 czerwony (niedopasowana)', points: 0 };
+      diff = userWaga > wagaMax ? userWaga - wagaMax : wagaMin - userWaga;
+      return { status: '🔴 czerwony (niedopasowana)', points: 0, color: 'red', diff };
     }
   }
 
   /**
    * Sprawdza dopasowanie wzrostu
+   * ZWRACA: { status, points, color, diff }
    */
-  private static checkWzrost(userWzrost: number, wzrostMin: number, wzrostMax: number): { status: string; points: number } {
+  private static checkWzrost(userWzrost: number, wzrostMin: number, wzrostMax: number): { status: string; points: number; color: 'green' | 'yellow' | 'red'; diff: number } {
+    let diff = 0;
     if (userWzrost >= wzrostMin && userWzrost <= wzrostMax) {
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green', diff: 0 };
     } else if (userWzrost > wzrostMax && userWzrost <= wzrostMax + TOLERANCE_CONFIG.wzrost.yellowTolerance) {
-      const diff = userWzrost - wzrostMax;
-      return { status: `🟡 żółty (${diff}↑ cm za duży)`, points: 0 };
+      diff = userWzrost - wzrostMax;
+      return { status: `🟡 żółty (${diff}↑ cm za duży)`, points: 0, color: 'yellow', diff };
     } else if (userWzrost < wzrostMin && userWzrost >= wzrostMin - TOLERANCE_CONFIG.wzrost.yellowTolerance) {
-      const diff = wzrostMin - userWzrost;
-      return { status: `🟡 żółty (${diff}↓ cm za mały)`, points: 0 };
+      diff = wzrostMin - userWzrost;
+      return { status: `🟡 żółty (${diff}↓ cm za mały)`, points: 0, color: 'yellow', diff };
     } else if (userWzrost > wzrostMax && userWzrost <= wzrostMax + TOLERANCE_CONFIG.wzrost.redTolerance) {
-      const diff = userWzrost - wzrostMax;
-      return { status: `🔴 czerwony (${diff}↑ cm za duży)`, points: 0 };
+      diff = userWzrost - wzrostMax;
+      return { status: `🔴 czerwony (${diff}↑ cm za duży)`, points: 0, color: 'red', diff };
     } else if (userWzrost < wzrostMin && userWzrost >= wzrostMin - TOLERANCE_CONFIG.wzrost.redTolerance) {
-      const diff = wzrostMin - userWzrost;
-      return { status: `🔴 czerwony (${diff}↓ cm za mały)`, points: 0 };
+      diff = wzrostMin - userWzrost;
+      return { status: `🔴 czerwony (${diff}↓ cm za mały)`, points: 0, color: 'red', diff };
     } else {
-      return { status: '🔴 czerwony (niedopasowany)', points: 0 };
+      diff = userWzrost > wzrostMax ? userWzrost - wzrostMax : wzrostMin - userWzrost;
+      return { status: '🔴 czerwony (niedopasowany)', points: 0, color: 'red', diff };
     }
   }
 
   /**
    * Sprawdza dopasowanie przeznaczenia (NOWY FORMAT - tablica stylów)
+   * ZWRACA: { status, points, color }
    */
-  private static checkPrzeznaczenie(userStyles: string[], skiPrzeznaczenie: string): { status: string; points: number } {
+  private static checkPrzeznaczenie(userStyles: string[], skiPrzeznaczenie: string): { status: string; points: number; color: 'green' | 'yellow' | 'red' } {
     // Jeśli brak stylów - wszystko pasuje
     if (!userStyles || userStyles.length === 0) {
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green' };
     }
     
     // Sprawdź czy narta pasuje do KTÓREGOKOLWIEK wybranego stylu
@@ -669,9 +676,9 @@ export class SkiMatchingServiceV2 {
     });
     
     if (matches) {
-      return { status: '✅ zielony', points: 1 };
+      return { status: '✅ zielony', points: 1, color: 'green' };
     } else {
-      return { status: '🔴 czerwony', points: 0 };
+      return { status: '🔴 czerwony', points: 0, color: 'red' };
     }
   }
 
@@ -1895,5 +1902,61 @@ export class SkiMatchingServiceV2 {
       default:
         return '❓';
     }
+  }
+
+  /**
+   * NOWA FUNKCJA: Zwraca szczegóły dopasowania dla pojedynczej narty.
+   * Używana w widoku "Przeglądaj" do kolorowania komórek.
+   * @param ski - Obiekt narty do sprawdzenia.
+   * @param criteria - Kryteria wprowadzone przez użytkownika.
+   * @returns Obiekt MatchDetails z kolorami i różnicami dla każdego kryterium.
+   */
+  public static getMatchDetails(ski: SkiData, criteria: Partial<SearchCriteria>): MatchDetails {
+    const details: MatchDetails = {};
+
+    // 1. Sprawdź POZIOM
+    if (criteria.poziom && criteria.plec && ski.POZIOM) {
+      const poziomResult = this.parsePoziom(ski.POZIOM, criteria.plec);
+      if (poziomResult) {
+        const [poziom_min] = poziomResult;
+        const poziomCheck = this.checkPoziom(criteria.poziom, poziom_min);
+        if (poziomCheck) {
+          details.poziom = {
+            color: poziomCheck.color,
+            diff: poziomCheck.diff,
+          };
+        }
+      }
+    }
+
+    // 2. Sprawdź WAGĘ
+    if (criteria.waga && ski.WAGA_MIN && ski.WAGA_MAX) {
+      const wagaCheck = this.checkWaga(criteria.waga, ski.WAGA_MIN, ski.WAGA_MAX);
+      details.waga = {
+        color: wagaCheck.color,
+        diff: wagaCheck.diff,
+      };
+    }
+
+    // 3. Sprawdź WZROST
+    if (criteria.wzrost && ski.WZROST_MIN && ski.WZROST_MAX) {
+      const wzrostCheck = this.checkWzrost(criteria.wzrost, ski.WZROST_MIN, ski.WZROST_MAX);
+      details.wzrost = {
+        color: wzrostCheck.color,
+        diff: wzrostCheck.diff,
+      };
+    }
+
+    // 4. Sprawdź PŁEĆ
+    if (criteria.plec && ski.PLEC) {
+      const plecCheck = this.checkPlec(criteria.plec, ski.PLEC);
+      details.plec = {
+        color: plecCheck.color,
+        diff: plecCheck.color === 'green' ? 0 : 1, // 0 dla dopasowania, 1 dla niedopasowania
+      };
+    }
+
+    console.log(`SkiMatchingServiceV2.getMatchDetails dla ${ski.MARKA} ${ski.MODEL}:`, details);
+    return details;
   }
 }

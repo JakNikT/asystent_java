@@ -94,3 +94,17 @@ export interface DetailedCompatibilityInfo {
   ogolne: CriteriaDetails;
 }
 
+/**
+ * NOWY TYP: Szczegóły dopasowania dla pojedynczego kryterium w widoku "Przeglądaj"
+ */
+export interface MatchDetail {
+  color: 'green' | 'yellow' | 'red';
+  diff: number; // Różnica numeryczna (np. cm, kg, poziom)
+}
+
+/**
+ * NOWY TYP: Obiekt zawierający szczegóły dopasowania dla wszystkich kryteriów
+ */
+export type MatchDetails = {
+  [K in 'wzrost' | 'waga' | 'poziom' | 'plec']?: MatchDetail;
+};
