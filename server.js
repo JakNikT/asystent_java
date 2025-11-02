@@ -9,6 +9,8 @@ import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import Papa from 'papaparse';
+import mysql from 'mysql2/promise';
+import { dbConfig } from './db-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -32,6 +34,17 @@ const RENTALS_CSV_PATH = path.join(__dirname, 'public', 'data', 'wyp.csv');
 // const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWABAZA_final.csv');
 // Nowa baza z butami i deskami:
 const SKIS_CSV_PATH = path.join(__dirname, 'public', 'data', 'NOWA_BAZA_KOMPLETNA.csv');
+
+// MySQL Connection Pool
+let pool = null;
+
+async function getDBConnection() {
+  if (!pool) {
+    pool = mysql.createPool(dbConfig);
+    console.log('Server: Utworzono pool połączeń MySQL');
+  }
+  return pool;
+}
 
 /**
  * Wczytuje rezerwacje z FireSnow API
@@ -715,23 +728,59 @@ app.delete('/api/reservations/:id', async (req, res) => {
 });
 
 /**
- * GET /api/skis - Pobierz wszystkie narty
+ * GET /api/skis - Pobierz wszystkie narty z MySQL
  */
 app.get('/api/skis', async (req, res) => {
   try {
-    console.log('Server: GET /api/skis');
-    const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
+    console.log('Server: GET /api/skis (MySQL)');
     
-    const result = Papa.parse(csvContent, {
-      header: true,
-      skipEmptyLines: true,
-      delimiter: ','
-    });
+    const pool = await getDBConnection();
+    const [rows] = await pool.execute('SELECT * FROM sprzet');
     
-    res.json(result.data);
+    // Konwertuj liczby (MySQL zwraca stringi lub null)
+    // WAŻNE: Zamień null na puste stringi dla zgodności z CSV
+    const data = rows.map(row => ({
+      ID: row.ID || '',
+      TYP_SPRZETU: row.TYP_SPRZETU || '',
+      KATEGORIA: row.KATEGORIA || '',
+      MARKA: row.MARKA || '',
+      MODEL: row.MODEL || '',
+      DLUGOSC: row.DLUGOSC ? parseInt(row.DLUGOSC) : null,
+      ILOSC: row.ILOSC ? parseInt(row.ILOSC) : null,
+      POZIOM: row.POZIOM || '',
+      PLEC: row.PLEC || '',
+      WAGA_MIN: row.WAGA_MIN ? parseInt(row.WAGA_MIN) : null,
+      WAGA_MAX: row.WAGA_MAX ? parseInt(row.WAGA_MAX) : null,
+      WZROST_MIN: row.WZROST_MIN ? parseInt(row.WZROST_MIN) : null,
+      WZROST_MAX: row.WZROST_MAX ? parseInt(row.WZROST_MAX) : null,
+      PRZEZNACZENIE: row.PRZEZNACZENIE || '',
+      ATUTY: row.ATUTY || '',
+      ROK: row.ROK ? parseInt(row.ROK) : null,
+      KOD: row.KOD || ''
+    }));
+    
+    console.log(`Server: Zwrócono ${data.length} rekordów z MySQL`);
+    if (data.length > 0) {
+      console.log('Server: Przykładowy rekord:', JSON.stringify(data[0], null, 2));
+    }
+    res.json(data);
   } catch (error) {
-    console.error('Server: Błąd pobierania nart:', error);
-    res.status(500).json({ error: 'Błąd pobierania nart' });
+    console.error('Server: Błąd pobierania z MySQL:', error);
+    
+    // Fallback do CSV jeśli MySQL nie działa
+    try {
+      console.log('Server: Fallback do CSV...');
+      const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
+      const result = Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter: ','
+      });
+      res.json(result.data);
+    } catch (csvError) {
+      console.error('Server: Błąd fallback CSV:', csvError);
+      res.status(500).json({ error: 'Błąd pobierania danych' });
+    }
   }
 });
 
