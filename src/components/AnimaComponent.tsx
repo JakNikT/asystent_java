@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { CSVParser } from '../utils/csvParser';
 import { SkiDataService } from '../services/skiDataService';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
@@ -118,7 +118,7 @@ const AnimaComponent: React.FC = () => {
         alternatywy: false,
         poziom_za_nisko: false,
         inna_plec: false,
-        na_sile: false
+        na_sile: false,
       },
       expandedRows: {
         idealne: [],
@@ -237,7 +237,7 @@ const AnimaComponent: React.FC = () => {
         alternatywy: false,
         poziom_za_nisko: false,
         inna_plec: false,
-        na_sile: false
+        na_sile: false,
       },
       expandedRows: {
         idealne: [],
@@ -499,42 +499,20 @@ const AnimaComponent: React.FC = () => {
     }
   };
 
-  // Funkcja obsługi szybkich filtrów - NOWA LOGIKA: Każdy przycisk wyszukuje
+  // Funkcja obsługi szybkich filtrów - NOWA LOGIKA: Przyciski otwierają widok "Przeglądaj" z filtrem
   const handleQuickFilterInSearch = (type: string, category: string) => {
-    console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie sprzętu - typ: ${type}, kategoria: ${category}`);
+    console.log(`src/components/AnimaComponent.tsx: Otwieranie przeglądania - typ: ${type}, kategoria: ${category}`);
     
-    // PRZYPADEK 1: Buty - sprawdź rozmiar i wyszukaj
-    if (type === 'BUTY' || type === 'BUTY_SNOWBOARD') {
-      const shoeSize = formData.shoeSize?.trim();
-      
-      if (!shoeSize) {
-        // Brak rozmiaru - pokaż komunikat
-        setError('Proszę wpisać rozmiar buta w polu "Rozmiar 👟" przed wyszukiwaniem butów');
-        return;
-      }
-      
-      // Mamy rozmiar - wyszukaj buty (funkcja już ustawia filtry)
-      console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie butów rozmiaru ${shoeSize}`);
-      handleShoeSearch(type, category, parseFloat(shoeSize.replace(',', '.')));
-      return;
-    }
-    
-    // PRZYPADEK 2: Narty/Deski - najpierw ustaw filtry, wyczyść style, potem wyszukaj
-    console.log(`src/components/AnimaComponent.tsx: Ustawiam filtry - typ: ${type}, kategoria: ${category}`);
-    
-    // WAŻNE: Wyczyść wybrane style aby nie filtrowały wyników
+    // Wyczyść wybrane style aby nie filtrowały wyników
     setSelectedStyles([]);
     
-    // Ustaw filtry PRZED wyszukiwaniem
+    // Ustaw filtry i otwórz widok "Przeglądaj" jednocześnie
+    // React batchuje aktualizacje state, więc wszystkie będą zastosowane przed renderowaniem
     setEquipmentTypeFilter(type);
     setCategoryFilter(category);
+    setAppMode('browse');
     
-    // Wywołaj wyszukiwanie (waliduje formularz i wyszukuje)
-    // Użyj setTimeout aby React miał czas zaktualizować state
-    setTimeout(() => {
-      console.log(`src/components/AnimaComponent.tsx: Wykonuję wyszukiwanie nart/desek bez filtrów stylu...`);
-      handleSubmit();
-    }, 50);
+    console.log(`src/components/AnimaComponent.tsx: Filtry ustawione - typ: ${type}, kategoria: ${category}, otwieram "Przeglądaj"`);
   };
 
   // USUNIĘTO: clearEquipmentFilters - nie jest już potrzebna (brak przycisku "Wszystkie")
@@ -1138,6 +1116,35 @@ const AnimaComponent: React.FC = () => {
     }
   };
 
+  // Oblicz initialFilter używając useMemo dla aktualnych wartości filtrów
+  const computedInitialFilter = useMemo(() => {
+    // Logika mapowania filtrów ze strony głównej do BrowseSkisComponent
+    console.log(`AnimaComponent: Obliczanie initialFilter - equipmentTypeFilter: ${equipmentTypeFilter}, categoryFilter: ${categoryFilter}`);
+    
+    if (equipmentTypeFilter === 'DESKI') {
+      console.log('AnimaComponent: initialFilter = DESKI');
+      return 'DESKI';
+    }
+    if (equipmentTypeFilter === 'BUTY_SNOWBOARD') {
+      console.log('AnimaComponent: initialFilter = BUTY_SNOWBOARD');
+      return 'BUTY_SNOWBOARD';
+    }
+    if (equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR') {
+      console.log('AnimaComponent: initialFilter = BUTY_JUNIOR');
+      return 'BUTY_JUNIOR';
+    }
+    if (equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE') {
+      console.log('AnimaComponent: initialFilter = DOROSLE');
+      return 'DOROSLE';
+    }
+    if (equipmentTypeFilter === 'NARTY' && categoryFilter) {
+      console.log(`AnimaComponent: initialFilter = ${categoryFilter} (NARTY)`);
+      return categoryFilter; // TOP, VIP, JUNIOR
+    }
+    console.log('AnimaComponent: initialFilter = all (domyślny)');
+    return 'all';
+  }, [equipmentTypeFilter, categoryFilter]);
+
   return (
     <div className="min-h-screen bg-[#386BB2]">
       <div>
@@ -1210,26 +1217,26 @@ const AnimaComponent: React.FC = () => {
           </div>
         </div>
 
-        {/* Header Section - responsywne */}
-        <div className="w-full max-w-[900px] lg:h-[200px] h-auto bg-[#386BB2] flex flex-col lg:flex-row items-center lg:items-start justify-between p-4 lg:p-2 mx-auto gap-4 lg:gap-0">
-          {/* Logo "narty poznań" - okrągłe logo z cieniem */}
-          <div className="w-full lg:w-[180px] flex items-center justify-center lg:h-[180px] h-auto">
+        {/* Header Section - responsywne - NOWY LAYOUT: Logo ponad formularzem */}
+        <div className="w-full max-w-[1100px] h-auto bg-[#386BB2] flex flex-col items-center justify-center p-4 lg:p-6 mx-auto gap-6">
+          {/* Logo "narty poznań" - POWIĘKSZONE okrągłe logo z cieniem */}
+          <div className="flex items-center justify-center">
             <img 
               src="/images/logo.png" 
               alt="Narty Poznań Logo" 
-              className="w-[160px] h-[160px] rounded-full object-cover shadow-2xl"
+              className="w-[220px] h-[220px] rounded-full object-cover shadow-2xl"
               style={{ clipPath: 'circle(50%)' }}
             />
           </div>
           
-          {/* Main Content Container - responsywny */}
-          <div className="w-full lg:w-[700px] h-auto lg:h-[180px] bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch lg:items-center justify-start gap-3 p-4 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
+          {/* Main Content Container - POWIĘKSZONY - responsywny - dopasowuje się do zawartości */}
+          <div className="w-auto h-auto bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch justify-start gap-3 p-3 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
               
-              {/* Left Section - Personal Data - responsywna szerokość */}
-              <div className="w-full lg:w-[307px] h-auto lg:h-[160px] p-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+              {/* Left Section - Personal Data - POWIĘKSZONA responsywna szerokość */}
+              <div className="w-full lg:w-[360px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
                 {/* Date From - responsywne inputy */}
                 <div className="w-full flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
+                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
                     <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
                   </div>
                   <input
@@ -1238,7 +1245,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="DD"
                     value={formData.dateFrom.day}
                     onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
+                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                       formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                     style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
@@ -1250,7 +1257,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="MM"
                     value={formData.dateFrom.month}
                     onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1260,7 +1267,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="25"
                     value={formData.dateFrom.year}
                     onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value, e.target)}
-                    className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1268,7 +1275,7 @@ const AnimaComponent: React.FC = () => {
 
                 {/* Date To - responsywne inputy */}
                 <div className="w-full flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-11 lg:h-[29px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
+                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
                     <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
                   </div>
                   <input
@@ -1277,7 +1284,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="DD"
                     value={formData.dateTo.day}
                     onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1288,7 +1295,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="MM"
                     value={formData.dateTo.month}
                     onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1298,7 +1305,7 @@ const AnimaComponent: React.FC = () => {
                     placeholder="25"
                     value={formData.dateTo.year}
                     onChange={(e) => handleInputChange('dateTo', 'year', e.target.value, e.target)}
-                    className={`w-16 lg:w-[61px] h-11 lg:h-[29px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
@@ -1306,7 +1313,7 @@ const AnimaComponent: React.FC = () => {
 
                 {/* Height - responsywne */}
                 <div className="w-full flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
                   </div>
                   <input
@@ -1315,18 +1322,18 @@ const AnimaComponent: React.FC = () => {
                     placeholder="180"
                     value={formData.height.value}
                     onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
-                    className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-20 lg:w-[145px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
-                  <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                  <div className="w-10 lg:w-[35px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">cm</span>
                   </div>
                 </div>
 
                 {/* Weight - responsywne */}
                 <div className="w-full flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
                   </div>
                   <input
@@ -1335,20 +1342,18 @@ const AnimaComponent: React.FC = () => {
                     placeholder="70"
                     value={formData.weight.value}
                     onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
-                    className={`flex-1 lg:w-[112px] h-11 lg:h-[31px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
+                    className={`w-20 lg:w-[145px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
                     }`}
                   />
-                  <div className="w-12 lg:w-[48px] h-11 lg:h-[31px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
+                  <div className="w-10 lg:w-[35px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
                     <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">kg</span>
                   </div>
                 </div>
               </div>
 
-              {/* Center Section - Level, Gender and Shoe Size - responsywna szerokość */}
-              <div className="w-full lg:w-[230px] h-auto lg:h-[160px] flex flex-col justify-start items-center">
-                {/* Level, Gender and Shoe Size Section - responsywny */}
-                <div className="w-full lg:w-[230px] h-auto lg:h-[160px] py-[21.5px] px-2.5 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+              {/* Center Section - Level, Gender and Shoe Size - POWIĘKSZONA responsywna szerokość */}
+              <div className="w-full lg:w-[270px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
                   {/* Level - responsywny */}
                   <div className="w-full flex items-center gap-2">
                     <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
@@ -1399,34 +1404,33 @@ const AnimaComponent: React.FC = () => {
                       }`}
                     />
                   </div>
-                </div>
               </div>
 
-              {/* Right Section - Action Buttons PIONOWO - style przeniesione nad wyniki */}
-              <div className="w-full lg:w-[120px] h-auto p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-start items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-                {/* Action Buttons - PIONOWO w jednej kolumnie */}
+              {/* Right Section - Action Buttons PIONOWO - POWIĘKSZONA */}
+              <div className="w-full lg:w-[140px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
+                {/* Action Buttons - POWIĘKSZONE PIONOWO w jednej kolumnie */}
                 <button
                   onClick={handleClear}
-                  className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+                  className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
                   style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
                   onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
                   onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
                 >
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
+                  <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
                 </button>
                 <button 
                   onClick={() => setAppMode('browse')}
-                  className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+                  className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
                 >
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+                  <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
                 </button>
                 {/* Przycisk "Rezerwacje" - widoczny tylko w trybie pracownika */}
                 {isEmployeeMode && (
                   <button 
                     onClick={() => setAppMode('reservations')}
-                    className="w-full h-12 lg:h-[40px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
+                    className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
                   >
-                    <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
+                    <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
                   </button>
                 )}
               </div>
@@ -1440,14 +1444,24 @@ const AnimaComponent: React.FC = () => {
             {/* Wszystkie przyciski w jednym wierszu - responsywne */}
             <div className="flex flex-wrap gap-2 justify-center items-center">
               <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'TOP_VIP')}
+                onClick={() => handleQuickFilterInSearch('NARTY', 'TOP')}
                 className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && (categoryFilter === 'TOP' || categoryFilter === 'VIP' || categoryFilter === 'TOP_VIP')
+                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
                     ? 'bg-blue-500 text-white shadow-lg'
                     : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
                 }`}
               >
-                🎿 Narty (TOP+VIP)
+                🎿 Narty TOP
+              </button>
+              <button
+                onClick={() => handleQuickFilterInSearch('NARTY', 'VIP')}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
+                    ? 'bg-blue-600 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
+              >
+                🎿 Narty VIP
               </button>
               <button
                 onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
@@ -1457,7 +1471,7 @@ const AnimaComponent: React.FC = () => {
                     : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
                 }`}
               >
-                👶 Narty Jr
+                👶 Narty JUNIOR
               </button>
               <button
                 onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
@@ -1467,7 +1481,7 @@ const AnimaComponent: React.FC = () => {
                     : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
                 }`}
               >
-                👶 Buty Jr
+                👶 Buty Junior
               </button>
               <button
                 onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
@@ -1477,7 +1491,7 @@ const AnimaComponent: React.FC = () => {
                     : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
                 }`}
               >
-                🥾 Buty
+                🥾 Buty Dorosłe
               </button>
               <button
                 onClick={() => handleQuickFilterInSearch('DESKI', '')}
@@ -1499,9 +1513,30 @@ const AnimaComponent: React.FC = () => {
               >
                 👢 Buty SB
               </button>
+              <button
+                onClick={() => {
+                  console.log('src/components/AnimaComponent.tsx: Przycisk Cały sprzęt - otwieranie Browse bez filtrów');
+                  setEquipmentTypeFilter('');
+                  setCategoryFilter('');
+                  setAppMode('browse');
+                }}
+                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+                  !equipmentTypeFilter && !categoryFilter && appMode === 'browse'
+                    ? 'bg-gray-500 text-white shadow-lg'
+                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+                }`}
+              >
+                📦 Cały sprzęt
+              </button>
             </div>
           </div>
 
+          {/* WYŁĄCZONE: Inteligentne sugestie i Results Container z kartami nart */}
+          {/* Kod został wyłączony - w nowym systemie wyniki są wyświetlane tylko w widoku "Przeglądaj" (BrowseSkisComponent) */}
+          {/* Użyj przycisku "Przeglądaj" aby zobaczyć wszystkie narty z filtrowaniem */}
+          
+          {false && (
+          <>
           {/* Inteligentne sugestie */}
           {suggestions.length > 0 && (
             <div className="w-full bg-blue-100 border-l-4 border-blue-500 text-blue-700 p-3 rounded mb-2">
@@ -1949,26 +1984,31 @@ const AnimaComponent: React.FC = () => {
                 )}
               </div>
             </motion.div>
+          </>
+          )}
         </div>
       </div>
       
       {/* Renderowanie komponentu przeglądania */}
       {appMode === 'browse' && (
         <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
-          <BrowseSkisComponent 
-            skisDatabase={skisDatabase}
-            userCriteria={currentCriteria || {
-              wzrost: 170,
-              waga: 70,
-              poziom: 3,
-              plec: 'W',
-              // WAŻNE: Przekaż daty z formularza (jeśli są wypełnione)
+          <BrowseSkisComponent
+            allSkis={skisDatabase}
+            browseCriteria={{
+              wzrost: formData.height.value ? parseInt(formData.height.value) : undefined,
+              waga: formData.weight.value ? parseInt(formData.weight.value) : undefined,
+              poziom: formData.level ? parseInt(formData.level) : undefined,
+              plec: formData.gender ? (formData.gender.toUpperCase() as 'M' | 'K' | 'W') : undefined,
               dateFrom: parseDate(formData.dateFrom),
               dateTo: parseDate(formData.dateTo)
             }}
-            onBackToSearch={() => setAppMode('search')}
-            onRefreshData={loadDatabase}
-            isEmployeeMode={isEmployeeMode}
+            onBack={() => setAppMode('search')}
+            initialFilter={computedInitialFilter}
+            tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
+            activeTabId={activeTabId}
+            onTabChange={(tabId) => setActiveTabId(tabId)}
+            onAddTab={addNewTab}
+            onRemoveTab={removeTab}
           />
         </div>
       )}

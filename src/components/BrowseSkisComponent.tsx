@@ -1,19 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import type { SkiData, SearchCriteria } from '../types/ski.types';
+import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
 import { ReservationApiClient } from '../services/reservationApiClient';
-import { SkiDataService } from '../services/skiDataService';
 import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
+import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 
 interface BrowseSkisComponentProps {
-  skisDatabase: SkiData[];
-  userCriteria?: SearchCriteria; // NOWE: opcjonalne kryteria wyszukiwania z datami
-  onBackToSearch: () => void;
-  onRefreshData?: () => Promise<void>; // NOWE: callback do odświeżenia danych
-  isEmployeeMode?: boolean; // NOWE: tryb pracownika vs klienta
+  allSkis: SkiData[];
+  browseCriteria: Partial<SearchCriteria>;
+  onBack: () => void;
+  initialFilter?: string;
+  // onRefreshData?: () => Promise<void>;
+  // isEmployeeMode?: boolean;
 }
 
-type SortField = 'KOD' | 'TYP_SPRZETU' | 'KATEGORIA' | 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ILOSC' | 'ROK';
+type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ROK' | 'PRZEZNACZENIE';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -22,39 +23,45 @@ interface SortConfig {
 }
 
 export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({ 
-  skisDatabase, 
-  userCriteria,
-  onBackToSearch,
-  onRefreshData,
-  isEmployeeMode = false // Domyślnie tryb klienta
+  allSkis, 
+  browseCriteria,
+  onBack,
+  initialFilter = 'all',
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: 'KOD',
+    field: 'MARKA',
     direction: 'asc'
   });
   
   const [currentPage, setCurrentPage] = useState(1);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
+  const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
   const itemsPerPage = 20;
   
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
 
-  // NOWY STAN: Filtry typu i kategorii sprzętu
-  const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('');
+  // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
+  const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
+  
+  // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
+  useEffect(() => {
+    if (initialFilter) {
+      console.log(`BrowseSkisComponent: Ustawiam aktywny filtr z initialFilter: ${initialFilter}`);
+      setActiveFilter(initialFilter);
+    }
+  }, [initialFilter]);
 
   // NOWY STAN: Modal edycji/dodawania
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
+  const [isModalOpen, setIsModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const [modalMode] = useState<'edit' | 'add'>('edit');
   const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
-  const [allSkisInGroup, setAllSkisInGroup] = useState<SkiData[]>([]);
 
   // NOWY STAN: Toast notifications
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  const [toastType] = useState<'success' | 'error'>('success');
 
-  // Ładowanie statusów dostępności dla wszystkich nart (NOWY SYSTEM 3-KOLOROWY)
+  // Ładowanie statusów dostępności
   useEffect(() => {
     const loadAvailabilityStatuses = async () => {
       const startTime = Date.now();
@@ -62,20 +69,25 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       
       try {
         // Sprawdź czy użytkownik wpisał daty
-        const hasUserDates = userCriteria?.dateFrom && userCriteria?.dateTo;
+        const hasUserDates = browseCriteria?.dateFrom && browseCriteria?.dateTo;
         
         if (!hasUserDates) {
           console.log('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
-          setAvailabilityStatuses(new Map()); // Brak dat = wszystkie zielone
+          setAvailabilityStatuses(new Map());
           return;
         }
         
         // Użyj dat z formularza użytkownika
-        const startDate = userCriteria!.dateFrom!;
-        const endDate = userCriteria!.dateTo!;
+        const startDate = browseCriteria.dateFrom;
+        const endDate = browseCriteria.dateTo;
+
+        if (!startDate || !endDate) {
+          console.log('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
+          return;
+        }
         
         // Policz ile nart ma kod
-        const skisWithCode = skisDatabase.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
+        const skisWithCode = allSkis.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
         const totalSkis = skisWithCode.length;
         
         console.log('═══════════════════════════════════════════════════════');
@@ -137,35 +149,41 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     };
 
     loadAvailabilityStatuses();
-  }, [skisDatabase, userCriteria?.dateFrom, userCriteria?.dateTo]);
+  }, [allSkis, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
 
-  // Funkcja grupowania nart tego samego modelu
-  const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
-    const grouped = new Map<string, SkiData[]>();
-    
-    skis.forEach(ski => {
-      const key = `${ski.MARKA}|${ski.MODEL}|${ski.DLUGOSC}`;
-      if (!grouped.has(key)) {
-        grouped.set(key, []);
+  // NOWA ZMIANA: Efekt do obliczania kolorów dopasowania
+  useEffect(() => {
+    console.log('BrowseSkisComponent: Obliczanie kolorów dopasowania dla kryteriów:', browseCriteria);
+    const newMatchDetails = new Map<string, MatchDetails>();
+
+    // Jeśli nie ma żadnych kryteriów, nie rób nic (wszystko będzie zielone/domyślne)
+    if (Object.keys(browseCriteria).filter(k => browseCriteria[k as keyof typeof browseCriteria] !== undefined).length === 0) {
+      setMatchDetails(new Map()); // Wyczyść szczegóły, jeśli formularz jest pusty
+      return;
+    }
+
+    allSkis.forEach(ski => {
+      // Dla każdej narty wywołaj nową funkcję z serwisu dopasowania
+      const details = SkiMatchingServiceV2.getMatchDetails(ski, browseCriteria);
+      if (Object.keys(details).length > 0) {
+        newMatchDetails.set(ski.ID, details);
       }
-      grouped.get(key)!.push(ski);
     });
-    
-    // Zwróć pierwszą nartę z każdej grupy (reprezentant grupy)
-    return Array.from(grouped.values()).map(group => group[0]);
-  };
+
+    console.log(`BrowseSkisComponent: Znaleziono ${newMatchDetails.size} szczegółów dopasowania.`);
+    setMatchDetails(newMatchDetails);
+  }, [browseCriteria, allSkis]);
 
   // Funkcja generowania kwadracików dla grupowanych nart (NOWY SYSTEM 3-KOLOROWY)
   const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
-    // Znajdź wszystkie narty tego samego modelu
-    const sameModelSkis = skisDatabase.filter(s => 
+    // Znajdź wszystkie narty tego samego modelu i długości
+    const sameModelSkis = allSkis.filter(s => 
       s.MARKA === ski.MARKA && 
       s.MODEL === ski.MODEL && 
       s.DLUGOSC === ski.DLUGOSC
     );
     
     const squares = sameModelSkis.map((s, index) => {
-      // Pobierz status dostępności (NOWY SYSTEM 3-KOLOROWY)
       const availabilityInfo = s.KOD ? availabilityStatuses.get(s.KOD) : null;
       
       // Określ kolor tła na podstawie statusu (3 kolory)
@@ -174,7 +192,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       let statusText = 'Dostępne';
       
       if (availabilityInfo) {
-        // SYSTEM 3-KOLOROWY
         if (availabilityInfo.color === 'red') {
           bgColor = 'bg-red-500';
           statusEmoji = '🔴';
@@ -195,18 +212,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       
       if (availabilityInfo) {
         tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
-        
-        // Dodaj informacje o rezerwacjach - tylko w trybie pracownika
-        if (isEmployeeMode && availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
-          tooltip += '\n\nRezerwacje:';
-          availabilityInfo.reservations.forEach((res: any) => {
-            tooltip += `\n- ${res.clientName}`;
-            tooltip += `\n  ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`;
-          });
-        } else if (!isEmployeeMode && availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
-          // W trybie klienta tylko informacja, że jest zarezerwowane (bez szczegółów)
-          tooltip += '\n\nZarezerwowane';
-        }
       }
       
       return (
@@ -225,181 +230,44 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // NOWE FUNKCJE: Obsługa edycji i dodawania
 
-  // Pokazuje toast notification
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToastMessage(message);
-    setToastType(type);
-  };
-
-  // Otwórz modal edycji dla wybranej narty
-  const handleEditSki = (ski: SkiData) => {
-    console.log('BrowseSkisComponent: Edycja narty:', ski);
-    
-    // Znajdź wszystkie narty w tej samej grupie
-    const sameGroupSkis = skisDatabase.filter(s => 
-      s.TYP_SPRZETU === ski.TYP_SPRZETU &&
-      s.KATEGORIA === ski.KATEGORIA &&
-      s.MARKA === ski.MARKA && 
-      s.MODEL === ski.MODEL && 
-      s.DLUGOSC === ski.DLUGOSC
-    );
-    
-    console.log('BrowseSkisComponent: Znaleziono nart w grupie:', sameGroupSkis.length);
-    
-    setSelectedSki(ski);
-    setAllSkisInGroup(sameGroupSkis);
-    setModalMode('edit');
-    setIsModalOpen(true);
-  };
-
-  // Otwórz modal dodawania nowej narty
-  const handleAddSki = () => {
-    console.log('BrowseSkisComponent: Dodawanie nowej narty');
-    setSelectedSki(undefined);
-    setModalMode('add');
-    setIsModalOpen(true);
-  };
-
-  // Odśwież dane (wymusza pobranie świeżych danych z serwera)
-  const handleRefresh = async () => {
-    try {
-      console.log('BrowseSkisComponent: Odświeżanie danych...');
-      showToast('🔄 Odświeżanie danych...', 'success');
-      
-      // Wyczyść cache w ReservationApiClient (wymusza pobranie świeżych danych)
-      // @ts-ignore - dostęp do prywatnego pola dla wymuszenia odświeżenia
-      ReservationApiClient.cache = [];
-      // @ts-ignore
-      ReservationApiClient.lastFetch = 0;
-      
-      // Odśwież bazę nart
-      if (onRefreshData) {
-        await onRefreshData();
-      }
-      
-      // Przeładuj statusy dostępności
-      const statusMap = new Map<string, any>();
-      const hasUserDates = userCriteria?.dateFrom && userCriteria?.dateTo;
-      
-      if (hasUserDates) {
-        const startDate = userCriteria!.dateFrom!;
-        const endDate = userCriteria!.dateTo!;
-        
-        for (const ski of skisDatabase) {
-          if (ski.KOD && ski.KOD !== 'NO_CODE') {
-            try {
-              const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
-                ski.KOD,
-                startDate,
-                endDate
-              );
-              statusMap.set(ski.KOD, availabilityInfo);
-            } catch (error) {
-              console.error(`Błąd sprawdzania dostępności dla narty ${ski.KOD}:`, error);
-            }
-          }
-        }
-      }
-      
-      setAvailabilityStatuses(statusMap);
-      showToast('✅ Dane odświeżone pomyślnie!', 'success');
-      console.log('BrowseSkisComponent: Dane odświeżone');
-    } catch (error) {
-      console.error('BrowseSkisComponent: Błąd odświeżania:', error);
-      showToast('❌ Błąd odświeżania danych', 'error');
-    }
-  };
-
   // Zamknij modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedSki(undefined);
   };
 
-  // Zapisz zmiany narty (edycja lub dodawanie)
-  const handleSaveSki = async (skiData: Partial<SkiData>, selectedSkiId?: string, updateAll?: boolean) => {
-    try {
-      if (modalMode === 'edit') {
-        if (updateAll && allSkisInGroup.length > 1) {
-          // Aktualizacja wszystkich nart w grupie
-          console.log('BrowseSkisComponent: Aktualizacja wszystkich nart w grupie');
-          const ids = allSkisInGroup.map(s => s.ID);
-          console.log('BrowseSkisComponent: IDs do aktualizacji:', ids);
-          
-          const result = await SkiDataService.updateMultipleSkis(ids, skiData);
-          
-          if (result) {
-            showToast(`✅ Zaktualizowano ${ids.length} nart pomyślnie!`, 'success');
-            
-            // Odśwież dane
-            if (onRefreshData) {
-              await onRefreshData();
-            }
-          } else {
-            showToast('❌ Błąd aktualizacji nart', 'error');
-          }
-        } else {
-          // Aktualizacja pojedynczej narty
-          const targetId = selectedSkiId || selectedSki?.ID;
-          console.log('BrowseSkisComponent: Zapisywanie edycji narty:', targetId);
-          
-          if (!targetId) {
-            showToast('❌ Błąd: brak ID narty', 'error');
-            return;
-          }
-          
-          const result = await SkiDataService.updateSki(targetId, skiData);
-        
-        if (result) {
-          showToast('✅ Narta zaktualizowana pomyślnie!', 'success');
-          
-          // Odśwież dane
-          if (onRefreshData) {
-            await onRefreshData();
-          }
-        } else {
-          showToast('❌ Błąd aktualizacji narty', 'error');
-          }
-        }
-      } else if (modalMode === 'add') {
-        // Dodawanie nowej narty
-        console.log('BrowseSkisComponent: Dodawanie nowej narty');
-        const result = await SkiDataService.addSki(skiData);
-        
-        if (result) {
-          showToast('✅ Narta dodana pomyślnie!', 'success');
-          
-          // Odśwież dane
-          if (onRefreshData) {
-            await onRefreshData();
-          }
-        } else {
-          showToast('❌ Błąd dodawania narty', 'error');
-        }
-      }
-    } catch (error) {
-      console.error('BrowseSkisComponent: Błąd zapisu:', error);
-      showToast('❌ Błąd połączenia z serwerem', 'error');
-    }
-  };
-
   // src/components/BrowseSkisComponent.tsx: Funkcja filtrowania sprzętu
   const filterSkis = (
     skis: SkiData[], 
     searchTerm: string,
-    typeFilter: string,
-    catFilter: string
+    activeFilter: string
   ): SkiData[] => {
     let filtered = skis;
 
-    // Filtruj po typie sprzętu
-    if (typeFilter) {
-      filtered = filtered.filter(ski => ski.TYP_SPRZETU === typeFilter);
-    }
-
-    // Filtruj po kategorii
-    if (catFilter) {
-      filtered = filtered.filter(ski => ski.KATEGORIA === catFilter);
+    // Filtruj po przyciskach
+    if (activeFilter !== 'all') {
+      filtered = filtered.filter(ski => {
+        // Filtrowanie według typu sprzętu i kategorii (zgodne z AnimaComponent)
+        switch (activeFilter) {
+          case 'TOP':
+            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'TOP';
+          case 'VIP':
+            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'VIP';
+          case 'JUNIOR':
+            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'JUNIOR';
+          case 'BUTY_JUNIOR':
+            return ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'JUNIOR';
+          case 'DOROSLE':
+            return ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE';
+          case 'DESKI':
+            return ski.TYP_SPRZETU === 'DESKI';
+          case 'BUTY_SNOWBOARD':
+            return ski.TYP_SPRZETU === 'BUTY_SNOWBOARD';
+          default:
+            // Fallback - spróbuj dopasować do KATEGORIA (dla kompatybilności wstecznej)
+            return ski.KATEGORIA === activeFilter;
+        }
+      });
     }
 
     // Filtruj po tekście wyszukiwania
@@ -413,10 +281,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         ski.PRZEZNACZENIE.toLowerCase().includes(term) ||
         ski.ATUTY.toLowerCase().includes(term) ||
         ski.DLUGOSC.toString().includes(term) ||
-        ski.ROK.toString().includes(term) ||
-        ski.ILOSC.toString().includes(term) ||
-        ski.TYP_SPRZETU.toLowerCase().includes(term) ||
-        ski.KATEGORIA.toLowerCase().includes(term)
+        ski.ROK.toString().includes(term)
       );
     }
 
@@ -430,7 +295,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       let bValue: any = b[config.field];
 
       // Konwersja dla pól numerycznych
-      if (config.field === 'DLUGOSC' || config.field === 'ILOSC' || config.field === 'ROK') {
+      if (config.field === 'DLUGOSC' || config.field === 'ROK') {
         aValue = Number(aValue);
         bValue = Number(bValue);
       }
@@ -460,8 +325,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // Sortowanie i paginacja z grupowaniem
-  const filteredSkis = filterSkis(skisDatabase, searchTerm, equipmentTypeFilter, categoryFilter);
-  const groupedSkis = groupSkisByModel(filteredSkis);
+  const filteredSkis = filterSkis(allSkis, searchTerm, activeFilter);
+  const groupedSkis = filteredSkis; // Bez grupowania po modelu
   const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -504,53 +369,28 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
-  // src/components/BrowseSkisComponent.tsx: Funkcja formatowania typu sprzętu
-  const formatEquipmentType = (type: string) => {
-    switch (type) {
-      case 'NARTY': return '⛷️ Narty';
-      case 'BUTY': return '🥾 Buty';
-      case 'DESKI': return '🏂 Deski';
-      case 'BUTY_SNOWBOARD': return '👢 Buty SB';
-      default: return type;
-    }
-  };
-
-  // src/components/BrowseSkisComponent.tsx: Funkcja formatowania kategorii sprzętu
-  const formatCategory = (category: string) => {
-    switch (category) {
-      case 'VIP': return '⭐ VIP';
-      case 'TOP': return '🔵 TOP';
-      case 'JUNIOR': return '👶 Junior';
-      case 'DOROSLE': return '👤 Dorosłe';
-      default: return category || '-';
-    }
-  };
-
-  // src/components/BrowseSkisComponent.tsx: Funkcja formatowania długości/rozmiaru
-  const formatLength = (ski: SkiData) => {
-    const typSprzetu = ski.TYP_SPRZETU || 'NARTY';
-    
-    if (typSprzetu === 'BUTY' || typSprzetu === 'BUTY_SNOWBOARD') {
-      return `${ski.DLUGOSC} cm`; // Rozmiar w cm (długość wkładki)
-    } else {
-      return `${ski.DLUGOSC} cm`; // Długość w cm
-    }
-  };
-
   // src/components/BrowseSkisComponent.tsx: Funkcje obsługi szybkich filtrów
-  const handleQuickFilter = (type: string, category: string) => {
-    console.log(`BrowseSkisComponent: Szybki filtr - typ: ${type}, kategoria: ${category}`);
-    setEquipmentTypeFilter(type);
-    setCategoryFilter(category);
+  const handleQuickFilter = (filter: string) => {
+    console.log(`BrowseSkisComponent: Szybki filtr - ${filter}`);
+    setActiveFilter(filter);
     setCurrentPage(1); // Reset do pierwszej strony
   };
 
-  const clearFilters = () => {
-    console.log('BrowseSkisComponent: Czyszczenie filtrów');
-    setEquipmentTypeFilter('');
-    setCategoryFilter('');
-    setSearchTerm('');
-    setCurrentPage(1);
+  // NOWA ZMIANA: Funkcja pomocnicza do pobierania klasy koloru
+  const getCellColorClass = (skiId: string, field: 'wzrost' | 'waga' | 'poziom' | 'plec'): string => {
+    const details = matchDetails.get(skiId);
+    const color = details?.[field]?.color;
+
+    if (!color) {
+      return 'bg-green-200/30'; // Domyślny kolor, jeśli brak danych lub pasuje
+    }
+
+    switch (color) {
+      case 'green': return 'bg-green-300/80';
+      case 'yellow': return 'bg-yellow-300/80';
+      case 'red': return 'bg-red-300/80';
+      default: return 'bg-green-200/30';
+    }
   };
 
   return (
@@ -558,128 +398,31 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       <div className="max-w-8xl mx-auto">
         {/* Header z wyszukiwaniem - responsywny */}
         <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
-          {/* Nowy układ: Tytuł + Przyciski filtrów + Przyciski akcji w jednej linii */}
           <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
-            {/* Lewa strona: Tytuł */}
             <div className="flex-shrink-0">
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
                 Przeglądaj sprzęt
               </h1>
               <p className="text-[#A6C2EF] text-sm">
-                Przejrzyj cały sprzęt ({groupedSkis.length} modeli)
+                Znaleziono {sortedSkis.length} nart
               </p>
             </div>
 
-            {/* Środek: Przyciski szybkiego dostępu (2 linie, zmniejszone) */}
-            <div className="flex flex-col gap-1.5">
-              {/* Linia 1: Wszystkie + Narty */}
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => clearFilters()}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    !equipmentTypeFilter && !categoryFilter
-                      ? 'bg-white text-[#194576] shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  🎿 Wszystkie
-                </button>
-                <button
-                  onClick={() => handleQuickFilter('NARTY', 'TOP')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
-                      ? 'bg-blue-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  🔵 TOP
-                </button>
-                <button
-                  onClick={() => handleQuickFilter('NARTY', 'VIP')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
-                      ? 'bg-yellow-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  ⭐ VIP
-                </button>
-                <button
-                  onClick={() => handleQuickFilter('NARTY', 'JUNIOR')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
-                      ? 'bg-green-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  👶 Junior
-                </button>
-              </div>
-
-              {/* Linia 2: Buty i Deski */}
-              <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => handleQuickFilter('BUTY', 'DOROSLE')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
-                      ? 'bg-purple-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  🥾 Buty
-                </button>
-                <button
-                  onClick={() => handleQuickFilter('BUTY', 'JUNIOR')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
-                      ? 'bg-green-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  👶 Buty Jr
-                </button>
-                <button
-                  onClick={() => handleQuickFilter('DESKI', '')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'DESKI'
-                      ? 'bg-orange-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  🏂 Deski
-                </button>
-                <button
-                  onClick={() => handleQuickFilter('BUTY_SNOWBOARD', '')}
-                  className={`px-3 py-1.5 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                    equipmentTypeFilter === 'BUTY_SNOWBOARD'
-                      ? 'bg-red-500 text-white shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#386BB2]'
-                  }`}
-                >
-                  👢 Buty SB
-                </button>
-              </div>
+            {/* Przyciski filtrów */}
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>📦 Cały sprzęt</button>
+              <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty TOP</button>
+              <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-600 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty VIP</button>
+              <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Narty JUNIOR</button>
+              <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Buty Junior</button>
+              <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🥾 Buty Dorosłe</button>
+              <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🏂 Deski</button>
+              <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👢 Buty SB</button>
             </div>
 
-            {/* Prawa strona: Przyciski akcji */}
             <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
-              {/* Przycisk "Dodaj" - widoczny tylko w trybie pracownika */}
-              {isEmployeeMode && (
-                <button
-                  onClick={handleAddSki}
-                  className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-                >
-                  ➕ Dodaj
-                </button>
-              )}
               <button
-                onClick={handleRefresh}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                🔄 Odśwież
-              </button>
-              <button
-                onClick={onBackToSearch}
+                onClick={onBack}
                 className="bg-[#2C699F] hover:bg-[#194576] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
               >
                 ← Wróć
@@ -687,7 +430,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             </div>
           </div>
           
-          {/* Pole wyszukiwania - responsywne */}
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
             <label className="text-white font-medium text-lg">
               🔍 Wyszukaj narty:
@@ -712,9 +454,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             )}
           </div>
           {searchTerm && (
-            <div className="mt-3 text-[#A6C2EF]">
-              Znaleziono {groupedSkis.length} modeli z {groupSkisByModel(skisDatabase).length} dostępnych
-            </div>
+            <p className="text-sm text-gray-400 mt-2">
+              Znaleziono {sortedSkis.length} pasujących nart.
+            </p>
           )}
         </div>
 
@@ -723,31 +465,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-[#2C699F]">
+                {/* NOWA ZMIANA: Nowy układ kolumn */}
                 <tr>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('KOD')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Kod Sprzętu {renderSortIcon('KOD')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('TYP_SPRZETU')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Typ {renderSortIcon('TYP_SPRZETU')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('KATEGORIA')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Kategoria {renderSortIcon('KATEGORIA')}
-                    </div>
-                  </th>
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
                     onClick={() => handleSort('MARKA')}
@@ -790,46 +509,31 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   </th>
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('ILOSC')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Dostępność {renderSortIcon('ILOSC')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
                     onClick={() => handleSort('ROK')}
                   >
                     <div className="flex items-center gap-2">
                       Rok {renderSortIcon('ROK')}
                     </div>
                   </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
-                    Przeznaczenie
+                  <th 
+                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                    onClick={() => handleSort('PRZEZNACZENIE')}
+                  >
+                    <div className="flex items-center gap-2">
+                      Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
+                    </div>
                   </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
                     Atuty
                   </th>
-                  {/* Nagłówek kolumny "Akcje" - widoczny tylko w trybie pracownika */}
-                  {isEmployeeMode && (
-                    <th className="px-4 py-3 text-center text-xs font-medium text-white uppercase tracking-wider">
-                      Akcje
-                    </th>
-                  )}
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
                 </tr>
               </thead>
               <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
                 {currentSkis.map((ski) => (
                   <tr key={ski.ID} className="hover:bg-[#2C699F]">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-[#194576]">
-                      {ski.KOD}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatEquipmentType(ski.TYP_SPRZETU)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatCategory(ski.KATEGORIA)}
-                    </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.MARKA}
                     </td>
@@ -837,16 +541,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       {ski.MODEL}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatLength(ski)}
+                      {ski.DLUGOSC} cm
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
                       {formatLevel(ski.POZIOM)}
                     </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
                       {formatGender(ski.PLEC)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      {generateAvailabilitySquares(ski)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.ROK}
@@ -857,18 +558,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.ATUTY || '-'}
                     </td>
-                    {/* Przycisk "Edytuj" - widoczny tylko w trybie pracownika */}
-                    {isEmployeeMode && (
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center">
-                        <button
-                          onClick={() => handleEditSki(ski)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors duration-200"
-                          title="Edytuj nartę"
-                        >
-                          ✏️ Edytuj
-                        </button>
-                      </td>
-                    )}
+                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                      {ski.WZROST_MIN}-{ski.WZROST_MAX}
+                    </td>
+                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
+                      {ski.WAGA_MIN}-{ski.WAGA_MAX}
+                    </td>
+                    <td className="px-4 py-4 whitespace-nowrap text-sm">
+                      {generateAvailabilitySquares(ski)}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -960,9 +658,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         isOpen={isModalOpen}
         mode={modalMode}
         ski={selectedSki}
-        allSkisInGroup={allSkisInGroup}
         onClose={handleCloseModal}
-        onSave={handleSaveSki}
+        onSave={async () => {}} // Placeholder as async
       />
 
       {/* Toast notification */}
