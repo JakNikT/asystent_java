@@ -4,6 +4,8 @@ import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
+import { SkiDataService } from '../services/skiDataService';
+import type { ReservationInfo } from '../services/reservationService';
 
 interface TabInfo {
   id: string;
@@ -20,8 +22,8 @@ interface BrowseSkisComponentProps {
   onTabChange?: (tabId: string) => void;
   onAddTab?: () => void;
   onRemoveTab?: (tabId: string) => void;
-  // onRefreshData?: () => Promise<void>;
-  // isEmployeeMode?: boolean;
+  onRefreshData?: () => Promise<void>;
+  isEmployeeMode?: boolean;
 }
 
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ROK' | 'PRZEZNACZENIE';
@@ -42,6 +44,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   onTabChange,
   onAddTab,
   onRemoveTab,
+  onRefreshData,
+  isEmployeeMode = false,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'MARKA',
@@ -70,13 +74,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   }, [initialFilter]);
 
   // NOWY STAN: Modal edycji/dodawania
-  const [isModalOpen, setIsModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [modalMode] = useState<'edit' | 'add'>('edit');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
   const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
 
   // NOWY STAN: Toast notifications
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType] = useState<'success' | 'error'>('success');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   // Ładowanie statusów dostępności
   useEffect(() => {
@@ -192,13 +196,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   }, [browseCriteria, allSkis]);
 
   // Funkcja generowania kwadracików dla grupowanych nart (NOWY SYSTEM 3-KOLOROWY)
+  // src/components/BrowseSkisComponent.tsx: Znajduje narty tego samego modelu, typu i kategorii
   const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
-    // Znajdź wszystkie narty tego samego modelu i długości
+    // Znajdź wszystkie narty tego samego modelu, długości, typu i kategorii
     const sameModelSkis = allSkis.filter(s => 
       s && ski &&
       (s.MARKA || '') === (ski.MARKA || '') && 
       (s.MODEL || '') === (ski.MODEL || '') && 
-      s.DLUGOSC === ski.DLUGOSC
+      s.DLUGOSC === ski.DLUGOSC &&
+      (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
+      (s.KATEGORIA || '') === (ski.KATEGORIA || '')
     );
     
     const squares = sameModelSkis.map((s, index) => {
@@ -230,6 +237,37 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       
       if (availabilityInfo) {
         tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
+        
+        // Dodaj informacje o rezerwacjach/wypożyczeniach z datami
+        if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
+          tooltip += `\n\n📅 Rezerwacje/Wypożyczenia:`;
+          availabilityInfo.reservations.forEach((reservation: ReservationInfo, resIndex: number) => {
+            // Sprawdź czy reservation ma pola startDate i endDate
+            if (reservation.startDate && reservation.endDate) {
+              const startDate = reservation.startDate instanceof Date 
+                ? reservation.startDate 
+                : new Date(reservation.startDate);
+              const endDate = reservation.endDate instanceof Date 
+                ? reservation.endDate 
+                : new Date(reservation.endDate);
+              
+              const startDateStr = startDate.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+              const endDateStr = endDate.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+              tooltip += `\n  ${resIndex + 1}. ${startDateStr} - ${endDateStr}`;
+              if (reservation.clientName) {
+                tooltip += `\n     Klient: ${reservation.clientName}`;
+              }
+            }
+          });
+        }
       }
       
       return (
@@ -248,10 +286,104 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // NOWE FUNKCJE: Obsługa edycji i dodawania
 
+  // src/components/BrowseSkisComponent.tsx: Funkcja otwierania modala edycji
+  const handleEdit = (ski: SkiData) => {
+    console.log('BrowseSkisComponent: Otwieranie modala edycji dla narty:', ski.ID);
+    setSelectedSki(ski);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  // src/components/BrowseSkisComponent.tsx: Funkcja zapisywania zmian
+  const handleSave = async (
+    skiData: Partial<SkiData>,
+    targetSkiId?: string,
+    updateAll?: boolean
+  ): Promise<void> => {
+    try {
+      console.log('BrowseSkisComponent: Zapisuję zmiany:', { skiData, targetSkiId, updateAll });
+
+      if (updateAll && targetSkiId === undefined) {
+        // Aktualizacja wszystkich nart w grupie
+        // src/components/BrowseSkisComponent.tsx: Uwzględnia również typ sprzętu i kategorię
+        const sameModelSkis = allSkis.filter(s =>
+          s && selectedSki &&
+          (s.MARKA || '') === (selectedSki.MARKA || '') &&
+          (s.MODEL || '') === (selectedSki.MODEL || '') &&
+          s.DLUGOSC === selectedSki.DLUGOSC &&
+          (s.TYP_SPRZETU || '') === (selectedSki.TYP_SPRZETU || '') &&
+          (s.KATEGORIA || '') === (selectedSki.KATEGORIA || '')
+        );
+
+        if (sameModelSkis.length === 0) {
+          throw new Error('Nie znaleziono nart w grupie');
+        }
+
+        const ids = sameModelSkis.map(s => s.ID);
+        const result = await SkiDataService.updateMultipleSkis(ids, skiData);
+
+        if (result) {
+          console.log('BrowseSkisComponent: Zaktualizowano wszystkie narty w grupie:', ids.length);
+          setToastMessage(`Zaktualizowano ${ids.length} nart w grupie`);
+          setToastType('success');
+        } else {
+          throw new Error('Błąd aktualizacji wielu nart');
+        }
+      } else if (targetSkiId) {
+        // Aktualizacja pojedynczej narty
+        const result = await SkiDataService.updateSki(targetSkiId, skiData);
+
+        if (result) {
+          console.log('BrowseSkisComponent: Zaktualizowano nartę:', targetSkiId);
+          setToastMessage('Narta zaktualizowana pomyślnie');
+          setToastType('success');
+        } else {
+          throw new Error('Błąd aktualizacji narty');
+        }
+      } else if (selectedSki) {
+        // Fallback: aktualizacja wybranej narty
+        const result = await SkiDataService.updateSki(selectedSki.ID, skiData);
+
+        if (result) {
+          console.log('BrowseSkisComponent: Zaktualizowano nartę:', selectedSki.ID);
+          setToastMessage('Narta zaktualizowana pomyślnie');
+          setToastType('success');
+        } else {
+          throw new Error('Błąd aktualizacji narty');
+        }
+      }
+
+      // Odśwież dane jeśli funkcja jest dostępna
+      if (onRefreshData) {
+        await onRefreshData();
+      }
+
+      // Zamykamy modal po udanym zapisie (onSave w modalu już wywołuje onClose)
+    } catch (error) {
+      console.error('BrowseSkisComponent: Błąd zapisywania:', error);
+      setToastMessage(error instanceof Error ? error.message : 'Błąd zapisywania narty');
+      setToastType('error');
+      throw error; // Rzuć błąd aby modal mógł go obsłużyć
+    }
+  };
+
   // Zamknij modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedSki(undefined);
+  };
+
+  // Funkcja pomocnicza: znajdź wszystkie narty w grupie (dla modala edycji)
+  // src/components/BrowseSkisComponent.tsx: Uwzględnia również typ sprzętu i kategorię
+  const getSkisInGroup = (ski: SkiData): SkiData[] => {
+    return allSkis.filter(s =>
+      s && ski &&
+      (s.MARKA || '') === (ski.MARKA || '') && 
+      (s.MODEL || '') === (ski.MODEL || '') && 
+      s.DLUGOSC === ski.DLUGOSC &&
+      (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
+      (s.KATEGORIA || '') === (ski.KATEGORIA || '')
+    );
   };
 
   // src/components/BrowseSkisComponent.tsx: Funkcja filtrowania sprzętu
@@ -383,13 +515,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }));
   };
 
-  // Funkcja grupowania nart po modelu (MARKA + MODEL + DLUGOSC)
+  // Funkcja grupowania nart po modelu (MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA)
+  // src/components/BrowseSkisComponent.tsx: Grupowanie uwzględnia również typ sprzętu i kategorię
   const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
     const grouped = new Map<string, SkiData>();
     
     skis.forEach(ski => {
-      // Klucz grupowania: MARKA + MODEL + DLUGOSC
-      const key = `${ski.MARKA || ''}|${ski.MODEL || ''}|${ski.DLUGOSC || ''}`;
+      // Klucz grupowania: MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA
+      // To zapewnia, że VIP i TOP nie będą grupowane razem, nawet jeśli mają ten sam model
+      const key = `${ski.MARKA || ''}|${ski.MODEL || ''}|${ski.DLUGOSC || ''}|${ski.TYP_SPRZETU || ''}|${ski.KATEGORIA || ''}`;
       
       // Jeśli nie ma jeszcze tej grupy, dodaj pierwszą nartę jako reprezentanta
       if (!grouped.has(key)) {
@@ -397,7 +531,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       }
     });
     
-    // Zwróć tylko reprezentantów grup (jedna narta na model)
+    // Zwróć tylko reprezentantów grup (jedna narta na kombinację modelu, typu i kategorii)
     return Array.from(grouped.values());
   };
 
@@ -652,6 +786,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
+                  {isEmployeeMode && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Akcja</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
@@ -690,6 +827,17 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       {generateAvailabilitySquares(ski)}
                     </td>
+                    {isEmployeeMode && (
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => handleEdit(ski)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+                          title="Edytuj sprzęt"
+                        >
+                          ✏️ Edytuj
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -777,14 +925,17 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       </div>
       </div>
 
-      {/* Modal edycji/dodawania */}
-      <SkiEditModal
-        isOpen={isModalOpen}
-        mode={modalMode}
-        ski={selectedSki}
-        onClose={handleCloseModal}
-        onSave={async () => {}} // Placeholder as async
-      />
+      {/* Modal edycji/dodawania - tylko w trybie pracownika */}
+      {isEmployeeMode && (
+        <SkiEditModal
+          isOpen={isModalOpen}
+          mode={modalMode}
+          ski={selectedSki}
+          allSkisInGroup={selectedSki ? getSkisInGroup(selectedSki) : undefined}
+          onClose={handleCloseModal}
+          onSave={handleSave}
+        />
+      )}
 
       {/* Toast notification */}
       <Toast

@@ -2010,6 +2010,8 @@ const AnimaComponent: React.FC = () => {
             onTabChange={(tabId) => setActiveTabId(tabId)}
             onAddTab={addNewTab}
             onRemoveTab={removeTab}
+            onRefreshData={loadDatabase}
+            isEmployeeMode={isEmployeeMode}
           />
         </div>
       )}
