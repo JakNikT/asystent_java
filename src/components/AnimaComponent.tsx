@@ -415,7 +415,10 @@ const AnimaComponent: React.FC = () => {
   };
 
   // NOWA FUNKCJA: Wyszukiwanie butów po rozmiarze
-  const handleShoeSearch = (type: string, category: string, shoeSize: number) => {
+  // UWAGA: Funkcja jest zdefiniowana, ale obecnie nie jest używana w kodzie
+  // Zostawiamy ją na przyszłość - wyłączona tymczasowo aby uniknąć błędu TypeScript
+  // @ts-expect-error - Function is defined but not currently used, kept for future use
+  const _handleShoeSearch = (type: string, category: string, shoeSize: number) => {
     console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie butów - typ: ${type}, kategoria: ${category}, rozmiar: ${shoeSize}`);
     
     try {
@@ -1552,7 +1555,7 @@ const AnimaComponent: React.FC = () => {
             {/* Results Container - pełnoekranowy */}
             <motion.div 
               className="w-full min-h-[400px] bg-[#194576] rounded-[20px] flex justify-center items-start gap-2.5 p-2"
-              animate={{ maxWidth: searchResults && searchResults.wszystkie.length > 0 ? '100%' : '900px' }}
+              animate={{ maxWidth: (searchResults?.wszystkie.length ?? 0) > 0 ? '100%' : '900px' }}
               transition={{ duration: 1.0, ease: [0.25, 0.46, 0.45, 0.94] as const }}
             >              <div className="w-full min-h-[380px] bg-[#A6C2EF] rounded-[20px] p-4 overflow-y-auto">
                 {isLoading && (
@@ -1594,7 +1597,7 @@ const AnimaComponent: React.FC = () => {
 
                 {!isLoading && !error && searchResults && (
                   <div className="space-y-4">
-                    {searchResults.wszystkie.length === 0 && (
+                    {searchResults!.wszystkie.length === 0 && (
                       <div className="text-center">
                         <span className="text-white text-lg font-black font-['Inter'] italic">
                           😔 Nie znaleziono nart pasujących do Twoich kryteriów
@@ -1602,7 +1605,7 @@ const AnimaComponent: React.FC = () => {
                       </div>
                     )}
 
-                    {groupedResults && groupedResults.idealne.length > 0 && (
+                    {groupedResults && (groupedResults!.idealne.length > 0) && (
                       <div>
                         {/* Style jazdy - tylko dla poziomu 4+ */}
                         {parseInt(formData.level) >= 4 && equipmentTypeFilter === 'NARTY' && (
@@ -1636,7 +1639,7 @@ const AnimaComponent: React.FC = () => {
                         )}
                         
                         <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                          🏆 IDEALNE DOPASOWANIE ({groupedResults.idealne.length})
+                          🏆 IDEALNE DOPASOWANIE ({groupedResults!.idealne.length})
                         </h3>
                         <motion.div 
                           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
@@ -1645,7 +1648,7 @@ const AnimaComponent: React.FC = () => {
                           animate="visible"
                         >
                           <AnimatePresence>
-                            {groupedResults.idealne.map((match, idx) => (
+                            {groupedResults!.idealne.map((match, idx) => (
                               <motion.div key={match.ski.KOD + '-' + idx} variants={itemVariants} className="bg-white/20 p-3 rounded-lg">
                                 <div className="flex items-start justify-between mb-2">
                                   {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1697,10 +1700,10 @@ const AnimaComponent: React.FC = () => {
                       </div>
                     )}
 
-                    {groupedResults && groupedResults.alternatywy.length > 0 && (
+                    {groupedResults && (groupedResults!.alternatywy.length > 0) && (
                       <div>
                         <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                          ⭐ ALTERNATYWY ({groupedResults.alternatywy.length})
+                          ⭐ ALTERNATYWY ({groupedResults!.alternatywy.length})
                         </h3>
                         <motion.div 
                           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
@@ -1709,7 +1712,7 @@ const AnimaComponent: React.FC = () => {
                           animate="visible"
                         >
                           <AnimatePresence>
-                            {(expandedCategories.alternatywy ? groupedResults.alternatywy : groupedResults.alternatywy.slice(0, 8)).map((match, idx) => (
+                            {(expandedCategories.alternatywy ? groupedResults!.alternatywy : groupedResults!.alternatywy.slice(0, 8)).map((match, idx) => (
                               <motion.div key={match.ski.KOD + '-' + idx} variants={itemVariants} className="bg-white/15 p-3 rounded-lg">
                                 <div className="flex items-start justify-between mb-2">
                                   {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1757,21 +1760,21 @@ const AnimaComponent: React.FC = () => {
                             ))}
                           </AnimatePresence>
                         </motion.div>
-                        {groupedResults && groupedResults.alternatywy.length > 8 && (
+                        {groupedResults!.alternatywy.length > 8 && (
                           <button
                             onClick={() => toggleCategory('alternatywy')}
                             className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                           >
-                            {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.alternatywy.length - 8})`}
+                            {expandedCategories.alternatywy ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults!.alternatywy.length - 8})`}
                           </button>
                         )}
                       </div>
                     )}
 
-                    {groupedResults && groupedResults.inna_plec.length > 0 && (
+                    {groupedResults && (groupedResults!.inna_plec.length > 0) && (
                       <div>
                         <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                          👤 INNA PŁEĆ ({groupedResults.inna_plec.length})
+                          👤 INNA PŁEĆ ({groupedResults!.inna_plec.length})
                         </h3>
                         <motion.div 
                           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
@@ -1780,7 +1783,7 @@ const AnimaComponent: React.FC = () => {
                           animate="visible"
                         >
                           <AnimatePresence>
-                            {(expandedCategories.inna_plec ? groupedResults.inna_plec : groupedResults.inna_plec.slice(0, 8)).map((match, idx) => (
+                            {(expandedCategories.inna_plec ? groupedResults!.inna_plec : groupedResults!.inna_plec.slice(0, 8)).map((match, idx) => (
                               <motion.div key={match.ski.KOD + '-' + idx} variants={itemVariants} className="bg-blue-500/20 p-3 rounded-lg">
                                 <div className="flex items-start justify-between mb-2">
                                   {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1828,21 +1831,21 @@ const AnimaComponent: React.FC = () => {
                             ))}
                           </AnimatePresence>
                         </motion.div>
-                        {groupedResults && groupedResults.inna_plec.length > 8 && (
+                        {groupedResults!.inna_plec.length > 8 && (
                           <button
                             onClick={() => toggleCategory('inna_plec')}
                             className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                           >
-                            {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.inna_plec.length - 8})`}
+                            {expandedCategories.inna_plec ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults!.inna_plec.length - 8})`}
                           </button>
                         )}
                       </div>
                     )}
 
-                    {groupedResults && groupedResults.poziom_za_nisko.length > 0 && (
+                    {groupedResults && (groupedResults!.poziom_za_nisko.length > 0) && (
                       <div>
                         <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                          📉 POZIOM ZA NISKO ({groupedResults.poziom_za_nisko.length})
+                          📉 POZIOM ZA NISKO ({groupedResults!.poziom_za_nisko.length})
                         </h3>
                         <motion.div 
                           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
@@ -1851,7 +1854,7 @@ const AnimaComponent: React.FC = () => {
                           animate="visible"
                         >
                           <AnimatePresence>
-                            {(expandedCategories.poziom_za_nisko ? groupedResults.poziom_za_nisko : groupedResults.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
+                            {(expandedCategories.poziom_za_nisko ? groupedResults!.poziom_za_nisko : groupedResults!.poziom_za_nisko.slice(0, 8)).map((match, idx) => (
                               <motion.div key={match.ski.KOD + '-' + idx} variants={itemVariants} className="bg-orange-500/20 p-3 rounded-lg">
                                 <div className="flex items-start justify-between mb-2">
                                   {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1899,21 +1902,21 @@ const AnimaComponent: React.FC = () => {
                             ))}
                           </AnimatePresence>
                         </motion.div>
-                        {groupedResults && groupedResults.poziom_za_nisko.length > 8 && (
+                        {groupedResults!.poziom_za_nisko.length > 8 && (
                           <button
                             onClick={() => toggleCategory('poziom_za_nisko')}
                             className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                           >
-                            {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.poziom_za_nisko.length - 8})`}
+                            {expandedCategories.poziom_za_nisko ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults!.poziom_za_nisko.length - 8})`}
                           </button>
                         )}
                       </div>
                     )}
 
-                    {groupedResults && groupedResults.na_sile.length > 0 && (
+                    {groupedResults && (groupedResults!.na_sile.length > 0) && (
                       <div>
                         <h3 className="text-white text-xl font-black font-['Inter'] italic mb-2">
-                          💪 NA SIŁĘ ({groupedResults.na_sile.length})
+                          💪 NA SIŁĘ ({groupedResults!.na_sile.length})
                         </h3>
                         <motion.div 
                           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3"
@@ -1922,7 +1925,7 @@ const AnimaComponent: React.FC = () => {
                           animate="visible"
                         >
                           <AnimatePresence>
-                            {(expandedCategories.na_sile ? groupedResults.na_sile : groupedResults.na_sile.slice(0, 8)).map((match, idx) => (
+                            {(expandedCategories.na_sile ? groupedResults!.na_sile : groupedResults!.na_sile.slice(0, 8)).map((match, idx) => (
                               <motion.div key={match.ski.KOD + '-' + idx} variants={itemVariants} className="bg-red-500/20 p-3 rounded-lg">
                                 <div className="flex items-start justify-between mb-2">
                                   {/* Lewa strona - badge ze stylem i długość pod nim */}
@@ -1970,12 +1973,12 @@ const AnimaComponent: React.FC = () => {
                             ))}
                           </AnimatePresence>
                         </motion.div>
-                        {groupedResults && groupedResults.na_sile.length > 8 && (
+                        {groupedResults!.na_sile.length > 8 && (
                           <button
                             onClick={() => toggleCategory('na_sile')}
                             className="mt-3 w-full py-2 px-4 bg-white/10 hover:bg-white/20 rounded-lg text-white font-['Inter'] transition-colors"
                           >
-                            {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults.na_sile.length - 8})`}
+                            {expandedCategories.na_sile ? '▲ Pokaż mniej' : `▼ Pokaż więcej (${groupedResults!.na_sile.length - 8})`}
                           </button>
                         )}
                       </div>
