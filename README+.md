@@ -52,7 +52,7 @@
 | **Starsza wersja algorytmu** | SkiMatchingService.ts: **875 linii** |
 | **Pliki TypeScript/TSX** | 21 plików |
 | **Eksportowane typy/interfejsy** | 62+ definicji |
-| **Czas rozwoju** | Październik 2024 - Listopad 2025 (13+ miesięcy) |
+| **Czas rozwoju** | wrzesień 2025 - Listopad 2025 (3 miesięcy) |
 
 ### 📁 Struktura projektu
 
@@ -677,7 +677,7 @@ Każde pole jest walidowane podczas wprowadzania:
 
 ### Migracja z Python/PyQt5 do React/TypeScript
 
-**Okres:** Październik 2024 - Listopad 2025 (13+ miesięcy)
+**Okres:** Wrzesień 2025 - Listopad 2025 (3+ miesięcy)
 
 #### Faza 1: Przygotowanie (Październik 2024)
 
@@ -713,17 +713,7 @@ Każde pole jest walidowane podczas wprowadzania:
 - Dokumentacja
 - Deployment
 
-### Główne milestone'y
 
-| Data | Milestone |
-|------|-----------|
-| **2024-10** | Rozpoczęcie projektu |
-| **2024-11** | Podstawowa migracja zakończona |
-| **2025-01** | Pierwsza wersja działająca |
-| **2025-03** | Integracja z FireSnow |
-| **2025-06** | System wielokartowy |
-| **2025-10** | Automatyczne wyszukiwanie |
-| **2025-11** | Finalizacja i dokumentacja |
 
 ### Najważniejsze funkcjonalności dodane w czasie
 
@@ -985,13 +975,5 @@ useEffect(() => {
 - ✅ **Automatyzacja** procesu doboru sprzętu
 - ✅ **Integracja** z istniejącym systemem FireSnow
 
----
 
-**Dokument przygotowany:** 2025-11-01  
-**Autor:** Zespół deweloperski WYPAS Ski Rental  
-**Wersja aplikacji:** 6.0+
-
----
-
-*Ten dokument przedstawia kompleksowy przegląd projektu "Asystent Doboru Nart" - zaawansowanej aplikacji webowej stworzonej dla wypożyczalni sprzętu narciarskiego.*
 
