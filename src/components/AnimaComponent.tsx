@@ -23,6 +23,7 @@ import { ReservationsView } from './ReservationsView';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../types/ski.types';
 import PasswordModal from './PasswordModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatModelName, formatBrandName } from '../utils/nameFormatter';
 
 const containerVariants = {
   hidden: { opacity: 1 },
@@ -707,6 +708,27 @@ const AnimaComponent: React.FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [formData, selectedStyles, activeTabId, skisDatabase.length]); // Reaguj na zmiany w formData, wybranych stylach, aktywnej karcie i gdy baza się załaduje
 
+  // Funkcja pomocnicza do zaznaczania całego tekstu przy kliknięciu
+  const handleDateFieldClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    if (input.value) {
+      input.select();
+    }
+  };
+
+  // Funkcja pomocnicza do focusowania i zaznaczania tekstu w polu (jeśli ma wartość)
+  const focusAndSelectIfValue = (input: HTMLInputElement | null) => {
+    if (input) {
+      input.focus();
+      // Użyj setTimeout aby upewnić się, że focus się wykonał przed select
+      setTimeout(() => {
+        if (input.value) {
+          input.select();
+        }
+      }, 0);
+    }
+  };
+
   const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
     console.log(`src/components/AnimaComponent.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
     console.log(`src/components/AnimaComponent.tsx: Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
@@ -804,49 +826,35 @@ const AnimaComponent: React.FC = () => {
       if (section === 'dateFrom' && field === 'day' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do miesiąca "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "od" → Rok "od"
       else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do roku "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(nextInput);
       }
       // Rok "od" → Dzień "do"
       else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do dnia "do"`);
-        const nextInput = dayToRef.current;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(dayToRef.current);
       }
       // Dzień "do" → Miesiąc "do"
       else if (section === 'dateTo' && field === 'day' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do miesiąca "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "do" → Rok "do"
       else if (section === 'dateTo' && field === 'month' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do roku "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(nextInput);
       }
       // Rok "do" → Wzrost
       else if (section === 'dateTo' && field === 'year' && value.length === 2) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do wzrostu`);
-        const nextInput = heightRef.current;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(heightRef.current);
       }
       // Wzrost → Waga (po 3 cyfrach lub gdy wartość >= 100)
       else if (section === 'height' && field === 'value') {
@@ -860,7 +868,7 @@ const AnimaComponent: React.FC = () => {
           const nextInput = weightRef.current;
           if (nextInput) {
             console.log(`src/components/AnimaComponent.tsx: Znaleziono pole wagi, przechodzę`);
-            nextInput.focus();
+            focusAndSelectIfValue(nextInput);
           } else {
             console.log(`src/components/AnimaComponent.tsx: Nie znaleziono pola wagi`);
           }
@@ -872,25 +880,16 @@ const AnimaComponent: React.FC = () => {
       else if (section === 'weight' && field === 'value') {
         if (value.length === 2 && !value.startsWith('1') && !value.startsWith('2')) {
           console.log(`src/components/AnimaComponent.tsx: Przechodzenie do poziomu - waga: ${value} (2 cyfry, nie zaczyna się na 1/2)`);
-          const nextInput = levelRef.current;
-          if (nextInput) {
-            nextInput.focus();
-          }
+          focusAndSelectIfValue(levelRef.current);
         } else if (value.length === 3 && (value.startsWith('1') || value.startsWith('2'))) {
           console.log(`src/components/AnimaComponent.tsx: Przechodzenie do poziomu - waga: ${value} (3 cyfry, zaczyna się na 1/2)`);
-          const nextInput = levelRef.current;
-          if (nextInput) {
-            nextInput.focus();
-          }
+          focusAndSelectIfValue(levelRef.current);
         }
       }
       // Poziom → Płeć (po 1 cyfrze)
       else if (section === 'level' && value.length >= 1) {
         console.log(`src/components/AnimaComponent.tsx: Przechodzenie do płci - poziom: ${value}`);
-        const nextInput = genderRef.current;
-        if (nextInput) {
-          nextInput.focus();
-        }
+        focusAndSelectIfValue(genderRef.current);
       }
       // USUNIĘTO: Stare automatyczne wyszukiwanie po wpisaniu płci
       // Teraz używamy globalnego useEffect który automatycznie wyszukuje gdy formularz jest kompletny
@@ -1245,6 +1244,7 @@ const AnimaComponent: React.FC = () => {
                     type="text"
                     placeholder="DD"
                     value={formData.dateFrom.day}
+                    onClick={handleDateFieldClick}
                     onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
                     className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
                       formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
@@ -1257,6 +1257,7 @@ const AnimaComponent: React.FC = () => {
                     type="text"
                     placeholder="MM"
                     value={formData.dateFrom.month}
+                    onClick={handleDateFieldClick}
                     onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
                     className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
@@ -1267,6 +1268,7 @@ const AnimaComponent: React.FC = () => {
                     type="text"
                     placeholder="25"
                     value={formData.dateFrom.year}
+                    onClick={handleDateFieldClick}
                     onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value, e.target)}
                     className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
@@ -1284,6 +1286,7 @@ const AnimaComponent: React.FC = () => {
                     type="text"
                     placeholder="DD"
                     value={formData.dateTo.day}
+                    onClick={handleDateFieldClick}
                     onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
                     className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
@@ -1295,6 +1298,7 @@ const AnimaComponent: React.FC = () => {
                     type="text"
                     placeholder="MM"
                     value={formData.dateTo.month}
+                    onClick={handleDateFieldClick}
                     onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
                     className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
@@ -1305,6 +1309,7 @@ const AnimaComponent: React.FC = () => {
                     type="text"
                     placeholder="25"
                     value={formData.dateTo.year}
+                    onClick={handleDateFieldClick}
                     onChange={(e) => handleInputChange('dateTo', 'year', e.target.value, e.target)}
                     className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
                       formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
@@ -1663,7 +1668,7 @@ const AnimaComponent: React.FC = () => {
                                   {/* Środek - Nazwa narty i kod */}
                                   <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
                                     <div className="font-black text-base">
-                                      {match.ski.MARKA} {match.ski.MODEL}
+                                      {formatBrandName(match.ski)} {formatModelName(match.ski)}
                                     </div>
                                     <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
                                       KOD: {match.ski.KOD}
@@ -1727,7 +1732,7 @@ const AnimaComponent: React.FC = () => {
                                   {/* Środek - Nazwa narty i kod */}
                                   <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
                                     <div className="font-black text-base">
-                                      {match.ski.MARKA} {match.ski.MODEL}
+                                      {formatBrandName(match.ski)} {formatModelName(match.ski)}
                                     </div>
                                     <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
                                       KOD: {match.ski.KOD}
@@ -1798,7 +1803,7 @@ const AnimaComponent: React.FC = () => {
                                   {/* Środek - Nazwa narty i kod */}
                                   <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
                                     <div className="font-black text-base">
-                                      {match.ski.MARKA} {match.ski.MODEL}
+                                      {formatBrandName(match.ski)} {formatModelName(match.ski)}
                                     </div>
                                     <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
                                       KOD: {match.ski.KOD}
@@ -1869,7 +1874,7 @@ const AnimaComponent: React.FC = () => {
                                   {/* Środek - Nazwa narty i kod */}
                                   <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
                                     <div className="font-black text-base">
-                                      {match.ski.MARKA} {match.ski.MODEL}
+                                      {formatBrandName(match.ski)} {formatModelName(match.ski)}
                                     </div>
                                     <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
                                       KOD: {match.ski.KOD}
@@ -1940,7 +1945,7 @@ const AnimaComponent: React.FC = () => {
                                   {/* Środek - Nazwa narty i kod */}
                                   <div className="text-white text-center flex-1 flex flex-col items-center justify-center">
                                     <div className="font-black text-base">
-                                      {match.ski.MARKA} {match.ski.MODEL}
+                                      {formatBrandName(match.ski)} {formatModelName(match.ski)}
                                     </div>
                                     <div className="text-xs text-gray-900 font-semibold mt-1 bg-gray-200 px-2 py-0.5 rounded">
                                       KOD: {match.ski.KOD}

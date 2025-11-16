@@ -20,7 +20,6 @@ export interface SkiData {
   WZROST_MAX: number;                  // opcjonalnie puste dla butów
   PRZEZNACZENIE: string;               // SL, G, SLG, OFF (opcjonalnie puste)
   ATUTY: string;                       // np. "C", "C,premium" lub ""
-  ROK: number;                         // opcjonalnie puste dla niektórych desek
   KOD: string;                         // kod sprzętu
 }
 

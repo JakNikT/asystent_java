@@ -6,6 +6,7 @@ import { Toast } from './Toast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { SkiDataService } from '../services/skiDataService';
 import type { ReservationInfo } from '../services/reservationService';
+import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 
 interface TabInfo {
   id: string;
@@ -26,7 +27,7 @@ interface BrowseSkisComponentProps {
   isEmployeeMode?: boolean;
 }
 
-type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ROK' | 'PRZEZNACZENIE';
+type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -48,7 +49,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   isEmployeeMode = false,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: 'MARKA',
+    field: 'DLUGOSC',
     direction: 'asc'
   });
   
@@ -64,6 +65,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
+  
+  // Zmienna pomocnicza do sprawdzania czy wyświetlamy buty (dla ukrywania kolumn)
+  // Dla butów junior, snowboard i dorosłych ukrywamy kolumny: Wzrost, Waga, Poziom, Płeć, Przeznaczenie, Atuty
+  const shouldHideColumns = activeFilter === 'BUTY_JUNIOR' || activeFilter === 'BUTY_SNOWBOARD' || activeFilter === 'DOROSLE';
+  // Dla nart junior ukrywamy tylko: Płeć, Przeznaczenie, Atuty (Wzrost, Waga, Poziom pozostają widoczne)
+  const shouldHideJuniorSkiColumns = activeFilter === 'JUNIOR';
   
   // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
   useEffect(() => {
@@ -456,8 +463,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const przeznaczenieFormatted = getPurposeFullName(ski.PRZEZNACZENIE || '');
         const atuty = (ski.ATUTY || '').toLowerCase();
         const dlugosc = (ski.DLUGOSC !== null && ski.DLUGOSC !== undefined) ? ski.DLUGOSC.toString() : '';
-        const rok = (ski.ROK !== null && ski.ROK !== undefined) ? ski.ROK.toString() : '';
         
+        // Rok jest teraz w MODEL (np. "SHAPE 3.0 (2025)"), więc będzie wyszukiwany przez model.includes(term)
         return marka.includes(term) ||
           model.includes(term) ||
           poziom.includes(term) ||
@@ -465,8 +472,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           przeznaczenieRaw.includes(term) ||
           przeznaczenieFormatted.includes(term) || // Wyszukiwanie po pełnych nazwach (Slalom, Gigant, itp.)
           atuty.includes(term) ||
-          dlugosc.includes(term) ||
-          rok.includes(term);
+          dlugosc.includes(term);
       });
     }
 
@@ -476,25 +482,39 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Funkcja sortowania nart
   const sortSkis = (skis: SkiData[], config: SortConfig): SkiData[] => {
     return [...skis].sort((a, b) => {
-      let aValue: any = a[config.field];
-      let bValue: any = b[config.field];
+      let aValue: any;
+      let bValue: any;
 
-      // Konwersja dla pól numerycznych
-      if (config.field === 'DLUGOSC' || config.field === 'ROK') {
-        aValue = Number(aValue);
-        bValue = Number(bValue);
-      }
+      // Sortowanie po flexie - wyciągnij flex z nazwy modelu
+      if (config.field === 'FLEX') {
+        const aFlex = extractFlexFromModel(a.MODEL);
+        const bFlex = extractFlexFromModel(b.MODEL);
+        // Traktuj brak flexu jako 0 (będzie na początku/końcu w zależności od kierunku)
+        aValue = aFlex ? Number(aFlex) : 0;
+        bValue = bFlex ? Number(bFlex) : 0;
+      } else {
+        // Dla pozostałych pól odczytaj wartość z obiektu
+        aValue = a[config.field as keyof SkiData];
+        bValue = b[config.field as keyof SkiData];
 
-      // Konwersja dla pól tekstowych (zabezpieczenie przed null/undefined)
-      if (typeof aValue === 'string' && aValue) {
-        aValue = aValue.toLowerCase();
-      } else if (aValue === null || aValue === undefined) {
-        aValue = '';
-      }
-      if (typeof bValue === 'string' && bValue) {
-        bValue = bValue.toLowerCase();
-      } else if (bValue === null || bValue === undefined) {
-        bValue = '';
+        // Konwersja dla pól numerycznych
+        if (config.field === 'DLUGOSC') {
+          aValue = Number(aValue);
+          bValue = Number(bValue);
+        }
+        // Konwersja dla pól tekstowych (zabezpieczenie przed null/undefined)
+        else {
+          if (typeof aValue === 'string' && aValue) {
+            aValue = aValue.toLowerCase();
+          } else if (aValue === null || aValue === undefined) {
+            aValue = '';
+          }
+          if (typeof bValue === 'string' && bValue) {
+            bValue = bValue.toLowerCase();
+          } else if (bValue === null || bValue === undefined) {
+            bValue = '';
+          }
+        }
       }
 
       if (aValue < bValue) {
@@ -517,13 +537,26 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // Funkcja grupowania nart po modelu (MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA)
   // src/components/BrowseSkisComponent.tsx: Grupowanie uwzględnia również typ sprzętu i kategorię
+  // NORMALIZACJA: Normalizuje MARKA i MODEL przed grupowaniem, aby ignorować różnice w spacji/wielkości liter
   const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
     const grouped = new Map<string, SkiData>();
     
+    // Funkcja normalizacji nazwy (usuwa dodatkowe spacje, normalizuje wielkość liter)
+    // server.js: Normalizacja zapewnia, że "HEAD SHAPE 3.0" i "head shape 3.0" będą traktowane jako to samo
+    const normalizeName = (name: string): string => {
+      if (!name) return '';
+      return name.trim().replace(/\s+/g, ' ').toUpperCase();
+    };
+    
     skis.forEach(ski => {
+      // Normalizuj MARKA i MODEL przed utworzeniem klucza
+      // To zapewnia, że narty z różnymi formatami nazw (np. "HEAD SHAPE 3.0" vs "head shape 3.0") będą grupowane razem
+      const normalizedMarka = normalizeName(ski.MARKA || '');
+      const normalizedModel = normalizeName(ski.MODEL || '');
+      
       // Klucz grupowania: MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA
       // To zapewnia, że VIP i TOP nie będą grupowane razem, nawet jeśli mają ten sam model
-      const key = `${ski.MARKA || ''}|${ski.MODEL || ''}|${ski.DLUGOSC || ''}|${ski.TYP_SPRZETU || ''}|${ski.KATEGORIA || ''}`;
+      const key = `${normalizedMarka}|${normalizedModel}|${ski.DLUGOSC || ''}|${ski.TYP_SPRZETU || ''}|${ski.KATEGORIA || ''}`;
       
       // Jeśli nie ma jeszcze tej grupy, dodaj pierwszą nartę jako reprezentanta
       if (!grouped.has(key)) {
@@ -543,6 +576,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentSkis = sortedSkis.slice(startIndex, endIndex);
+  
+  // Sprawdź czy w tabeli są buty dorosłe (dla wyświetlania kolumny Flex)
+  const hasAdultBoots = currentSkis.some(ski => ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE');
 
   // Funkcja renderowania ikony sortowania
   const renderSortIcon = (field: SortField) => {
@@ -740,6 +776,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       Model {renderSortIcon('MODEL')}
                     </div>
                   </th>
+                  {hasAdultBoots && (
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      onClick={() => handleSort('FLEX')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Flex {renderSortIcon('FLEX')}
+                      </div>
+                    </th>
+                  )}
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
                     onClick={() => handleSort('DLUGOSC')}
@@ -748,43 +794,43 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       Długość {renderSortIcon('DLUGOSC')}
                     </div>
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('POZIOM')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Poziom {renderSortIcon('POZIOM')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('PLEC')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Płeć {renderSortIcon('PLEC')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('ROK')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Rok {renderSortIcon('ROK')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('PRZEZNACZENIE')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
-                    Atuty
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                  {!shouldHideColumns && (
+                    <>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('POZIOM')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Poziom {renderSortIcon('POZIOM')}
+                        </div>
+                      </th>
+                    </>
+                  )}
+                  {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                    <>
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('PLEC')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Płeć {renderSortIcon('PLEC')}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('PRZEZNACZENIE')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        Atuty
+                      </th>
+                    </>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
                   {isEmployeeMode && (
                     <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Akcja</th>
@@ -795,35 +841,48 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 {currentSkis.map((ski) => (
                   <tr key={ski.ID} className="hover:bg-[#2C699F]">
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.MARKA}
+                      {formatBrandName(ski)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.MODEL}
+                      {formatModelName(ski)}
                     </td>
+                    {hasAdultBoots && (
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                        {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE') 
+                          ? (extractFlexFromModel(ski.MODEL) || '-')
+                          : '-'
+                        }
+                      </td>
+                    )}
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.DLUGOSC} cm
                     </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
-                      {formatLevel(ski.POZIOM)}
-                    </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
-                      {formatGender(ski.PLEC)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.ROK}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatPurpose(ski.PRZEZNACZENIE)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.ATUTY || '-'}
-                    </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
-                      {ski.WZROST_MIN}-{ski.WZROST_MAX}
-                    </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
-                      {ski.WAGA_MIN}-{ski.WAGA_MAX}
-                    </td>
+                    {!shouldHideColumns && (
+                      <>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                          {ski.WZROST_MIN}-{ski.WZROST_MAX}
+                        </td>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
+                          {ski.WAGA_MIN}-{ski.WAGA_MAX}
+                        </td>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
+                          {formatLevel(ski.POZIOM)}
+                        </td>
+                      </>
+                    )}
+                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                      <>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
+                          {formatGender(ski.PLEC)}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          {formatPurpose(ski.PRZEZNACZENIE)}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          {ski.ATUTY || '-'}
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       {generateAvailabilitySquares(ski)}
                     </td>
@@ -947,3 +1006,4 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     </div>
   );
 };
+
