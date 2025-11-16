@@ -728,59 +728,418 @@ app.delete('/api/reservations/:id', async (req, res) => {
 });
 
 /**
- * GET /api/skis - Pobierz wszystkie narty z MySQL
+ * Mapuje ID grupy z FireSnow na TYP_SPRZETU i KATEGORIA
+ * server.js: Mapowanie grup FireSnow na format aplikacji
+ * Mapuje bezpośrednio po parentGroupId (parent grup podrzędnych)
+ */
+function mapGroupToEquipmentType(subGroupId, parentGroupId) {
+  // Mapuj bezpośrednio po parentGroupId (parent grup podrzędnych)
+  switch (parentGroupId) {
+    // NARTY - TOP (parent grup TOP)
+    case 82293:
+      return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'TOP' };
+    
+    // NARTY - VIP (parent grup VIP)
+    case 82412:
+      return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'VIP' };
+    
+    // NARTY - JUNIOR (parent grup JUNIOR)
+    case 82758:
+      return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'JUNIOR' };
+    
+    // BUTY - DOROSLE (parent grup BUTY DOROSLE)
+    case 82738:
+      return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'DOROSLE' };
+    
+    // BUTY - JUNIOR (parent grup BUTY JUNIOR)
+    case 82827:
+      return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'JUNIOR' };
+    
+    // SNOWBOARD - DESKI (parent grup DESKI)
+    case 83762:
+      return { TYP_SPRZETU: 'DESKI', KATEGORIA: '' };
+    
+    // SNOWBOARD - BUTY S (parent grup BUTY SNOWBOARD)
+    case 83760:
+      return { TYP_SPRZETU: 'BUTY_SNOWBOARD', KATEGORIA: '' };
+    
+    // Domyślnie (nie powinno się zdarzyć, ale na wszelki wypadek)
+    default:
+      console.warn(`Server: Nieznany parentGroupId: ${parentGroupId}, subGroupId: ${subGroupId}`);
+      return { TYP_SPRZETU: 'NARTY', KATEGORIA: '' };
+  }
+}
+
+/**
+ * Wyciąga płeć z pola POZIOM
+ * server.js: Parsowanie płci z poziomu (4m→M, 4k→K, 4k/5m→U, 1-2u→U)
+ */
+function extractPlecFromPoziom(poziomText) {
+  if (!poziomText) return 'U';
+  
+  const clean = poziomText.trim().toLowerCase();
+  
+  // Format unisex z zakresem: "1-2u"
+  if (/^\d+-\d+u$/i.test(clean)) return 'U';
+  
+  // Format unisex: "4k/5m" lub "5m/4k"
+  if (clean.includes('/') && (clean.includes('m') || clean.includes('k'))) {
+    return 'U';
+  }
+  
+  // Format męski: "4m"
+  if (clean.endsWith('m') && !clean.includes('k')) return 'M';
+  
+  // Format kobiecy: "4k"
+  if (clean.endsWith('k') && !clean.includes('m')) return 'K';
+  
+  // Domyślnie unisex
+  return 'U';
+}
+
+/**
+ * Parsuje nazwę sprzętu z FireSnow
+ * server.js: Wyciąganie marki, modelu, długości/rozmiaru i roku z nazwy
+ * Usuwa z nazwy: typ sprzętu (NARTY, BUTY), długość (144cm), rozmiar butów (rozm23), rok (/2025), numer narty (//01, /01, #01)
+ * 
+ * REGUŁY:
+ * - Rok: zawsze 4 cyfry po "/" (np. "/2025")
+ * - Numer narty: 2-3 cyfry po "//", "/" lub "#" (np. "//01", "/01", "#01")
+ */
+function parseEquipmentName(nazwa) {
+  const result = {
+    NAZWA: '',  // Marka + model (bez długości, rozmiaru, roku, kodu, typu)
+    DLUGOSC: null,
+    ROK: null
+  };
+  
+  if (!nazwa) return result;
+  
+  let cleanName = nazwa.trim();
+  
+  // Usuń typ sprzętu z początku (NARTY, BUTY, DESKI, etc.)
+  cleanName = cleanName.replace(/^(NARTY|BUTY|DESKI|DESKA|BUTY\s+SNOWBOARD)\s+/i, '');
+  
+  // Wyciągnij rozmiar butów (np. "rozm23", "rozm 23", "rozm23,5", "rozm 23,5")
+  // Priorytet: najpierw sprawdź rozmiar butów, potem długość nart
+  const bootSizeMatch = cleanName.match(/rozm\s*(\d+)(?:[,.](\d+))?/i);
+  if (bootSizeMatch) {
+    const wholePart = parseInt(bootSizeMatch[1]);
+    const decimalPart = bootSizeMatch[2] ? parseInt(bootSizeMatch[2]) : 0;
+    // Jeśli jest część dziesiętna, zapisz jako liczbę zmiennoprzecinkową
+    if (decimalPart > 0) {
+      // Jeśli część dziesiętna ma 1 cyfrę, dziel przez 10 (np. 5 → 0.5)
+      // Jeśli ma 2 cyfry, dziel przez 100 (np. 50 → 0.50)
+      const divisor = decimalPart < 10 ? 10 : 100;
+      result.DLUGOSC = wholePart + (decimalPart / divisor);
+    } else {
+      result.DLUGOSC = wholePart;
+    }
+    // Usuń rozmiar z nazwy (cały wzorzec: "rozm23", "rozm 23", "rozm23,5", "rozm 23,5")
+    cleanName = cleanName.replace(/rozm\s*\d+(?:[,.]\d+)?/gi, ' ').trim();
+  } else {
+    // Jeśli nie znaleziono rozmiaru butów, szukaj długości nart (np. "144cm", "156cm" lub "144")
+    // server.js: Poprawione parsowanie długości - obsługuje formaty "156cm", " 156cm ", "156 cm"
+    const lengthMatch = cleanName.match(/(\d{2,4})\s*cm/i) || cleanName.match(/\s(\d{2,4})\s/);
+    if (lengthMatch) {
+      result.DLUGOSC = parseInt(lengthMatch[1]);
+      // Usuń długość z nazwy (obsługuje różne formaty: "156cm", " 156cm ", "156 cm")
+      cleanName = cleanName.replace(/\s*\d{2,4}\s*cm\s*/i, ' ').replace(/\s+\d{2,4}\s+/g, ' ');
+    }
+  }
+  
+  // WAŻNE: Najpierw wyciągnij rok (4 cyfry po "/") - to musi być PRZED usuwaniem numerów nart
+  // server.js: Rok ma zawsze 4 cyfry po "/" (np. "/2025")
+  const yearMatch = cleanName.match(/\/(\d{4})(?!\d)/);
+  if (yearMatch) {
+    result.ROK = parseInt(yearMatch[1]);
+    // Usuń rok z nazwy
+    cleanName = cleanName.replace(/\s*\/\d{4}(?!\d)\s*/g, ' ');
+  }
+  
+  // Usuń numery nart w różnych formatach (2-3 cyfry po "//", "/" lub "#")
+  // server.js: Numer narty: 2-3 cyfry po "//" (czasami "/" lub "#")
+  // Format: "//01", "//123", "/01", "/123", "#01", "#123"
+  // Używamy negative lookahead, żeby nie złapać roku (4 cyfry)
+  cleanName = cleanName.replace(/\s*\/\/\d{2,3}(?!\d)\s*/g, ' ');  // "//01", "//123"
+  cleanName = cleanName.replace(/\s*\/\d{2,3}(?!\d)\s*/g, ' ');    // "/01", "/123" (ale nie "/2025" bo już usunięte)
+  cleanName = cleanName.replace(/\s*#\d{2,3}(?!\d)\s*/g, ' ');     // "#01", "#123"
+  
+  // Usuń dodatkowe spacje i trim
+  result.NAZWA = cleanName.replace(/\s+/g, ' ').trim();
+  
+  return result;
+}
+
+/**
+ * Mapuje dane z FireSnow API na format SkiData aplikacji
+ * server.js: Główna funkcja mapująca dane z FireSnow na format aplikacji
+ */
+function mapFireSnowToSkiData(fireSnowItem) {
+  // Mapuj grupę na TYP_SPRZETU i KATEGORIA
+  const typeMapping = mapGroupToEquipmentType(
+    fireSnowItem.sub_group_id,
+    fireSnowItem.parent_group_id
+  );
+  
+  // Wyciągnij płeć z poziomu
+  const plec = extractPlecFromPoziom(fireSnowItem.poziom || '');
+  
+  // Parsuj nazwę sprzętu
+  const parsedName = parseEquipmentName(fireSnowItem.nazwa_sprzetu || '');
+  
+  // Generuj ID w formacie: N-{obiekt_id}, B-{obiekt_id}, D-{obiekt_id}, BS-{obiekt_id}
+  let idPrefix = 'N';
+  if (typeMapping.TYP_SPRZETU === 'BUTY') idPrefix = 'B';
+  else if (typeMapping.TYP_SPRZETU === 'DESKI') idPrefix = 'D';
+  else if (typeMapping.TYP_SPRZETU === 'BUTY_SNOWBOARD') idPrefix = 'BS';
+  
+  const id = `${idPrefix}-${String(fireSnowItem.obiekt_id).padStart(4, '0')}`;
+  
+  // Rozdziel nazwę na markę (pierwsze słowo) i model (reszta)
+  // server.js: MARKA = pierwsze słowo, MODEL = reszta + rocznik w nawiasach
+  const words = parsedName.NAZWA.split(/\s+/).filter(w => w.trim() !== '');
+  const marka = words[0] || '';  // Pierwsze słowo to marka
+  const model = words.slice(1).join(' ') || '';  // Reszta to model
+  
+  // Dodaj rok do modelu jeśli istnieje (format: "SHAPE 3.0 (2025)")
+  const modelWithYear = parsedName.ROK 
+    ? `${model} (${parsedName.ROK})` 
+    : model;
+  
+  // Mapuj dane
+  return {
+    ID: id,
+    TYP_SPRZETU: typeMapping.TYP_SPRZETU,
+    KATEGORIA: typeMapping.KATEGORIA,
+    MARKA: marka,  // Tylko pierwsze słowo (np. "HEAD")
+    MODEL: modelWithYear,  // Reszta + rocznik (np. "SHAPE 3.0 (2025)")
+    DLUGOSC: parsedName.DLUGOSC,
+    ILOSC: 1,  // Zawsze 1 (każda sztuka osobno)
+    POZIOM: fireSnowItem.poziom || '',
+    PLEC: plec,
+    WAGA_MIN: fireSnowItem.waga_min || null,
+    WAGA_MAX: fireSnowItem.waga_max || null,
+    WZROST_MIN: fireSnowItem.wzrost_min || null,
+    WZROST_MAX: fireSnowItem.wzrost_max || null,
+    PRZEZNACZENIE: fireSnowItem.przeznaczenie || '',
+    ATUTY: fireSnowItem.typ || '',  // PARAM7 to typ/atuty
+    ROK: parsedName.ROK || null,  // Zachowaj dla kompatybilności, ale nie używane w UI
+    KOD: fireSnowItem.kod || ''
+  };
+}
+
+/**
+ * Wczytuje sprzęt z FireSnow API
+ * server.js: Pobieranie wszystkich sprzętów z FireSnow i mapowanie na format aplikacji
+ * NOWE: Osobne logowanie dla każdej grupy z szczegółowymi statystykami
+ */
+async function loadEquipmentFromFireSnowAPI() {
+  try {
+    console.log('Server: Pobieranie sprzętu z FireSnow API:', FIRESNOW_API_URL);
+    
+    const response = await fetch(`${FIRESNOW_API_URL}/api/sprzet/wszystkie`);
+    
+    if (!response.ok) {
+      throw new Error(`FireSnow API error: ${response.status}`);
+    }
+    
+    const fireSnowData = await response.json();
+    console.log(`Server: Otrzymano ${fireSnowData.length} rekordów sprzętu z FireSnow API`);
+    console.log('Server: ========================================');
+    
+    // Definicja grup z ich ID i nazwami
+    const groups = [
+      { id: 82293, name: 'NARTY TOP', type: 'NARTY', category: 'TOP' },
+      { id: 82412, name: 'NARTY VIP', type: 'NARTY', category: 'VIP' },
+      { id: 82758, name: 'NARTY JUNIOR', type: 'NARTY', category: 'JUNIOR' },
+      { id: 82738, name: 'BUTY DOROSLE', type: 'BUTY', category: 'DOROSLE' },
+      { id: 82827, name: 'BUTY JUNIOR', type: 'BUTY', category: 'JUNIOR' },
+      { id: 83762, name: 'SNOWBOARD DESKI', type: 'DESKI', category: '' },
+      { id: 83760, name: 'SNOWBOARD BUTY S', type: 'BUTY_SNOWBOARD', category: '' }
+    ];
+    
+    const allEquipment = [];
+    
+    // Przetwarzaj każdą grupę osobno
+    for (const group of groups) {
+      // Filtruj rekordy dla tej grupy
+      const groupData = fireSnowData.filter(item => item.parent_group_id === group.id);
+      
+      console.log(`\nServer: === ${group.name} (ID: ${group.id}) ===`);
+      console.log(`Server: Liczba rekordów: ${groupData.length}`);
+      
+      if (groupData.length === 0) {
+        console.log(`Server: ⚠️  Brak rekordów dla grupy ${group.name}!`);
+        continue;
+      }
+      
+      // Statystyki podgrup
+      const subGroups = {};
+      groupData.forEach(item => {
+        const subGroupId = item.sub_group_id;
+        if (!subGroups[subGroupId]) {
+          subGroups[subGroupId] = 0;
+        }
+        subGroups[subGroupId]++;
+      });
+      
+      console.log(`Server: Liczba podgrup: ${Object.keys(subGroups).length}`);
+      console.log(`Server: Podgrupy i liczba rekordów:`, subGroups);
+      
+      // Szczegółowe logowanie dla HEAD SHAPE w grupie TOP
+      if (group.id === 82293) {
+        const headShapeItems = groupData.filter(item => 
+          item.nazwa_sprzetu && item.nazwa_sprzetu.toUpperCase().includes('HEAD SHAPE')
+        );
+        
+        if (headShapeItems.length > 0) {
+          console.log(`\nServer: 🔍 HEAD SHAPE w ${group.name}: ${headShapeItems.length} rekordów`);
+          
+          // Analiza nazw HEAD SHAPE
+          const headShapeNames = {};
+          headShapeItems.forEach(item => {
+            const parsed = parseEquipmentName(item.nazwa_sprzetu || '');
+            const key = parsed.NAZWA || 'BRAK_NAZWY';
+            if (!headShapeNames[key]) {
+              headShapeNames[key] = {
+                count: 0,
+                lengths: new Set(),
+                examples: []
+              };
+            }
+            headShapeNames[key].count++;
+            if (parsed.DLUGOSC) {
+              headShapeNames[key].lengths.add(parsed.DLUGOSC);
+            }
+            if (headShapeNames[key].examples.length < 3) {
+              headShapeNames[key].examples.push({
+                original: item.nazwa_sprzetu,
+                parsed: parsed.NAZWA,
+                dlugosc: parsed.DLUGOSC,
+                kod: item.kod
+              });
+            }
+          });
+          
+          console.log(`Server: Unikalne nazwy HEAD SHAPE po parsowaniu:`);
+          Object.entries(headShapeNames).forEach(([name, data]) => {
+            console.log(`  - "${name}": ${data.count} rekordów, długości: [${Array.from(data.lengths).sort((a,b) => a-b).join(', ')}]`);
+            console.log(`    Przykłady oryginalnych nazw:`);
+            data.examples.forEach(ex => {
+              console.log(`      • "${ex.original}" → MARKA: "${ex.parsed}", DLUGOSC: ${ex.dlugosc || 'null'}, KOD: ${ex.kod}`);
+            });
+          });
+          
+          // Sprawdź czy są różne formaty nazw
+          const uniqueOriginalNames = [...new Set(headShapeItems.map(item => item.nazwa_sprzetu))];
+          if (uniqueOriginalNames.length > Object.keys(headShapeNames).length) {
+            console.log(`\nServer: ⚠️  UWAGA: Różne oryginalne nazwy mapują się na te same nazwy po parsowaniu!`);
+            console.log(`Server:    Oryginalnych nazw: ${uniqueOriginalNames.length}, unikalnych po parsowaniu: ${Object.keys(headShapeNames).length}`);
+          }
+        } else {
+          console.log(`Server: ℹ️  Brak rekordów HEAD SHAPE w grupie ${group.name}`);
+        }
+      }
+      
+      // Mapuj rekordy dla tej grupy
+      const mappedGroupData = groupData.map(item => mapFireSnowToSkiData(item));
+      
+      // Statystyki po mapowaniu
+      const markaStats = {};
+      mappedGroupData.forEach(item => {
+        const marka = item.MARKA || 'BRAK_MARKI';
+        if (!markaStats[marka]) {
+          markaStats[marka] = 0;
+        }
+        markaStats[marka]++;
+      });
+      
+      // Pokaż top 5 najczęstszych marek/modeli
+      const topMarkas = Object.entries(markaStats)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      if (topMarkas.length > 0) {
+        console.log(`Server: Top 5 marek/modeli w ${group.name}:`);
+        topMarkas.forEach(([marka, count]) => {
+          console.log(`  - "${marka}": ${count} rekordów`);
+        });
+      }
+      
+      allEquipment.push(...mappedGroupData);
+      console.log(`Server: ✓ Zmapowano ${mappedGroupData.length} rekordów dla ${group.name}`);
+    }
+    
+    console.log('\nServer: ========================================');
+    console.log(`Server: Łącznie zmapowano ${allEquipment.length} rekordów sprzętu`);
+    
+    // Ogólne statystyki
+    const categoryCounts = {};
+    allEquipment.forEach(item => {
+      const key = `${item.TYP_SPRZETU}_${item.KATEGORIA || 'BRAK'}`;
+      categoryCounts[key] = (categoryCounts[key] || 0) + 1;
+    });
+    console.log('Server: Rozkład kategorii sprzętu:', categoryCounts);
+    console.log('Server: ========================================\n');
+    
+    return allEquipment;
+    
+  } catch (error) {
+    console.error('Server: Błąd pobierania sprzętu z FireSnow API:', error);
+    throw error;
+  }
+}
+
+/**
+ * GET /api/skis - Pobierz wszystkie sprzęty z FireSnow API (z fallback do CSV)
  */
 app.get('/api/skis', async (req, res) => {
   try {
-    console.log('Server: GET /api/skis (MySQL)');
+    console.log('Server: GET /api/skis');
     
-    const pool = await getDBConnection();
-    const [rows] = await pool.execute('SELECT * FROM sprzet');
+    let equipment = [];
     
-    // Konwertuj liczby (MySQL zwraca stringi lub null)
-    // WAŻNE: Zamień null na puste stringi dla zgodności z CSV
-    const data = rows.map(row => ({
-      ID: row.ID || '',
-      TYP_SPRZETU: row.TYP_SPRZETU || '',
-      KATEGORIA: row.KATEGORIA || '',
-      MARKA: row.MARKA || '',
-      MODEL: row.MODEL || '',
-      DLUGOSC: row.DLUGOSC ? parseInt(row.DLUGOSC) : null,
-      ILOSC: row.ILOSC ? parseInt(row.ILOSC) : null,
-      POZIOM: row.POZIOM || '',
-      PLEC: row.PLEC || '',
-      WAGA_MIN: row.WAGA_MIN ? parseInt(row.WAGA_MIN) : null,
-      WAGA_MAX: row.WAGA_MAX ? parseInt(row.WAGA_MAX) : null,
-      WZROST_MIN: row.WZROST_MIN ? parseInt(row.WZROST_MIN) : null,
-      WZROST_MAX: row.WZROST_MAX ? parseInt(row.WZROST_MAX) : null,
-      PRZEZNACZENIE: row.PRZEZNACZENIE || '',
-      ATUTY: row.ATUTY || '',
-      ROK: row.ROK ? parseInt(row.ROK) : null,
-      KOD: row.KOD || ''
-    }));
-    
-    console.log(`Server: Zwrócono ${data.length} rekordów z MySQL`);
-    if (data.length > 0) {
-      console.log('Server: Przykładowy rekord:', JSON.stringify(data[0], null, 2));
-    }
-    res.json(data);
-  } catch (error) {
-    console.error('Server: Błąd pobierania z MySQL:', error);
-    
-    // Fallback do CSV jeśli MySQL nie działa
-    try {
-      console.log('Server: Fallback do CSV...');
+    if (USE_FIRESNOW_API) {
+      try {
+        // Próbuj pobrać z FireSnow API
+        equipment = await loadEquipmentFromFireSnowAPI();
+        console.log(`Server: Zwracam ${equipment.length} rekordów sprzętu z FireSnow API`);
+      } catch (apiError) {
+        console.warn('Server: FireSnow API niedostępne, fallback do CSV:', apiError.message);
+        // Fallback do CSV jeśli API nie działa
+        try {
+          console.log('Server: Fallback do CSV...');
+          const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
+          const result = Papa.parse(csvContent, {
+            header: true,
+            skipEmptyLines: true,
+            delimiter: ','
+          });
+          equipment = result.data;
+          console.log(`Server: Zwracam ${equipment.length} rekordów z CSV (fallback)`);
+        } catch (csvError) {
+          console.error('Server: Błąd fallback CSV:', csvError);
+          throw csvError;
+        }
+      }
+    } else {
+      // Używaj CSV jeśli USE_FIRESNOW_API = false
+      console.log('Server: Używam CSV (USE_FIRESNOW_API = false)');
       const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
       const result = Papa.parse(csvContent, {
         header: true,
         skipEmptyLines: true,
         delimiter: ','
       });
-      res.json(result.data);
-    } catch (csvError) {
-      console.error('Server: Błąd fallback CSV:', csvError);
-      res.status(500).json({ error: 'Błąd pobierania danych' });
+      equipment = result.data;
+      console.log(`Server: Zwracam ${equipment.length} rekordów z CSV`);
     }
+    
+    res.json(equipment);
+  } catch (error) {
+    console.error('Server: Błąd pobierania sprzętu:', error);
+    res.status(500).json({ error: 'Błąd pobierania danych sprzętu' });
   }
 });
 
@@ -832,7 +1191,6 @@ app.post('/api/skis', async (req, res) => {
       WZROST_MAX: req.body.WZROST_MAX || 0,
       PRZEZNACZENIE: req.body.PRZEZNACZENIE || '',
       ATUTY: req.body.ATUTY || '',
-      ROK: req.body.ROK || new Date().getFullYear(),
       KOD: newKod
     };
     
@@ -843,7 +1201,7 @@ app.post('/api/skis', async (req, res) => {
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
       header: true,
-      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
+      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'KOD']
     });
     
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
@@ -912,7 +1270,7 @@ app.put('/api/skis/bulk', async (req, res) => {
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
       header: true,
-      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
+      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'KOD']
     });
     
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
@@ -966,7 +1324,7 @@ app.put('/api/skis/:id', async (req, res) => {
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
       header: true,
-      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
+      columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'KOD']
     });
     
     console.log('Server: Zapisuję CSV - pierwszy wiersz (header):', csvContentNew.split('\n')[0]);

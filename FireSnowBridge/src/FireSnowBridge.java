@@ -773,6 +773,20 @@ static class DostepnoscOkresHandler implements HttpHandler {
     }
     
     /**
+     * Safely parse String to Long, returns null if not a valid number
+     */
+    private static Long parseLongSafe(String str) {
+        if (str == null || str.trim().isEmpty()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(str.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+    
+    /**
      * Handler for endpoint /api/refresh
      * Forces manual refresh by closing all connections
      * Next request will read fresh data from disk
@@ -821,6 +835,155 @@ static class DostepnoscOkresHandler implements HttpHandler {
     }
     
     /**
+     * Handler for endpoint /api/sprzet/wszystkie
+     * Returns all equipment from FireSnow database with full parameters
+     * Uses all sub-groups instead of main groups (equipment is in sub-groups)
+     */
+    static class WszystkieSprzetHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            System.out.println("FireSnowBridge: All equipment requested");
+            
+            setCorsHeaders(exchange);
+            
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+            
+            try (Connection conn = getConnection()) {
+                
+                // SQL query for all equipment from all sub-groups
+                // FireSnowBridge.java: Automatyczne pobieranie wszystkich podgrup dla głównych grup
+                // NARTY: TOP (82293), VIP (82412), JUNIOR (82758)
+                // BUTY: DOROSLE (82738), JUNIOR (82827)
+                // SNOWBOARD: DESKI (83762), BUTY S (83760)
+                // Zapytanie automatycznie pobiera wszystkie podgrupy dla każdej głównej grupy
+                String sql = 
+                    "SELECT " +
+                    "  ro.ID as obiekt_id, " +
+                    "  e.NAME as nazwa_sprzetu, " +
+                    "  e.CODE as kod, " +
+                    "  rg_sub.ID as sub_group_id, " +
+                    "  rg_parent.ID as parent_group_id, " +
+                    "  e.PARAM1 as wzrost_min, " +
+                    "  e.PARAM2 as wzrost_max, " +
+                    "  e.PARAM3 as waga_min, " +
+                    "  e.PARAM4 as waga_max, " +
+                    "  e.PARAM5 as poziom, " +
+                    "  e.PARAM6 as przeznaczenie, " +
+                    "  e.PARAM7 as typ " +
+                    "FROM RENTOBJECTS ro " +
+                    "INNER JOIN ABSTRACTENTITYCM e ON ro.ID = e.ID " +
+                    "INNER JOIN RENT_GROUPS rg_sub ON ro.RENTGROUP_ID = rg_sub.ID " +
+                    "INNER JOIN RENT_GROUPS rg_parent ON rg_sub.RENTGROUP_ID = rg_parent.ID " +
+                    "WHERE rg_parent.ID IN (" +
+                    "  82293,  " + // NARTY TOP
+                    "  82412,  " + // NARTY VIP
+                    "  82758,  " + // NARTY JUNIOR
+                    "  82738,  " + // BUTY DOROSLE
+                    "  82827,  " + // BUTY JUNIOR
+                    "  83762,  " + // SNOWBOARD DESKI
+                    "  83760   " + // SNOWBOARD BUTY S
+                    ") " +
+                    "  AND (e.REMOVED = '0' OR e.REMOVED IS NULL) " +
+                    "ORDER BY rg_parent.ID, rg_sub.ID, e.NAME";
+                
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery(sql);
+                
+                StringBuilder json = new StringBuilder("[");
+                boolean first = true;
+                
+                while (rs.next()) {
+                    if (!first) json.append(",");
+                    first = false;
+                    
+                    json.append("{");
+                    json.append("\"obiekt_id\":").append(rs.getLong("obiekt_id")).append(",");
+                    json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
+                    json.append("\"kod\":\"").append(escapeJson(rs.getString("kod"))).append("\",");
+                    json.append("\"sub_group_id\":").append(rs.getLong("sub_group_id")).append(",");
+                    json.append("\"parent_group_id\":").append(rs.getLong("parent_group_id")).append(",");
+                    
+                    // PARAM1-4 (wzrost_min, wzrost_max, waga_min, waga_max) - mogą być tekstem lub liczbą
+                    String wzrostMinStr = rs.getString("wzrost_min");
+                    Long wzrostMin = parseLongSafe(wzrostMinStr);
+                    if (wzrostMin == null) {
+                        json.append("\"wzrost_min\":null,");
+                    } else {
+                        json.append("\"wzrost_min\":").append(wzrostMin).append(",");
+                    }
+                    
+                    String wzrostMaxStr = rs.getString("wzrost_max");
+                    Long wzrostMax = parseLongSafe(wzrostMaxStr);
+                    if (wzrostMax == null) {
+                        json.append("\"wzrost_max\":null,");
+                    } else {
+                        json.append("\"wzrost_max\":").append(wzrostMax).append(",");
+                    }
+                    
+                    String wagaMinStr = rs.getString("waga_min");
+                    Long wagaMin = parseLongSafe(wagaMinStr);
+                    if (wagaMin == null) {
+                        json.append("\"waga_min\":null,");
+                    } else {
+                        json.append("\"waga_min\":").append(wagaMin).append(",");
+                    }
+                    
+                    String wagaMaxStr = rs.getString("waga_max");
+                    Long wagaMax = parseLongSafe(wagaMaxStr);
+                    if (wagaMax == null) {
+                        json.append("\"waga_max\":null,");
+                    } else {
+                        json.append("\"waga_max\":").append(wagaMax).append(",");
+                    }
+                    
+                    String poziom = rs.getString("poziom");
+                    json.append("\"poziom\":\"").append(escapeJson(poziom != null ? poziom : "")).append("\",");
+                    
+                    String przeznaczenie = rs.getString("przeznaczenie");
+                    json.append("\"przeznaczenie\":\"").append(escapeJson(przeznaczenie != null ? przeznaczenie : "")).append("\",");
+                    
+                    String typ = rs.getString("typ");
+                    json.append("\"typ\":\"").append(escapeJson(typ != null ? typ : "")).append("\"");
+                    
+                    json.append("}");
+                }
+                
+                json.append("]");
+                
+                rs.close();
+                stmt.close();
+                
+                String response = json.toString();
+                
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
+                
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+                
+                System.out.println("FireSnowBridge: Returned all equipment");
+                
+            } catch (SQLException e) {
+                System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+                e.printStackTrace();
+                
+                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
+                
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
+                
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+            }
+        }
+    }
+    
+    /**
      * Main method - starts HTTP server
      */
     public static void main(String[] args) {
@@ -855,6 +1018,7 @@ static class DostepnoscOkresHandler implements HttpHandler {
             server.createContext("/api/wypozyczenia/przeszle", new PrzeszleWypozyczeniaHandler());
             server.createContext("/api/narty/zarezerwowane", new ZarezerwowaneNartyHandler());
             server.createContext("/api/dostepnosc/okres", new DostepnoscOkresHandler());
+            server.createContext("/api/sprzet/wszystkie", new WszystkieSprzetHandler());
             // Start server
             server.setExecutor(null); // Default executor
             server.start();
@@ -873,7 +1037,8 @@ static class DostepnoscOkresHandler implements HttpHandler {
             System.out.println("  GET /api/wypozyczenia/aktualne    - Get active rentals");
             System.out.println("  GET /api/wypozyczenia/przeszle    - Get past rentals (returned)");
             System.out.println("  GET /api/narty/zarezerwowane      - Get reserved skis");
-            System.out.println("  GET /api/dostepnosc/okres         - Get availability for date range"); // NOWY
+            System.out.println("  GET /api/dostepnosc/okres         - Get availability for date range");
+            System.out.println("  GET /api/sprzet/wszystkie          - Get all equipment with full parameters");
             System.out.println();
             System.out.println("Press Ctrl+C to stop the server");
             System.out.println("===========================================");
