@@ -46,6 +46,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
     const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past' = viewType) => {
+      // Dla widoku "przeszłe" - wczytuj tylko jeśli jest co najmniej 3 znaki w wyszukiwarce
+      if (type === 'past' && filterText.trim().length < 3) {
+        console.log('ReservationsView: Widok "przeszłe" wymaga co najmniej 3 znaków w wyszukiwarce');
+        setReservations([]);
+        setIsLoading(false);
+        return;
+      }
+
       setIsLoading(true);
       try {
         let data: ReservationData[];
@@ -144,9 +152,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // USUNIĘTO: Callbacki konwersji - ReservationApiClient obsługuje to po stronie serwera
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
+  // Wczytaj dane gdy zmienia się typ widoku
   useEffect(() => {
     loadReservations(viewType);
   }, [viewType]);
+
+  // Dla widoku "przeszłe" - wczytuj dane również gdy zmienia się filterText (tylko jeśli >= 3 znaki)
+  useEffect(() => {
+    if (viewType === 'past' && filterText.trim().length >= 3) {
+      loadReservations('past');
+    } else if (viewType === 'past' && filterText.trim().length < 3) {
+      // Wyczyść dane jeśli użytkownik usunął znaki poniżej 3
+      setReservations([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterText, viewType]);
 
   // Helper function to determine equipment category
   const getEquipmentCategory = (sprzet: string): string => {
@@ -452,7 +472,9 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 type="text"
                 value={filterText}
                 onChange={(e) => setFilterText(e.target.value)}
-                placeholder="Wpisz klienta, sprzęt lub kod..."
+                placeholder={viewType === 'past' 
+                  ? "Wpisz co najmniej 3 znaki aby wyszukać przeszłe rezerwacje..." 
+                  : "Wpisz klienta, sprzęt lub kod..."}
                 className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
               />
               {filterText && (
@@ -464,6 +486,19 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 </button>
               )}
             </div>
+            
+            {/* Komunikat dla widoku "przeszłe" */}
+            {viewType === 'past' && filterText.trim().length < 3 && (
+              <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-4">
+                <p className="text-yellow-200 text-sm font-medium">
+                  ⚠️ Wpisz co najmniej <strong>3 znaki</strong> w wyszukiwarce, aby wczytać przeszłe rezerwacje.
+                  <br />
+                  <span className="text-xs opacity-90 mt-1 block">
+                    To pomaga uniknąć wczytywania zbyt dużej ilości danych na raz.
+                  </span>
+                </p>
+              </div>
+            )}
             
             {/* Checkbox PROMOTOR */}
             <div className="flex items-center gap-3 bg-[#2C699F] px-4 py-2 rounded-lg w-fit">
@@ -484,6 +519,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         {isLoading ? (
           <div className="text-center text-white text-xl py-20">
             Ładowanie rezerwacji...
+          </div>
+        ) : viewType === 'past' && filterText.trim().length < 3 ? (
+          <div className="bg-[#194576] rounded-lg shadow-lg p-12 text-center">
+            <span className="text-white text-xl">
+              🔍 Wpisz co najmniej 3 znaki w wyszukiwarce, aby wczytać przeszłe rezerwacje
+            </span>
           </div>
         ) : sortedGroupedReservations.length === 0 ? (
           <div className="bg-[#194576] rounded-lg shadow-lg p-12 text-center">
