@@ -4,6 +4,9 @@ import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
+import { SkiDataService } from '../services/skiDataService';
+import type { ReservationInfo } from '../services/reservationService';
+import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 
 interface TabInfo {
   id: string;
@@ -20,11 +23,11 @@ interface BrowseSkisComponentProps {
   onTabChange?: (tabId: string) => void;
   onAddTab?: () => void;
   onRemoveTab?: (tabId: string) => void;
-  // onRefreshData?: () => Promise<void>;
-  // isEmployeeMode?: boolean;
+  onRefreshData?: () => Promise<void>;
+  isEmployeeMode?: boolean;
 }
 
-type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'ROK' | 'PRZEZNACZENIE';
+type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -42,22 +45,32 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   onTabChange,
   onAddTab,
   onRemoveTab,
+  onRefreshData,
+  isEmployeeMode = false,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
-    field: 'MARKA',
+    field: 'DLUGOSC',
     direction: 'asc'
   });
   
   const [currentPage, setCurrentPage] = useState(1);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
-  const itemsPerPage = 20;
+  // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
+  // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
+  const itemsPerPage = 10000;
   
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
 
   // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
+  
+  // Zmienna pomocnicza do sprawdzania czy wyświetlamy buty (dla ukrywania kolumn)
+  // Dla butów junior, snowboard i dorosłych ukrywamy kolumny: Wzrost, Waga, Poziom, Płeć, Przeznaczenie, Atuty
+  const shouldHideColumns = activeFilter === 'BUTY_JUNIOR' || activeFilter === 'BUTY_SNOWBOARD' || activeFilter === 'DOROSLE';
+  // Dla nart junior ukrywamy tylko: Płeć, Przeznaczenie, Atuty (Wzrost, Waga, Poziom pozostają widoczne)
+  const shouldHideJuniorSkiColumns = activeFilter === 'JUNIOR';
   
   // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
   useEffect(() => {
@@ -68,13 +81,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   }, [initialFilter]);
 
   // NOWY STAN: Modal edycji/dodawania
-  const [isModalOpen, setIsModalOpen] = useState(false); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const [modalMode] = useState<'edit' | 'add'>('edit');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
   const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
 
   // NOWY STAN: Toast notifications
   const [toastMessage, setToastMessage] = useState('');
-  const [toastType] = useState<'success' | 'error'>('success');
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   // Ładowanie statusów dostępności
   useEffect(() => {
@@ -190,12 +203,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   }, [browseCriteria, allSkis]);
 
   // Funkcja generowania kwadracików dla grupowanych nart (NOWY SYSTEM 3-KOLOROWY)
+  // src/components/BrowseSkisComponent.tsx: Znajduje narty tego samego modelu, typu i kategorii
   const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
-    // Znajdź wszystkie narty tego samego modelu i długości
+    // Znajdź wszystkie narty tego samego modelu, długości, typu i kategorii
     const sameModelSkis = allSkis.filter(s => 
-      s.MARKA === ski.MARKA && 
-      s.MODEL === ski.MODEL && 
-      s.DLUGOSC === ski.DLUGOSC
+      s && ski &&
+      (s.MARKA || '') === (ski.MARKA || '') && 
+      (s.MODEL || '') === (ski.MODEL || '') && 
+      s.DLUGOSC === ski.DLUGOSC &&
+      (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
+      (s.KATEGORIA || '') === (ski.KATEGORIA || '')
     );
     
     const squares = sameModelSkis.map((s, index) => {
@@ -227,6 +244,37 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       
       if (availabilityInfo) {
         tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
+        
+        // Dodaj informacje o rezerwacjach/wypożyczeniach z datami
+        if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
+          tooltip += `\n\n📅 Rezerwacje/Wypożyczenia:`;
+          availabilityInfo.reservations.forEach((reservation: ReservationInfo, resIndex: number) => {
+            // Sprawdź czy reservation ma pola startDate i endDate
+            if (reservation.startDate && reservation.endDate) {
+              const startDate = reservation.startDate instanceof Date 
+                ? reservation.startDate 
+                : new Date(reservation.startDate);
+              const endDate = reservation.endDate instanceof Date 
+                ? reservation.endDate 
+                : new Date(reservation.endDate);
+              
+              const startDateStr = startDate.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+              const endDateStr = endDate.toLocaleDateString('pl-PL', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric'
+              });
+              tooltip += `\n  ${resIndex + 1}. ${startDateStr} - ${endDateStr}`;
+              if (reservation.clientName) {
+                tooltip += `\n     Klient: ${reservation.clientName}`;
+              }
+            }
+          });
+        }
       }
       
       return (
@@ -245,10 +293,104 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // NOWE FUNKCJE: Obsługa edycji i dodawania
 
+  // src/components/BrowseSkisComponent.tsx: Funkcja otwierania modala edycji
+  const handleEdit = (ski: SkiData) => {
+    console.log('BrowseSkisComponent: Otwieranie modala edycji dla narty:', ski.ID);
+    setSelectedSki(ski);
+    setModalMode('edit');
+    setIsModalOpen(true);
+  };
+
+  // src/components/BrowseSkisComponent.tsx: Funkcja zapisywania zmian
+  const handleSave = async (
+    skiData: Partial<SkiData>,
+    targetSkiId?: string,
+    updateAll?: boolean
+  ): Promise<void> => {
+    try {
+      console.log('BrowseSkisComponent: Zapisuję zmiany:', { skiData, targetSkiId, updateAll });
+
+      if (updateAll && targetSkiId === undefined) {
+        // Aktualizacja wszystkich nart w grupie
+        // src/components/BrowseSkisComponent.tsx: Uwzględnia również typ sprzętu i kategorię
+        const sameModelSkis = allSkis.filter(s =>
+          s && selectedSki &&
+          (s.MARKA || '') === (selectedSki.MARKA || '') &&
+          (s.MODEL || '') === (selectedSki.MODEL || '') &&
+          s.DLUGOSC === selectedSki.DLUGOSC &&
+          (s.TYP_SPRZETU || '') === (selectedSki.TYP_SPRZETU || '') &&
+          (s.KATEGORIA || '') === (selectedSki.KATEGORIA || '')
+        );
+
+        if (sameModelSkis.length === 0) {
+          throw new Error('Nie znaleziono nart w grupie');
+        }
+
+        const ids = sameModelSkis.map(s => s.ID);
+        const result = await SkiDataService.updateMultipleSkis(ids, skiData);
+
+        if (result) {
+          console.log('BrowseSkisComponent: Zaktualizowano wszystkie narty w grupie:', ids.length);
+          setToastMessage(`Zaktualizowano ${ids.length} nart w grupie`);
+          setToastType('success');
+        } else {
+          throw new Error('Błąd aktualizacji wielu nart');
+        }
+      } else if (targetSkiId) {
+        // Aktualizacja pojedynczej narty
+        const result = await SkiDataService.updateSki(targetSkiId, skiData);
+
+        if (result) {
+          console.log('BrowseSkisComponent: Zaktualizowano nartę:', targetSkiId);
+          setToastMessage('Narta zaktualizowana pomyślnie');
+          setToastType('success');
+        } else {
+          throw new Error('Błąd aktualizacji narty');
+        }
+      } else if (selectedSki) {
+        // Fallback: aktualizacja wybranej narty
+        const result = await SkiDataService.updateSki(selectedSki.ID, skiData);
+
+        if (result) {
+          console.log('BrowseSkisComponent: Zaktualizowano nartę:', selectedSki.ID);
+          setToastMessage('Narta zaktualizowana pomyślnie');
+          setToastType('success');
+        } else {
+          throw new Error('Błąd aktualizacji narty');
+        }
+      }
+
+      // Odśwież dane jeśli funkcja jest dostępna
+      if (onRefreshData) {
+        await onRefreshData();
+      }
+
+      // Zamykamy modal po udanym zapisie (onSave w modalu już wywołuje onClose)
+    } catch (error) {
+      console.error('BrowseSkisComponent: Błąd zapisywania:', error);
+      setToastMessage(error instanceof Error ? error.message : 'Błąd zapisywania narty');
+      setToastType('error');
+      throw error; // Rzuć błąd aby modal mógł go obsłużyć
+    }
+  };
+
   // Zamknij modal
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setSelectedSki(undefined);
+  };
+
+  // Funkcja pomocnicza: znajdź wszystkie narty w grupie (dla modala edycji)
+  // src/components/BrowseSkisComponent.tsx: Uwzględnia również typ sprzętu i kategorię
+  const getSkisInGroup = (ski: SkiData): SkiData[] => {
+    return allSkis.filter(s =>
+      s && ski &&
+      (s.MARKA || '') === (ski.MARKA || '') && 
+      (s.MODEL || '') === (ski.MODEL || '') && 
+      s.DLUGOSC === ski.DLUGOSC &&
+      (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
+      (s.KATEGORIA || '') === (ski.KATEGORIA || '')
+    );
   };
 
   // src/components/BrowseSkisComponent.tsx: Funkcja filtrowania sprzętu
@@ -257,23 +399,34 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     searchTerm: string,
     activeFilter: string
   ): SkiData[] => {
+    // Zabezpieczenie: sprawdź czy skis jest tablicą
+    if (!Array.isArray(skis) || skis.length === 0) {
+      console.warn('BrowseSkisComponent: filterSkis otrzymał pustą tablicę lub nie-tablicę:', skis);
+      return [];
+    }
+
     let filtered = skis;
 
     // Filtruj po przyciskach
     if (activeFilter !== 'all') {
       filtered = filtered.filter(ski => {
+        // Zabezpieczenie: sprawdź czy ski ma wymagane pola
+        if (!ski || !ski.TYP_SPRZETU) {
+          return false;
+        }
+        
         // Filtrowanie według typu sprzętu i kategorii (zgodne z AnimaComponent)
         switch (activeFilter) {
           case 'TOP':
-            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'TOP';
+            return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'TOP';
           case 'VIP':
-            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'VIP';
+            return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'VIP';
           case 'JUNIOR':
-            return ski.TYP_SPRZETU === 'NARTY' && ski.KATEGORIA === 'JUNIOR';
+            return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'JUNIOR';
           case 'BUTY_JUNIOR':
-            return ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'JUNIOR';
+            return ski.TYP_SPRZETU === 'BUTY' && (ski.KATEGORIA || '') === 'JUNIOR';
           case 'DOROSLE':
-            return ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE';
+            return ski.TYP_SPRZETU === 'BUTY' && (ski.KATEGORIA || '') === 'DOROSLE';
           case 'DESKI':
             return ski.TYP_SPRZETU === 'DESKI';
           case 'BUTY_SNOWBOARD':
@@ -288,16 +441,39 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     // Filtruj po tekście wyszukiwania
     if (searchTerm.trim()) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(ski => 
-        ski.MARKA.toLowerCase().includes(term) ||
-        ski.MODEL.toLowerCase().includes(term) ||
-        ski.POZIOM.toLowerCase().includes(term) ||
-        ski.PLEC.toLowerCase().includes(term) ||
-        ski.PRZEZNACZENIE.toLowerCase().includes(term) ||
-        ski.ATUTY.toLowerCase().includes(term) ||
-        ski.DLUGOSC.toString().includes(term) ||
-        ski.ROK.toString().includes(term)
-      );
+      // Pomocnicza funkcja do mapowania przeznaczenia na pełne nazwy (dla wyszukiwania)
+      const getPurposeFullName = (purpose: string): string => {
+        switch (purpose) {
+          case 'SL': return 'slalom';
+          case 'G': return 'gigant';
+          case 'SLG': return 'pomiędzy';
+          case 'OFF': return 'poza trasę';
+          default: return purpose.toLowerCase();
+        }
+      };
+      
+      filtered = filtered.filter(ski => {
+        // Zabezpieczenie: wszystkie pola mogą być null/undefined z MySQL
+        const marka = (ski.MARKA || '').toLowerCase();
+        const model = (ski.MODEL || '').toLowerCase();
+        const poziom = (ski.POZIOM || '').toLowerCase();
+        const plec = (ski.PLEC || '').toLowerCase();
+        const przeznaczenieRaw = (ski.PRZEZNACZENIE || '').toLowerCase();
+        // Dodatkowe: sprawdź również pełne nazwy przeznaczenia (dla lepszego wyszukiwania)
+        const przeznaczenieFormatted = getPurposeFullName(ski.PRZEZNACZENIE || '');
+        const atuty = (ski.ATUTY || '').toLowerCase();
+        const dlugosc = (ski.DLUGOSC !== null && ski.DLUGOSC !== undefined) ? ski.DLUGOSC.toString() : '';
+        
+        // Rok jest teraz w MODEL (np. "SHAPE 3.0 (2025)"), więc będzie wyszukiwany przez model.includes(term)
+        return marka.includes(term) ||
+          model.includes(term) ||
+          poziom.includes(term) ||
+          plec.includes(term) ||
+          przeznaczenieRaw.includes(term) ||
+          przeznaczenieFormatted.includes(term) || // Wyszukiwanie po pełnych nazwach (Slalom, Gigant, itp.)
+          atuty.includes(term) ||
+          dlugosc.includes(term);
+      });
     }
 
     return filtered;
@@ -306,19 +482,39 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Funkcja sortowania nart
   const sortSkis = (skis: SkiData[], config: SortConfig): SkiData[] => {
     return [...skis].sort((a, b) => {
-      let aValue: any = a[config.field];
-      let bValue: any = b[config.field];
+      let aValue: any;
+      let bValue: any;
 
-      // Konwersja dla pól numerycznych
-      if (config.field === 'DLUGOSC' || config.field === 'ROK') {
-        aValue = Number(aValue);
-        bValue = Number(bValue);
-      }
+      // Sortowanie po flexie - wyciągnij flex z nazwy modelu
+      if (config.field === 'FLEX') {
+        const aFlex = extractFlexFromModel(a.MODEL);
+        const bFlex = extractFlexFromModel(b.MODEL);
+        // Traktuj brak flexu jako 0 (będzie na początku/końcu w zależności od kierunku)
+        aValue = aFlex ? Number(aFlex) : 0;
+        bValue = bFlex ? Number(bFlex) : 0;
+      } else {
+        // Dla pozostałych pól odczytaj wartość z obiektu
+        aValue = a[config.field as keyof SkiData];
+        bValue = b[config.field as keyof SkiData];
 
-      // Konwersja dla pól tekstowych
-      if (typeof aValue === 'string') {
-        aValue = aValue.toLowerCase();
-        bValue = bValue.toLowerCase();
+        // Konwersja dla pól numerycznych
+        if (config.field === 'DLUGOSC') {
+          aValue = Number(aValue);
+          bValue = Number(bValue);
+        }
+        // Konwersja dla pól tekstowych (zabezpieczenie przed null/undefined)
+        else {
+          if (typeof aValue === 'string' && aValue) {
+            aValue = aValue.toLowerCase();
+          } else if (aValue === null || aValue === undefined) {
+            aValue = '';
+          }
+          if (typeof bValue === 'string' && bValue) {
+            bValue = bValue.toLowerCase();
+          } else if (bValue === null || bValue === undefined) {
+            bValue = '';
+          }
+        }
       }
 
       if (aValue < bValue) {
@@ -339,14 +535,50 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }));
   };
 
+  // Funkcja grupowania nart po modelu (MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA)
+  // src/components/BrowseSkisComponent.tsx: Grupowanie uwzględnia również typ sprzętu i kategorię
+  // NORMALIZACJA: Normalizuje MARKA i MODEL przed grupowaniem, aby ignorować różnice w spacji/wielkości liter
+  const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
+    const grouped = new Map<string, SkiData>();
+    
+    // Funkcja normalizacji nazwy (usuwa dodatkowe spacje, normalizuje wielkość liter)
+    // server.js: Normalizacja zapewnia, że "HEAD SHAPE 3.0" i "head shape 3.0" będą traktowane jako to samo
+    const normalizeName = (name: string): string => {
+      if (!name) return '';
+      return name.trim().replace(/\s+/g, ' ').toUpperCase();
+    };
+    
+    skis.forEach(ski => {
+      // Normalizuj MARKA i MODEL przed utworzeniem klucza
+      // To zapewnia, że narty z różnymi formatami nazw (np. "HEAD SHAPE 3.0" vs "head shape 3.0") będą grupowane razem
+      const normalizedMarka = normalizeName(ski.MARKA || '');
+      const normalizedModel = normalizeName(ski.MODEL || '');
+      
+      // Klucz grupowania: MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA
+      // To zapewnia, że VIP i TOP nie będą grupowane razem, nawet jeśli mają ten sam model
+      const key = `${normalizedMarka}|${normalizedModel}|${ski.DLUGOSC || ''}|${ski.TYP_SPRZETU || ''}|${ski.KATEGORIA || ''}`;
+      
+      // Jeśli nie ma jeszcze tej grupy, dodaj pierwszą nartę jako reprezentanta
+      if (!grouped.has(key)) {
+        grouped.set(key, ski);
+      }
+    });
+    
+    // Zwróć tylko reprezentantów grup (jedna narta na kombinację modelu, typu i kategorii)
+    return Array.from(grouped.values());
+  };
+
   // Sortowanie i paginacja z grupowaniem
   const filteredSkis = filterSkis(allSkis, searchTerm, activeFilter);
-  const groupedSkis = filteredSkis; // Bez grupowania po modelu
+  const groupedSkis = groupSkisByModel(filteredSkis); // Grupowanie po modelu
   const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentSkis = sortedSkis.slice(startIndex, endIndex);
+  
+  // Sprawdź czy w tabeli są buty dorosłe (dla wyświetlania kolumny Flex)
+  const hasAdultBoots = currentSkis.some(ski => ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE');
 
   // Funkcja renderowania ikony sortowania
   const renderSortIcon = (field: SortField) => {
@@ -502,7 +734,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 setSearchTerm(e.target.value);
                 setCurrentPage(1); // Reset do pierwszej strony przy wyszukiwaniu
               }}
-              placeholder="Wpisz markę, model, poziom, płeć..."
+              placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
               className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
             />
             {searchTerm && (
@@ -544,6 +776,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       Model {renderSortIcon('MODEL')}
                     </div>
                   </th>
+                  {hasAdultBoots && (
+                    <th 
+                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      onClick={() => handleSort('FLEX')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Flex {renderSortIcon('FLEX')}
+                      </div>
+                    </th>
+                  )}
                   <th 
                     className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
                     onClick={() => handleSort('DLUGOSC')}
@@ -552,82 +794,109 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       Długość {renderSortIcon('DLUGOSC')}
                     </div>
                   </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('POZIOM')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Poziom {renderSortIcon('POZIOM')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('PLEC')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Płeć {renderSortIcon('PLEC')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('ROK')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Rok {renderSortIcon('ROK')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('PRZEZNACZENIE')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
-                    </div>
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
-                    Atuty
-                  </th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                  {!shouldHideColumns && (
+                    <>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('POZIOM')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Poziom {renderSortIcon('POZIOM')}
+                        </div>
+                      </th>
+                    </>
+                  )}
+                  {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                    <>
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('PLEC')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Płeć {renderSortIcon('PLEC')}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('PRZEZNACZENIE')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
+                        </div>
+                      </th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        Atuty
+                      </th>
+                    </>
+                  )}
                   <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
+                  {isEmployeeMode && (
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Akcja</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
                 {currentSkis.map((ski) => (
                   <tr key={ski.ID} className="hover:bg-[#2C699F]">
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.MARKA}
+                      {formatBrandName(ski)}
                     </td>
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.MODEL}
+                      {formatModelName(ski)}
                     </td>
+                    {hasAdultBoots && (
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                        {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE') 
+                          ? (extractFlexFromModel(ski.MODEL) || '-')
+                          : '-'
+                        }
+                      </td>
+                    )}
                     <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
                       {ski.DLUGOSC} cm
                     </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
-                      {formatLevel(ski.POZIOM)}
-                    </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
-                      {formatGender(ski.PLEC)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.ROK}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatPurpose(ski.PRZEZNACZENIE)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.ATUTY || '-'}
-                    </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
-                      {ski.WZROST_MIN}-{ski.WZROST_MAX}
-                    </td>
-                    <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
-                      {ski.WAGA_MIN}-{ski.WAGA_MAX}
-                    </td>
+                    {!shouldHideColumns && (
+                      <>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                          {ski.WZROST_MIN}-{ski.WZROST_MAX}
+                        </td>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
+                          {ski.WAGA_MIN}-{ski.WAGA_MAX}
+                        </td>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
+                          {formatLevel(ski.POZIOM)}
+                        </td>
+                      </>
+                    )}
+                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                      <>
+                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
+                          {formatGender(ski.PLEC)}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          {formatPurpose(ski.PRZEZNACZENIE)}
+                        </td>
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          {ski.ATUTY || '-'}
+                        </td>
+                      </>
+                    )}
                     <td className="px-4 py-4 whitespace-nowrap text-sm">
                       {generateAvailabilitySquares(ski)}
                     </td>
+                    {isEmployeeMode && (
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <button
+                          onClick={() => handleEdit(ski)}
+                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+                          title="Edytuj sprzęt"
+                        >
+                          ✏️ Edytuj
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
@@ -715,14 +984,17 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       </div>
       </div>
 
-      {/* Modal edycji/dodawania */}
-      <SkiEditModal
-        isOpen={isModalOpen}
-        mode={modalMode}
-        ski={selectedSki}
-        onClose={handleCloseModal}
-        onSave={async () => {}} // Placeholder as async
-      />
+      {/* Modal edycji/dodawania - tylko w trybie pracownika */}
+      {isEmployeeMode && (
+        <SkiEditModal
+          isOpen={isModalOpen}
+          mode={modalMode}
+          ski={selectedSki}
+          allSkisInGroup={selectedSki ? getSkisInGroup(selectedSki) : undefined}
+          onClose={handleCloseModal}
+          onSave={handleSave}
+        />
+      )}
 
       {/* Toast notification */}
       <Toast
@@ -734,3 +1006,4 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     </div>
   );
 };
+
