@@ -25,12 +25,40 @@ Write-Host "[WATCHDOG] Monitoruje: $DB_LOG_FILE" -ForegroundColor Green
 Write-Host "[WATCHDOG] Sprawdzam co $CHECK_INTERVAL sekund" -ForegroundColor Green
 Write-Host ""
 
+# Funkcja znajdowania Java (uzyj tej samej co do kompilacji)
+function Find-Java {
+    # Sprawdz PATH
+    $javaInPath = Get-Command java -ErrorAction SilentlyContinue
+    if ($javaInPath) {
+        return $javaInPath.Path
+    }
+    
+    # Sprawdz standardowe lokalizacje
+    $javaPaths = @(
+        "C:\Program Files\Java\jre1.8.0_471\bin\java.exe",
+        "C:\FireSoft\FireSnow21\jre\bin\java.exe",
+        "C:\FireSoft\FireSnowServer20\jre\bin\java.exe"
+    )
+    
+    foreach ($path in $javaPaths) {
+        if (Test-Path $path) {
+            return $path
+        }
+    }
+    
+    # Fallback - uzyj "java" z PATH
+    return "java"
+}
+
 # Funkcja uruchamiająca API
 function Start-API {
     Write-Host "[WATCHDOG] $(Get-Date -Format 'HH:mm:ss') - Uruchamiam API..." -ForegroundColor Yellow
     
+    $javaPath = Find-Java
+    Write-Host "[WATCHDOG] Uzywam Java: $javaPath" -ForegroundColor Gray
+    
     $processInfo = New-Object System.Diagnostics.ProcessStartInfo
-    $processInfo.FileName = "java"
+    $processInfo.FileName = $javaPath
     $processInfo.Arguments = "-cp `"$API_JAR;$HSQLDB_JAR`" FireSnowBridge"
     $processInfo.UseShellExecute = $false
     $processInfo.CreateNoWindow = $false
