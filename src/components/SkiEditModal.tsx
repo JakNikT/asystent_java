@@ -37,7 +37,6 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
     WZROST_MAX: 180,
     PRZEZNACZENIE: 'SLG',
     ATUTY: '',
-    ROK: new Date().getFullYear(),
     KOD: ''
   });
 
@@ -91,7 +90,6 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
         WZROST_MAX: 180,
         PRZEZNACZENIE: 'SLG',
         ATUTY: '',
-        ROK: new Date().getFullYear(),
         KOD: ''
       });
     }
@@ -378,21 +376,6 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
                 {errors.ILOSC && (
                   <p className="text-red-300 text-sm mt-1">{errors.ILOSC}</p>
                 )}
-              </div>
-
-              {/* Rok */}
-              <div>
-                <label className="block text-white font-medium mb-2">
-                  Rok produkcji
-                </label>
-                <input
-                  type="number"
-                  value={formData.ROK || ''}
-                  onChange={(e) => handleChange('ROK', parseInt(e.target.value))}
-                  className="w-full px-4 py-2 rounded-lg bg-[#A6C2EF] text-[#194576]"
-                  min="2020"
-                  max={new Date().getFullYear() + 1}
-                />
               </div>
 
               {/* Kod */}

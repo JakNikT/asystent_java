@@ -48,8 +48,7 @@ export class SkiDataService {
         WAGA_MIN: parseInt(ski.WAGA_MIN) || 0,
         WAGA_MAX: parseInt(ski.WAGA_MAX) || 0,
         WZROST_MIN: parseInt(ski.WZROST_MIN) || 0,
-        WZROST_MAX: parseInt(ski.WZROST_MAX) || 0,
-        ROK: parseInt(ski.ROK) || new Date().getFullYear()
+        WZROST_MAX: parseInt(ski.WZROST_MAX) || 0
       }));
       
       this.cache = processedSkis;
