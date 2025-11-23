@@ -186,6 +186,10 @@ public class FireSnowBridge {
                 // Fixed SQL with correct column names (discovered via Database Manager)
                 // Używamy ABSTRACTENTITYCM dla nazwy klienta (tak jak w wypożyczeniach)
                 // i RENT_CUSTOMERS dla imienia/nazwiska jako fallback
+                // DODANO: Wykrywanie typu umowy PROMOTOR na podstawie 3 kryteriów:
+                // 1. Pozycja o nazwie "PROMOTOR"
+                // 2. Literka "p" w uwagach pozycji (DESCRIPTION)
+                // 3. Numer dokumentu zaczyna się od "P"
                 String sql = 
                     "SELECT " +
                     "  rp.ID as rezerwacja_id, " +
@@ -199,12 +203,22 @@ public class FireSnowBridge {
                     "  ae_customer.NAME as klient_nazwa, " +
                     "  rc.FORENAME as imie, " +
                     "  rc.SURNAME as nazwisko, " +
-                    "  rc.PHONE1 as telefon " +
+                    "  rc.PHONE1 as telefon, " +
+                    "  CASE " +
+                    "    WHEN UPPER(TRIM(p.NAME)) = 'PROMOTOR' THEN 'PROMOTOR' " +
+                    "    WHEN UPPER(TRIM(p.DESCRIPTION)) LIKE '%P%' THEN 'PROMOTOR' " +
+                    "    WHEN UPPER(SUBSTRING(TRIM(doc.NUMBER), 1, 1)) = 'P' THEN 'PROMOTOR' " +
+                    "    ELSE 'STANDARD' " +
+                    "  END as typumowy " +
                     "FROM RESERVATIONPOSITION rp " +
                     "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
                     "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
                     "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
                     "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
+                    "JOIN RESERVATION_DOCUMENTS rd ON rd.ID = rp.RESERVATIONDOCUMENT_ID " +
+                    "JOIN ABSTRACTFACTURABLEDOCUMENT afd ON afd.ID = rd.ID " +
+                    "JOIN ABSTRACTCASHABLEDOCUMENT acd ON acd.ID = afd.ID " +
+                    "JOIN ABSTRACTDOCUMENT doc ON doc.ID = acd.ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
                     "ORDER BY rp.BEGINDATE";
                 
@@ -230,7 +244,8 @@ public class FireSnowBridge {
                     json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\",");
                     json.append("\"imie\":\"").append(escapeJson(rs.getString("imie"))).append("\",");
                     json.append("\"nazwisko\":\"").append(escapeJson(rs.getString("nazwisko"))).append("\",");
-                    json.append("\"telefon\":\"").append(escapeJson(rs.getString("telefon"))).append("\"");
+                    json.append("\"telefon\":\"").append(escapeJson(rs.getString("telefon"))).append("\",");
+                    json.append("\"typumowy\":\"").append(escapeJson(rs.getString("typumowy"))).append("\"");
                     json.append("}");
                 }
                 
