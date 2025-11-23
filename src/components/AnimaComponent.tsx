@@ -20,6 +20,7 @@ import { DetailedCompatibility } from './DetailedCompatibility';
 import { SkiStyleBadge } from './SkiStyleBadge';
 import { BrowseSkisComponent } from './BrowseSkisComponent';
 import { ReservationsView } from './ReservationsView';
+import { HistoryView } from './HistoryView';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../types/ski.types';
 import PasswordModal from './PasswordModal';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -136,8 +137,8 @@ const AnimaComponent: React.FC = () => {
   const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje)
-  const [appMode, setAppMode] = useState<'search' | 'browse' | 'reservations'>('search');
+  // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje vs historia)
+  const [appMode, setAppMode] = useState<'search' | 'browse' | 'reservations' | 'history'>('search');
 
   // NOWY STAN: Filtry kategorii sprzętu
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
@@ -1430,6 +1431,12 @@ const AnimaComponent: React.FC = () => {
                 >
                   <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
                 </button>
+                <button 
+                  onClick={() => setAppMode('history')}
+                  className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+                >
+                  <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📜 Historia</span>
+                </button>
                 {/* Przycisk "Rezerwacje" - widoczny tylko w trybie pracownika */}
                 {isEmployeeMode && (
                   <button 
@@ -2026,6 +2033,15 @@ const AnimaComponent: React.FC = () => {
         <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
           <ReservationsView 
             onBackToSearch={() => setAppMode('search')}
+          />
+        </div>
+      )}
+
+      {/* Renderowanie widoku historii */}
+      {appMode === 'history' && (
+        <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
+          <HistoryView 
+            onBack={() => setAppMode('search')}
           />
         </div>
       )}

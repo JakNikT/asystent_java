@@ -10,7 +10,7 @@ import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
 import Papa from 'papaparse';
 import mysql from 'mysql2/promise';
-import { dbConfig } from './db-config.js';
+import { dbConfig, historyDbConfig } from './db-config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -44,6 +44,17 @@ async function getDBConnection() {
     console.log('Server: Utworzono pool połączeń MySQL');
   }
   return pool;
+}
+
+// MySQL Connection Pool dla bazy historii (his_2223)
+let historyPool = null;
+
+async function getHistoryDBConnection() {
+  if (!historyPool) {
+    historyPool = mysql.createPool(historyDbConfig);
+    console.log('Server: Utworzono pool połączeń MySQL dla historii (his_2223)');
+  }
+  return historyPool;
 }
 
 /**
@@ -1416,6 +1427,188 @@ app.post('/api/firesnow/refresh', async (req, res) => {
       success: false,
       error: error.message
     });
+  }
+});
+
+/**
+ * Konwertuje datę z formatu DD.MM.YYYY na ISO 8601
+ * server.js: Konwersja dat z bazy historii (DD.MM.YYYY) na format ISO 8601
+ */
+function convertDateToISO(dateString) {
+  if (!dateString) return '';
+  
+  try {
+    // Input: "31.12.2022"
+    // Output: "2022-12-31T00:00:00"
+    const [day, month, year] = dateString.split('.');
+    if (!day || !month || !year) {
+      console.warn('Server: Nieprawidłowy format daty:', dateString);
+      return dateString;
+    }
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`;
+  } catch (error) {
+    console.error('Server: Błąd konwersji daty:', dateString, error);
+    return dateString;
+  }
+}
+
+// API Routes - Historia wypożyczeń z MySQL (2022-2023)
+
+/**
+ * GET /api/historia/klienci/wyszukaj?nazwisko=XXX - Wyszukuje klientów po nazwisku
+ * server.js: Wyszukiwanie klientów w bazie historii po nazwisku (tylko z wypożyczeniami)
+ */
+app.get('/api/historia/klienci/wyszukaj', async (req, res) => {
+  try {
+    const { nazwisko } = req.query;
+    
+    if (!nazwisko || nazwisko.trim().length < 2) {
+      return res.json([]);
+    }
+    
+    console.log('Server: Wyszukiwanie klientów po nazwisku (tylko z wypożyczeniami):', nazwisko);
+    
+    const pool = await getHistoryDBConnection();
+    // JOIN z id_daty_2223 aby pokazać tylko klientów którzy mają wypożyczenia
+    const [rows] = await pool.execute(
+      `SELECT DISTINCT k.ID, k.Nazwisko, k.Imie, k.Telefon 
+       FROM id_klient_2223 k
+       INNER JOIN id_daty_2223 d ON k.ID = d.Klient
+       WHERE k.Nazwisko LIKE ?
+       ORDER BY k.Nazwisko, k.Imie 
+       LIMIT 50`,
+      [`%${nazwisko}%`]
+    );
+    
+    // Mapuj dane na format frontendu
+    const clients = rows.map(row => ({
+      id: row.ID,
+      nazwisko: row.Nazwisko || '',
+      imie: row.Imie || '',
+      telefon: row.Telefon || '',
+      pelna_nazwa: `${row.Imie || ''} ${row.Nazwisko || ''}`.trim() || 'Brak nazwy'
+    }));
+    
+    console.log(`Server: Znaleziono ${clients.length} klientów z wypożyczeniami`);
+    res.json(clients);
+  } catch (error) {
+    console.error('Server: Błąd wyszukiwania klientów:', error);
+    res.status(500).json({ error: 'Błąd wyszukiwania klientów' });
+  }
+});
+
+/**
+ * GET /api/historia/klient/:id/daty - Pobiera daty wypożyczeń dla klienta
+ * server.js: Pobieranie unikalnych dat wypożyczeń dla wybranego klienta
+ */
+app.get('/api/historia/klient/:id/daty', async (req, res) => {
+  try {
+    const clientId = parseInt(req.params.id);
+    
+    if (isNaN(clientId)) {
+      return res.status(400).json({ error: 'Nieprawidłowe ID klienta' });
+    }
+    
+    console.log('Server: Pobieranie dat wypożyczeń dla klienta ID:', clientId);
+    
+    const pool = await getHistoryDBConnection();
+    const [rows] = await pool.execute(
+      `SELECT DISTINCT d.Od, d.Do, COUNT(*) as liczba_pozycji
+       FROM id_daty_2223 d
+       WHERE d.Klient = ?
+       GROUP BY d.Od, d.Do
+       ORDER BY d.Od DESC`,
+      [clientId]
+    );
+    
+    // Mapuj dane i konwertuj daty
+    const dates = rows.map(row => ({
+      od: row.Od || '',
+      do: row.Do || '',
+      od_iso: convertDateToISO(row.Od),
+      do_iso: convertDateToISO(row.Do),
+      liczba_pozycji: row.liczba_pozycji || 0
+    }));
+    
+    console.log(`Server: Znaleziono ${dates.length} unikalnych dat dla klienta ${clientId}`);
+    res.json(dates);
+  } catch (error) {
+    console.error('Server: Błąd pobierania dat klienta:', error);
+    res.status(500).json({ error: 'Błąd pobierania dat klienta' });
+  }
+});
+
+/**
+ * GET /api/historia/klient/:id/sprzet?od=DD.MM.YYYY&do=DD.MM.YYYY - Pobiera sprzęt dla konkretnej daty
+ * server.js: Pobieranie sprzętu wypożyczonego przez klienta w konkretnym okresie
+ */
+app.get('/api/historia/klient/:id/sprzet', async (req, res) => {
+  try {
+    const clientId = parseInt(req.params.id);
+    const { od, do: doDate } = req.query;
+    
+    if (isNaN(clientId)) {
+      return res.status(400).json({ error: 'Nieprawidłowe ID klienta' });
+    }
+    
+    if (!od || !doDate) {
+      return res.status(400).json({ error: 'Brakuje parametrów od lub do' });
+    }
+    
+    console.log('Server: Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate);
+    
+    const pool = await getHistoryDBConnection();
+    const [rows] = await pool.execute(
+      `SELECT d.*, k.Nazwisko, k.Imie, k.Telefon, s.Symbol, s.Nazwa, s.Dlugosc
+       FROM id_daty_2223 d
+       LEFT JOIN id_klient_2223 k ON d.Klient = k.ID
+       LEFT JOIN id_sprzet_2223 s ON d.Numer_kod = s.Umowa
+       WHERE d.Klient = ? AND d.Od = ? AND d.Do = ?
+       ORDER BY s.Nazwa, s.Symbol`,
+      [clientId, od, doDate]
+    );
+    
+    // Mapuj dane na format ReservationData
+    const equipment = rows.map((row, index) => {
+      // Mapuj status "Oddana" (prawda/fałsz) na tekst
+      // Obsługa różnych wariantów: wielkość liter, spacje, polskie znaki
+      const oddanaValue = row.Oddana ? String(row.Oddana).trim().toLowerCase() : '';
+      let status = '';
+      
+      if (oddanaValue === 'prawda' || oddanaValue === 'true' || oddanaValue === '1') {
+        status = 'Oddane';
+      } else if (oddanaValue === 'fałsz' || oddanaValue === 'falsz' || oddanaValue === 'false' || oddanaValue === '0') {
+        status = 'Nie oddane';
+      }
+      
+      // Logowanie dla debugowania (tylko pierwszy rekord)
+      if (index === 0) {
+        console.log('Server: Przykładowa wartość Oddana z bazy:', row.Oddana, '-> status:', status);
+      }
+      
+      return {
+        klient: `${row.Imie || ''} ${row.Nazwisko || ''}`.trim() || 'Brak nazwy',
+        sprzet: row.Nazwa || '',
+        kod: row.Symbol || '',
+        od: convertDateToISO(row.Od),
+        do: convertDateToISO(row.Do),
+        cena: row.Kwota ? row.Kwota.toString() : '0',
+        zaplacono: '0', // Baza historii nie ma tego pola
+        numer: row.Numer_kod ? row.Numer_kod.toString() : '',
+        typumowy: 'STANDARD', // Domyślnie STANDARD
+        uwagi: row.Oddana === 'prawda' ? 'Oddana' : (row.Oddana === 'fałsz' ? 'Nie oddana' : ''),
+        status: status, // Pole statusu
+        source: 'history',
+        dlugosc: row.Dlugosc || null,
+        liczba_dni: row.Liczba_dni || 0
+      };
+    });
+    
+    console.log(`Server: Znaleziono ${equipment.length} pozycji sprzętu dla klienta ${clientId}`);
+    res.json(equipment);
+  } catch (error) {
+    console.error('Server: Błąd pobierania sprzętu klienta:', error);
+    res.status(500).json({ error: 'Błąd pobierania sprzętu klienta' });
   }
 });
 
