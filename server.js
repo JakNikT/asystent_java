@@ -111,6 +111,7 @@ async function loadReservationsFromFireSnowAPI() {
         cena: item.cena ? item.cena.toString() : '0',
         zaplacono: '', // FireSnow API nie zwraca tego pola
         numer: item.rezerwacja_id ? item.rezerwacja_id.toString() : '',
+        typumowy: item.typumowy || 'STANDARD', // Typ umowy z API (PROMOTOR lub STANDARD)
         // telefon: item.telefon || '', // USUNIĘTE - nie wyświetlamy numeru telefonu
         // Dodatkowe pola z API
         obiekt_id: item.obiekt_id,
