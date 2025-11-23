@@ -25,6 +25,7 @@ export interface DateRange {
   od_iso: string; // Format ISO 8601
   do_iso: string; // Format ISO 8601
   liczba_pozycji: number;
+  sezon: string;
 }
 
 /**
@@ -62,15 +63,15 @@ export class HistoryService {
 
     try {
       console.log('HistoryService: Wyszukiwanie klientów po nazwisku:', nazwisko);
-      
+
       const response = await fetch(
         `${API_BASE_URL}/historia/klienci/wyszukaj?nazwisko=${encodeURIComponent(nazwisko)}`
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const clients = await response.json();
       console.log(`HistoryService: Znaleziono ${clients.length} klientów`);
       return clients;
@@ -87,13 +88,13 @@ export class HistoryService {
   static async getClientDates(clientId: number): Promise<DateRange[]> {
     try {
       console.log('HistoryService: Pobieranie dat dla klienta ID:', clientId);
-      
+
       const response = await fetch(`${API_BASE_URL}/historia/klient/${clientId}/daty`);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const dates = await response.json();
       console.log(`HistoryService: Znaleziono ${dates.length} unikalnych dat`);
       return dates;
@@ -110,24 +111,31 @@ export class HistoryService {
   static async getClientEquipment(
     clientId: number,
     od: string,
-    doDate: string
+    doDate: string,
+    sezon?: string
   ): Promise<HistoryEquipmentData[]> {
     try {
-      console.log('HistoryService: Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate);
-      
-      const queryParams = new URLSearchParams({
+      console.log('HistoryService: Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate, 'sezon:', sezon);
+
+      const params: Record<string, string> = {
         od: od,
         do: doDate
-      });
-      
+      };
+
+      if (sezon) {
+        params.sezon = sezon;
+      }
+
+      const queryParams = new URLSearchParams(params);
+
       const response = await fetch(
         `${API_BASE_URL}/historia/klient/${clientId}/sprzet?${queryParams.toString()}`
       );
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const equipment = await response.json();
       console.log(`HistoryService: Znaleziono ${equipment.length} pozycji sprzętu`);
       return equipment;

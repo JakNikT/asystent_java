@@ -46,13 +46,13 @@ async function getDBConnection() {
   return pool;
 }
 
-// MySQL Connection Pool dla bazy historii (his_2223)
+// MySQL Connection Pool dla bazy historii (history)
 let historyPool = null;
 
 async function getHistoryDBConnection() {
   if (!historyPool) {
     historyPool = mysql.createPool(historyDbConfig);
-    console.log('Server: Utworzono pool połączeń MySQL dla historii (his_2223)');
+    console.log('Server: Utworzono pool połączeń MySQL dla historii (history)');
   }
   return historyPool;
 }
@@ -64,24 +64,24 @@ async function getHistoryDBConnection() {
 async function loadReservationsFromFireSnowAPI() {
   try {
     console.log('Server: Pobieranie rezerwacji z FireSnow API:', FIRESNOW_API_URL);
-    
+
     const response = await fetch(`${FIRESNOW_API_URL}/api/rezerwacje/aktywne`);
-    
+
     if (!response.ok) {
       throw new Error(`FireSnow API error: ${response.status}`);
     }
-    
+
     const fireSnowData = await response.json();
     console.log(`Server: Otrzymano ${fireSnowData.length} rezerwacji z FireSnow API`);
-    
+
     // Mapuj dane z formatu FireSnow API na format aplikacji
     const reservations = fireSnowData.map(item => {
       // Priorytet 1: Użyj klient_nazwa (z ABSTRACTENTITYCM) - tak jak w wypożyczeniach
       // Priorytet 2: Połącz imię i nazwisko (z RENT_CUSTOMERS)
       // Priorytet 3: Fallback do klient_id
-      
+
       let klient = '';
-      
+
       // Priorytet 1: klient_nazwa z ABSTRACTENTITYCM (najbardziej niezawodne)
       if (item.klient_nazwa && item.klient_nazwa.trim()) {
         klient = item.klient_nazwa.trim();
@@ -90,17 +90,17 @@ async function loadReservationsFromFireSnowAPI() {
       else {
         const imie = (item.imie && item.imie.trim()) || '';
         const nazwisko = (item.nazwisko && item.nazwisko.trim()) || '';
-        
+
         if (imie || nazwisko) {
           klient = `${imie} ${nazwisko}`.trim();
         }
       }
-      
+
       // Priorytet 3: Fallback jeśli brak wszystkich danych (BEZ telefonu!)
       if (!klient) {
         klient = `Klient #${item.klient_id || '?'}`;
       }
-      
+
       return {
         // Format FireSnow API -> Format aplikacji
         klient: klient,
@@ -118,10 +118,10 @@ async function loadReservationsFromFireSnowAPI() {
         klient_id: item.klient_id
       };
     });
-    
+
     console.log(`Server: Zmapowano ${reservations.length} rezerwacji`);
     return reservations;
-    
+
   } catch (error) {
     console.error('Server: Błąd pobierania z FireSnow API:', error);
     throw error;
@@ -142,19 +142,19 @@ function extractKodFromName(name) {
  */
 function formatFireSnowDate(dateString) {
   if (!dateString) return '';
-  
+
   try {
     // Format z API: "2026-02-13 11:00:00.000000"
     // Usuń mikrosekundy i zamień spację na T (ISO 8601)
     const isoString = dateString.split('.')[0].replace(' ', 'T');
-    
+
     // Sprawdź czy to poprawna data
     const date = new Date(isoString);
     if (isNaN(date.getTime())) {
       console.warn('Server: Nieprawidłowa data:', dateString);
       return dateString;
     }
-    
+
     return isoString; // "2026-02-13T11:00:00"
   } catch (error) {
     console.error('Server: Błąd formatowania daty:', dateString, error);
@@ -168,18 +168,18 @@ function formatFireSnowDate(dateString) {
 async function loadReservationsFromCSV() {
   try {
     console.log('Server: Wczytuję rezerwacje z pliku CSV:', RESERVATIONS_CSV_PATH);
-    
+
     const csvContent = await fs.readFile(RESERVATIONS_CSV_PATH, 'utf-8');
-    
+
     // Wykryj format FireFnow (średniki + zniekształcone znaki)
     const isFirefnow = detectFirefnowFormat(csvContent);
-    
+
     let processedContent = csvContent;
     if (isFirefnow) {
       console.log('Server: Wykryto format FireFnow - konwertuję...');
       processedContent = convertFromFirefnow(csvContent);
     }
-    
+
     const result = Papa.parse(processedContent, {
       header: true,
       skipEmptyLines: true,
@@ -199,7 +199,7 @@ async function loadReservationsFromCSV() {
         return headerMap[header] || header.toLowerCase();
       }
     });
-    
+
     // Filtruj prawdziwe rezerwacje (wyklucz wiersze podsumowujące)
     const reservations = result.data.filter(reservation => {
       if (!reservation.klient || !reservation.sprzet) return false;
@@ -209,7 +209,7 @@ async function loadReservationsFromCSV() {
       if (!reservation.od || !reservation.do) return false;
       return true;
     });
-    
+
     console.log(`Server: Wczytano ${reservations.length} rezerwacji`);
     return reservations;
   } catch (error) {
@@ -224,13 +224,13 @@ async function loadReservationsFromCSV() {
 async function saveReservationsToCSV(reservations) {
   try {
     console.log(`Server: Zapisuję ${reservations.length} rezerwacji do CSV`);
-    
+
     // Konwertuj z powrotem do formatu CSV
     const csvContent = Papa.unparse(reservations, {
       delimiter: ',',
       header: true
     });
-    
+
     await fs.writeFile(RESERVATIONS_CSV_PATH, csvContent, 'utf-8');
     console.log('Server: Rezerwacje zapisane pomyślnie');
     return true;
@@ -248,16 +248,16 @@ function detectFirefnowFormat(csvText) {
   const semicolonCount = (sample.match(/;/g) || []).length;
   const commaCount = (sample.match(/,/g) || []).length;
   const hasSemicolons = semicolonCount > commaCount;
-  
-  const hasCorruptedChars = 
-    sample.includes('�') || 
-    sample.includes('Sprz�t') || 
-    sample.includes('U�ytkownik') || 
+
+  const hasCorruptedChars =
+    sample.includes('�') ||
+    sample.includes('Sprz�t') ||
+    sample.includes('U�ytkownik') ||
     sample.includes('Zap�acono') ||
     sample.includes('SprÄt') ||
     sample.includes('UÄytkownik') ||
     sample.includes('ZapÄacono');
-  
+
   return hasSemicolons || hasCorruptedChars;
 }
 
@@ -267,10 +267,10 @@ function detectFirefnowFormat(csvText) {
 function convertFromFirefnow(csvText) {
   const lines = csvText.split(/\r?\n/);
   const convertedLines = [];
-  
+
   lines.forEach(line => {
     if (line.trim() === '') return;
-    
+
     const fields = line.split(';');
     const fixedFields = fields.map(field => {
       if (/^\d+,\d+$/.test(field.trim())) {
@@ -278,10 +278,10 @@ function convertFromFirefnow(csvText) {
       }
       return field;
     });
-    
+
     convertedLines.push(fixedFields.join(','));
   });
-  
+
   return convertedLines.join('\n');
 }
 
@@ -292,34 +292,34 @@ function convertFromFirefnow(csvText) {
 async function loadRentalsFromFireSnowAPI() {
   try {
     console.log('Server: Pobieranie wypożyczeń z FireSnow API:', FIRESNOW_API_URL);
-    
+
     const response = await fetch(`${FIRESNOW_API_URL}/api/wypozyczenia/aktualne`);
-    
+
     if (!response.ok) {
       throw new Error(`FireSnow API error: ${response.status}`);
     }
-    
+
     const fireSnowData = await response.json();
     console.log(`Server: Otrzymano ${fireSnowData.length} wypożyczeń z FireSnow API`);
     console.log('Server: Przykładowy rekord z API:', JSON.stringify(fireSnowData[0], null, 2));
-    
+
     // Mapuj dane z formatu FireSnow API na format aplikacji
     const rentals = fireSnowData.map(item => {
       // Nazwa klienta - obsługa różnych formatów API
       let klient = item.klient_nazwa || item.imie_nazwisko || '';
-      
+
       if (!klient) {
         klient = `Klient #${item.klient_id || '?'}`;
       }
-      
+
       // Daty - obsługa różnych formatów API
       let dataOd = '';
       let dataDo = '';
-      
+
       // Format 1: timestamp (milisekundy)
       if (item.data_od && typeof item.data_od === 'number') {
         dataOd = new Date(item.data_od).toISOString().split('T')[0];
-        
+
         // Oblicz data_do dla aktywnych wypożyczeń (gdy data_do = 0 i jest pozostaly_czas)
         if (item.data_do === 0 && item.pozostaly_czas && typeof item.pozostaly_czas === 'number') {
           const obliczonaDataDo = item.data_od + item.pozostaly_czas;
@@ -333,7 +333,7 @@ async function loadRentalsFromFireSnowAPI() {
       else if (item.data_rozpoczecia) {
         dataOd = item.data_rozpoczecia.split(' ')[0]; // Bierz tylko datę
       }
-      
+
       return {
         klient: klient,
         sprzet: item.nazwa_sprzetu || '',
@@ -348,11 +348,11 @@ async function loadRentalsFromFireSnowAPI() {
         klient_id: item.klient_id
       };
     });
-    
+
     console.log(`Server: Zmapowano ${rentals.length} wypożyczeń`);
     console.log('Server: Przykładowy zmapowany rekord:', JSON.stringify(rentals[0], null, 2));
     return rentals;
-    
+
   } catch (error) {
     console.error('Server: Błąd pobierania wypożyczeń z FireSnow API:', error);
     throw error;
@@ -366,38 +366,38 @@ async function loadRentalsFromFireSnowAPI() {
 async function loadPastRentalsFromFireSnowAPI() {
   try {
     console.log('Server: Pobieranie przeszłych wypożyczeń z FireSnow API:', FIRESNOW_API_URL);
-    
+
     const response = await fetch(`${FIRESNOW_API_URL}/api/wypozyczenia/przeszle`);
-    
+
     if (!response.ok) {
       throw new Error(`FireSnow API error: ${response.status}`);
     }
-    
+
     const fireSnowData = await response.json();
     console.log(`Server: Otrzymano ${fireSnowData.length} przeszłych wypożyczeń z FireSnow API`);
-    
+
     // Mapuj dane z formatu FireSnow API na format aplikacji
     const pastRentals = fireSnowData.map(item => {
       // Nazwa klienta
       let klient = item.klient_nazwa || item.imie_nazwisko || '';
-      
+
       if (!klient) {
         klient = `Klient #${item.klient_id || '?'}`;
       }
-      
+
       // Daty - obsługa różnych formatów API
       let dataOd = '';
       let dataDo = '';
-      
+
       // Format 1: timestamp (milisekundy)
       if (item.data_od && typeof item.data_od === 'number') {
         dataOd = new Date(item.data_od).toISOString().split('T')[0];
       }
-      
+
       if (item.data_do && typeof item.data_do === 'number') {
         dataDo = item.data_do === 0 ? '' : new Date(item.data_do).toISOString().split('T')[0];
       }
-      
+
       return {
         klient: klient,
         sprzet: item.nazwa_sprzetu || '',
@@ -413,10 +413,10 @@ async function loadPastRentalsFromFireSnowAPI() {
         source: 'rental' // Mark as rental
       };
     });
-    
+
     console.log(`Server: Zmapowano ${pastRentals.length} przeszłych wypożyczeń`);
     return pastRentals;
-    
+
   } catch (error) {
     console.error('Server: Błąd pobierania przeszłych wypożyczeń z FireSnow API:', error);
     throw error;
@@ -430,22 +430,22 @@ async function loadPastRentalsFromFireSnowAPI() {
 async function loadRentalsFromCSV() {
   try {
     console.log('Server: Wczytuję wypożyczenia z pliku CSV:', RENTALS_CSV_PATH);
-    
+
     const csvContent = await fs.readFile(RENTALS_CSV_PATH, 'utf-8');
     console.log('Server: Wczytano plik CSV, długość:', csvContent.length, 'znaków');
     console.log('Server: Pierwsze 200 znaków:', csvContent.substring(0, 200));
-    
+
     // Wykryj format FireFnow (średniki + zniekształcone znaki)
     const isFirefnow = detectFirefnowFormat(csvContent);
     console.log('Server: Format FireFnow wykryty:', isFirefnow);
-    
+
     let processedContent = csvContent;
     if (isFirefnow) {
       console.log('Server: Wykryto format FireFnow w wypożyczeniach - konwertuję...');
       processedContent = convertFromFirefnow(csvContent);
       console.log('Server: Po konwersji, pierwsze 200 znaków:', processedContent.substring(0, 200));
     }
-    
+
     const result = Papa.parse(processedContent, {
       header: true,
       skipEmptyLines: true,
@@ -476,7 +476,7 @@ async function loadRentalsFromCSV() {
         return headerMap[header] || header.toLowerCase();
       }
     });
-    
+
     // Filtruj prawdziwe wypożyczenia (wyklucz wiersze podsumowujące)
     const rentals = result.data.filter(rental => {
       if (!rental.klient || !rental.sprzet) return false;
@@ -489,7 +489,7 @@ async function loadRentalsFromCSV() {
       typumowy: 'STANDARD', // Wypożyczenia są zawsze STANDARD
       numer: rental.kod || `WYP-${Date.now()}` // Użyj kodu lub wygeneruj numer
     }));
-    
+
     console.log(`Server: Wczytano ${rentals.length} wypożyczeń`);
     return rentals;
   } catch (error) {
@@ -507,9 +507,9 @@ async function loadRentalsFromCSV() {
 app.get('/api/reservations', async (req, res) => {
   try {
     console.log('Server: GET /api/reservations');
-    
+
     let reservations = [];
-    
+
     if (USE_FIRESNOW_API) {
       try {
         // Próbuj pobrać z API
@@ -526,7 +526,7 @@ app.get('/api/reservations', async (req, res) => {
       reservations = await loadReservationsFromCSV();
       console.log(`Server: Zwracam ${reservations.length} rezerwacji z CSV`);
     }
-    
+
     res.json(reservations);
   } catch (error) {
     console.error('Server: Błąd pobierania rezerwacji:', error);
@@ -541,9 +541,9 @@ app.get('/api/reservations', async (req, res) => {
 app.get('/api/wypozyczenia/aktualne', async (req, res) => {
   try {
     console.log('Server: GET /api/wypozyczenia/aktualne');
-    
+
     let rentals = [];
-    
+
     if (USE_FIRESNOW_API) {
       try {
         // Próbuj pobrać z API
@@ -560,7 +560,7 @@ app.get('/api/wypozyczenia/aktualne', async (req, res) => {
       rentals = await loadRentalsFromCSV();
       console.log(`Server: Zwracam ${rentals.length} wypożyczeń z CSV`);
     }
-    
+
     res.json(rentals);
   } catch (error) {
     console.error('Server: Błąd pobierania wypożyczeń:', error);
@@ -576,42 +576,42 @@ app.get('/api/dostepnosc/okres', async (req, res) => {
   const startTime = Date.now();
   try {
     const { from, to } = req.query;
-    
+
     // Konwertuj timestampy na daty dla logowania
     const fromDate = from ? new Date(parseInt(from)).toLocaleString('pl-PL') : 'nie podano';
     const toDate = to ? new Date(parseInt(to)).toLocaleString('pl-PL') : 'nie podano';
-    
+
     console.log('═══════════════════════════════════════════════════════');
     console.log('Server: 📋 PRZEGLĄDAJ - Pobieranie dostępności dla okresu');
     console.log('Server:   Data od:', fromDate);
     console.log('Server:   Data do:', toDate);
     console.log('Server:   Timestamp from:', from);
     console.log('Server:   Timestamp to:', to);
-    
+
     const queryParams = new URLSearchParams();
     if (from) queryParams.append('from', from);
     if (to) queryParams.append('to', to);
-    
+
     console.log('Server:   Wywołuję FireSnow API...');
     const response = await fetch(`${FIRESNOW_API_URL}/api/dostepnosc/okres?${queryParams.toString()}`);
-    
+
     if (!response.ok) {
       throw new Error(`FireSnow API error: ${response.status}`);
     }
-    
+
     const data = await response.json();
     const reservationsCount = data.reservations ? data.reservations.length : 0;
     const rentalsCount = data.rentals ? data.rentals.length : 0;
     const totalCount = reservationsCount + rentalsCount;
     const duration = Date.now() - startTime;
-    
+
     console.log('Server:   ✅ Pobrano dane z FireSnow API:');
     console.log('Server:      - Rezerwacje:', reservationsCount);
     console.log('Server:      - Wypożyczenia:', rentalsCount);
     console.log('Server:      - Łącznie:', totalCount, 'pozycji');
     console.log('Server:   ⏱️  Czas wykonania:', duration, 'ms');
     console.log('═══════════════════════════════════════════════════════');
-    
+
     res.json(data);
   } catch (error) {
     const duration = Date.now() - startTime;
@@ -629,9 +629,9 @@ app.get('/api/dostepnosc/okres', async (req, res) => {
 app.get('/api/wypozyczenia/przeszle', async (req, res) => {
   try {
     console.log('Server: GET /api/wypozyczenia/przeszle');
-    
+
     let pastRentals = [];
-    
+
     if (USE_FIRESNOW_API) {
       try {
         // Próbuj pobrać z API
@@ -648,7 +648,7 @@ app.get('/api/wypozyczenia/przeszle', async (req, res) => {
       pastRentals = [];
       console.log('Server: Zwracam pustą listę przeszłych wypożyczeń (API wyłączone)');
     }
-    
+
     res.json(pastRentals);
   } catch (error) {
     console.error('Server: Błąd pobierania przeszłych wypożyczeń:', error);
@@ -662,15 +662,15 @@ app.get('/api/wypozyczenia/przeszle', async (req, res) => {
 app.post('/api/reservations', async (req, res) => {
   try {
     console.log('Server: POST /api/reservations', req.body);
-    
+
     const reservations = await loadReservationsFromCSV();
     const newReservation = {
       ...req.body,
       numer: Date.now().toString() // Generuj unikalny ID
     };
-    
+
     reservations.push(newReservation);
-    
+
     const success = await saveReservationsToCSV(reservations);
     if (success) {
       res.json(newReservation);
@@ -689,16 +689,16 @@ app.post('/api/reservations', async (req, res) => {
 app.put('/api/reservations/:id', async (req, res) => {
   try {
     console.log('Server: PUT /api/reservations/', req.params.id, req.body);
-    
+
     const reservations = await loadReservationsFromCSV();
     const index = reservations.findIndex(r => r.numer === req.params.id || r.kod === req.params.id);
-    
+
     if (index === -1) {
       return res.status(404).json({ error: 'Rezerwacja nie znaleziona' });
     }
-    
+
     reservations[index] = { ...reservations[index], ...req.body };
-    
+
     const success = await saveReservationsToCSV(reservations);
     if (success) {
       res.json(reservations[index]);
@@ -717,16 +717,16 @@ app.put('/api/reservations/:id', async (req, res) => {
 app.delete('/api/reservations/:id', async (req, res) => {
   try {
     console.log('Server: DELETE /api/reservations/', req.params.id);
-    
+
     const reservations = await loadReservationsFromCSV();
     const index = reservations.findIndex(r => r.numer === req.params.id || r.kod === req.params.id);
-    
+
     if (index === -1) {
       return res.status(404).json({ error: 'Rezerwacja nie znaleziona' });
     }
-    
+
     const deletedReservation = reservations.splice(index, 1)[0];
-    
+
     const success = await saveReservationsToCSV(reservations);
     if (success) {
       res.json(deletedReservation);
@@ -750,31 +750,31 @@ function mapGroupToEquipmentType(subGroupId, parentGroupId) {
     // NARTY - TOP (parent grup TOP)
     case 82293:
       return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'TOP' };
-    
+
     // NARTY - VIP (parent grup VIP)
     case 82412:
       return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'VIP' };
-    
+
     // NARTY - JUNIOR (parent grup JUNIOR)
     case 82758:
       return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'JUNIOR' };
-    
+
     // BUTY - DOROSLE (parent grup BUTY DOROSLE)
     case 82738:
       return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'DOROSLE' };
-    
+
     // BUTY - JUNIOR (parent grup BUTY JUNIOR)
     case 82827:
       return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'JUNIOR' };
-    
+
     // SNOWBOARD - DESKI (parent grup DESKI)
     case 83762:
       return { TYP_SPRZETU: 'DESKI', KATEGORIA: '' };
-    
+
     // SNOWBOARD - BUTY S (parent grup BUTY SNOWBOARD)
     case 83760:
       return { TYP_SPRZETU: 'BUTY_SNOWBOARD', KATEGORIA: '' };
-    
+
     // Domyślnie (nie powinno się zdarzyć, ale na wszelki wypadek)
     default:
       console.warn(`Server: Nieznany parentGroupId: ${parentGroupId}, subGroupId: ${subGroupId}`);
@@ -788,23 +788,23 @@ function mapGroupToEquipmentType(subGroupId, parentGroupId) {
  */
 function extractPlecFromPoziom(poziomText) {
   if (!poziomText) return 'U';
-  
+
   const clean = poziomText.trim().toLowerCase();
-  
+
   // Format unisex z zakresem: "1-2u"
   if (/^\d+-\d+u$/i.test(clean)) return 'U';
-  
+
   // Format unisex: "4k/5m" lub "5m/4k"
   if (clean.includes('/') && (clean.includes('m') || clean.includes('k'))) {
     return 'U';
   }
-  
+
   // Format męski: "4m"
   if (clean.endsWith('m') && !clean.includes('k')) return 'M';
-  
+
   // Format kobiecy: "4k"
   if (clean.endsWith('k') && !clean.includes('m')) return 'K';
-  
+
   // Domyślnie unisex
   return 'U';
 }
@@ -824,14 +824,14 @@ function parseEquipmentName(nazwa) {
     DLUGOSC: null,
     ROK: null
   };
-  
+
   if (!nazwa) return result;
-  
+
   let cleanName = nazwa.trim();
-  
+
   // Usuń typ sprzętu z początku (NARTY, BUTY, DESKI, etc.)
   cleanName = cleanName.replace(/^(NARTY|BUTY|DESKI|DESKA|BUTY\s+SNOWBOARD)\s+/i, '');
-  
+
   // Wyciągnij rozmiar butów (np. "rozm23", "rozm 23", "rozm23,5", "rozm 23,5")
   // Priorytet: najpierw sprawdź rozmiar butów, potem długość nart
   const bootSizeMatch = cleanName.match(/rozm\s*(\d+)(?:[,.](\d+))?/i);
@@ -859,7 +859,7 @@ function parseEquipmentName(nazwa) {
       cleanName = cleanName.replace(/\s*\d{2,4}\s*cm\s*/i, ' ').replace(/\s+\d{2,4}\s+/g, ' ');
     }
   }
-  
+
   // WAŻNE: Najpierw wyciągnij rok (4 cyfry po "/") - to musi być PRZED usuwaniem numerów nart
   // server.js: Rok ma zawsze 4 cyfry po "/" (np. "/2025")
   const yearMatch = cleanName.match(/\/(\d{4})(?!\d)/);
@@ -868,7 +868,7 @@ function parseEquipmentName(nazwa) {
     // Usuń rok z nazwy
     cleanName = cleanName.replace(/\s*\/\d{4}(?!\d)\s*/g, ' ');
   }
-  
+
   // Usuń numery nart w różnych formatach (2-3 cyfry po "//", "/" lub "#")
   // server.js: Numer narty: 2-3 cyfry po "//" (czasami "/" lub "#")
   // Format: "//01", "//123", "/01", "/123", "#01", "#123"
@@ -876,10 +876,10 @@ function parseEquipmentName(nazwa) {
   cleanName = cleanName.replace(/\s*\/\/\d{2,3}(?!\d)\s*/g, ' ');  // "//01", "//123"
   cleanName = cleanName.replace(/\s*\/\d{2,3}(?!\d)\s*/g, ' ');    // "/01", "/123" (ale nie "/2025" bo już usunięte)
   cleanName = cleanName.replace(/\s*#\d{2,3}(?!\d)\s*/g, ' ');     // "#01", "#123"
-  
+
   // Usuń dodatkowe spacje i trim
   result.NAZWA = cleanName.replace(/\s+/g, ' ').trim();
-  
+
   return result;
 }
 
@@ -893,32 +893,32 @@ function mapFireSnowToSkiData(fireSnowItem) {
     fireSnowItem.sub_group_id,
     fireSnowItem.parent_group_id
   );
-  
+
   // Wyciągnij płeć z poziomu
   const plec = extractPlecFromPoziom(fireSnowItem.poziom || '');
-  
+
   // Parsuj nazwę sprzętu
   const parsedName = parseEquipmentName(fireSnowItem.nazwa_sprzetu || '');
-  
+
   // Generuj ID w formacie: N-{obiekt_id}, B-{obiekt_id}, D-{obiekt_id}, BS-{obiekt_id}
   let idPrefix = 'N';
   if (typeMapping.TYP_SPRZETU === 'BUTY') idPrefix = 'B';
   else if (typeMapping.TYP_SPRZETU === 'DESKI') idPrefix = 'D';
   else if (typeMapping.TYP_SPRZETU === 'BUTY_SNOWBOARD') idPrefix = 'BS';
-  
+
   const id = `${idPrefix}-${String(fireSnowItem.obiekt_id).padStart(4, '0')}`;
-  
+
   // Rozdziel nazwę na markę (pierwsze słowo) i model (reszta)
   // server.js: MARKA = pierwsze słowo, MODEL = reszta + rocznik w nawiasach
   const words = parsedName.NAZWA.split(/\s+/).filter(w => w.trim() !== '');
   const marka = words[0] || '';  // Pierwsze słowo to marka
   const model = words.slice(1).join(' ') || '';  // Reszta to model
-  
+
   // Dodaj rok do modelu jeśli istnieje (format: "SHAPE 3.0 (2025)")
-  const modelWithYear = parsedName.ROK 
-    ? `${model} (${parsedName.ROK})` 
+  const modelWithYear = parsedName.ROK
+    ? `${model} (${parsedName.ROK})`
     : model;
-  
+
   // Mapuj dane
   return {
     ID: id,
@@ -949,17 +949,17 @@ function mapFireSnowToSkiData(fireSnowItem) {
 async function loadEquipmentFromFireSnowAPI() {
   try {
     console.log('Server: Pobieranie sprzętu z FireSnow API:', FIRESNOW_API_URL);
-    
+
     const response = await fetch(`${FIRESNOW_API_URL}/api/sprzet/wszystkie`);
-    
+
     if (!response.ok) {
       throw new Error(`FireSnow API error: ${response.status}`);
     }
-    
+
     const fireSnowData = await response.json();
     console.log(`Server: Otrzymano ${fireSnowData.length} rekordów sprzętu z FireSnow API`);
     console.log('Server: ========================================');
-    
+
     // Definicja grup z ich ID i nazwami
     const groups = [
       { id: 82293, name: 'NARTY TOP', type: 'NARTY', category: 'TOP' },
@@ -970,22 +970,22 @@ async function loadEquipmentFromFireSnowAPI() {
       { id: 83762, name: 'SNOWBOARD DESKI', type: 'DESKI', category: '' },
       { id: 83760, name: 'SNOWBOARD BUTY S', type: 'BUTY_SNOWBOARD', category: '' }
     ];
-    
+
     const allEquipment = [];
-    
+
     // Przetwarzaj każdą grupę osobno
     for (const group of groups) {
       // Filtruj rekordy dla tej grupy
       const groupData = fireSnowData.filter(item => item.parent_group_id === group.id);
-      
+
       console.log(`\nServer: === ${group.name} (ID: ${group.id}) ===`);
       console.log(`Server: Liczba rekordów: ${groupData.length}`);
-      
+
       if (groupData.length === 0) {
         console.log(`Server: ⚠️  Brak rekordów dla grupy ${group.name}!`);
         continue;
       }
-      
+
       // Statystyki podgrup
       const subGroups = {};
       groupData.forEach(item => {
@@ -995,19 +995,19 @@ async function loadEquipmentFromFireSnowAPI() {
         }
         subGroups[subGroupId]++;
       });
-      
+
       console.log(`Server: Liczba podgrup: ${Object.keys(subGroups).length}`);
       console.log(`Server: Podgrupy i liczba rekordów:`, subGroups);
-      
+
       // Szczegółowe logowanie dla HEAD SHAPE w grupie TOP
       if (group.id === 82293) {
-        const headShapeItems = groupData.filter(item => 
+        const headShapeItems = groupData.filter(item =>
           item.nazwa_sprzetu && item.nazwa_sprzetu.toUpperCase().includes('HEAD SHAPE')
         );
-        
+
         if (headShapeItems.length > 0) {
           console.log(`\nServer: 🔍 HEAD SHAPE w ${group.name}: ${headShapeItems.length} rekordów`);
-          
+
           // Analiza nazw HEAD SHAPE
           const headShapeNames = {};
           headShapeItems.forEach(item => {
@@ -1033,16 +1033,16 @@ async function loadEquipmentFromFireSnowAPI() {
               });
             }
           });
-          
+
           console.log(`Server: Unikalne nazwy HEAD SHAPE po parsowaniu:`);
           Object.entries(headShapeNames).forEach(([name, data]) => {
-            console.log(`  - "${name}": ${data.count} rekordów, długości: [${Array.from(data.lengths).sort((a,b) => a-b).join(', ')}]`);
+            console.log(`  - "${name}": ${data.count} rekordów, długości: [${Array.from(data.lengths).sort((a, b) => a - b).join(', ')}]`);
             console.log(`    Przykłady oryginalnych nazw:`);
             data.examples.forEach(ex => {
               console.log(`      • "${ex.original}" → MARKA: "${ex.parsed}", DLUGOSC: ${ex.dlugosc || 'null'}, KOD: ${ex.kod}`);
             });
           });
-          
+
           // Sprawdź czy są różne formaty nazw
           const uniqueOriginalNames = [...new Set(headShapeItems.map(item => item.nazwa_sprzetu))];
           if (uniqueOriginalNames.length > Object.keys(headShapeNames).length) {
@@ -1053,10 +1053,10 @@ async function loadEquipmentFromFireSnowAPI() {
           console.log(`Server: ℹ️  Brak rekordów HEAD SHAPE w grupie ${group.name}`);
         }
       }
-      
+
       // Mapuj rekordy dla tej grupy
       const mappedGroupData = groupData.map(item => mapFireSnowToSkiData(item));
-      
+
       // Statystyki po mapowaniu
       const markaStats = {};
       mappedGroupData.forEach(item => {
@@ -1066,26 +1066,26 @@ async function loadEquipmentFromFireSnowAPI() {
         }
         markaStats[marka]++;
       });
-      
+
       // Pokaż top 5 najczęstszych marek/modeli
       const topMarkas = Object.entries(markaStats)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
-      
+
       if (topMarkas.length > 0) {
         console.log(`Server: Top 5 marek/modeli w ${group.name}:`);
         topMarkas.forEach(([marka, count]) => {
           console.log(`  - "${marka}": ${count} rekordów`);
         });
       }
-      
+
       allEquipment.push(...mappedGroupData);
       console.log(`Server: ✓ Zmapowano ${mappedGroupData.length} rekordów dla ${group.name}`);
     }
-    
+
     console.log('\nServer: ========================================');
     console.log(`Server: Łącznie zmapowano ${allEquipment.length} rekordów sprzętu`);
-    
+
     // Ogólne statystyki
     const categoryCounts = {};
     allEquipment.forEach(item => {
@@ -1094,9 +1094,9 @@ async function loadEquipmentFromFireSnowAPI() {
     });
     console.log('Server: Rozkład kategorii sprzętu:', categoryCounts);
     console.log('Server: ========================================\n');
-    
+
     return allEquipment;
-    
+
   } catch (error) {
     console.error('Server: Błąd pobierania sprzętu z FireSnow API:', error);
     throw error;
@@ -1109,9 +1109,9 @@ async function loadEquipmentFromFireSnowAPI() {
 app.get('/api/skis', async (req, res) => {
   try {
     console.log('Server: GET /api/skis');
-    
+
     let equipment = [];
-    
+
     if (USE_FIRESNOW_API) {
       try {
         // Próbuj pobrać z FireSnow API
@@ -1147,7 +1147,7 @@ app.get('/api/skis', async (req, res) => {
       equipment = result.data;
       console.log(`Server: Zwracam ${equipment.length} rekordów z CSV`);
     }
-    
+
     res.json(equipment);
   } catch (error) {
     console.error('Server: Błąd pobierania sprzętu:', error);
@@ -1161,20 +1161,20 @@ app.get('/api/skis', async (req, res) => {
 app.post('/api/skis', async (req, res) => {
   try {
     console.log('Server: POST /api/skis', req.body);
-    
+
     const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
     const result = Papa.parse(csvContent, {
       header: true,
       skipEmptyLines: true,
       delimiter: ','
     });
-    
+
     const skis = result.data;
-    
+
     // Generuj nowe ID (max + 1)
     const maxId = Math.max(...skis.map(ski => parseInt(ski.ID) || 0), 0);
     const newId = (maxId + 1).toString();
-    
+
     // Generuj unikalny KOD (jeśli nie podano)
     let newKod = req.body.KOD || '';
     if (!newKod) {
@@ -1185,7 +1185,7 @@ app.post('/api/skis', async (req, res) => {
         codeNum++;
       } while (existingCodes.includes(newKod));
     }
-    
+
     // Stwórz nową nartę
     const newSki = {
       ID: newId,
@@ -1205,19 +1205,19 @@ app.post('/api/skis', async (req, res) => {
       ATUTY: req.body.ATUTY || '',
       KOD: newKod
     };
-    
+
     // Dodaj do listy
     skis.push(newSki);
-    
+
     // Zapisz z powrotem do CSV - WYMUSZAMY KOLEJNOŚĆ KOLUMN
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
       header: true,
       columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'KOD']
     });
-    
+
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
-    
+
     console.log('Server: Narta dodana pomyślnie:', newSki);
     res.json(newSki);
   } catch (error) {
@@ -1236,57 +1236,57 @@ app.put('/api/skis/bulk', async (req, res) => {
     console.log('Server: PUT /api/skis/bulk - aktualizacja wielu nart');
     console.log('Server: IDs:', ids);
     console.log('Server: Updates:', updates);
-    
+
     if (!ids || !Array.isArray(ids) || ids.length === 0) {
       return res.status(400).json({ error: 'Brak tablicy ID do aktualizacji' });
     }
-    
+
     const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
     const result = Papa.parse(csvContent, {
       header: true,
       skipEmptyLines: true,
       delimiter: ','
     });
-    
+
     const skis = result.data;
     const updatedSkis = [];
-    
+
     // Zaktualizuj wszystkie narty o podanych ID
     ids.forEach(id => {
       const index = skis.findIndex(ski => ski.ID === id);
       if (index !== -1) {
         console.log(`Server: Aktualizacja narty ${id} (index ${index})`);
         console.log('Server: Updates przed filtrowaniem:', updates);
-        
+
         // Skopiuj dane bez pola KOD i ID (chronimy unikalne identyfikatory)
         const updatesWithoutCode = { ...updates };
         delete updatesWithoutCode.KOD;
         delete updatesWithoutCode.ID;
-        
+
         console.log('Server: Updates po filtrowaniu:', updatesWithoutCode);
-        
+
         skis[index] = { ...skis[index], ...updatesWithoutCode };
         updatedSkis.push(skis[index]);
-        
+
         console.log('Server: Zaktualizowana narta:', skis[index]);
       }
     });
-    
+
     if (updatedSkis.length === 0) {
       return res.status(404).json({ error: 'Nie znaleziono nart o podanych ID' });
     }
-    
+
     console.log(`Server: Zaktualizowano ${updatedSkis.length} nart`);
-    
+
     // Zapisz z powrotem do CSV
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
       header: true,
       columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'KOD']
     });
-    
+
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
-    
+
     console.log('Server: Narty zaktualizowane pomyślnie - zapisano do pliku');
     res.json(updatedSkis);
   } catch (error) {
@@ -1306,44 +1306,44 @@ app.put('/api/skis/:id', async (req, res) => {
     console.log('Server: KATEGORIA otrzymana:', req.body.KATEGORIA);
     console.log('Server: TYP_SPRZETU otrzymany:', req.body.TYP_SPRZETU);
     console.log('Server: PRZEZNACZENIE otrzymane:', req.body.PRZEZNACZENIE);
-    
+
     const csvContent = await fs.readFile(SKIS_CSV_PATH, 'utf-8');
     const result = Papa.parse(csvContent, {
       header: true,
       skipEmptyLines: true,
       delimiter: ','
     });
-    
+
     const skis = result.data;
     const index = skis.findIndex(ski => ski.ID === req.params.id);
-    
+
     if (index === -1) {
       return res.status(404).json({ error: 'Narta nie znaleziona' });
     }
-    
+
     console.log('Server: Stara narta przed aktualizacją:', skis[index]);
     console.log('Server: KATEGORIA przed aktualizacją:', skis[index].KATEGORIA);
-    
+
     // Aktualizuj dane narty
     skis[index] = { ...skis[index], ...req.body };
-    
+
     console.log('Server: Nowa narta po aktualizacji:', skis[index]);
     console.log('Server: KATEGORIA po aktualizacji:', skis[index].KATEGORIA);
     console.log('Server: TYP_SPRZETU po aktualizacji:', skis[index].TYP_SPRZETU);
     console.log('Server: PRZEZNACZENIE po aktualizacji:', skis[index].PRZEZNACZENIE);
-    
+
     // Zapisz z powrotem do CSV - WYMUSZAMY KOLEJNOŚĆ KOLUMN
     const csvContentNew = Papa.unparse(skis, {
       delimiter: ',',
       header: true,
       columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'KOD']
     });
-    
+
     console.log('Server: Zapisuję CSV - pierwszy wiersz (header):', csvContentNew.split('\n')[0]);
     console.log('Server: Zapisuję CSV - zaktualizowany wiersz (index=' + index + '):', csvContentNew.split('\n')[index + 1]);
-    
+
     await fs.writeFile(SKIS_CSV_PATH, csvContentNew, 'utf-8');
-    
+
     console.log('Server: Narta zaktualizowana pomyślnie - zapisano do pliku');
     res.json(skis[index]);
   } catch (error) {
@@ -1356,8 +1356,8 @@ app.put('/api/skis/:id', async (req, res) => {
  * GET /api/health - Sprawdź status serwera
  */
 app.get('/api/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     timestamp: new Date().toISOString(),
     message: 'Serwer asystenta nart działa poprawnie'
   });
@@ -1369,11 +1369,11 @@ app.get('/api/health', (req, res) => {
 app.get('/api/firesnow/status', async (req, res) => {
   try {
     console.log('Server: Sprawdzanie statusu FireSnow API...');
-    
+
     const response = await fetch(`${FIRESNOW_API_URL}/api/health`, {
       signal: AbortSignal.timeout(5000) // 5 sec timeout
     });
-    
+
     if (response.ok) {
       const data = await response.json();
       res.json({
@@ -1404,11 +1404,11 @@ app.get('/api/firesnow/status', async (req, res) => {
 app.post('/api/firesnow/refresh', async (req, res) => {
   try {
     console.log('Server: Wymuszam odświeżenie FireSnow API...');
-    
+
     const response = await fetch(`${FIRESNOW_API_URL}/api/refresh`, {
       signal: AbortSignal.timeout(5000)
     });
-    
+
     if (response.ok) {
       const data = await response.json();
       res.json({
@@ -1437,7 +1437,7 @@ app.post('/api/firesnow/refresh', async (req, res) => {
  */
 function convertDateToISO(dateString) {
   if (!dateString) return '';
-  
+
   try {
     // Input: "31.12.2022"
     // Output: "2022-12-31T00:00:00"
@@ -1457,40 +1457,40 @@ function convertDateToISO(dateString) {
 
 /**
  * GET /api/historia/klienci/wyszukaj?nazwisko=XXX - Wyszukuje klientów po nazwisku
- * server.js: Wyszukiwanie klientów w bazie historii po nazwisku (tylko z wypożyczeniami)
+ * server.js: Wyszukiwanie klientów w bazie historii po nazwisku (tabela id_klient_old)
  */
 app.get('/api/historia/klienci/wyszukaj', async (req, res) => {
   try {
     const { nazwisko } = req.query;
-    
+
     if (!nazwisko || nazwisko.trim().length < 2) {
       return res.json([]);
     }
-    
-    console.log('Server: Wyszukiwanie klientów po nazwisku (tylko z wypożyczeniami):', nazwisko);
-    
+
+    console.log('Server: Wyszukiwanie klientów po nazwisku (baza history):', nazwisko);
+
     const pool = await getHistoryDBConnection();
-    // JOIN z id_daty_2223 aby pokazać tylko klientów którzy mają wypożyczenia
+    // Pobieramy klientów z tabeli id_klient_old, ale TYLKO tych co mają historię w id_daty_old
     const [rows] = await pool.execute(
-      `SELECT DISTINCT k.ID, k.Nazwisko, k.Imie, k.Telefon 
-       FROM id_klient_2223 k
-       INNER JOIN id_daty_2223 d ON k.ID = d.Klient
-       WHERE k.Nazwisko LIKE ?
+      `SELECT DISTINCT k.Klient, k.Nazwisko, k.Imie, k.Telefon 
+       FROM id_klient_old k
+       INNER JOIN id_daty_old d ON k.Klient = d.Klient
+       WHERE k.Nazwisko LIKE ? 
        ORDER BY k.Nazwisko, k.Imie 
        LIMIT 50`,
       [`%${nazwisko}%`]
     );
-    
+
     // Mapuj dane na format frontendu
     const clients = rows.map(row => ({
-      id: row.ID,
+      id: row.Klient,
       nazwisko: row.Nazwisko || '',
       imie: row.Imie || '',
       telefon: row.Telefon || '',
       pelna_nazwa: `${row.Imie || ''} ${row.Nazwisko || ''}`.trim() || 'Brak nazwy'
     }));
-    
-    console.log(`Server: Znaleziono ${clients.length} klientów z wypożyczeniami`);
+
+    console.log(`Server: Znaleziono ${clients.length} klientów w historii`);
     res.json(clients);
   } catch (error) {
     console.error('Server: Błąd wyszukiwania klientów:', error);
@@ -1500,38 +1500,40 @@ app.get('/api/historia/klienci/wyszukaj', async (req, res) => {
 
 /**
  * GET /api/historia/klient/:id/daty - Pobiera daty wypożyczeń dla klienta
- * server.js: Pobieranie unikalnych dat wypożyczeń dla wybranego klienta
+ * server.js: Pobieranie unikalnych dat wypożyczeń dla wybranego klienta z tabeli id_daty_old
  */
 app.get('/api/historia/klient/:id/daty', async (req, res) => {
   try {
     const clientId = parseInt(req.params.id);
-    
+
     if (isNaN(clientId)) {
       return res.status(400).json({ error: 'Nieprawidłowe ID klienta' });
     }
-    
+
     console.log('Server: Pobieranie dat wypożyczeń dla klienta ID:', clientId);
-    
+
     const pool = await getHistoryDBConnection();
+    // Pobieramy daty i sezony z id_daty_old
     const [rows] = await pool.execute(
-      `SELECT DISTINCT d.Od, d.Do, COUNT(*) as liczba_pozycji
-       FROM id_daty_2223 d
-       WHERE d.Klient = ?
-       GROUP BY d.Od, d.Do
-       ORDER BY d.Od DESC`,
+      `SELECT DISTINCT Od, Do, sezon, COUNT(*) as liczba_pozycji
+       FROM id_daty_old
+       WHERE Klient = ?
+       GROUP BY sezon, Od, Do
+       ORDER BY sezon DESC, Od DESC`,
       [clientId]
     );
-    
+
     // Mapuj dane i konwertuj daty
     const dates = rows.map(row => ({
       od: row.Od || '',
       do: row.Do || '',
       od_iso: convertDateToISO(row.Od),
       do_iso: convertDateToISO(row.Do),
+      sezon: row.sezon || '',
       liczba_pozycji: row.liczba_pozycji || 0
     }));
-    
-    console.log(`Server: Znaleziono ${dates.length} unikalnych dat dla klienta ${clientId}`);
+
+    console.log(`Server: Znaleziono ${dates.length} unikalnych okresów dla klienta ${clientId}`);
     res.json(dates);
   } catch (error) {
     console.error('Server: Błąd pobierania dat klienta:', error);
@@ -1540,53 +1542,58 @@ app.get('/api/historia/klient/:id/daty', async (req, res) => {
 });
 
 /**
- * GET /api/historia/klient/:id/sprzet?od=DD.MM.YYYY&do=DD.MM.YYYY - Pobiera sprzęt dla konkretnej daty
- * server.js: Pobieranie sprzętu wypożyczonego przez klienta w konkretnym okresie
+ * GET /api/historia/klient/:id/sprzet?od=DD.MM.YYYY&do=DD.MM.YYYY&sezon=XXXX - Pobiera sprzęt dla konkretnej daty i sezonu
+ * server.js: Pobieranie sprzętu wypożyczonego przez klienta w konkretnym okresie (JOIN po umowie i sezonie)
  */
 app.get('/api/historia/klient/:id/sprzet', async (req, res) => {
   try {
     const clientId = parseInt(req.params.id);
-    const { od, do: doDate } = req.query;
-    
+    const { od, do: doDate, sezon } = req.query;
+
     if (isNaN(clientId)) {
       return res.status(400).json({ error: 'Nieprawidłowe ID klienta' });
     }
-    
+
     if (!od || !doDate) {
       return res.status(400).json({ error: 'Brakuje parametrów od lub do' });
     }
-    
-    console.log('Server: Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate);
-    
+
+    console.log('Server: Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate, 'sezon:', sezon);
+
     const pool = await getHistoryDBConnection();
-    const [rows] = await pool.execute(
-      `SELECT d.*, k.Nazwisko, k.Imie, k.Telefon, s.Symbol, s.Nazwa, s.Dlugosc
-       FROM id_daty_2223 d
-       LEFT JOIN id_klient_2223 k ON d.Klient = k.ID
-       LEFT JOIN id_sprzet_2223 s ON d.Numer_kod = s.Umowa
-       WHERE d.Klient = ? AND d.Od = ? AND d.Do = ?
-       ORDER BY s.Nazwa, s.Symbol`,
-      [clientId, od, doDate]
-    );
-    
+
+    // Budujemy zapytanie - sezon jest opcjonalny dla wstecznej kompatybilności, ale zalecany
+    let query = `
+      SELECT d.*, k.Nazwisko, k.Imie, k.Telefon, s.Symbol, s.Nazwa, s.Dlugosc, d.sezon
+      FROM id_daty_old d
+      LEFT JOIN id_klient_old k ON d.Klient = k.Klient
+      LEFT JOIN id_sprzet_old s ON (d.umowa = s.umowa AND d.sezon = s.sezon)
+      WHERE d.Klient = ? AND d.Od = ? AND d.Do = ?
+    `;
+
+    const params = [clientId, od, doDate];
+
+    if (sezon) {
+      query += ` AND d.sezon = ?`;
+      params.push(sezon);
+    }
+
+    query += ` ORDER BY s.Nazwa, s.Symbol`;
+
+    const [rows] = await pool.execute(query, params);
+
     // Mapuj dane na format ReservationData
     const equipment = rows.map((row, index) => {
       // Mapuj status "Oddana" (prawda/fałsz) na tekst
-      // Obsługa różnych wariantów: wielkość liter, spacje, polskie znaki
       const oddanaValue = row.Oddana ? String(row.Oddana).trim().toLowerCase() : '';
       let status = '';
-      
+
       if (oddanaValue === 'prawda' || oddanaValue === 'true' || oddanaValue === '1') {
         status = 'Oddane';
       } else if (oddanaValue === 'fałsz' || oddanaValue === 'falsz' || oddanaValue === 'false' || oddanaValue === '0') {
         status = 'Nie oddane';
       }
-      
-      // Logowanie dla debugowania (tylko pierwszy rekord)
-      if (index === 0) {
-        console.log('Server: Przykładowa wartość Oddana z bazy:', row.Oddana, '-> status:', status);
-      }
-      
+
       return {
         klient: `${row.Imie || ''} ${row.Nazwisko || ''}`.trim() || 'Brak nazwy',
         sprzet: row.Nazwa || '',
@@ -1595,16 +1602,17 @@ app.get('/api/historia/klient/:id/sprzet', async (req, res) => {
         do: convertDateToISO(row.Do),
         cena: row.Kwota ? row.Kwota.toString() : '0',
         zaplacono: '0', // Baza historii nie ma tego pola
-        numer: row.Numer_kod ? row.Numer_kod.toString() : '',
+        numer: row.umowa ? row.umowa.toString() : '',
         typumowy: 'STANDARD', // Domyślnie STANDARD
         uwagi: row.Oddana === 'prawda' ? 'Oddana' : (row.Oddana === 'fałsz' ? 'Nie oddana' : ''),
+
         status: status, // Pole statusu
         source: 'history',
         dlugosc: row.Dlugosc || null,
         liczba_dni: row.Liczba_dni || 0
       };
     });
-    
+
     console.log(`Server: Znaleziono ${equipment.length} pozycji sprzętu dla klienta ${clientId}`);
     res.json(equipment);
   } catch (error) {

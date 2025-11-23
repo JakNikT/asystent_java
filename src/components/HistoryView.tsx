@@ -54,7 +54,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     setSelectedClient(client);
     setIsLoading(true);
     setError('');
-    
+
     try {
       const clientDates = await HistoryService.getClientDates(client.id);
       setDates(clientDates);
@@ -70,16 +70,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   // Pobieranie sprzętu po wybraniu daty
   const handleDateSelect = useCallback(async (dateRange: DateRange) => {
     if (!selectedClient) return;
-    
+
     setSelectedDate(dateRange);
     setIsLoading(true);
     setError('');
-    
+
     try {
       const clientEquipment = await HistoryService.getClientEquipment(
         selectedClient.id,
         dateRange.od,
-        dateRange.do
+        dateRange.do,
+        dateRange.sezon
       );
       setEquipment(clientEquipment);
       setStep('equipment');
@@ -113,16 +114,16 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Historia wypożyczeń (2022-2023)
+                Historia wypożyczeń (23/22 - 19/18 - 18/17)
               </h1>
               <p className="text-[#A6C2EF] text-sm">
                 {step === 'search' && 'Wyszukaj klienta po nazwisku'}
                 {step === 'dates' && selectedClient && `Klient: ${selectedClient.pelna_nazwa}`}
-                {step === 'equipment' && selectedClient && selectedDate && 
+                {step === 'equipment' && selectedClient && selectedDate &&
                   `Klient: ${selectedClient.pelna_nazwa} - ${selectedDate.od} - ${selectedDate.do}`}
               </p>
             </div>
-            
+
             <div className="flex gap-2">
               {step !== 'search' && (
                 <button
@@ -236,7 +237,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                     className="w-full text-left p-4 bg-[#2C699F] rounded-lg hover:bg-[#386BB2] transition-all"
                   >
                     <div className="text-white font-semibold">
-                      Od: {dateRange.od} - Do: {dateRange.do}
+                      Od: {dateRange.od} - Do: {dateRange.do} {dateRange.sezon ? `(Sezon: ${dateRange.sezon})` : ''}
                     </div>
                     <div className="text-[#A6C2EF] text-sm mt-1">
                       {dateRange.liczba_pozycji} {dateRange.liczba_pozycji === 1 ? 'pozycja' : 'pozycji'}
@@ -282,8 +283,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                       <th className="px-4 py-2 text-white font-semibold">Nazwa sprzętu</th>
                       <th className="px-4 py-2 text-white font-semibold">Długość</th>
                       <th className="px-4 py-2 text-white font-semibold">Liczba dni</th>
-                      <th className="px-4 py-2 text-white font-semibold">Kwota</th>
                       <th className="px-4 py-2 text-white font-semibold">Status</th>
+                      <th className="px-4 py-2 text-white font-semibold text-center">Kwota</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -298,10 +299,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                           {item.dlugosc ? `${item.dlugosc} cm` : '-'}
                         </td>
                         <td className="px-4 py-2 text-white">{item.liczba_dni || '-'}</td>
-                        <td className="px-4 py-2 text-white">{item.cena || '0'} zł</td>
                         <td className="px-4 py-2 text-white">
                           {item.status || '-'}
                         </td>
+                        {/* Wyświetl kwotę tylko w pierwszym wierszu, scalając dla wszystkich pozycji */}
+                        {index === 0 && (
+                          <td
+                            className="px-4 py-2 text-white text-center align-middle font-bold text-lg border-l border-[#2C699F]"
+                            rowSpan={equipment.length}
+                          >
+                            {item.cena || '0'} zł
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
