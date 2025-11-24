@@ -114,7 +114,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Historia wypożyczeń (23/22 - 19/18 - 18/17)
+                Historia wypożyczeń (23/22 - 19/18 - 18/17 - 17/16 - 16/15 - 15/14 - 14/13 - 13/12 - 12/11)
               </h1>
               <p className="text-[#A6C2EF] text-sm">
                 {step === 'search' && 'Wyszukaj klienta po nazwisku'}
