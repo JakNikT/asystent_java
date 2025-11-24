@@ -2,13 +2,14 @@
  * Wykrywa format FireFnow
  */
 export function detectFirefnowFormat(csvText) {
+    if (!csvText || csvText.trim() === '') return false;
+
     const sample = csvText.substring(0, 500);
     const semicolonCount = (sample.match(/;/g) || []).length;
     const commaCount = (sample.match(/,/g) || []).length;
     const hasSemicolons = semicolonCount > commaCount;
 
     const hasCorruptedChars =
-        sample.includes('') ||
         sample.includes('Sprzt') ||
         sample.includes('Uytkownik') ||
         sample.includes('Zapacono') ||
