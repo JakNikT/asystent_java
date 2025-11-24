@@ -1,5 +1,6 @@
 import { fireSnowService } from '../services/fireSnowService.js';
 import { config } from '../config/env.js';
+import logger from '../config/logger.js';
 
 export const fireSnowController = {
     async checkHealth(req, res) {
@@ -42,12 +43,12 @@ export const fireSnowController = {
             const data = await fireSnowService.getAvailability(from, to);
 
             const duration = Date.now() - startTime;
-            console.log(`Controller: Availability fetched in ${duration}ms`);
+            logger.info(`Availability fetched in ${duration}ms`);
 
             res.json(data);
         } catch (error) {
             const duration = Date.now() - startTime;
-            console.error(`Controller: Error fetching availability (after ${duration}ms):`, error);
+            logger.error(`Error fetching availability (after ${duration}ms)`, { error });
             res.status(500).json({ error: 'Błąd pobierania dostępności' });
         }
     }

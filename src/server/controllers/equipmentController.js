@@ -1,4 +1,5 @@
 import { equipmentService } from '../services/equipmentService.js';
+import logger from '../config/logger.js';
 
 export const equipmentController = {
     async getAll(req, res) {
@@ -6,7 +7,7 @@ export const equipmentController = {
             const data = await equipmentService.getAll();
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error fetching equipment:', error);
+            logger.error('Error fetching equipment', { error });
             res.status(500).json({ error: 'Błąd pobierania danych sprzętu' });
         }
     },
@@ -16,7 +17,7 @@ export const equipmentController = {
             const data = await equipmentService.create(req.body);
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error creating equipment:', error);
+            logger.error('Error creating equipment', { error });
             res.status(500).json({ error: 'Błąd dodawania narty' });
         }
     },
@@ -27,7 +28,7 @@ export const equipmentController = {
             if (!data) return res.status(404).json({ error: 'Narta nie znaleziona' });
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error updating equipment:', error);
+            logger.error('Error updating equipment', { error });
             res.status(500).json({ error: 'Błąd aktualizacji narty' });
         }
     },
@@ -44,7 +45,7 @@ export const equipmentController = {
 
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error bulk updating equipment:', error);
+            logger.error('Error bulk updating equipment', { error });
             res.status(500).json({ error: 'Błąd aktualizacji wielu nart' });
         }
     }

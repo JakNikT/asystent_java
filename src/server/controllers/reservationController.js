@@ -1,4 +1,5 @@
 import { reservationService } from '../services/reservationService.js';
+import logger from '../config/logger.js';
 
 export const reservationController = {
     async getAll(req, res) {
@@ -6,7 +7,7 @@ export const reservationController = {
             const data = await reservationService.getAll();
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error fetching reservations:', error);
+            logger.error('Error fetching reservations', { error });
             res.status(500).json({ error: 'Błąd pobierania rezerwacji' });
         }
     },
@@ -16,7 +17,7 @@ export const reservationController = {
             const data = await reservationService.create(req.body);
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error creating reservation:', error);
+            logger.error('Error creating reservation', { error });
             res.status(500).json({ error: 'Błąd dodawania rezerwacji' });
         }
     },
@@ -27,7 +28,7 @@ export const reservationController = {
             if (!data) return res.status(404).json({ error: 'Rezerwacja nie znaleziona' });
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error updating reservation:', error);
+            logger.error('Error updating reservation', { error });
             res.status(500).json({ error: 'Błąd aktualizacji rezerwacji' });
         }
     },
@@ -38,7 +39,7 @@ export const reservationController = {
             if (!data) return res.status(404).json({ error: 'Rezerwacja nie znaleziona' });
             res.json(data);
         } catch (error) {
-            console.error('Controller: Error deleting reservation:', error);
+            logger.error('Error deleting reservation', { error });
             res.status(500).json({ error: 'Błąd usuwania rezerwacji' });
         }
     }

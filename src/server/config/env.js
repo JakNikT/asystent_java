@@ -9,10 +9,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../../../');
 
+
+
 export const config = {
     port: process.env.PORT || 3000,
     fireSnowApiUrl: process.env.FIRESNOW_API_URL || 'http://localhost:8080',
     useFireSnowApi: process.env.USE_FIRESNOW_API === 'true',
+
+    // Logging configuration
+    logLevel: process.env.LOG_LEVEL || 'info',
+    logDir: process.env.LOG_DIR || 'logs',
 
     db: {
         host: process.env.DB_HOST || 'localhost',

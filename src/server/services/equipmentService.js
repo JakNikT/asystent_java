@@ -2,13 +2,14 @@ import { config } from '../config/env.js';
 import { fireSnowService } from './fireSnowService.js';
 import { csvService } from './csvService.js';
 import { mapFireSnowToSkiData, parseEquipmentName } from '../utils/equipmentMapper.js';
+import logger from '../config/logger.js';
 
 export const equipmentService = {
     async getAll() {
         if (config.useFireSnowApi) {
             try {
                 const fireSnowData = await fireSnowService.getAllEquipment();
-                console.log(`Server: Received ${fireSnowData.length} equipment records from API`);
+                logger.info(`Received ${fireSnowData.length} equipment records from API`);
 
                 // Definition of groups (same as original)
                 const groups = [
@@ -32,7 +33,7 @@ export const equipmentService = {
                             item.nazwa_sprzetu && item.nazwa_sprzetu.toUpperCase().includes('HEAD SHAPE')
                         );
                         if (headShapeItems.length > 0) {
-                            console.log(`Server: Found ${headShapeItems.length} HEAD SHAPE items in ${group.name}`);
+                            logger.info(`Found ${headShapeItems.length} HEAD SHAPE items in ${group.name}`);
                         }
                     }
 
@@ -40,15 +41,15 @@ export const equipmentService = {
                     allEquipment.push(...mappedGroupData);
                 }
 
-                console.log(`Server: Total mapped equipment: ${allEquipment.length}`);
+                logger.info(`Total mapped equipment: ${allEquipment.length}`);
                 return allEquipment;
 
             } catch (error) {
-                console.warn('Server: FireSnow API unavailable, fallback to CSV:', error.message);
+                logger.warn('FireSnow API unavailable, fallback to CSV', { error: error.message });
             }
         }
 
-        console.log('Server: Loading equipment from CSV');
+        logger.info('Loading equipment from CSV');
         return csvService.getSkis();
     },
 
