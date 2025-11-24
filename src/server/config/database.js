@@ -1,5 +1,6 @@
 import mysql from 'mysql2/promise';
 import { config } from './env.js';
+import logger from './logger.js';
 
 // Main Database Pool
 let pool = null;
@@ -15,7 +16,7 @@ export async function getDBConnection() {
             connectionLimit: config.db.connectionLimit,
             queueLimit: config.db.queueLimit
         });
-        console.log('Server: Utworzono pool połączeń MySQL');
+        logger.info('src/server/config/database.js: Utworzono pool połączeń MySQL');
     }
     return pool;
 }
@@ -34,7 +35,7 @@ export async function getHistoryDBConnection() {
             connectionLimit: config.db.connectionLimit,
             queueLimit: config.db.queueLimit
         });
-        console.log('Server: Utworzono pool połączeń MySQL dla historii (history)');
+        logger.info('src/server/config/database.js: Utworzono pool połączeń MySQL dla historii (history)');
     }
     return historyPool;
 }

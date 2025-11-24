@@ -1,3 +1,5 @@
+import logger from '../config/logger.js';
+
 /**
  * Mapuje ID grupy z FireSnow na TYP_SPRZETU i KATEGORIA
  * Mapuje bezpośrednio po parentGroupId (parent grup podrzędnych)
@@ -35,7 +37,7 @@ export function mapGroupToEquipmentType(subGroupId, parentGroupId) {
 
         // Domyślnie (nie powinno się zdarzyć, ale na wszelki wypadek)
         default:
-            console.warn(`Server: Nieznany parentGroupId: ${parentGroupId}, subGroupId: ${subGroupId}`);
+            logger.warn('src/server/utils/equipmentMapper.js: Nieznany parentGroupId:', { parentGroupId, subGroupId });
             return { TYP_SPRZETU: 'NARTY', KATEGORIA: '' };
     }
 }
