@@ -96,6 +96,27 @@ Użytkownik poprosił o dwa główne ulepszenia:
 
 ## Executor's Feedback or Assistance Requests
 
+**Data**: 2025-01-XX
+
+**Ukończono logowanie w serwerze**: ✅ WSZYSTKIE PLIKI UŻYWAJĄ LOGGERA
+
+**Wykonane zmiany**:
+1. ✅ **csvService.js** - dodano import loggera (wcześniej używał loggera bez importu)
+2. ✅ **database.js** - zamieniono `console.log` na `logger.info` (2 miejsca)
+3. ✅ **formatters.js** - zamieniono `console.warn/error` na `logger.warn/error` (4 miejsca)
+4. ✅ **equipmentMapper.js** - zamieniono `console.warn` na `logger.warn` (1 miejsce)
+
+**Status logowania**:
+- ✅ Wszystkie pliki serwera używają teraz loggera zamiast console.log
+- ✅ Wszystkie logi zawierają informację o pliku źródłowym (np. "src/server/config/database.js:")
+- ✅ Logger skonfigurowany z Winston (rotacja dzienna, poziomy logowania)
+- ⏳ Logowanie operacji usuwania (zadanie 2.1.3) - będzie dodane gdy endpoint DELETE zostanie zaimplementowany
+
+**Następne kroki**:
+- Gdy zostanie zaimplementowany endpoint DELETE /api/skis/:id, należy dodać logowanie operacji usuwania zgodnie z zadaniem 2.1.3
+
+---
+
 **Data**: 2025-11-01
 
 **Nowa funkcjonalność**: ✅ AUTOMATYCZNE WYSZUKIWANIE I ODŚWIEŻANIE

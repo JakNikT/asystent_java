@@ -2,6 +2,7 @@ import fs from 'fs/promises';
 import Papa from 'papaparse';
 import { config } from '../config/env.js';
 import { detectFirefnowFormat, convertFromFirefnow } from '../utils/csvParser.js';
+import logger from '../config/logger.js';
 
 export const csvService = {
     async readCsv(filePath) {

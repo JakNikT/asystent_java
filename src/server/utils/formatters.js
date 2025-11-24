@@ -1,3 +1,5 @@
+import logger from '../config/logger.js';
+
 /**
  * Formatuje datę z FireSnow API do formatu ISO 8601 (rozumiany przez JavaScript Date)
  * Input: "2026-02-13 11:00:00.000000" → Output: "2026-02-13T11:00:00"
@@ -13,13 +15,13 @@ export function formatFireSnowDate(dateString) {
         // Sprawdź czy to poprawna data
         const date = new Date(isoString);
         if (isNaN(date.getTime())) {
-            console.warn('Server: Nieprawidłowa data:', dateString);
+            logger.warn('src/server/utils/formatters.js: Nieprawidłowa data:', { dateString });
             return dateString;
         }
 
         return isoString; // "2026-02-13T11:00:00"
     } catch (error) {
-        console.error('Server: Błąd formatowania daty:', dateString, error);
+        logger.error('src/server/utils/formatters.js: Błąd formatowania daty:', { dateString, error });
         return dateString;
     }
 }
@@ -44,12 +46,12 @@ export function convertDateToISO(dateString) {
         // Output: "2022-12-31T00:00:00"
         const [day, month, year] = dateString.split('.');
         if (!day || !month || !year) {
-            console.warn('Server: Nieprawidłowy format daty:', dateString);
+            logger.warn('src/server/utils/formatters.js: Nieprawidłowy format daty:', { dateString });
             return dateString;
         }
         return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T00:00:00`;
     } catch (error) {
-        console.error('Server: Błąd konwersji daty:', dateString, error);
+        logger.error('src/server/utils/formatters.js: Błąd konwersji daty:', { dateString, error });
         return dateString;
     }
 }
