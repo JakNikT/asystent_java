@@ -35,8 +35,8 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({ 
-  allSkis, 
+export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
+  allSkis,
   browseCriteria,
   onBack,
   initialFilter = 'all',
@@ -52,26 +52,26 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     field: 'DLUGOSC',
     direction: 'asc'
   });
-  
+
   const [currentPage, setCurrentPage] = useState(1);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
   // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
   // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
   const itemsPerPage = 10000;
-  
+
   // NOWY STAN: Wyszukiwanie tekstowe
   const [searchTerm, setSearchTerm] = useState('');
 
   // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
-  
+
   // Zmienna pomocnicza do sprawdzania czy wyświetlamy buty (dla ukrywania kolumn)
   // Dla butów junior, snowboard i dorosłych ukrywamy kolumny: Wzrost, Waga, Poziom, Płeć, Przeznaczenie, Atuty
   const shouldHideColumns = activeFilter === 'BUTY_JUNIOR' || activeFilter === 'BUTY_SNOWBOARD' || activeFilter === 'DOROSLE';
   // Dla nart junior ukrywamy tylko: Płeć, Przeznaczenie, Atuty (Wzrost, Waga, Poziom pozostają widoczne)
   const shouldHideJuniorSkiColumns = activeFilter === 'JUNIOR';
-  
+
   // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
   useEffect(() => {
     if (initialFilter) {
@@ -94,17 +94,17 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     const loadAvailabilityStatuses = async () => {
       const startTime = Date.now();
       const statusMap = new Map<string, any>();
-      
+
       try {
         // Sprawdź czy użytkownik wpisał daty
         const hasUserDates = browseCriteria?.dateFrom && browseCriteria?.dateTo;
-        
+
         if (!hasUserDates) {
           console.log('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
           setAvailabilityStatuses(new Map());
           return;
         }
-        
+
         // Użyj dat z formularza użytkownika
         const startDate = browseCriteria.dateFrom;
         const endDate = browseCriteria.dateTo;
@@ -113,27 +113,27 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           console.log('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
           return;
         }
-        
+
         // Policz ile nart ma kod
         const skisWithCode = allSkis.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
         const totalSkis = skisWithCode.length;
-        
+
         console.log('═══════════════════════════════════════════════════════');
         console.log('BrowseSkisComponent: 📋 PRZEGLĄDAJ - Rozpoczęcie sprawdzania dostępności');
         console.log('BrowseSkisComponent:   Okres:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
         console.log('BrowseSkisComponent:   Nart do sprawdzenia:', totalSkis);
-        
+
         // OPTYMALIZACJA: Pobierz dane dostępności RAZ dla całego okresu
         console.log('BrowseSkisComponent:   Pobieram dane dostępności z API (jedno zapytanie)...');
         const allAvailabilityData = await ReservationApiClient.loadAvailabilityForPeriod(startDate, endDate);
         console.log(`BrowseSkisComponent:   ✅ Pobrano ${allAvailabilityData.length} pozycji (dostępne dla wszystkich nart)`);
         console.log('BrowseSkisComponent:   Rozpoczynam sprawdzanie dostępności...');
-        
+
         let checkedCount = 0;
         let availableCount = 0;
         let warningCount = 0;
         let reservedCount = 0;
-        
+
         // Sprawdź status dla każdej narty z kodem (NOWY SYSTEM 3-KOLOROWY)
         // Używamy już pobranych danych zamiast pobierać dla każdej narty osobno
         for (const ski of skisWithCode) {
@@ -147,11 +147,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               allAvailabilityData  // Użyj już pobranych danych
             );
             statusMap.set(ski.KOD, availabilityInfo);
-            
+
             if (availabilityInfo.status === 'available') availableCount++;
             else if (availabilityInfo.status === 'warning') warningCount++;
             else if (availabilityInfo.status === 'reserved') reservedCount++;
-            
+
             // Loguj co 100 nart (żeby nie spamować konsoli)
             if (checkedCount % 100 === 0 || checkedCount === totalSkis) {
               console.log(`BrowseSkisComponent:   Postęp: ${checkedCount}/${totalSkis} nart sprawdzonych`);
@@ -160,7 +160,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             console.error(`BrowseSkisComponent:   ❌ Błąd dla kodu ${ski.KOD}:`, error);
           }
         }
-        
+
         const duration = Date.now() - startTime;
         console.log('BrowseSkisComponent:   ✅ Zakończono sprawdzanie dostępności:');
         console.log('BrowseSkisComponent:      - Sprawdzonych nart:', checkedCount);
@@ -169,7 +169,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         console.log('BrowseSkisComponent:      - 🔴 Zarezerwowane:', reservedCount);
         console.log('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
         console.log('═══════════════════════════════════════════════════════');
-        
+
         setAvailabilityStatuses(statusMap);
       } catch (error) {
         console.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
@@ -206,23 +206,23 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // src/components/BrowseSkisComponent.tsx: Znajduje narty tego samego modelu, typu i kategorii
   const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
     // Znajdź wszystkie narty tego samego modelu, długości, typu i kategorii
-    const sameModelSkis = allSkis.filter(s => 
+    const sameModelSkis = allSkis.filter(s =>
       s && ski &&
-      (s.MARKA || '') === (ski.MARKA || '') && 
-      (s.MODEL || '') === (ski.MODEL || '') && 
+      (s.MARKA || '') === (ski.MARKA || '') &&
+      (s.MODEL || '') === (ski.MODEL || '') &&
       s.DLUGOSC === ski.DLUGOSC &&
       (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
       (s.KATEGORIA || '') === (ski.KATEGORIA || '')
     );
-    
+
     const squares = sameModelSkis.map((s, index) => {
       const availabilityInfo = s.KOD ? availabilityStatuses.get(s.KOD) : null;
-      
+
       // Określ kolor tła na podstawie statusu (3 kolory)
       let bgColor = 'bg-green-500'; // Domyślnie zielony (brak dat lub brak rezerwacji)
       let statusEmoji = '🟢';
       let statusText = 'Dostępne';
-      
+
       if (availabilityInfo) {
         if (availabilityInfo.color === 'red') {
           bgColor = 'bg-red-500';
@@ -238,26 +238,26 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           statusText = 'Dostępne';
         }
       }
-      
+
       // Stwórz tooltip z informacjami
       let tooltip = `Sztuka ${index + 1} - ${statusText}\nKod: ${s.KOD || 'Brak kodu'}`;
-      
+
       if (availabilityInfo) {
         tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
-        
+
         // Dodaj informacje o rezerwacjach/wypożyczeniach z datami
         if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
           tooltip += `\n\n📅 Rezerwacje/Wypożyczenia:`;
           availabilityInfo.reservations.forEach((reservation: ReservationInfo, resIndex: number) => {
             // Sprawdź czy reservation ma pola startDate i endDate
             if (reservation.startDate && reservation.endDate) {
-              const startDate = reservation.startDate instanceof Date 
-                ? reservation.startDate 
+              const startDate = reservation.startDate instanceof Date
+                ? reservation.startDate
                 : new Date(reservation.startDate);
-              const endDate = reservation.endDate instanceof Date 
-                ? reservation.endDate 
+              const endDate = reservation.endDate instanceof Date
+                ? reservation.endDate
                 : new Date(reservation.endDate);
-              
+
               const startDateStr = startDate.toLocaleDateString('pl-PL', {
                 day: '2-digit',
                 month: '2-digit',
@@ -276,7 +276,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           });
         }
       }
-      
+
       return (
         <span
           key={s.KOD || `no-code-${index}`}
@@ -287,7 +287,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         </span>
       );
     });
-    
+
     return <div className="flex flex-wrap">{squares}</div>;
   };
 
@@ -385,8 +385,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const getSkisInGroup = (ski: SkiData): SkiData[] => {
     return allSkis.filter(s =>
       s && ski &&
-      (s.MARKA || '') === (ski.MARKA || '') && 
-      (s.MODEL || '') === (ski.MODEL || '') && 
+      (s.MARKA || '') === (ski.MARKA || '') &&
+      (s.MODEL || '') === (ski.MODEL || '') &&
       s.DLUGOSC === ski.DLUGOSC &&
       (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
       (s.KATEGORIA || '') === (ski.KATEGORIA || '')
@@ -395,7 +395,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // src/components/BrowseSkisComponent.tsx: Funkcja filtrowania sprzętu
   const filterSkis = (
-    skis: SkiData[], 
+    skis: SkiData[],
     searchTerm: string,
     activeFilter: string
   ): SkiData[] => {
@@ -414,8 +414,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         if (!ski || !ski.TYP_SPRZETU) {
           return false;
         }
-        
-        // Filtrowanie według typu sprzętu i kategorii (zgodne z AnimaComponent)
+
+        // Filtrowanie według typu sprzętu i kategorii (zgodne z Dashboard)
         switch (activeFilter) {
           case 'TOP':
             return ski.TYP_SPRZETU === 'NARTY' && (ski.KATEGORIA || '') === 'TOP';
@@ -451,7 +451,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           default: return purpose.toLowerCase();
         }
       };
-      
+
       filtered = filtered.filter(ski => {
         // Zabezpieczenie: wszystkie pola mogą być null/undefined z MySQL
         const marka = (ski.MARKA || '').toLowerCase();
@@ -463,7 +463,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const przeznaczenieFormatted = getPurposeFullName(ski.PRZEZNACZENIE || '');
         const atuty = (ski.ATUTY || '').toLowerCase();
         const dlugosc = (ski.DLUGOSC !== null && ski.DLUGOSC !== undefined) ? ski.DLUGOSC.toString() : '';
-        
+
         // Rok jest teraz w MODEL (np. "SHAPE 3.0 (2025)"), więc będzie wyszukiwany przez model.includes(term)
         return marka.includes(term) ||
           model.includes(term) ||
@@ -540,30 +540,30 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // NORMALIZACJA: Normalizuje MARKA i MODEL przed grupowaniem, aby ignorować różnice w spacji/wielkości liter
   const groupSkisByModel = (skis: SkiData[]): SkiData[] => {
     const grouped = new Map<string, SkiData>();
-    
+
     // Funkcja normalizacji nazwy (usuwa dodatkowe spacje, normalizuje wielkość liter)
     // server.js: Normalizacja zapewnia, że "HEAD SHAPE 3.0" i "head shape 3.0" będą traktowane jako to samo
     const normalizeName = (name: string): string => {
       if (!name) return '';
       return name.trim().replace(/\s+/g, ' ').toUpperCase();
     };
-    
+
     skis.forEach(ski => {
       // Normalizuj MARKA i MODEL przed utworzeniem klucza
       // To zapewnia, że narty z różnymi formatami nazw (np. "HEAD SHAPE 3.0" vs "head shape 3.0") będą grupowane razem
       const normalizedMarka = normalizeName(ski.MARKA || '');
       const normalizedModel = normalizeName(ski.MODEL || '');
-      
+
       // Klucz grupowania: MARKA + MODEL + DLUGOSC + TYP_SPRZETU + KATEGORIA
       // To zapewnia, że VIP i TOP nie będą grupowane razem, nawet jeśli mają ten sam model
       const key = `${normalizedMarka}|${normalizedModel}|${ski.DLUGOSC || ''}|${ski.TYP_SPRZETU || ''}|${ski.KATEGORIA || ''}`;
-      
+
       // Jeśli nie ma jeszcze tej grupy, dodaj pierwszą nartę jako reprezentanta
       if (!grouped.has(key)) {
         grouped.set(key, ski);
       }
     });
-    
+
     // Zwróć tylko reprezentantów grup (jedna narta na kombinację modelu, typu i kategorii)
     return Array.from(grouped.values());
   };
@@ -576,7 +576,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
   const currentSkis = sortedSkis.slice(startIndex, endIndex);
-  
+
   // Sprawdź czy w tabeli są buty dorosłe (dla wyświetlania kolumny Flex)
   const hasAdultBoots = currentSkis.some(ski => ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE');
 
@@ -585,8 +585,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     if (sortConfig.field !== field) {
       return <span className="text-gray-400">↕</span>;
     }
-    return sortConfig.direction === 'asc' ? 
-      <span className="text-blue-600">↑</span> : 
+    return sortConfig.direction === 'asc' ?
+      <span className="text-blue-600">↑</span> :
       <span className="text-blue-600">↓</span>;
   };
 
@@ -651,11 +651,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange?.(tab.id)}
-                className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
-                  activeTabId === tab.id
+                className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
                     ? 'bg-[#386BB2] text-white'
                     : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
-                }`}
+                  }`}
               >
                 {tab.label}
                 {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
@@ -672,7 +671,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 )}
               </button>
             ))}
-            
+
             {/* Przycisk dodawania nowej karty - sticky na mobile */}
             {onAddTab && (
               <button
@@ -686,302 +685,301 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </div>
         </div>
       )}
-      
+
       <div className="p-3 lg:p-6">
         <div className="max-w-8xl mx-auto">
           {/* Header z wyszukiwaniem - responsywny */}
           <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
-          <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
-            <div className="flex-shrink-0">
-              <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
-                Przeglądaj sprzęt
-              </h1>
-              <p className="text-[#A6C2EF] text-sm">
-                Znaleziono {sortedSkis.length} nart
-              </p>
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
+              <div className="flex-shrink-0">
+                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
+                  Przeglądaj sprzęt
+                </h1>
+                <p className="text-[#A6C2EF] text-sm">
+                  Znaleziono {sortedSkis.length} nart
+                </p>
+              </div>
+
+              {/* Przyciski filtrów */}
+              <div className="flex flex-wrap gap-2">
+                <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>📦 Cały sprzęt</button>
+                <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty TOP</button>
+                <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-600 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty VIP</button>
+                <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Narty JUNIOR</button>
+                <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Buty Junior</button>
+                <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🥾 Buty Dorosłe</button>
+                <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🏂 Deski</button>
+                <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👢 Buty SB</button>
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+                <button
+                  onClick={onBack}
+                  className="bg-[#2C699F] hover:bg-[#194576] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                >
+                  ← Wróć
+                </button>
+              </div>
             </div>
 
-            {/* Przyciski filtrów */}
-            <div className="flex flex-wrap gap-2">
-              <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>📦 Cały sprzęt</button>
-              <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty TOP</button>
-              <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-600 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty VIP</button>
-              <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Narty JUNIOR</button>
-              <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Buty Junior</button>
-              <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🥾 Buty Dorosłe</button>
-              <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🏂 Deski</button>
-              <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👢 Buty SB</button>
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              <label className="text-white font-medium text-lg">
+                🔍 Wyszukaj narty:
+              </label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); // Reset do pierwszej strony przy wyszukiwaniu
+                }}
+                placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
+                className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
+              />
+              {searchTerm && (
+                <button
+                  onClick={() => setSearchTerm('')}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200"
+                >
+                  Wyczyść
+                </button>
+              )}
             </div>
-
-            <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
-              <button
-                onClick={onBack}
-                className="bg-[#2C699F] hover:bg-[#194576] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
-              >
-                ← Wróć
-              </button>
-            </div>
-          </div>
-          
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-            <label className="text-white font-medium text-lg">
-              🔍 Wyszukaj narty:
-            </label>
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => {
-                setSearchTerm(e.target.value);
-                setCurrentPage(1); // Reset do pierwszej strony przy wyszukiwaniu
-              }}
-              placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
-              className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
-            />
             {searchTerm && (
-              <button
-                onClick={() => setSearchTerm('')}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200"
-              >
-                Wyczyść
-              </button>
+              <p className="text-sm text-gray-400 mt-2">
+                Znaleziono {sortedSkis.length} pasujących nart.
+              </p>
             )}
           </div>
-          {searchTerm && (
-            <p className="text-sm text-gray-400 mt-2">
-              Znaleziono {sortedSkis.length} pasujących nart.
-            </p>
-          )}
-        </div>
 
-        {/* Tabela sprzętu */}
-        <div className="bg-[#194576] rounded-lg shadow-lg overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#2C699F]">
-                {/* NOWA ZMIANA: Nowy układ kolumn */}
-                <tr>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('MARKA')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Marka {renderSortIcon('MARKA')}
-                    </div>
-                  </th>
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('MODEL')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Model {renderSortIcon('MODEL')}
-                    </div>
-                  </th>
-                  {hasAdultBoots && (
-                    <th 
+          {/* Tabela sprzętu */}
+          <div className="bg-[#194576] rounded-lg shadow-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-[#2C699F]">
+                  {/* NOWA ZMIANA: Nowy układ kolumn */}
+                  <tr>
+                    <th
                       className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                      onClick={() => handleSort('FLEX')}
+                      onClick={() => handleSort('MARKA')}
                     >
                       <div className="flex items-center gap-2">
-                        Flex {renderSortIcon('FLEX')}
+                        Marka {renderSortIcon('MARKA')}
                       </div>
                     </th>
-                  )}
-                  <th 
-                    className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                    onClick={() => handleSort('DLUGOSC')}
-                  >
-                    <div className="flex items-center gap-2">
-                      Długość {renderSortIcon('DLUGOSC')}
-                    </div>
-                  </th>
-                  {!shouldHideColumns && (
-                    <>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
-                      <th 
-                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                        onClick={() => handleSort('POZIOM')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Poziom {renderSortIcon('POZIOM')}
-                        </div>
-                      </th>
-                    </>
-                  )}
-                  {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
-                    <>
-                      <th 
-                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                        onClick={() => handleSort('PLEC')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Płeć {renderSortIcon('PLEC')}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
-                        onClick={() => handleSort('PRZEZNACZENIE')}
-                      >
-                        <div className="flex items-center gap-2">
-                          Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
-                        </div>
-                      </th>
-                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
-                        Atuty
-                      </th>
-                    </>
-                  )}
-                  <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
-                  {isEmployeeMode && (
-                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Akcja</th>
-                  )}
-                </tr>
-              </thead>
-              <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
-                {currentSkis.map((ski) => (
-                  <tr key={ski.ID} className="hover:bg-[#2C699F]">
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatBrandName(ski)}
-                    </td>
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {formatModelName(ski)}
-                    </td>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      onClick={() => handleSort('MODEL')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Model {renderSortIcon('MODEL')}
+                      </div>
+                    </th>
                     {hasAdultBoots && (
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                        {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE') 
-                          ? (extractFlexFromModel(ski.MODEL) || '-')
-                          : '-'
-                        }
-                      </td>
+                      <th
+                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        onClick={() => handleSort('FLEX')}
+                      >
+                        <div className="flex items-center gap-2">
+                          Flex {renderSortIcon('FLEX')}
+                        </div>
+                      </th>
                     )}
-                    <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                      {ski.DLUGOSC} cm
-                    </td>
+                    <th
+                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      onClick={() => handleSort('DLUGOSC')}
+                    >
+                      <div className="flex items-center gap-2">
+                        Długość {renderSortIcon('DLUGOSC')}
+                      </div>
+                    </th>
                     {!shouldHideColumns && (
                       <>
-                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
-                          {ski.WZROST_MIN}-{ski.WZROST_MAX}
-                        </td>
-                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
-                          {ski.WAGA_MIN}-{ski.WAGA_MAX}
-                        </td>
-                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
-                          {formatLevel(ski.POZIOM)}
-                        </td>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                          onClick={() => handleSort('POZIOM')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Poziom {renderSortIcon('POZIOM')}
+                          </div>
+                        </th>
                       </>
                     )}
                     {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                       <>
-                        <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
-                          {formatGender(ski.PLEC)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                          {formatPurpose(ski.PRZEZNACZENIE)}
-                        </td>
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
-                          {ski.ATUTY || '-'}
-                        </td>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                          onClick={() => handleSort('PLEC')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Płeć {renderSortIcon('PLEC')}
+                          </div>
+                        </th>
+                        <th
+                          className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                          onClick={() => handleSort('PRZEZNACZENIE')}
+                        >
+                          <div className="flex items-center gap-2">
+                            Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
+                          </div>
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                          Atuty
+                        </th>
                       </>
                     )}
-                    <td className="px-4 py-4 whitespace-nowrap text-sm">
-                      {generateAvailabilitySquares(ski)}
-                    </td>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
                     {isEmployeeMode && (
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        <button
-                          onClick={() => handleEdit(ski)}
-                          className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
-                          title="Edytuj sprzęt"
-                        >
-                          ✏️ Edytuj
-                        </button>
-                      </td>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Akcja</th>
                     )}
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
+                  {currentSkis.map((ski) => (
+                    <tr key={ski.ID} className="hover:bg-[#2C699F]">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                        {formatBrandName(ski)}
+                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                        {formatModelName(ski)}
+                      </td>
+                      {hasAdultBoots && (
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE')
+                            ? (extractFlexFromModel(ski.MODEL) || '-')
+                            : '-'
+                          }
+                        </td>
+                      )}
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                        {ski.DLUGOSC} cm
+                      </td>
+                      {!shouldHideColumns && (
+                        <>
+                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                            {ski.WZROST_MIN}-{ski.WZROST_MAX}
+                          </td>
+                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
+                            {ski.WAGA_MIN}-{ski.WAGA_MAX}
+                          </td>
+                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
+                            {formatLevel(ski.POZIOM)}
+                          </td>
+                        </>
+                      )}
+                      {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                        <>
+                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
+                            {formatGender(ski.PLEC)}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                            {formatPurpose(ski.PRZEZNACZENIE)}
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                            {ski.ATUTY || '-'}
+                          </td>
+                        </>
+                      )}
+                      <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        {generateAvailabilitySquares(ski)}
+                      </td>
+                      {isEmployeeMode && (
+                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                          <button
+                            onClick={() => handleEdit(ski)}
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+                            title="Edytuj sprzęt"
+                          >
+                            ✏️ Edytuj
+                          </button>
+                        </td>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Paginacja */}
+            {totalPages > 1 && (
+              <div className="bg-[#2C699F] px-4 py-3 flex items-center justify-between border-t border-[#194576] sm:px-6">
+                <div className="flex-1 flex justify-between sm:hidden">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="relative inline-flex items-center px-4 py-2 border border-[#194576] text-sm font-medium rounded-md text-white bg-[#2C699F] hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Poprzednia
+                  </button>
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage === totalPages}
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-[#194576] text-sm font-medium rounded-md text-white bg-[#2C699F] hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Następna
+                  </button>
+                </div>
+                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm text-white">
+                      Pokazuję <span className="font-medium">{startIndex + 1}</span> do{' '}
+                      <span className="font-medium">{Math.min(endIndex, sortedSkis.length)}</span> z{' '}
+                      <span className="font-medium">{sortedSkis.length}</span> wyników
+                    </p>
+                  </div>
+                  <div>
+                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                        disabled={currentPage === 1}
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-[#194576] bg-[#2C699F] text-sm font-medium text-white hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        ←
+                      </button>
+
+                      {/* Numery stron */}
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                        if (pageNum > totalPages) return null;
+
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
+                                ? 'z-10 bg-[#194576] border-[#194576] text-white'
+                                : 'bg-[#2C699F] border-[#194576] text-white hover:bg-[#194576]'
+                              }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+
+                      <button
+                        onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                        disabled={currentPage === totalPages}
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-[#194576] bg-[#2C699F] text-sm font-medium text-white hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        →
+                      </button>
+                    </nav>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Paginacja */}
-          {totalPages > 1 && (
-            <div className="bg-[#2C699F] px-4 py-3 flex items-center justify-between border-t border-[#194576] sm:px-6">
-              <div className="flex-1 flex justify-between sm:hidden">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-[#194576] text-sm font-medium rounded-md text-white bg-[#2C699F] hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Poprzednia
-                </button>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="ml-3 relative inline-flex items-center px-4 py-2 border border-[#194576] text-sm font-medium rounded-md text-white bg-[#2C699F] hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Następna
-                </button>
-              </div>
-              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm text-white">
-                    Pokazuję <span className="font-medium">{startIndex + 1}</span> do{' '}
-                    <span className="font-medium">{Math.min(endIndex, sortedSkis.length)}</span> z{' '}
-                    <span className="font-medium">{sortedSkis.length}</span> wyników
-                  </p>
-                </div>
-                <div>
-                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      disabled={currentPage === 1}
-                      className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-[#194576] bg-[#2C699F] text-sm font-medium text-white hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      ←
-                    </button>
-                    
-                    {/* Numery stron */}
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                      if (pageNum > totalPages) return null;
-                      
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                            currentPage === pageNum
-                              ? 'z-10 bg-[#194576] border-[#194576] text-white'
-                              : 'bg-[#2C699F] border-[#194576] text-white hover:bg-[#194576]'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
-                    
-                    <button
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      disabled={currentPage === totalPages}
-                      className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-[#194576] bg-[#2C699F] text-sm font-medium text-white hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      →
-                    </button>
-                  </nav>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Informacje o sortowaniu */}
+          <div className="mt-4 text-sm text-white">
+            <p>
+              Sortowanie: <span className="font-medium">{sortConfig.field}</span> (
+              {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
+            </p>
+          </div>
         </div>
-
-        {/* Informacje o sortowaniu */}
-        <div className="mt-4 text-sm text-white">
-          <p>
-            Sortowanie: <span className="font-medium">{sortConfig.field}</span> (
-            {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
-          </p>
-        </div>
-      </div>
       </div>
 
       {/* Modal edycji/dodawania - tylko w trybie pracownika */}
