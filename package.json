@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "convert-firefnow": "node scripts/convert-firefnow-to-rezerwacja.cjs",
     "server": "node server.js",
-    "build:server": "npm run build && npm install express cors papaparse"
+    "build:server": "npm run build && npm install express cors papaparse",
+    "dev:all": "concurrently \"cd FireSnowBridge && start-headless.bat\" \"npm run server\" \"npm run dev\" --names \"JAVA,API,WEB\" --prefix-colors \"yellow,blue,green\""
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -33,6 +34,7 @@
     "@vitejs/plugin-react-swc": "^4.1.0",
     "autoprefixer": "^10.4.21",
     "buffer": "^6.0.3",
+    "concurrently": "^9.2.1",
     "eslint": "^9.36.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
