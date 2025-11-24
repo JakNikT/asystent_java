@@ -22,6 +22,7 @@ import { BrowseSkisComponent } from './BrowseSkisComponent';
 import { ReservationsView } from './ReservationsView';
 import { HistoryView } from './HistoryView';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../types/ski.types';
+import type { FormData, TabData, AppMode } from '../types/dashboard.types';
 import PasswordModal from './PasswordModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatModelName, formatBrandName } from '../utils/nameFormatter';
@@ -48,52 +49,6 @@ const itemVariants = {
     }
   }
 };
-
-
-interface FormData {
-  dateFrom: {
-    day: string;
-    month: string;
-    year: string;
-  };
-  dateTo: {
-    day: string;
-    month: string;
-    year: string;
-  };
-  height: {
-    value: string;
-    unit: string;
-  };
-  weight: {
-    value: string;
-    unit: string;
-  };
-  level: string;
-  gender: string;
-  shoeSize?: string; // NOWE: rozmiar buta w cm (opcjonalny)
-  // USUNIĘTO: preferences - teraz filtry stylu są oddzielne
-}
-
-// NOWY INTERFEJS: Dane dla pojedynczej karty (osoby)
-interface TabData {
-  id: string;
-  label: string; // np. "Osoba 1", "Osoba 2"
-  formData: FormData;
-  selectedStyles: string[];
-  searchResults: SearchResults | null;
-  currentCriteria: SearchCriteria | null;
-  formErrors: FormErrors;
-  error: string;
-  isLoading: boolean;
-  expandedCategories: {
-    alternatywy: boolean;
-    poziom_za_nisko: boolean;
-    inna_plec: boolean;
-    na_sile: boolean;
-  };
-  expandedRows: Record<string, number[]>;
-}
 
 const AnimaComponent: React.FC = () => {
   // NOWY STAN: System kart - każda karta to jedna osoba
@@ -138,7 +93,7 @@ const AnimaComponent: React.FC = () => {
   const [suggestions, setSuggestions] = useState<string[]>([]);
 
   // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje vs historia)
-  const [appMode, setAppMode] = useState<'search' | 'browse' | 'reservations' | 'history'>('search');
+  const [appMode, setAppMode] = useState<AppMode>('search');
 
   // NOWY STAN: Filtry kategorii sprzętu
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
