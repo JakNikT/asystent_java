@@ -1,12 +1,8 @@
-import Frame from './components/AnimaComponent'
-import './App.css'
+import AnimaComponent from './components/AnimaComponent';
+import './App.css';
 
 function App() {
-  return (
-    <div className="App">
-      <Frame />
-    </div>
-  )
+    return <AnimaComponent />;
 }
 
-export default App
+export default App;

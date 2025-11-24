@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "framer-motion": "^12.23.22",
     "iconv-lite": "^0.7.0",
