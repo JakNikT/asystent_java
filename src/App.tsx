@@ -1,8 +1,8 @@
-import AnimaComponent from './components/AnimaComponent';
+import { Dashboard } from './components/dashboard';
 import './App.css';
 
 function App() {
-    return <AnimaComponent />;
+    return <Dashboard />;
 }
 
 export default App;

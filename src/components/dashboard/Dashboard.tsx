@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { CSVParser } from '../utils/csvParser';
-import { SkiDataService } from '../services/skiDataService';
-import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
+import { CSVParser } from '../../utils/csvParser';
+import { SkiDataService } from '../../services/skiDataService';
+import { SkiMatchingServiceV2 } from '../../services/skiMatchingServiceV2';
 import { 
   validateForm, 
   initialFormErrors, 
@@ -14,18 +14,23 @@ import {
   validateGenderRealtime,
   validateShoeSizeRealtime,
   type FormErrors 
-} from '../utils/formValidation';
-import { saveSearchHistory, saveAllTabs, loadAllTabs } from '../utils/localStorage';
-import { DetailedCompatibility } from './DetailedCompatibility';
-import { SkiStyleBadge } from './SkiStyleBadge';
-import { BrowseSkisComponent } from './BrowseSkisComponent';
-import { ReservationsView } from './ReservationsView';
-import { HistoryView } from './HistoryView';
-import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../types/ski.types';
-import type { FormData, TabData, AppMode } from '../types/dashboard.types';
-import PasswordModal from './PasswordModal';
+} from '../../utils/formValidation';
+import { saveSearchHistory, saveAllTabs, loadAllTabs } from '../../utils/localStorage';
+import { DetailedCompatibility } from '../DetailedCompatibility';
+import { SkiStyleBadge } from '../SkiStyleBadge';
+import { BrowseSkisComponent } from '../BrowseSkisComponent';
+import { ReservationsView } from '../ReservationsView';
+import { HistoryView } from '../HistoryView';
+import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../../types/ski.types';
+import type { FormData, TabData, AppMode } from '../../types/dashboard.types';
+import PasswordModal from '../PasswordModal';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatModelName, formatBrandName } from '../utils/nameFormatter';
+import { formatModelName, formatBrandName } from '../../utils/nameFormatter';
+import TabNavigation from './TabNavigation';
+import DashboardHeader from './DashboardHeader';
+import SkierForm from './SkierForm';
+import EmployeeControls from './EmployeeControls';
+import EquipmentFilters from './EquipmentFilters';
 
 const containerVariants = {
   hidden: { opacity: 1 },
@@ -50,7 +55,7 @@ const itemVariants = {
   }
 };
 
-const AnimaComponent: React.FC = () => {
+const Dashboard: React.FC = () => {
   // NOWY STAN: System kart - każda karta to jedna osoba
   const [tabs, setTabs] = useState<TabData[]>([
     {
@@ -286,7 +291,7 @@ const AnimaComponent: React.FC = () => {
     if (!results) return null;
     if (!equipmentTypeFilter && !categoryFilter) return results;
     
-    console.log('src/components/AnimaComponent.tsx: Filtrowanie wyników - typ:', equipmentTypeFilter, 'kategoria:', categoryFilter);
+    console.log('src/components/dashboard/Dashboard.tsx: Filtrowanie wyników - typ:', equipmentTypeFilter, 'kategoria:', categoryFilter);
     
     // Filtruj każdą kategorię wyników
     const filterMatches = (matches: SkiMatch[]) => {
@@ -320,7 +325,7 @@ const AnimaComponent: React.FC = () => {
       wszystkie: filterMatches(results.wszystkie)
     };
     
-    console.log('src/components/AnimaComponent.tsx: Wyniki po filtrowaniu:', {
+    console.log('src/components/dashboard/Dashboard.tsx: Wyniki po filtrowaniu:', {
       idealne: filtered.idealne.length,
       alternatywy: filtered.alternatywy.length,
       wszystkie: filtered.wszystkie.length
@@ -331,7 +336,7 @@ const AnimaComponent: React.FC = () => {
 
   // Funkcja automatycznego wyboru pierwszej dostępnej kategorii
   const autoSelectFirstCategory = (results: SearchResults) => {
-    console.log('src/components/AnimaComponent.tsx: Automatyczny wybór pierwszej kategorii z wynikami');
+    console.log('src/components/dashboard/Dashboard.tsx: Automatyczny wybór pierwszej kategorii z wynikami');
     
     // Znajdź pierwszą kategorię z wynikami
     const categories = [
@@ -361,20 +366,20 @@ const AnimaComponent: React.FC = () => {
       });
       
       if (filtered.length > 0) {
-        console.log(`src/components/AnimaComponent.tsx: Wybrano kategorię ${cat.label} (${filtered.length} wyników)`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Wybrano kategorię ${cat.label} (${filtered.length} wyników)`);
         setEquipmentTypeFilter(cat.type);
         setCategoryFilter(cat.category);
         return;
       }
     }
     
-    console.log('src/components/AnimaComponent.tsx: Nie znaleziono żadnej kategorii z wynikami');
+    console.log('src/components/dashboard/Dashboard.tsx: Nie znaleziono żadnej kategorii z wynikami');
   };
 
   // NOWA FUNKCJA: Wyszukiwanie butów po rozmiarze
   // @ts-expect-error - funkcja zarezerwowana na przyszłość
   const handleShoeSearch = (type: string, category: string, shoeSize: number) => {
-    console.log(`src/components/AnimaComponent.tsx: Wyszukiwanie butów - typ: ${type}, kategoria: ${category}, rozmiar: ${shoeSize}`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Wyszukiwanie butów - typ: ${type}, kategoria: ${category}, rozmiar: ${shoeSize}`);
     
     try {
       setIsLoading(true);
@@ -395,7 +400,7 @@ const AnimaComponent: React.FC = () => {
         return true;
       });
       
-      console.log(`src/components/AnimaComponent.tsx: Znaleziono ${matchingShoes.length} butów`);
+      console.log(`src/components/dashboard/Dashboard.tsx: Znaleziono ${matchingShoes.length} butów`);
       
       if (matchingShoes.length === 0) {
         setError(`Nie znaleziono butów w rozmiarze ${shoeSize} cm`);
@@ -448,9 +453,9 @@ const AnimaComponent: React.FC = () => {
       setEquipmentTypeFilter(type);
       setCategoryFilter(category);
       
-      console.log(`src/components/AnimaComponent.tsx: Wyświetlono ${matchingShoes.length} butów`);
+      console.log(`src/components/dashboard/Dashboard.tsx: Wyświetlono ${matchingShoes.length} butów`);
     } catch (err) {
-      console.error('src/components/AnimaComponent.tsx: Błąd wyszukiwania butów:', err);
+      console.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania butów:', err);
       setError('Wystąpił błąd podczas wyszukiwania butów');
     } finally {
       setIsLoading(false);
@@ -459,7 +464,7 @@ const AnimaComponent: React.FC = () => {
 
   // Funkcja obsługi szybkich filtrów - NOWA LOGIKA: Przyciski otwierają widok "Przeglądaj" z filtrem
   const handleQuickFilterInSearch = (type: string, category: string) => {
-    console.log(`src/components/AnimaComponent.tsx: Otwieranie przeglądania - typ: ${type}, kategoria: ${category}`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Otwieranie przeglądania - typ: ${type}, kategoria: ${category}`);
     
     // Wyczyść wybrane style aby nie filtrowały wyników
     setSelectedStyles([]);
@@ -470,7 +475,7 @@ const AnimaComponent: React.FC = () => {
     setCategoryFilter(category);
     setAppMode('browse');
     
-    console.log(`src/components/AnimaComponent.tsx: Filtry ustawione - typ: ${type}, kategoria: ${category}, otwieram "Przeglądaj"`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Filtry ustawione - typ: ${type}, kategoria: ${category}, otwieram "Przeglądaj"`);
   };
 
   // USUNIĘTO: clearEquipmentFilters - nie jest już potrzebna (brak przycisku "Wszystkie")
@@ -511,14 +516,14 @@ const AnimaComponent: React.FC = () => {
 
   // NOWY: Wczytaj karty z LocalStorage przy starcie
   useEffect(() => {
-    console.log('src/components/AnimaComponent.tsx: Wczytuję karty z LocalStorage przy starcie aplikacji');
+    console.log('src/components/dashboard/Dashboard.tsx: Wczytuję karty z LocalStorage przy starcie aplikacji');
     const savedTabs = loadAllTabs();
     
     if (savedTabs && savedTabs.tabs.length > 0) {
-      console.log('src/components/AnimaComponent.tsx: Znaleziono zapisane karty:', savedTabs);
+      console.log('src/components/dashboard/Dashboard.tsx: Znaleziono zapisane karty:', savedTabs);
       
       // Odtwórz karty z domyślnymi wartościami dla pól, które nie są zapisywane
-      const restoredTabs = savedTabs.tabs.map(savedTab => ({
+      const restoredTabs = savedTabs.tabs.map((savedTab: { id: string; label: string; formData: FormData; selectedStyles?: string[] }) => ({
         id: savedTab.id,
         label: savedTab.label,
         formData: savedTab.formData,
@@ -545,16 +550,16 @@ const AnimaComponent: React.FC = () => {
       
       setTabs(restoredTabs);
       setActiveTabId(savedTabs.activeTabId);
-      console.log('src/components/AnimaComponent.tsx: Karty przywrócone z LocalStorage');
+      console.log('src/components/dashboard/Dashboard.tsx: Karty przywrócone z LocalStorage');
     } else {
-      console.log('src/components/AnimaComponent.tsx: Brak zapisanych kart, używam domyślnych');
+      console.log('src/components/dashboard/Dashboard.tsx: Brak zapisanych kart, używam domyślnych');
     }
   }, []);
 
   // NOWY: Automatycznie zapisuj karty do LocalStorage przy każdej zmianie
   useEffect(() => {
     if (tabs.length > 0) {
-      console.log('src/components/AnimaComponent.tsx: Auto-zapisywanie kart do LocalStorage');
+      console.log('src/components/dashboard/Dashboard.tsx: Auto-zapisywanie kart do LocalStorage');
       saveAllTabs(tabs, activeTabId);
     }
   }, [tabs, activeTabId]);
@@ -573,7 +578,7 @@ const AnimaComponent: React.FC = () => {
   // NOWA FUNKCJA: Ładowanie bazy danych (może być wywołana wielokrotnie)
   const loadDatabase = async () => {
     try {
-      console.log('AnimaComponent: Ładuję bazę danych nart...');
+      console.log('src/components/dashboard/Dashboard.tsx: Ładuję bazę danych nart...');
       
       // Sprawdź czy serwer API jest dostępny
       const isServerAvailable = await SkiDataService.checkServerHealth();
@@ -581,18 +586,18 @@ const AnimaComponent: React.FC = () => {
       let skis: SkiData[];
       if (isServerAvailable) {
         // Ładuj z API (zawsze aktualne dane!)
-        console.log('AnimaComponent: Ładuję dane z API serwera');
+        console.log('src/components/dashboard/Dashboard.tsx: Ładuję dane z API serwera');
         skis = await SkiDataService.getAllSkis();
       } else {
         // Fallback do statycznego CSV (gdy serwer nie działa)
-        console.log('AnimaComponent: Serwer niedostępny - ładuję ze statycznego CSV');
+        console.log('src/components/dashboard/Dashboard.tsx: Serwer niedostępny - ładuję ze statycznego CSV');
         skis = await CSVParser.loadFromPublic();
       }
       
       setSkisDatabase(skis);
-      console.log(`AnimaComponent: Załadowano ${skis.length} nart z bazy danych`);
+      console.log(`src/components/dashboard/Dashboard.tsx: Załadowano ${skis.length} nart z bazy danych`);
     } catch (err) {
-      console.error('AnimaComponent: Błąd ładowania bazy:', err);
+      console.error('src/components/dashboard/Dashboard.tsx: Błąd ładowania bazy:', err);
       setError('Nie udało się załadować bazy danych nart');
     }
   };
@@ -619,7 +624,7 @@ const AnimaComponent: React.FC = () => {
       clearTimeout(autoSearchTimerRef.current);
     }
 
-    console.log('src/components/AnimaComponent.tsx: Zmiana w formData - sprawdzam czy uruchomić automatyczne wyszukiwanie');
+    console.log('src/components/dashboard/Dashboard.tsx: Zmiana w formData - sprawdzam czy uruchomić automatyczne wyszukiwanie');
 
     // Sprawdź czy wszystkie wymagane pola są wypełnione
     const isFormComplete = 
@@ -634,25 +639,25 @@ const AnimaComponent: React.FC = () => {
       formData.level !== '' &&
       formData.gender !== '';
 
-    console.log('src/components/AnimaComponent.tsx: Formularz kompletny:', isFormComplete);
+    console.log('src/components/dashboard/Dashboard.tsx: Formularz kompletny:', isFormComplete);
 
     if (isFormComplete) {
       // Waliduj formularz
       const validation = validateForm(formData);
       
       if (validation.isValid) {
-        console.log('src/components/AnimaComponent.tsx: Formularz wypełniony i poprawny - uruchamiam automatyczne wyszukiwanie za 500ms');
+        console.log('src/components/dashboard/Dashboard.tsx: Formularz wypełniony i poprawny - uruchamiam automatyczne wyszukiwanie za 500ms');
         
         // Odczekaj 500ms przed wyszukiwaniem (debounce)
         autoSearchTimerRef.current = setTimeout(() => {
-          console.log('src/components/AnimaComponent.tsx: Uruchamiam automatyczne wyszukiwanie');
+          console.log('src/components/dashboard/Dashboard.tsx: Uruchamiam automatyczne wyszukiwanie');
           handleSubmit(formData);
         }, 500);
       } else {
-        console.log('src/components/AnimaComponent.tsx: Formularz wypełniony ale zawiera błędy - nie uruchamiam wyszukiwania');
+        console.log('src/components/dashboard/Dashboard.tsx: Formularz wypełniony ale zawiera błędy - nie uruchamiam wyszukiwania');
       }
     } else {
-      console.log('src/components/AnimaComponent.tsx: Formularz niekompletny - nie uruchamiam automatycznego wyszukiwania');
+      console.log('src/components/dashboard/Dashboard.tsx: Formularz niekompletny - nie uruchamiam automatycznego wyszukiwania');
     }
 
     // Cleanup timer przy odmontowywaniu
@@ -686,8 +691,8 @@ const AnimaComponent: React.FC = () => {
   };
 
   const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
-    console.log(`src/components/AnimaComponent.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
-    console.log(`src/components/AnimaComponent.tsx: Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
     
     // Walidacja w czasie rzeczywistym
     let isValid = true;
@@ -711,7 +716,7 @@ const AnimaComponent: React.FC = () => {
       const validation = validateHeightRealtime(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
-      console.log(`src/components/AnimaComponent.tsx: Walidacja wzrostu - wartość: ${value}, isValid: ${isValid}`);
+      console.log(`src/components/dashboard/Dashboard.tsx: Walidacja wzrostu - wartość: ${value}, isValid: ${isValid}`);
     } else if (section === 'weight' && field === 'value') {
       const validation = validateWeightRealtime(value);
       isValid = validation.isValid;
@@ -732,11 +737,11 @@ const AnimaComponent: React.FC = () => {
 
     // Jeśli walidacja nie przeszła, nie aktualizuj wartości
     if (!isValid) {
-      console.log(`src/components/AnimaComponent.tsx: Walidacja nie przeszła - ${errorMessage}`);
+      console.log(`src/components/dashboard/Dashboard.tsx: Walidacja nie przeszła - ${errorMessage}`);
       return;
     }
 
-    console.log(`src/components/AnimaComponent.tsx: Walidacja przeszła, aktualizuję dane`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Walidacja przeszła, aktualizuję dane`);
 
     // Aktualizuj dane formularza (bez formatowania)
     if (section === 'dateFrom' || section === 'dateTo') {
@@ -756,7 +761,7 @@ const AnimaComponent: React.FC = () => {
         }
       }));
     } else {
-      console.log(`src/components/AnimaComponent.tsx: Aktualizuję ${section} na wartość: ${value}`);
+      console.log(`src/components/dashboard/Dashboard.tsx: Aktualizuję ${section} na wartość: ${value}`);
       setFormData(prev => ({
         ...prev,
         [section]: value
@@ -775,76 +780,76 @@ const AnimaComponent: React.FC = () => {
     });
 
     // Automatyczne przechodzenie do następnego pola
-    console.log(`src/components/AnimaComponent.tsx: Sprawdzanie automatycznego przechodzenia - sekcja: ${section}, pole: ${field}, wartość: "${value}", długość: ${value.length}`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Sprawdzanie automatycznego przechodzenia - sekcja: ${section}, pole: ${field}, wartość: "${value}", długość: ${value.length}`);
     
     if (inputRef) {
       // Dzień "od" → Miesiąc "od"
       if (section === 'dateFrom' && field === 'day' && value.length === 2) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do miesiąca "od"`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do miesiąca "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "od" → Rok "od"
       else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do roku "od"`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do roku "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "od" → Dzień "do"
       else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do dnia "do"`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do dnia "do"`);
         focusAndSelectIfValue(dayToRef.current);
       }
       // Dzień "do" → Miesiąc "do"
       else if (section === 'dateTo' && field === 'day' && value.length === 2) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do miesiąca "do"`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do miesiąca "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "do" → Rok "do"
       else if (section === 'dateTo' && field === 'month' && value.length === 2) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do roku "do"`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do roku "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "do" → Wzrost
       else if (section === 'dateTo' && field === 'year' && value.length === 2) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do wzrostu`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do wzrostu`);
         focusAndSelectIfValue(heightRef.current);
       }
       // Wzrost → Waga (po 3 cyfrach lub gdy wartość >= 100)
       else if (section === 'height' && field === 'value') {
         const heightNum = parseInt(value);
-        console.log(`src/components/AnimaComponent.tsx: Sprawdzanie wzrostu - wartość: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
-        console.log(`src/components/AnimaComponent.tsx: Warunek 1 (długość >= 3): ${value.length >= 3}`);
-        console.log(`src/components/AnimaComponent.tsx: Warunek 2 (długość >= 2 && liczba >= 100): ${value.length >= 2 && heightNum >= 100}`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Sprawdzanie wzrostu - wartość: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Warunek 1 (długość >= 3): ${value.length >= 3}`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Warunek 2 (długość >= 2 && liczba >= 100): ${value.length >= 2 && heightNum >= 100}`);
         
         if (value.length >= 3 || (value.length >= 2 && heightNum >= 100)) {
-          console.log(`src/components/AnimaComponent.tsx: Przechodzenie do wagi - wzrost: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
+          console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do wagi - wzrost: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
           const nextInput = weightRef.current;
           if (nextInput) {
-            console.log(`src/components/AnimaComponent.tsx: Znaleziono pole wagi, przechodzę`);
+            console.log(`src/components/dashboard/Dashboard.tsx: Znaleziono pole wagi, przechodzę`);
             focusAndSelectIfValue(nextInput);
           } else {
-            console.log(`src/components/AnimaComponent.tsx: Nie znaleziono pola wagi`);
+            console.log(`src/components/dashboard/Dashboard.tsx: Nie znaleziono pola wagi`);
           }
         } else {
-          console.log(`src/components/AnimaComponent.tsx: Warunek nie spełniony - nie przechodzę`);
+          console.log(`src/components/dashboard/Dashboard.tsx: Warunek nie spełniony - nie przechodzę`);
         }
       }
       // Waga → Poziom (po 2 cyfrach lub 3 cyfrach jeśli zaczyna się na 1 lub 2)
       else if (section === 'weight' && field === 'value') {
         if (value.length === 2 && !value.startsWith('1') && !value.startsWith('2')) {
-          console.log(`src/components/AnimaComponent.tsx: Przechodzenie do poziomu - waga: ${value} (2 cyfry, nie zaczyna się na 1/2)`);
+          console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do poziomu - waga: ${value} (2 cyfry, nie zaczyna się na 1/2)`);
           focusAndSelectIfValue(levelRef.current);
         } else if (value.length === 3 && (value.startsWith('1') || value.startsWith('2'))) {
-          console.log(`src/components/AnimaComponent.tsx: Przechodzenie do poziomu - waga: ${value} (3 cyfry, zaczyna się na 1/2)`);
+          console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do poziomu - waga: ${value} (3 cyfry, zaczyna się na 1/2)`);
           focusAndSelectIfValue(levelRef.current);
         }
       }
       // Poziom → Płeć (po 1 cyfrze)
       else if (section === 'level' && value.length >= 1) {
-        console.log(`src/components/AnimaComponent.tsx: Przechodzenie do płci - poziom: ${value}`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do płci - poziom: ${value}`);
         focusAndSelectIfValue(genderRef.current);
       }
       // USUNIĘTO: Stare automatyczne wyszukiwanie po wpisaniu płci
@@ -862,13 +867,13 @@ const AnimaComponent: React.FC = () => {
     // Kliknięcie innego stylu = tylko ten jeden
     const newStyles = selectedStyles.includes(style) ? [] : [style];
     
-    console.log(`src/components/AnimaComponent.tsx: Wybrano styl ${style}, nowe style:`, newStyles);
+    console.log(`src/components/dashboard/Dashboard.tsx: Wybrano styl ${style}, nowe style:`, newStyles);
     setSelectedStyles(newStyles);
     
     // Automatyczne wyszukiwanie po KAŻDEJ zmianie filtrów (jeśli są już wyniki)
     if (searchResults) {
       setTimeout(() => {
-        console.log(`src/components/AnimaComponent.tsx: Automatyczne wyszukiwanie po przełączeniu filtra`);
+        console.log(`src/components/dashboard/Dashboard.tsx: Automatyczne wyszukiwanie po przełączeniu filtra`);
         handleSubmitWithStyles(newStyles);
       }, 100);
     }
@@ -878,7 +883,7 @@ const AnimaComponent: React.FC = () => {
    * Wyszukuje narty z określonymi stylami (dla automatycznego wyszukiwania po zmianie filtrów)
    */
   const handleSubmitWithStyles = (styles: string[]) => {
-    console.log('src/components/AnimaComponent.tsx: Wyszukiwanie z stylami:', styles);
+    console.log('src/components/dashboard/Dashboard.tsx: Wyszukiwanie z stylami:', styles);
     
     try {
       setIsLoading(true);
@@ -895,7 +900,7 @@ const AnimaComponent: React.FC = () => {
         dateTo: parseDate(formData.dateTo)
       };
 
-      console.log('src/components/AnimaComponent.tsx: Kryteria wyszukiwania z stylami:', criteria);
+      console.log('src/components/dashboard/Dashboard.tsx: Kryteria wyszukiwania z stylami:', criteria);
 
       // Zapisz kryteria dla MatchIndicators
       setCurrentCriteria(criteria);
@@ -908,7 +913,7 @@ const AnimaComponent: React.FC = () => {
       const sortedResults = SkiMatchingServiceV2.sortAllResultsByAvailabilityAndCompatibility(results);
       setSearchResults(sortedResults);
 
-      console.log('src/components/AnimaComponent.tsx: Zaktualizowano wyniki z stylami:', {
+      console.log('src/components/dashboard/Dashboard.tsx: Zaktualizowano wyniki z stylami:', {
         idealne: results.idealne.length,
         alternatywy: results.alternatywy.length,
         poziom_za_nisko: results.poziom_za_nisko.length,
@@ -917,7 +922,7 @@ const AnimaComponent: React.FC = () => {
         wszystkie: results.wszystkie.length
       });
     } catch (err) {
-      console.error('src/components/AnimaComponent.tsx: Błąd wyszukiwania z stylami:', err);
+      console.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania z stylami:', err);
       setError('Wystąpił błąd podczas wyszukiwania nart');
     } finally {
       setIsLoading(false);
@@ -926,8 +931,8 @@ const AnimaComponent: React.FC = () => {
 
   const handleSubmit = (customFormData?: FormData) => {
     const dataToValidate = customFormData || formData;
-    console.log('src/components/AnimaComponent.tsx: Rozpoczęcie walidacji formularza');
-    console.log('src/components/AnimaComponent.tsx: Aktualne dane formularza:', dataToValidate);
+    console.log('src/components/dashboard/Dashboard.tsx: Rozpoczęcie walidacji formularza');
+    console.log('src/components/dashboard/Dashboard.tsx: Aktualne dane formularza:', dataToValidate);
     
     // Wyczyść poprzednie błędy
     setFormErrors(initialFormErrors);
@@ -937,7 +942,7 @@ const AnimaComponent: React.FC = () => {
     const validation = validateForm(dataToValidate);
     
     if (!validation.isValid) {
-      console.log('src/components/AnimaComponent.tsx: Formularz zawiera błędy walidacji');
+      console.log('src/components/dashboard/Dashboard.tsx: Formularz zawiera błędy walidacji');
       setFormErrors(validation.errors);
       setError('Proszę poprawić błędy w formularzu');
       return;
@@ -960,7 +965,7 @@ const AnimaComponent: React.FC = () => {
         dateTo: parseDate(dataToValidate.dateTo)
       };
 
-      console.log('src/components/AnimaComponent.tsx: Kryteria wyszukiwania:', criteria);
+      console.log('src/components/dashboard/Dashboard.tsx: Kryteria wyszukiwania:', criteria);
 
       // Zapisz kryteria dla MatchIndicators
       setCurrentCriteria(criteria);
@@ -981,10 +986,10 @@ const AnimaComponent: React.FC = () => {
       // Automatycznie wybierz pierwszą dostępną kategorię TYLKO jeśli użytkownik nie wybrał już kategorii
       // (czyli jeśli equipmentTypeFilter i categoryFilter są puste)
       if (!equipmentTypeFilter && !categoryFilter) {
-        console.log('src/components/AnimaComponent.tsx: Automatyczny wybór kategorii (brak filtrów)');
+        console.log('src/components/dashboard/Dashboard.tsx: Automatyczny wybór kategorii (brak filtrów)');
         autoSelectFirstCategory(sortedResults);
       } else {
-        console.log('src/components/AnimaComponent.tsx: Pomijam automatyczny wybór - użytkownik wybrał filtry:', equipmentTypeFilter, categoryFilter);
+        console.log('src/components/dashboard/Dashboard.tsx: Pomijam automatyczny wybór - użytkownik wybrał filtry:', equipmentTypeFilter, categoryFilter);
       }
 
       // Zapisz historię wyszukiwania
@@ -1000,7 +1005,7 @@ const AnimaComponent: React.FC = () => {
         }
       });
 
-      console.log('src/components/AnimaComponent.tsx: Znaleziono wyników:', {
+      console.log('src/components/dashboard/Dashboard.tsx: Znaleziono wyników:', {
         idealne: results.idealne.length,
         alternatywy: results.alternatywy.length,
         poziom_za_nisko: results.poziom_za_nisko.length,
@@ -1009,7 +1014,7 @@ const AnimaComponent: React.FC = () => {
         wszystkie: results.wszystkie.length
       });
     } catch (err) {
-      console.error('src/components/AnimaComponent.tsx: Błąd wyszukiwania:', err);
+      console.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania:', err);
       setError('Wystąpił błąd podczas wyszukiwania nart');
     } finally {
       setIsLoading(false);
@@ -1019,7 +1024,7 @@ const AnimaComponent: React.FC = () => {
   // USUNIĘTO: handleSubmitClick - nie jest już potrzebna (brak przycisku "Wyszukaj")
 
   const handleClear = () => {
-    console.log('src/components/AnimaComponent.tsx: Czyszczenie formularza aktywnej karty');
+    console.log('src/components/dashboard/Dashboard.tsx: Czyszczenie formularza aktywnej karty');
     const defaultData = {
       dateFrom: { day: '', month: '', year: '' },
       dateTo: { day: '', month: '', year: '' },
@@ -1044,7 +1049,7 @@ const AnimaComponent: React.FC = () => {
     setEquipmentTypeFilter('');
     setCategoryFilter('');
     
-    console.log('src/components/AnimaComponent.tsx: Aktywna karta wyczyszczona');
+    console.log('src/components/dashboard/Dashboard.tsx: Aktywna karta wyczyszczona');
   };
 
   // Grupowanie wyników po modelu (jedna karta na model nart)
@@ -1060,44 +1065,69 @@ const AnimaComponent: React.FC = () => {
   } : null;
 
   const handlePasswordSubmit = (password: string) => {
-    console.log('src/components/AnimaComponent.tsx: Weryfikacja hasła pracownika');
+    console.log('src/components/dashboard/Dashboard.tsx: Weryfikacja hasła pracownika');
     if (password === EMPLOYEE_PASSWORD) {
-      console.log('src/components/AnimaComponent.tsx: Hasło poprawne - przełączanie na tryb pracownika');
+      console.log('src/components/dashboard/Dashboard.tsx: Hasło poprawne - przełączanie na tryb pracownika');
       setIsEmployeeMode(true);
       setIsPasswordModalOpen(false);
       setPasswordError(''); // Wyczyść błąd przy poprawnym haśle
     } else {
-      console.log('src/components/AnimaComponent.tsx: Hasło błędne - pozostanie w trybie klienta');
+      console.log('src/components/dashboard/Dashboard.tsx: Hasło błędne - pozostanie w trybie klienta');
       setPasswordError('Nieprawidłowe hasło. Spróbuj ponownie.');
     }
+  };
+
+  // Funkcja obsługująca przełączanie trybu pracownika (logowanie/wylogowanie)
+  const handleToggleEmployeeMode = () => {
+    if (isEmployeeMode) {
+      // Wyloguj - przełącz na tryb klienta
+      console.log('src/components/dashboard/Dashboard.tsx: Wylogowanie - przełączanie na tryb klienta');
+      setIsEmployeeMode(false);
+      // Jeśli jesteśmy w widoku rezerwacji, wróć do wyszukiwania
+      if (appMode === 'reservations') {
+        setAppMode('search');
+      }
+    } else {
+      // Zaloguj - otwórz modal z hasłem
+      setIsPasswordModalOpen(true);
+      setPasswordError(''); // Wyczyść błąd przy otwieraniu modala
+    }
+  };
+
+  // Funkcja obsługująca przycisk "Cały sprzęt"
+  const handleShowAllEquipment = () => {
+    console.log('src/components/dashboard/Dashboard.tsx: Przycisk Cały sprzęt - otwieranie Browse bez filtrów');
+    setEquipmentTypeFilter('');
+    setCategoryFilter('');
+    setAppMode('browse');
   };
 
   // Oblicz initialFilter używając useMemo dla aktualnych wartości filtrów
   const computedInitialFilter = useMemo(() => {
     // Logika mapowania filtrów ze strony głównej do BrowseSkisComponent
-    console.log(`AnimaComponent: Obliczanie initialFilter - equipmentTypeFilter: ${equipmentTypeFilter}, categoryFilter: ${categoryFilter}`);
+    console.log(`src/components/dashboard/Dashboard.tsx: Obliczanie initialFilter - equipmentTypeFilter: ${equipmentTypeFilter}, categoryFilter: ${categoryFilter}`);
     
     if (equipmentTypeFilter === 'DESKI') {
-      console.log('AnimaComponent: initialFilter = DESKI');
+      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = DESKI');
       return 'DESKI';
     }
     if (equipmentTypeFilter === 'BUTY_SNOWBOARD') {
-      console.log('AnimaComponent: initialFilter = BUTY_SNOWBOARD');
+      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = BUTY_SNOWBOARD');
       return 'BUTY_SNOWBOARD';
     }
     if (equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR') {
-      console.log('AnimaComponent: initialFilter = BUTY_JUNIOR');
+      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = BUTY_JUNIOR');
       return 'BUTY_JUNIOR';
     }
     if (equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE') {
-      console.log('AnimaComponent: initialFilter = DOROSLE');
+      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = DOROSLE');
       return 'DOROSLE';
     }
     if (equipmentTypeFilter === 'NARTY' && categoryFilter) {
-      console.log(`AnimaComponent: initialFilter = ${categoryFilter} (NARTY)`);
+      console.log(`src/components/dashboard/Dashboard.tsx: initialFilter = ${categoryFilter} (NARTY)`);
       return categoryFilter; // TOP, VIP, JUNIOR
     }
-    console.log('AnimaComponent: initialFilter = all (domyślny)');
+    console.log('src/components/dashboard/Dashboard.tsx: initialFilter = all (domyślny)');
     return 'all';
   }, [equipmentTypeFilter, categoryFilter]);
 
@@ -1105,399 +1135,54 @@ const AnimaComponent: React.FC = () => {
     <div className="min-h-screen bg-[#386BB2]">
       <div>
         {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
-        <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
-          {/* Przycisk logowania/wylogowania dla pracownika */}
-          <button
-            onClick={() => {
-              if (isEmployeeMode) {
-                // Wyloguj - przełącz na tryb klienta
-                console.log('src/components/AnimaComponent.tsx: Wylogowanie - przełączanie na tryb klienta');
-                setIsEmployeeMode(false);
-                // Jeśli jesteśmy w widoku rezerwacji, wróć do wyszukiwania
-                if (appMode === 'reservations') {
-                  setAppMode('search');
-                }
-              } else {
-                // Zaloguj - otwórz modal z hasłem
-                setIsPasswordModalOpen(true);
-                setPasswordError(''); // Wyczyść błąd przy otwieraniu modala
-              }
-            }}
-            className={`absolute top-1/2 right-4 -translate-y-1/2 z-50 font-bold p-2 rounded-lg shadow-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-              isEmployeeMode 
-                ? 'bg-green-600/80 hover:bg-green-700/90 text-white' 
-                : 'bg-blue-900/50 hover:bg-blue-800/70 text-white'
-            }`}
-            aria-label={isEmployeeMode ? "Wyloguj się (przełącz na tryb klienta)" : "Zaloguj się jako pracownik"}
-            title={isEmployeeMode ? "Kliknij aby wylogować się i przełączyć na tryb klienta" : "Zaloguj się jako pracownik"}
-          >
-            <span className="text-xl">{isEmployeeMode ? '🔓' : '🔒'}</span>
-          </button>
-
-          <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576] pr-16">
-            {/* Renderuj karty */}
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTabId(tab.id)}
-                className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
-                  activeTabId === tab.id
-                    ? 'bg-[#386BB2] text-white'
-                    : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
-                }`}
-              >
-                {tab.label}
-                {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
-                {tabs.length > 1 && (
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeTab(tab.id);
-                    }}
-                    className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
-                  >
-                    ✕
-                  </span>
-                )}
-              </button>
-            ))}
-            
-            {/* Przycisk dodawania nowej karty - sticky na mobile */}
-            <button
-              onClick={addNewTab}
-              className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
-              title="Dodaj nową osobę"
-            >
-              ➕ Nowa osoba
-            </button>
-          </div>
-        </div>
+        <TabNavigation
+          tabs={tabs}
+          activeTabId={activeTabId}
+          onTabChange={setActiveTabId}
+          onAddTab={addNewTab}
+          onRemoveTab={removeTab}
+          isEmployeeMode={isEmployeeMode}
+          onToggleEmployeeMode={handleToggleEmployeeMode}
+          appMode={appMode}
+        />
 
         {/* Header Section - responsywne - NOWY LAYOUT: Logo ponad formularzem */}
-        <div className="w-full max-w-[1100px] h-auto bg-[#386BB2] flex flex-col items-center justify-center p-4 lg:p-6 mx-auto gap-6">
-          {/* Logo "narty poznań" - POWIĘKSZONE okrągłe logo z cieniem */}
-          <div className="flex items-center justify-center">
-            <img 
-              src="/images/logo.png" 
-              alt="Narty Poznań Logo" 
-              className="w-[220px] h-[220px] rounded-full object-cover shadow-2xl"
-              style={{ clipPath: 'circle(50%)' }}
-            />
-          </div>
-          
-          {/* Main Content Container - POWIĘKSZONY - responsywny - dopasowuje się do zawartości */}
-          <div className="w-auto h-auto bg-[#194576] rounded-[20px] flex flex-col lg:flex-row items-stretch justify-start gap-3 p-3 lg:p-2" style={{ boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5)' }}>
-              
-              {/* Left Section - Personal Data - POWIĘKSZONA responsywna szerokość */}
-              <div className="w-auto h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-                {/* Date From - responsywne inputy */}
-                <div className="w-auto flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
-                    <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
-                  </div>
-                  <input
-                    ref={dayFromRef}
-                    type="text"
-                    placeholder="DD"
-                    value={formData.dateFrom.day}
-                    onClick={handleDateFieldClick}
-                    onChange={(e) => handleInputChange('dateFrom', 'day', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
-                      formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                    style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
-                  />
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                  <input
-                    ref={monthFromRef}
-                    type="text"
-                    placeholder="MM"
-                    value={formData.dateFrom.month}
-                    onClick={handleDateFieldClick}
-                    onChange={(e) => handleInputChange('dateFrom', 'month', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                  <input
-                    type="text"
-                    placeholder="25"
-                    value={formData.dateFrom.year}
-                    onClick={handleDateFieldClick}
-                    onChange={(e) => handleInputChange('dateFrom', 'year', e.target.value, e.target)}
-                    className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-              </div>
-
-                {/* Date To - responsywne inputy */}
-                <div className="w-auto flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
-                    <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
-                  </div>
-                  <input
-                    ref={dayToRef}
-                    type="text"
-                    placeholder="DD"
-                    value={formData.dateTo.day}
-                    onClick={handleDateFieldClick}
-                    onChange={(e) => handleInputChange('dateTo', 'day', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                  <input
-                    ref={monthToRef}
-                    type="text"
-                    placeholder="MM"
-                    value={formData.dateTo.month}
-                    onClick={handleDateFieldClick}
-                    onChange={(e) => handleInputChange('dateTo', 'month', e.target.value, e.target)}
-                    className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                  <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-                  <input
-                    type="text"
-                    placeholder="25"
-                    value={formData.dateTo.year}
-                    onClick={handleDateFieldClick}
-                    onChange={(e) => handleInputChange('dateTo', 'year', e.target.value, e.target)}
-                    className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                </div>
-
-                {/* Height - responsywne */}
-                <div className="w-auto flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
-                  </div>
-                  <input
-                    ref={heightRef}
-                    type="text"
-                    placeholder="180"
-                    value={formData.height.value}
-                    onChange={(e) => handleInputChange('height', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[102px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                  <div className="w-10 lg:w-[35px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">cm</span>
-                  </div>
-                </div>
-
-                {/* Weight - responsywne */}
-                <div className="w-auto flex items-center gap-1">
-                  <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
-                  </div>
-                  <input
-                    ref={weightRef}
-                    type="text"
-                    placeholder="70"
-                    value={formData.weight.value}
-                    onChange={(e) => handleInputChange('weight', 'value', e.target.value, e.target)}
-                    className={`w-20 lg:w-[102px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-                      formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                    }`}
-                  />
-                  <div className="w-10 lg:w-[35px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                    <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">kg</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Center Section - Level, Gender and Shoe Size - POWIĘKSZONA responsywna szerokość */}
-              <div className="w-full lg:w-[270px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-                  {/* Level - responsywny */}
-                  <div className="w-full flex items-center gap-2">
-                    <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                      <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">🎖️ Poziom:</span>
-                    </div>
-                    <input
-                      ref={levelRef}
-                      type="text"
-                      placeholder="1-6"
-                      value={formData.level}
-                      onChange={(e) => handleInputChange('level', 'value', e.target.value, e.target)}
-                      className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-                        formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Gender - responsywny */}
-                  <div className="w-full flex items-center gap-2">
-                    <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                      <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👤 Płeć:</span>
-                    </div>
-                    <input
-                      ref={genderRef}
-                      type="text"
-                      placeholder="M/K"
-                      value={formData.gender}
-                      onChange={(e) => handleInputChange('gender', 'value', e.target.value, e.target)}
-                      className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-                        formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                      }`}
-                    />
-                  </div>
-
-                  {/* Shoe Size - responsywny */}
-                  <div className="w-full flex items-center gap-2">
-                    <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-                      <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👟 Rozmiar:</span>
-                    </div>
-                    <input
-                      ref={shoeSizeRef}
-                      type="text"
-                      placeholder="23-35"
-                      value={formData.shoeSize || ''}
-                      onChange={(e) => handleInputChange('shoeSize', 'value', e.target.value, e.target)}
-                      className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-                        formErrors.shoeSize ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-                      }`}
-                    />
-                  </div>
-              </div>
-
-              {/* Right Section - Action Buttons PIONOWO - POWIĘKSZONA */}
-              <div className="w-full lg:w-[140px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-                {/* Action Buttons - POWIĘKSZONE PIONOWO w jednej kolumnie */}
-                <button
-                  onClick={handleClear}
-                  className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
-                  style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
-                  onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
-                  onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
-                >
-                  <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
-                </button>
-                <button 
-                  onClick={() => setAppMode('browse')}
-                  className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
-                >
-                  <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
-                </button>
-                <button 
-                  onClick={() => setAppMode('history')}
-                  className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
-                >
-                  <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📜 Historia</span>
-                </button>
-                {/* Przycisk "Rezerwacje" - widoczny tylko w trybie pracownika */}
-                {isEmployeeMode && (
-                  <button 
-                    onClick={() => setAppMode('reservations')}
-                    className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
-                  >
-                    <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+        <DashboardHeader>
+          <SkierForm
+            formData={formData}
+            formErrors={formErrors}
+            onFieldChange={handleInputChange as (section: keyof FormData | string, field: string, value: string, el?: HTMLInputElement) => void}
+            handleDateFieldClick={handleDateFieldClick}
+            dayFromRef={dayFromRef}
+            monthFromRef={monthFromRef}
+            dayToRef={dayToRef}
+            monthToRef={monthToRef}
+            heightRef={heightRef}
+            weightRef={weightRef}
+            levelRef={levelRef}
+            genderRef={genderRef}
+            shoeSizeRef={shoeSizeRef}
+          />
+          <EmployeeControls
+            isEmployeeMode={isEmployeeMode}
+            appMode={appMode}
+            onClear={handleClear}
+            onBrowse={() => setAppMode('browse')}
+            onHistory={() => setAppMode('history')}
+            onReservations={() => setAppMode('reservations')}
+          />
+        </DashboardHeader>
 
         {/* Results Section - responsywna */}
         <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
           {/* Przyciski filtrowania kategorii sprzętu - NOWY LAYOUT: JEDEN WIERSZ */}
-          <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3" style={{ boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5)' }}>
-            {/* Wszystkie przyciski w jednym wierszu - responsywne */}
-            <div className="flex flex-wrap gap-2 justify-center items-center">
-              <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'TOP')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
-                    ? 'bg-blue-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                🎿 Narty TOP
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'VIP')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
-                    ? 'bg-blue-600 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                🎿 Narty VIP
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('NARTY', 'JUNIOR')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
-                    ? 'bg-green-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                👶 Narty JUNIOR
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('BUTY', 'JUNIOR')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
-                    ? 'bg-green-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                👶 Buty Junior
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('BUTY', 'DOROSLE')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
-                    ? 'bg-purple-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                🥾 Buty Dorosłe
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('DESKI', '')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'DESKI'
-                    ? 'bg-orange-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                🏂 Deski
-              </button>
-              <button
-                onClick={() => handleQuickFilterInSearch('BUTY_SNOWBOARD', '')}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  equipmentTypeFilter === 'BUTY_SNOWBOARD'
-                    ? 'bg-red-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                👢 Buty SB
-              </button>
-              <button
-                onClick={() => {
-                  console.log('src/components/AnimaComponent.tsx: Przycisk Cały sprzęt - otwieranie Browse bez filtrów');
-                  setEquipmentTypeFilter('');
-                  setCategoryFilter('');
-                  setAppMode('browse');
-                }}
-                className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-                  !equipmentTypeFilter && !categoryFilter && appMode === 'browse'
-                    ? 'bg-gray-500 text-white shadow-lg'
-                    : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-                }`}
-              >
-                📦 Cały sprzęt
-              </button>
-            </div>
-          </div>
+          <EquipmentFilters
+            equipmentTypeFilter={equipmentTypeFilter}
+            categoryFilter={categoryFilter}
+            appMode={appMode}
+            onQuickFilter={handleQuickFilterInSearch}
+            onShowAllEquipment={handleShowAllEquipment}
+          />
 
           {/* WYŁĄCZONE: Inteligentne sugestie i Results Container z kartami nart */}
           {/* Kod został wyłączony - w nowym systemie wyniki są wyświetlane tylko w widoku "Przeglądaj" (BrowseSkisComponent) */}
@@ -2016,4 +1701,4 @@ const AnimaComponent: React.FC = () => {
   );
 };
 
-export default AnimaComponent;
+export default Dashboard;
