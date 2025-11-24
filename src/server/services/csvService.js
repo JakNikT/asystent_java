@@ -6,19 +6,19 @@ import { detectFirefnowFormat, convertFromFirefnow } from '../utils/csvParser.js
 export const csvService = {
     async readCsv(filePath) {
         try {
-            console.log('Server: Reading CSV:', filePath);
+            logger.info('Reading CSV:', { filePath });
             const csvContent = await fs.readFile(filePath, 'utf-8');
 
             // Detect and fix FireFnow format
             let processedContent = csvContent;
             if (detectFirefnowFormat(csvContent)) {
-                console.log('Server: Detected FireFnow format - converting...');
+                logger.info('Detected FireFnow format - converting...');
                 processedContent = convertFromFirefnow(csvContent);
             }
 
             return processedContent;
         } catch (error) {
-            console.error('Server: Error reading CSV:', error);
+            logger.error('Error reading CSV', { error });
             throw error;
         }
     },
@@ -35,7 +35,7 @@ export const csvService = {
 
     async writeCsv(filePath, data, options = {}) {
         try {
-            console.log(`Server: Writing ${data.length} records to CSV:`, filePath);
+            logger.info(`Writing ${data.length} records to CSV`, { filePath });
             const csvContent = Papa.unparse(data, {
                 delimiter: ',',
                 header: true,
@@ -45,7 +45,7 @@ export const csvService = {
             await fs.writeFile(filePath, csvContent, 'utf-8');
             return true;
         } catch (error) {
-            console.error('Server: Error writing CSV:', error);
+            logger.error('Error writing CSV', { error });
             return false;
         }
     },

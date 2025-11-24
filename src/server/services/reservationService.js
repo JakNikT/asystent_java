@@ -2,6 +2,7 @@ import { config } from '../config/env.js';
 import { fireSnowService } from './fireSnowService.js';
 import { csvService } from './csvService.js';
 import { formatFireSnowDate } from '../utils/formatters.js';
+import logger from '../config/logger.js';
 
 function mapFireSnowReservation(item) {
     let klient = '';
@@ -54,17 +55,17 @@ export const reservationService = {
         if (config.useFireSnowApi) {
             try {
                 const data = await fireSnowService.getActiveReservations();
-                console.log(`Server: Mapped ${data.length} reservations from API`);
+                logger.info(`Mapped ${data.length} reservations from API`);
                 return data.map(mapFireSnowReservation);
             } catch (error) {
-                console.warn('Server: FireSnow API unavailable, fallback to CSV:', error.message);
+                logger.warn('FireSnow API unavailable, fallback to CSV', { error: error.message });
             }
         }
 
         // Fallback or default to CSV
         const data = await csvService.getReservations();
         const filtered = filterCsvReservations(data);
-        console.log(`Server: Loaded ${filtered.length} reservations from CSV`);
+        logger.info(`Loaded ${filtered.length} reservations from CSV`);
         return filtered;
     },
 

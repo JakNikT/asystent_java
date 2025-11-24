@@ -1,6 +1,7 @@
 import { config } from '../config/env.js';
 import { fireSnowService } from './fireSnowService.js';
 import { csvService } from './csvService.js';
+import logger from '../config/logger.js';
 
 function mapFireSnowRental(item) {
     let klient = item.klient_nazwa || item.imie_nazwisko || '';
@@ -92,16 +93,16 @@ export const rentalService = {
         if (config.useFireSnowApi) {
             try {
                 const data = await fireSnowService.getActiveRentals();
-                console.log(`Server: Mapped ${data.length} rentals from API`);
+                logger.info(`Mapped ${data.length} rentals from API`);
                 return data.map(mapFireSnowRental);
             } catch (error) {
-                console.warn('Server: FireSnow API unavailable, fallback to CSV:', error.message);
+                logger.warn('FireSnow API unavailable, fallback to CSV', { error: error.message });
             }
         }
 
         const data = await csvService.getRentals();
         const filtered = filterCsvRentals(data);
-        console.log(`Server: Loaded ${filtered.length} rentals from CSV`);
+        logger.info(`Loaded ${filtered.length} rentals from CSV`);
         return filtered;
     },
 
@@ -109,10 +110,10 @@ export const rentalService = {
         if (config.useFireSnowApi) {
             try {
                 const data = await fireSnowService.getPastRentals();
-                console.log(`Server: Mapped ${data.length} past rentals from API`);
+                logger.info(`Mapped ${data.length} past rentals from API`);
                 return data.map(mapFireSnowPastRental);
             } catch (error) {
-                console.warn('Server: FireSnow API unavailable for past rentals, fallback to empty:', error.message);
+                logger.warn('FireSnow API unavailable for past rentals, fallback to empty', { error: error.message });
             }
         }
         return [];

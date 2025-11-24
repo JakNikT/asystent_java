@@ -1,11 +1,12 @@
 import { config } from '../config/env.js';
+import logger from '../config/logger.js';
 
 /**
  * Generic fetch wrapper for FireSnow API
  */
 async function fetchFireSnow(endpoint, options = {}) {
     const url = `${config.fireSnowApiUrl}${endpoint}`;
-    console.log(`Server: FireSnow API request: ${url}`);
+    logger.info(`FireSnow API request: ${url}`);
 
     try {
         const response = await fetch(url, {
@@ -19,7 +20,7 @@ async function fetchFireSnow(endpoint, options = {}) {
 
         return await response.json();
     } catch (error) {
-        console.error(`Server: FireSnow API fetch error for ${url}:`, error.message);
+        logger.error(`FireSnow API fetch error for ${url}:`, { error: error.message });
         throw error;
     }
 }
