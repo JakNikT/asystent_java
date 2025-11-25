@@ -5,6 +5,7 @@ import react from '@vitejs/plugin-react-swc'
 export default defineConfig({
   plugins: [react()],
   server: {
+    host: true, // Dodano: nasłuchuj na 0.0.0.0
     fs: {
       // Pozwól na dostęp do plików poza root
       allow: ['..']

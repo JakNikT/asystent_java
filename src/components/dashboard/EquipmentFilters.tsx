@@ -109,3 +109,6 @@ const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({
 
 export default EquipmentFilters;
 
+
+
+

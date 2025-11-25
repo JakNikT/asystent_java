@@ -1,0 +1,43 @@
+version: '3.8'
+
+# Override dla trybu development
+# Użycie: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: development
+    
+    # Dodatkowy port dla Vite dev server
+    ports:
+      - "${PORT:-3000}:3000"
+      - "5173:5173"
+    
+    # Override environment dla development
+    environment:
+      - NODE_ENV=development
+    
+    # Dodatkowe volumes dla development
+    volumes:
+      # Kod źródłowy - hot-reload
+      - ./src:/app/src
+      # Pliki konfiguracyjne (opcjonalnie, jeśli chcesz zmieniać bez rebuild)
+      - ./vite.config.ts:/app/vite.config.ts
+      - ./tsconfig.json:/app/tsconfig.json
+      - ./tsconfig.app.json:/app/tsconfig.app.json
+      - ./tsconfig.node.json:/app/tsconfig.node.json
+      - ./tailwind.config.js:/app/tailwind.config.js
+      - ./postcss.config.js:/app/postcss.config.js
+      - ./index.html:/app/index.html
+    
+    # Command dla development - uruchom jako root, zainstaluj pakiety i uruchom
+    # Używamy root w dev mode, aby uniknąć problemów z uprawnieniami przy montowaniu wolumenów
+    user: root
+    command: sh -c "npm install && npx concurrently \"npm run dev\" \"npm run server\" --names \"VITE,API\" --prefix-colors \"green,blue\""
+    
+    # W development nie potrzebujemy healthcheck (może być wolniejszy)
+    healthcheck:
+      disable: true
