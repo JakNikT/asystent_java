@@ -651,7 +651,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange?.(tab.id)}
-                className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
+                className={`group relative px-4 py-2 rounded-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
                     ? 'bg-[#386BB2] text-white'
                     : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
                   }`}
@@ -679,7 +679,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
                 title="Dodaj nową osobę"
               >
-                ➕ Nowa osoba
+                +
               </button>
             )}
           </div>

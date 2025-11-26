@@ -78,7 +78,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
           className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg ml-2"
           title="Dodaj nową osobę"
         >
-          ➕ <span className="hidden sm:inline">Nowa osoba</span>
+          +
         </button>
       </div>
     </div>
