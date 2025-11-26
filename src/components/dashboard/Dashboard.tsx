@@ -1666,8 +1666,8 @@ const Dashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Renderowanie widoku rezerwacji - tylko w trybie pracownika */}
-      {isEmployeeMode && appMode === 'reservations' && (
+      {/* Renderowanie widoku rezerwacji */}
+      {appMode === 'reservations' && (
         <div className="fixed inset-0 bg-background z-50 overflow-auto">
           <ReservationsView 
             onBackToSearch={() => setAppMode('search')}
