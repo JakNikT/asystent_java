@@ -388,8 +388,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   };
 
   return (
-    <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
-      <div className="max-w-8xl mx-auto">
+    <div 
+      className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-3 lg:p-6"
+      style={{
+        backgroundImage: "url('/images/background.png')",
+      }}
+    >
+      {/* Overlay dla lepszej czytelności */}
+      <div className="absolute inset-0 bg-black/20 pointer-events-none z-0"></div>
+
+      <div className="relative z-10 max-w-8xl mx-auto">
         {/* Header - responsywny */}
         <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
