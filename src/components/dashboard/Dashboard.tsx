@@ -30,7 +30,7 @@ import TabNavigation from './TabNavigation';
 import DashboardHeader from './DashboardHeader';
 import SkierForm from './SkierForm';
 import EmployeeControls from './EmployeeControls';
-import EquipmentFilters from './EquipmentFilters';
+import { Layout } from '../layout/Layout';
 
 const containerVariants = {
   hidden: { opacity: 1 },
@@ -1132,22 +1132,31 @@ const Dashboard: React.FC = () => {
   }, [equipmentTypeFilter, categoryFilter]);
 
   return (
-    <div className="min-h-screen bg-[#386BB2]">
-      <div>
-        {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
-        <TabNavigation
-          tabs={tabs}
-          activeTabId={activeTabId}
-          onTabChange={setActiveTabId}
-          onAddTab={addNewTab}
-          onRemoveTab={removeTab}
-          isEmployeeMode={isEmployeeMode}
-          onToggleEmployeeMode={handleToggleEmployeeMode}
+    <Layout
+      navigation={
+        /* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile - tylko w trybie przeglądaj */
+        appMode === 'browse' ? (
+          <TabNavigation
+            tabs={tabs}
+            activeTabId={activeTabId}
+            onTabChange={setActiveTabId}
+            onAddTab={addNewTab}
+            onRemoveTab={removeTab}
+            isEmployeeMode={isEmployeeMode}
+            onToggleEmployeeMode={handleToggleEmployeeMode}
+            appMode={appMode}
+          />
+        ) : null
+      }
+      header={
+        /* Header Section - responsywne - NOWY LAYOUT: Logo ponad formularzem */
+        <DashboardHeader
+          equipmentTypeFilter={equipmentTypeFilter}
+          categoryFilter={categoryFilter}
           appMode={appMode}
-        />
-
-        {/* Header Section - responsywne - NOWY LAYOUT: Logo ponad formularzem */}
-        <DashboardHeader>
+          onQuickFilter={handleQuickFilterInSearch}
+          onShowAllEquipment={handleShowAllEquipment}
+        >
           <SkierForm
             formData={formData}
             formErrors={formErrors}
@@ -1172,23 +1181,14 @@ const Dashboard: React.FC = () => {
             onReservations={() => setAppMode('reservations')}
           />
         </DashboardHeader>
-
+      }
+    >
         {/* Results Section - responsywna */}
-        <div className="w-full bg-[#386BB2] flex flex-col justify-start items-center gap-2.5 p-3 lg:p-5">
-          {/* Przyciski filtrowania kategorii sprzętu - NOWY LAYOUT: JEDEN WIERSZ */}
-          <EquipmentFilters
-            equipmentTypeFilter={equipmentTypeFilter}
-            categoryFilter={categoryFilter}
-            appMode={appMode}
-            onQuickFilter={handleQuickFilterInSearch}
-            onShowAllEquipment={handleShowAllEquipment}
-          />
-
-          {/* WYŁĄCZONE: Inteligentne sugestie i Results Container z kartami nart */}
-          {/* Kod został wyłączony - w nowym systemie wyniki są wyświetlane tylko w widoku "Przeglądaj" (BrowseSkisComponent) */}
-          {/* Użyj przycisku "Przeglądaj" aby zobaczyć wszystkie narty z filtrowaniem */}
-          
-          {false && (
+        {/* WYŁĄCZONE: Inteligentne sugestie i Results Container z kartami nart */}
+        {/* Kod został wyłączony - w nowym systemie wyniki są wyświetlane tylko w widoku "Przeglądaj" (BrowseSkisComponent) */}
+        {/* Użyj przycisku "Przeglądaj" aby zobaczyć wszystkie narty z filtrowaniem */}
+        
+        {false && (
           <>
           {/* Inteligentne sugestie */}
           {suggestions.length > 0 && (
@@ -1639,12 +1639,10 @@ const Dashboard: React.FC = () => {
             </motion.div>
           </>
           )}
-        </div>
-      </div>
       
       {/* Renderowanie komponentu przeglądania */}
       {appMode === 'browse' && (
-        <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
+        <div className="fixed inset-0 bg-background z-50 overflow-auto">
           <BrowseSkisComponent
             allSkis={skisDatabase}
             browseCriteria={{
@@ -1670,7 +1668,7 @@ const Dashboard: React.FC = () => {
 
       {/* Renderowanie widoku rezerwacji - tylko w trybie pracownika */}
       {isEmployeeMode && appMode === 'reservations' && (
-        <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
+        <div className="fixed inset-0 bg-background z-50 overflow-auto">
           <ReservationsView 
             onBackToSearch={() => setAppMode('search')}
           />
@@ -1679,7 +1677,7 @@ const Dashboard: React.FC = () => {
 
       {/* Renderowanie widoku historii */}
       {appMode === 'history' && (
-        <div className="fixed inset-0 bg-[#386BB2] z-50 overflow-auto">
+        <div className="fixed inset-0 bg-background z-50 overflow-auto">
           <HistoryView 
             onBack={() => setAppMode('search')}
           />
@@ -1697,7 +1695,7 @@ const Dashboard: React.FC = () => {
           errorMessage={passwordError}
         />
       )}
-    </div>
+    </Layout>
   );
 };
 

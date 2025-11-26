@@ -689,33 +689,33 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       <div className="p-3 lg:p-6">
         <div className="max-w-8xl mx-auto">
           {/* Header z wyszukiwaniem - responsywny */}
-          <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
               <div className="flex-shrink-0">
                 <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
                   Przeglądaj sprzęt
                 </h1>
-                <p className="text-[#A6C2EF] text-sm">
+                <p className="text-white/70 text-sm">
                   Znaleziono {sortedSkis.length} nart
                 </p>
               </div>
 
               {/* Przyciski filtrów */}
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>📦 Cały sprzęt</button>
-                <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty TOP</button>
-                <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-600 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🎿 Narty VIP</button>
-                <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Narty JUNIOR</button>
-                <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👶 Buty Junior</button>
-                <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🥾 Buty Dorosłe</button>
-                <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>🏂 Deski</button>
-                <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-500 text-white shadow-lg' : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'}`}>👢 Buty SB</button>
+                <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 Cały sprzęt</button>
+                <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 Narty TOP</button>
+                <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-700 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 Narty VIP</button>
+                <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 Narty JUNIOR</button>
+                <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 Buty Junior</button>
+                <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🥾 Buty Dorosłe</button>
+                <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🏂 Deski</button>
+                <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👢 Buty SB</button>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
                 <button
                   onClick={onBack}
-                  className="bg-[#2C699F] hover:bg-[#194576] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center justify-center gap-2"
+                  className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-4 py-2 rounded-lg border border-white/5 hover:border-white/20 text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
                 >
                   ← Wróć
                 </button>
@@ -723,7 +723,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             </div>
 
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <label className="text-white font-medium text-lg">
+              <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90">
                 🔍 Wyszukaj narty:
               </label>
               <input
@@ -734,33 +734,33 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   setCurrentPage(1); // Reset do pierwszej strony przy wyszukiwaniu
                 }}
                 placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
-                className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
+                className="flex-1 px-4 py-2 bg-primary text-white placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
               />
               {searchTerm && (
                 <button
                   onClick={() => setSearchTerm('')}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10"
                 >
                   Wyczyść
                 </button>
               )}
             </div>
             {searchTerm && (
-              <p className="text-sm text-gray-400 mt-2">
+              <p className="text-sm text-white/60 mt-2">
                 Znaleziono {sortedSkis.length} pasujących nart.
               </p>
             )}
           </div>
 
           {/* Tabela sprzętu */}
-          <div className="bg-[#194576] rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#2C699F]">
+                <thead className="bg-[#0f2744]/50 border-b border-white/10">
                   {/* NOWA ZMIANA: Nowy układ kolumn */}
                   <tr>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                       onClick={() => handleSort('MARKA')}
                     >
                       <div className="flex items-center gap-2">
@@ -768,7 +768,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                       onClick={() => handleSort('MODEL')}
                     >
                       <div className="flex items-center gap-2">
@@ -777,7 +777,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     </th>
                     {hasAdultBoots && (
                       <th
-                        className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                        className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                         onClick={() => handleSort('FLEX')}
                       >
                         <div className="flex items-center gap-2">
@@ -786,7 +786,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       </th>
                     )}
                     <th
-                      className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                      className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                       onClick={() => handleSort('DLUGOSC')}
                     >
                       <div className="flex items-center gap-2">
@@ -795,10 +795,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     </th>
                     {!shouldHideColumns && (
                       <>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Wzrost (cm)</th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Waga (kg)</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Wzrost (cm)</th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Waga (kg)</th>
                         <th
-                          className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                           onClick={() => handleSort('POZIOM')}
                         >
                           <div className="flex items-center gap-2">
@@ -810,7 +810,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                       <>
                         <th
-                          className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                           onClick={() => handleSort('PLEC')}
                         >
                           <div className="flex items-center gap-2">
@@ -818,42 +818,42 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           </div>
                         </th>
                         <th
-                          className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576]"
+                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                           onClick={() => handleSort('PRZEZNACZENIE')}
                         >
                           <div className="flex items-center gap-2">
                             Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
                           </div>
                         </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                        <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                           Atuty
                         </th>
                       </>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Dostępność</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Dostępność</th>
                     {isEmployeeMode && (
-                      <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">Akcja</th>
+                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Akcja</th>
                     )}
                   </tr>
                 </thead>
-                <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
+                <tbody className="bg-white/5 divide-y divide-white/10">
                   {currentSkis.map((ski) => (
-                    <tr key={ski.ID} className="hover:bg-[#2C699F]">
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                    <tr key={ski.ID} className="hover:bg-white/10 transition-colors">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                         {formatBrandName(ski)}
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                         {formatModelName(ski)}
                       </td>
                       {hasAdultBoots && (
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                           {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE')
                             ? (extractFlexFromModel(ski.MODEL) || '-')
                             : '-'
                           }
                         </td>
                       )}
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                         {ski.DLUGOSC} cm
                       </td>
                       {!shouldHideColumns && (
@@ -874,10 +874,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
                             {formatGender(ski.PLEC)}
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                             {formatPurpose(ski.PRZEZNACZENIE)}
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-[#194576]">
+                          <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                             {ski.ATUTY || '-'}
                           </td>
                         </>
@@ -889,7 +889,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                         <td className="px-4 py-4 whitespace-nowrap text-sm">
                           <button
                             onClick={() => handleEdit(ski)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-medium transition-colors duration-200 flex items-center gap-1"
+                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 flex items-center gap-1"
                             title="Edytuj sprzęt"
                           >
                             ✏️ Edytuj
@@ -904,29 +904,29 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
             {/* Paginacja */}
             {totalPages > 1 && (
-              <div className="bg-[#2C699F] px-4 py-3 flex items-center justify-between border-t border-[#194576] sm:px-6">
+              <div className="bg-[#0f2744]/50 px-4 py-3 flex items-center justify-between border-t border-white/10 sm:px-6">
                 <div className="flex-1 flex justify-between sm:hidden">
                   <button
                     onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                     disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-[#194576] text-sm font-medium rounded-md text-white bg-[#2C699F] hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     Poprzednia
                   </button>
                   <button
                     onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                     disabled={currentPage === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-[#194576] text-sm font-medium rounded-md text-white bg-[#2C699F] hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                   >
                     Następna
                   </button>
                 </div>
                 <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
                   <div>
-                    <p className="text-sm text-white">
-                      Pokazuję <span className="font-medium">{startIndex + 1}</span> do{' '}
-                      <span className="font-medium">{Math.min(endIndex, sortedSkis.length)}</span> z{' '}
-                      <span className="font-medium">{sortedSkis.length}</span> wyników
+                    <p className="text-sm text-white/90">
+                      Pokazuję <span className="font-bold">{startIndex + 1}</span> do{' '}
+                      <span className="font-bold">{Math.min(endIndex, sortedSkis.length)}</span> z{' '}
+                      <span className="font-bold">{sortedSkis.length}</span> wyników
                     </p>
                   </div>
                   <div>
@@ -934,7 +934,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-[#194576] bg-[#2C699F] text-sm font-medium text-white hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-white/10 bg-[#0f2744]/50 text-sm font-bold text-white hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         ←
                       </button>
@@ -948,9 +948,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${currentPage === pageNum
-                                ? 'z-10 bg-[#194576] border-[#194576] text-white'
-                                : 'bg-[#2C699F] border-[#194576] text-white hover:bg-[#194576]'
+                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-bold transition-all ${currentPage === pageNum
+                                ? 'z-10 bg-[#0f2744]/70 border-white/20 text-white'
+                                : 'bg-[#0f2744]/50 border-white/10 text-white hover:bg-[#0f2744]/70'
                               }`}
                           >
                             {pageNum}
@@ -961,7 +961,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-[#194576] bg-[#2C699F] text-sm font-medium text-white hover:bg-[#194576] disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-white/10 bg-[#0f2744]/50 text-sm font-bold text-white hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
                         →
                       </button>
@@ -973,9 +973,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </div>
 
           {/* Informacje o sortowaniu */}
-          <div className="mt-4 text-sm text-white">
+          <div className="mt-4 text-sm text-white/80">
             <p>
-              Sortowanie: <span className="font-medium">{sortConfig.field}</span> (
+              Sortowanie: <span className="font-bold">{sortConfig.field}</span> (
               {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
             </p>
           </div>

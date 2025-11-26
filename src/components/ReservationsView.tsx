@@ -391,62 +391,62 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
       <div className="max-w-8xl mx-auto">
         {/* Header - responsywny */}
-        <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
+        <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
             <div className="w-full lg:w-auto">
               {/* Przyciski filtrowania - zastępują napis "Rezerwacje" */}
               <div className="flex flex-wrap gap-3 mb-4">
                 <button
                   onClick={() => setViewType('all')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
                     viewType === 'all'
-                      ? 'bg-white text-[#194576] shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                   }`}
                 >
                   📋 Wszystko
                 </button>
                 <button
                   onClick={() => setViewType('reservations')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
                     viewType === 'reservations'
-                      ? 'bg-white text-[#194576] shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                   }`}
                 >
                   📅 Rezerwacje
                 </button>
                 <button
                   onClick={() => setViewType('rentals')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
                     viewType === 'rentals'
-                      ? 'bg-white text-[#194576] shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                   }`}
                 >
                   🎿 Wypożyczenia
                 </button>
                 <button
                   onClick={() => setViewType('past')}
-                  className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
                     viewType === 'past'
-                      ? 'bg-white text-[#194576] shadow-lg'
-                      : 'bg-[#2C699F] text-white hover:bg-[#1E4D75]'
+                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                   }`}
                 >
                   🕒 Przeszłe
                 </button>
               </div>
               <div className="space-y-1">
-                <p className="text-[#A6C2EF] text-sm lg:text-base">
-                  📋 Liczba pozycji: <strong>{totalReservations}</strong>
+                <p className="text-white/70 text-sm lg:text-base">
+                  📋 Liczba pozycji: <strong className="text-white">{totalReservations}</strong>
                   {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
                 </p>
-                <p className="text-[#A6C2EF] text-sm lg:text-base">
-                  👥 Liczba unikalnych klientów: <strong>{uniqueClients}</strong> 
+                <p className="text-white/70 text-sm lg:text-base">
+                  👥 Liczba unikalnych klientów: <strong className="text-white">{uniqueClients}</strong> 
                   <span className="text-xs ml-2">(porównaj z FireFnow)</span>
                 </p>
-                <p className="text-[#A6C2EF] text-xs lg:text-sm mt-1">
+                <p className="text-white/60 text-xs lg:text-sm mt-1">
                   🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
                 </p>
               </div>
@@ -454,7 +454,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             <div className="flex flex-col gap-3 w-full lg:w-auto">
               <button
                 onClick={onBackToSearch}
-                className="bg-[#2C699F] hover:bg-[#194576] text-white px-6 py-3 rounded-lg font-medium transition-colors duration-200 flex items-center gap-2 justify-center"
+                className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-6 py-3 rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm flex items-center gap-2 justify-center"
               >
                 ← Wróć do wyszukiwania
               </button>
@@ -465,7 +465,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           <div className="space-y-3">
             {/* Wyszukiwarka - responsywna */}
             <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <label className="text-white font-medium text-lg">
+              <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90">
                 🔍 Szukaj:
               </label>
               <input
@@ -475,12 +475,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 placeholder={viewType === 'past' 
                   ? "Wpisz co najmniej 3 znaki aby wyszukać przeszłe rezerwacje..." 
                   : "Wpisz klienta, sprzęt lub kod..."}
-                className="flex-1 px-4 py-2 bg-[#2C699F] text-white placeholder-[#A6C2EF] rounded-lg border border-[#A6C2EF] focus:outline-none focus:border-white"
+                className="flex-1 px-4 py-2 bg-primary text-white placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
               />
               {filterText && (
                 <button
                   onClick={() => setFilterText('')}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium transition-colors duration-200"
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10"
                 >
                   Wyczyść
                 </button>
@@ -501,8 +501,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             )}
             
             {/* Checkbox PROMOTOR */}
-            <div className="flex items-center gap-3 bg-[#2C699F] px-4 py-2 rounded-lg w-fit">
-              <label className="flex items-center gap-2 cursor-pointer text-white text-sm font-medium">
+            <div className="flex items-center gap-3 bg-[#0f2744]/50 px-4 py-2 rounded-lg border border-white/5 w-fit shadow-sm">
+              <label className="flex items-center gap-2 cursor-pointer text-white text-sm font-bold uppercase tracking-wider">
                 <input
                   type="checkbox"
                   checked={showPromotorOnly}
@@ -521,48 +521,48 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             Ładowanie rezerwacji...
           </div>
         ) : viewType === 'past' && filterText.trim().length < 3 ? (
-          <div className="bg-[#194576] rounded-lg shadow-lg p-12 text-center">
-            <span className="text-white text-xl">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
+            <span className="text-white text-xl font-medium">
               🔍 Wpisz co najmniej 3 znaki w wyszukiwarce, aby wczytać przeszłe rezerwacje
             </span>
           </div>
         ) : sortedGroupedReservations.length === 0 ? (
-          <div className="bg-[#194576] rounded-lg shadow-lg p-12 text-center">
-            <span className="text-white text-xl">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
+            <span className="text-white text-xl font-medium">
               {filterText ? '😔 Nie znaleziono rezerwacji pasujących do wyszukiwania' : '📋 Brak rezerwacji w systemie'}
             </span>
           </div>
         ) : (
-          <div className="bg-[#194576] rounded-lg shadow-lg overflow-hidden">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#2C699F]">
+                <thead className="bg-[#0f2744]/50 border-b border-white/10">
                   <tr>
                     <th 
-                      className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576] w-20"
+                      className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-20 transition-colors"
                       onClick={() => handleSort('od')}
                     >
                       <div className="flex items-center gap-1">
                         Data od {renderSortIcon('od')}
                       </div>
                     </th>
-                    <th className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider w-20">
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider w-20">
                       Data do
                     </th>
                     <th 
-                      className="px-2 py-3 text-left text-xs font-medium text-white uppercase tracking-wider cursor-pointer hover:bg-[#194576] w-32"
+                      className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-32 transition-colors"
                       onClick={() => handleSort('klient')}
                     >
                       <div className="flex items-center gap-1">
                         Klient {renderSortIcon('klient')}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-white uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
                       Sprzęt
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-[#A6C2EF] divide-y divide-[#2C699F]">
+                <tbody className="bg-white/5 divide-y divide-white/10">
                   {sortedGroupedReservations.map((group, idx) => {
                     const rowKey = `${group.klient}_${group.od}_${group.do}_${idx}`;
                     const equipmentSets = detectEquipmentSets(group.items);
@@ -596,7 +596,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                             {/* Mały przycisk do rozwijania wszystkich kompletów */}
                             <button
                               onClick={() => toggleReservation(rowKey)}
-                              className="bg-[#2C699F] hover:bg-[#194576] text-white px-2 py-1 rounded text-xs font-medium transition-colors duration-200 flex items-center gap-1"
+                              className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-2 py-1 rounded border border-white/5 hover:border-white/20 text-xs font-bold uppercase tracking-wider transition-all shadow-sm flex items-center gap-1"
                             >
                               <span className="text-xs">{isReservationExpanded ? '▼' : '▶'}</span>
                               <span className="text-xs">
@@ -618,7 +618,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                                   className={`${set.color} rounded-lg p-3 border-2 border-[#2C699F]/20 shadow-sm`}
                                 >
                                   {/* Nagłówek kompletu */}
-                                  <div className="w-full bg-[#2C699F] text-white px-3 py-2 rounded text-xs font-bold text-left flex items-center justify-between gap-2">
+                                  <div className="w-full bg-[#0f2744]/50 text-white px-3 py-2 rounded border border-white/5 text-xs font-bold uppercase tracking-wider text-left flex items-center justify-between gap-2 shadow-sm">
                                     <div className="flex items-center gap-2">
                                       <span>{set.icon}</span>
                                       <span>KOMPLET {set.id + 1}</span>
@@ -663,20 +663,20 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
         {/* Statystyki - Podsumowanie */}
         {!isLoading && totalReservations > 0 && (
-          <div className="mt-6 bg-[#194576] rounded-lg shadow-lg p-6">
+          <div className="mt-6 bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6">
             <h2 className="text-xl font-bold text-white mb-4">📊 Statystyki</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-[#2C699F] rounded-lg p-4">
-                <div className="text-[#A6C2EF] text-sm font-bold mb-1">Łączna liczba rezerwacji</div>
+              <div className="bg-[#0f2744]/50 rounded-lg border border-white/5 p-4 shadow-sm">
+                <div className="text-white/70 text-sm font-bold mb-1 uppercase tracking-wider">Łączna liczba rezerwacji</div>
                 <div className="text-white text-3xl font-bold">{totalReservations}</div>
-                <div className="text-[#A6C2EF] text-xs mt-1">
+                <div className="text-white/60 text-xs mt-1">
                   (ta sama osoba + te same daty = 1 rezerwacja)
                 </div>
               </div>
-              <div className="bg-[#2C699F] rounded-lg p-4">
-                <div className="text-[#A6C2EF] text-sm font-bold mb-1">Łączna liczba pozycji sprzętu</div>
+              <div className="bg-[#0f2744]/50 rounded-lg border border-white/5 p-4 shadow-sm">
+                <div className="text-white/70 text-sm font-bold mb-1 uppercase tracking-wider">Łączna liczba pozycji sprzętu</div>
                 <div className="text-white text-3xl font-bold">{reservations.length}</div>
-                <div className="text-[#A6C2EF] text-xs mt-1">
+                <div className="text-white/60 text-xs mt-1">
                   (wszystkie narty, buty, kijki, akcesoria)
                 </div>
               </div>

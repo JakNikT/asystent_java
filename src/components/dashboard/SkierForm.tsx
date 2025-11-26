@@ -1,8 +1,8 @@
-// src/components/dashboard/SkierForm.tsx: Komponent formularza danych narciarza
-
 import React from 'react';
 import type { FormData } from '../../types/dashboard.types';
 import type { FormErrors } from '../../utils/formValidation';
+import { Input } from '../ui/Input';
+import { Label } from '../ui/Label';
 
 interface SkierFormProps {
   formData: FormData;
@@ -36,184 +36,155 @@ const SkierForm: React.FC<SkierFormProps> = ({
   genderRef,
   shoeSizeRef
 }) => {
+
+  // Pomocnicza funkcja do renderowania grupy inputów daty
+  const renderDateInputs = (
+    label: string,
+    section: 'dateFrom' | 'dateTo',
+    dayRef: React.RefObject<HTMLInputElement | null>,
+    monthRef: React.RefObject<HTMLInputElement | null>
+  ) => (
+    <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
+      <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
+        📅 {label}
+      </Label>
+      <div className="flex items-center gap-1">
+        <Input
+          ref={dayRef}
+          type="text"
+          placeholder="DD"
+          value={formData[section].day}
+          onClick={handleDateFieldClick}
+          onChange={(e) => onFieldChange(section, 'day', e.target.value, e.target)}
+          className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors[section].day ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+          maxLength={2}
+        />
+        <span className="text-white/50 font-bold text-xl">/</span>
+        <Input
+          ref={monthRef}
+          type="text"
+          placeholder="MM"
+          value={formData[section].month}
+          onClick={handleDateFieldClick}
+          onChange={(e) => onFieldChange(section, 'month', e.target.value, e.target)}
+          className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors[section].month ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+          maxLength={2}
+        />
+        <span className="text-white/50 font-bold text-xl">/</span>
+        <Input
+          type="text"
+          placeholder="YY"
+          value={formData[section].year}
+          onClick={handleDateFieldClick}
+          onChange={(e) => onFieldChange(section, 'year', e.target.value, e.target)}
+          className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors[section].year ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+          maxLength={2}
+        />
+      </div>
+    </div>
+  );
+
   return (
     <>
-      {/* Left Section - Personal Data - POWIĘKSZONA responsywna szerokość */}
-      <div className="w-auto h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-        {/* Date From - responsywne inputy */}
-        <div className="w-auto flex items-center gap-1">
-          <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] flex items-center justify-center px-1" style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}>
-            <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data od:</span>
-          </div>
-          <input
-            ref={dayFromRef}
-            type="text"
-            placeholder="DD"
-            value={formData.dateFrom.day}
-            onClick={handleDateFieldClick}
-            onChange={(e) => onFieldChange('dateFrom', 'day', e.target.value, e.target)}
-            className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] ${
-              formErrors.dateFrom.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-            style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
-          />
-          <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-          <input
-            ref={monthFromRef}
-            type="text"
-            placeholder="MM"
-            value={formData.dateFrom.month}
-            onClick={handleDateFieldClick}
-            onChange={(e) => onFieldChange('dateFrom', 'month', e.target.value, e.target)}
-            className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.dateFrom.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
-          <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-          <input
-            type="text"
-            placeholder="25"
-            value={formData.dateFrom.year}
-            onClick={handleDateFieldClick}
-            onChange={(e) => onFieldChange('dateFrom', 'year', e.target.value, e.target)}
-            className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.dateFrom.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
+      {/* Left Section - Personal Data */}
+      <div className="w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
+
+        <div className="flex flex-col gap-3">
+          {renderDateInputs('Data od:', 'dateFrom', dayFromRef, monthFromRef)}
+          {renderDateInputs('Data do:', 'dateTo', dayToRef, monthToRef)}
         </div>
 
-        {/* Date To - responsywne inputy */}
-        <div className="w-auto flex items-center gap-1">
-          <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center px-1">
-            <span className="text-white text-sm font-black font-['Inter'] italic leading-tight">📅 Data do:</span>
+        <div className="flex flex-row gap-3">
+          {/* Height */}
+          <div className="flex flex-row items-center justify-between gap-2 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20 flex-1">
+            <Label className="text-white font-bold text-xs uppercase tracking-wider opacity-90 flex items-center gap-1 min-w-[60px]">
+              📏 Wzrost:
+            </Label>
+            <div className="flex items-center gap-1">
+              <Input
+                ref={heightRef}
+                type="text"
+                placeholder="180"
+                value={formData.height.value}
+                onChange={(e) => onFieldChange('height', 'value', e.target.value, e.target)}
+                className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors.height ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                maxLength={3}
+              />
+              <span className="text-white/70 text-sm font-medium w-6">cm</span>
+            </div>
           </div>
-          <input
-            ref={dayToRef}
-            type="text"
-            placeholder="DD"
-            value={formData.dateTo.day}
-            onClick={handleDateFieldClick}
-            onChange={(e) => onFieldChange('dateTo', 'day', e.target.value, e.target)}
-            className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.dateTo.day ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
-          <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-          <input
-            ref={monthToRef}
-            type="text"
-            placeholder="MM"
-            value={formData.dateTo.month}
-            onClick={handleDateFieldClick}
-            onChange={(e) => onFieldChange('dateTo', 'month', e.target.value, e.target)}
-            className={`w-12 lg:w-[38px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.dateTo.month ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
-          <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">/</span>
-          <input
-            type="text"
-            placeholder="25"
-            value={formData.dateTo.year}
-            onClick={handleDateFieldClick}
-            onChange={(e) => onFieldChange('dateTo', 'year', e.target.value, e.target)}
-            className={`w-16 lg:w-[61px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.dateTo.year ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
-        </div>
 
-        {/* Height - responsywne */}
-        <div className="w-auto flex items-center gap-1">
-          <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-base font-black font-['Inter'] italic leading-snug">📏 Wzrost:</span>
-          </div>
-          <input
-            ref={heightRef}
-            type="text"
-            placeholder="180"
-            value={formData.height.value}
-            onChange={(e) => onFieldChange('height', 'value', e.target.value, e.target)}
-            className={`w-20 lg:w-[102px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.height ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
-          <div className="w-10 lg:w-[35px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">cm</span>
-          </div>
-        </div>
-
-        {/* Weight - responsywne */}
-        <div className="w-auto flex items-center gap-1">
-          <div className="w-28 lg:w-[111px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-base font-black font-['Inter'] italic leading-snug">⚖️ Waga:</span>
-          </div>
-          <input
-            ref={weightRef}
-            type="text"
-            placeholder="70"
-            value={formData.weight.value}
-            onChange={(e) => onFieldChange('weight', 'value', e.target.value, e.target)}
-            className={`w-20 lg:w-[102px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-sm lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.weight ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
-          <div className="w-10 lg:w-[35px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-sm lg:text-xs font-black font-['Inter'] italic leading-none">kg</span>
+          {/* Weight */}
+          <div className="flex flex-row items-center justify-between gap-2 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20 flex-1">
+            <Label className="text-white font-bold text-xs uppercase tracking-wider opacity-90 flex items-center gap-1 min-w-[60px]">
+              ⚖️ Waga:
+            </Label>
+            <div className="flex items-center gap-1">
+              <Input
+                ref={weightRef}
+                type="text"
+                placeholder="70"
+                value={formData.weight.value}
+                onChange={(e) => onFieldChange('weight', 'value', e.target.value, e.target)}
+                className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors.weight ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                maxLength={3}
+              />
+              <span className="text-white/70 text-sm font-medium w-6">kg</span>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Center Section - Level, Gender and Shoe Size - POWIĘKSZONA responsywna szerokość */}
-      <div className="w-full lg:w-[270px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-start gap-1.5" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-        {/* Level - responsywny */}
-        <div className="w-full flex items-center gap-2">
-          <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">🎖️ Poziom:</span>
+      {/* Center Section - Level, Gender and Shoe Size */}
+      <div className="w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
+
+        {/* Level */}
+        <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
+          <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
+            🎖️ Poziom:
+          </Label>
+          <div className="relative">
+            <Input
+              ref={levelRef}
+              type="text"
+              placeholder="1-6"
+              value={formData.level}
+              onChange={(e) => onFieldChange('level', 'value', e.target.value, e.target)}
+              className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors.level ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+              maxLength={1}
+            />
           </div>
-          <input
-            ref={levelRef}
-            type="text"
-            placeholder="1-6"
-            value={formData.level}
-            onChange={(e) => onFieldChange('level', 'value', e.target.value, e.target)}
-            className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.level ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
-          />
         </div>
 
-        {/* Gender - responsywny */}
-        <div className="w-full flex items-center gap-2">
-          <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👤 Płeć:</span>
-          </div>
-          <input
+        {/* Gender */}
+        <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
+          <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
+            👤 Płeć:
+          </Label>
+          <Input
             ref={genderRef}
             type="text"
             placeholder="M/K"
             value={formData.gender}
             onChange={(e) => onFieldChange('gender', 'value', e.target.value, e.target)}
-            className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.gender ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
+            className={`w-24 h-10 text-center font-bold text-xl uppercase bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors.gender ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+            maxLength={1}
           />
         </div>
 
-        {/* Shoe Size - responsywny */}
-        <div className="w-full flex items-center gap-2">
-          <div className="flex-1 lg:w-[140px] h-12 lg:h-[35px] bg-[#194576] rounded-[5px] shadow-md flex items-center justify-center">
-            <span className="text-white text-lg font-black font-['Inter'] italic leading-[25px]">👟 Rozmiar:</span>
-          </div>
-          <input
+        {/* Shoe Size */}
+        <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
+          <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
+            👟 Rozmiar:
+          </Label>
+          <Input
             ref={shoeSizeRef}
             type="text"
             placeholder="23-35"
             value={formData.shoeSize || ''}
             onChange={(e) => onFieldChange('shoeSize', 'value', e.target.value, e.target)}
-            className={`w-20 lg:w-[60px] h-12 lg:h-[35px] rounded-[5px] text-white text-center text-base lg:text-xs font-black font-['Inter'] shadow-md ${
-              formErrors.shoeSize ? 'bg-red-600 border-2 border-red-400' : 'bg-[#194576]'
-            }`}
+            className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors.shoeSize ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+            maxLength={5}
           />
         </div>
       </div>
@@ -222,4 +193,3 @@ const SkierForm: React.FC<SkierFormProps> = ({
 };
 
 export default SkierForm;
-

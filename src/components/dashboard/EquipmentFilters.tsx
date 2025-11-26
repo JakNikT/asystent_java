@@ -14,96 +14,92 @@ interface EquipmentFiltersProps {
 const EquipmentFilters: React.FC<EquipmentFiltersProps> = ({
   equipmentTypeFilter,
   categoryFilter,
-  appMode,
+  appMode: _appMode, // Zachowane dla przyszłej użyteczności
   onQuickFilter,
   onShowAllEquipment
 }) => {
   return (
-    <div className="w-full max-w-[900px] bg-[#194576] rounded-lg p-3 mb-3" style={{ boxShadow: '0 15px 40px rgba(0, 0, 0, 0.5)' }}>
-      {/* Wszystkie przyciski w jednym wierszu - responsywne */}
-      <div className="flex flex-wrap gap-2 justify-center items-center">
+    <>
+      {/* Przyciski w dwóch wierszach - powiększone */}
+      <div className="grid grid-cols-4 gap-3 justify-center items-center w-full">
         <button
           onClick={() => onQuickFilter('NARTY', 'TOP')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'NARTY' && categoryFilter === 'TOP'
-              ? 'bg-blue-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-blue-600 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           🎿 Narty TOP
         </button>
         <button
           onClick={() => onQuickFilter('NARTY', 'VIP')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'NARTY' && categoryFilter === 'VIP'
-              ? 'bg-blue-600 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-blue-700 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           🎿 Narty VIP
         </button>
         <button
           onClick={() => onQuickFilter('NARTY', 'JUNIOR')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'NARTY' && categoryFilter === 'JUNIOR'
-              ? 'bg-green-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-green-600 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           👶 Narty JUNIOR
         </button>
         <button
           onClick={() => onQuickFilter('BUTY', 'JUNIOR')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR'
-              ? 'bg-green-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-green-600 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           👶 Buty Junior
         </button>
         <button
           onClick={() => onQuickFilter('BUTY', 'DOROSLE')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE'
-              ? 'bg-purple-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-purple-600 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           🥾 Buty Dorosłe
         </button>
         <button
           onClick={() => onQuickFilter('DESKI', '')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'DESKI'
-              ? 'bg-orange-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-orange-600 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           🏂 Deski
         </button>
         <button
           onClick={() => onQuickFilter('BUTY_SNOWBOARD', '')}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
+          className={`px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${
             equipmentTypeFilter === 'BUTY_SNOWBOARD'
-              ? 'bg-red-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
+              ? 'bg-red-600 text-white shadow-xl shadow-black/40 border border-white/20'
+              : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5'
           }`}
         >
           👢 Buty SB
         </button>
         <button
           onClick={onShowAllEquipment}
-          className={`px-4 py-2 text-sm rounded-lg font-medium transition-all duration-200 whitespace-nowrap ${
-            !equipmentTypeFilter && !categoryFilter && appMode === 'browse'
-              ? 'bg-gray-500 text-white shadow-lg'
-              : 'bg-[#2C699F] text-white hover:bg-[#386BB2] shadow-md hover:shadow-lg'
-          }`}
+          className="px-4 py-3 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 hover:border-white/20 shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 border border-white/5"
         >
-          📦 Cały sprzęt
+          🌐 Wszystkie
         </button>
       </div>
-    </div>
+    </>
   );
 };
 

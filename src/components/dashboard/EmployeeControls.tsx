@@ -20,42 +20,41 @@ const EmployeeControls: React.FC<EmployeeControlsProps> = ({
   onHistory,
   onReservations
 }) => {
+  console.log('src/components/dashboard/EmployeeControls.tsx: Renderowanie kontrolek pracownika, tryb:', _appMode, 'isEmployeeMode:', isEmployeeMode);
+
   return (
-    <div className="w-full lg:w-[140px] h-auto lg:min-h-[200px] p-2 bg-[#2C699F] rounded-[10px] border border-white flex flex-col justify-center items-center gap-2" style={{ boxShadow: '0 10px 25px rgba(0, 0, 0, 0.4)' }}>
-      {/* Action Buttons - POWIĘKSZONE PIONOWO w jednej kolumnie */}
+    <div className="w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
+      {/* Action Buttons - bezpośrednio w kontenerze */}
       <button
         onClick={onClear}
-        className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
-        style={{ boxShadow: '0 4px 10px rgba(0, 0, 0, 0.3)' }}
-        onMouseEnter={(e) => e.currentTarget.style.boxShadow = '0 6px 15px rgba(0, 0, 0, 0.4)'}
-        onMouseLeave={(e) => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0, 0, 0, 0.3)'}
+        className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider"
       >
-        <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight">🗑️ Wyczyść</span>
+        🗑️ Wyczyść
       </button>
+      
       <button 
         onClick={onBrowse}
-        className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+        className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider"
       >
-        <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📋 Przeglądaj</span>
+        📋 Przeglądaj
       </button>
+      
       <button 
         onClick={onHistory}
-        className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all"
+        className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider"
       >
-        <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">📜 Historia</span>
+        📜 Historia
       </button>
-      {/* Przycisk "Rezerwacje" - widoczny tylko w trybie pracownika */}
-      {isEmployeeMode && (
-        <button 
-          onClick={onReservations}
-          className="w-full h-14 lg:h-[50px] bg-[#194576] rounded-[5px] shadow-md hover:shadow-lg flex items-center justify-center px-2 hover:bg-[#2C699F] transition-all cursor-pointer"
-        >
-          <span className="text-white text-base lg:text-sm font-black font-['Inter'] italic leading-tight whitespace-nowrap">🔄 Rezerwacje</span>
-        </button>
-      )}
+      
+      {/* Przycisk "Rezerwacje" - zawsze widoczny */}
+      <button 
+        onClick={onReservations}
+        className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider cursor-pointer"
+      >
+        🔄 Rezerwacje
+      </button>
     </div>
   );
 };
 
 export default EmployeeControls;
-
