@@ -690,6 +690,28 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // src/components/dashboard/Dashboard.tsx: Funkcja obsługi zmian kryteriów z BrowseSkisComponent
+  const handleBrowseCriteriaChange = (criteria: Partial<SearchCriteria>) => {
+    console.log('Dashboard: Otrzymano zmienione kryteria z BrowseSkisComponent:', criteria);
+    
+    // Konwertuj Partial<SearchCriteria> na format FormData i zaktualizuj activeTab.formData
+    setFormData(prev => ({
+      ...prev,
+      height: {
+        ...prev.height,
+        value: criteria.wzrost?.toString() || prev.height.value
+      },
+      weight: {
+        ...prev.weight,
+        value: criteria.waga?.toString() || prev.weight.value
+      },
+      level: criteria.poziom?.toString() || prev.level,
+      gender: criteria.plec?.toUpperCase() || prev.gender
+    }));
+    
+    console.log('Dashboard: Zaktualizowano formData z kryteriów BrowseSkisComponent');
+  };
+
   const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
     console.log(`src/components/dashboard/Dashboard.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
     console.log(`src/components/dashboard/Dashboard.tsx: Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
@@ -1662,6 +1684,7 @@ const Dashboard: React.FC = () => {
             onRemoveTab={removeTab}
             onRefreshData={loadDatabase}
             isEmployeeMode={isEmployeeMode}
+            onCriteriaChange={handleBrowseCriteriaChange}
           />
         </div>
       )}

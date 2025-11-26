@@ -7,6 +7,13 @@ import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { SkiDataService } from '../services/skiDataService';
 import type { ReservationInfo } from '../services/reservationService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
+import { Input } from './ui/Input';
+import { 
+  validateHeightRealtime, 
+  validateWeightRealtime, 
+  validateLevelRealtime, 
+  validateGenderRealtime 
+} from '../utils/formValidation';
 
 interface TabInfo {
   id: string;
@@ -25,6 +32,7 @@ interface BrowseSkisComponentProps {
   onRemoveTab?: (tabId: string) => void;
   onRefreshData?: () => Promise<void>;
   isEmployeeMode?: boolean;
+  onCriteriaChange?: (criteria: Partial<SearchCriteria>) => void;
 }
 
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
@@ -47,6 +55,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   onRemoveTab,
   onRefreshData,
   isEmployeeMode = false,
+  onCriteriaChange,
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'DLUGOSC',
@@ -80,6 +89,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   }, [initialFilter]);
 
+  // Synchronizacja pól edycji z browseCriteria (gdy zmienia się z Dashboard)
+  useEffect(() => {
+    console.log('BrowseSkisComponent: Synchronizuję pola edycji z browseCriteria:', browseCriteria);
+    setEditWzrost(browseCriteria.wzrost?.toString() || '');
+    setEditWaga(browseCriteria.waga?.toString() || '');
+    setEditPoziom(browseCriteria.poziom?.toString() || '');
+    setEditPlec(browseCriteria.plec?.toUpperCase() || '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [browseCriteria.wzrost, browseCriteria.waga, browseCriteria.poziom, browseCriteria.plec]);
+
   // NOWY STAN: Modal edycji/dodawania
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
@@ -88,6 +107,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // NOWY STAN: Toast notifications
   const [toastMessage, setToastMessage] = useState('');
   const [toastType, setToastType] = useState<'success' | 'error'>('success');
+
+  // NOWY STAN: Pola edycji kryteriów (wzrost, waga, poziom, płeć)
+  const [editWzrost, setEditWzrost] = useState<string>('');
+  const [editWaga, setEditWaga] = useState<string>('');
+  const [editPoziom, setEditPoziom] = useState<string>('');
+  const [editPlec, setEditPlec] = useState<string>('');
+
+  // NOWY STAN: Pola wyszukiwania (Flex, Długość)
+  const [searchFlex, setSearchFlex] = useState<string>('');
+  const [searchDlugosc, setSearchDlugosc] = useState<string>('');
 
   // Ładowanie statusów dostępności
   useEffect(() => {
@@ -293,6 +322,71 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // NOWE FUNKCJE: Obsługa edycji i dodawania
 
+  // src/components/BrowseSkisComponent.tsx: Funkcja obsługi zmian pól edycji kryteriów
+  const handleFieldChange = (field: 'wzrost' | 'waga' | 'poziom' | 'plec', value: string) => {
+    console.log(`BrowseSkisComponent: Zmiana pola ${field} - wartość: ${value}`);
+
+    // Walidacja w czasie rzeczywistym
+    let isValid = true;
+    let errorMessage = '';
+
+    if (field === 'wzrost') {
+      const validation = validateHeightRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    } else if (field === 'waga') {
+      const validation = validateWeightRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    } else if (field === 'poziom') {
+      const validation = validateLevelRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    } else if (field === 'plec') {
+      const validation = validateGenderRealtime(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+    }
+
+    // Jeśli walidacja nie przeszła, nie aktualizuj wartości
+    if (!isValid) {
+      console.log(`BrowseSkisComponent: Walidacja nie przeszła dla ${field} - ${errorMessage}`);
+      return;
+    }
+
+    // Aktualizuj lokalny stan
+    if (field === 'wzrost') {
+      setEditWzrost(value);
+    } else if (field === 'waga') {
+      setEditWaga(value);
+    } else if (field === 'poziom') {
+      setEditPoziom(value);
+    } else if (field === 'plec') {
+      setEditPlec(value.toUpperCase());
+    }
+
+    // Przygotuj zaktualizowane kryteria
+    const updatedCriteria: Partial<SearchCriteria> = {
+      ...browseCriteria,
+    };
+
+    if (field === 'wzrost') {
+      updatedCriteria.wzrost = value ? parseInt(value) : undefined;
+    } else if (field === 'waga') {
+      updatedCriteria.waga = value ? parseInt(value) : undefined;
+    } else if (field === 'poziom') {
+      updatedCriteria.poziom = value ? parseInt(value) : undefined;
+    } else if (field === 'plec') {
+      updatedCriteria.plec = value ? (value.toUpperCase() as 'M' | 'K' | 'W') : undefined;
+    }
+
+    // Wywołaj callback do aktualizacji w Dashboard
+    if (onCriteriaChange) {
+      console.log(`BrowseSkisComponent: Aktualizuję kryteria w Dashboard:`, updatedCriteria);
+      onCriteriaChange(updatedCriteria);
+    }
+  };
+
   // src/components/BrowseSkisComponent.tsx: Funkcja otwierania modala edycji
   const handleEdit = (ski: SkiData) => {
     console.log('BrowseSkisComponent: Otwieranie modala edycji dla narty:', ski.ID);
@@ -397,7 +491,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const filterSkis = (
     skis: SkiData[],
     searchTerm: string,
-    activeFilter: string
+    activeFilter: string,
+    flexFilter: string = '',
+    dlugoscFilter: string = ''
   ): SkiData[] => {
     // Zabezpieczenie: sprawdź czy skis jest tablicą
     if (!Array.isArray(skis) || skis.length === 0) {
@@ -473,6 +569,29 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           przeznaczenieFormatted.includes(term) || // Wyszukiwanie po pełnych nazwach (Slalom, Gigant, itp.)
           atuty.includes(term) ||
           dlugosc.includes(term);
+      });
+    }
+
+    // Filtruj po Flex (tylko dla butów dorosłych)
+    if (flexFilter.trim()) {
+      const flexTerm = flexFilter.trim().toLowerCase();
+      filtered = filtered.filter(ski => {
+        // Jeśli to but dorosły, sprawdź Flex
+        if (ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE') {
+          const flex = extractFlexFromModel(ski.MODEL);
+          return flex ? flex.toLowerCase().includes(flexTerm) : false;
+        }
+        // Jeśli nie jest butem dorosłym, nie filtruj (pozostaw w wynikach)
+        return true;
+      });
+    }
+
+    // Filtruj po Długość
+    if (dlugoscFilter.trim()) {
+      const dlugoscTerm = dlugoscFilter.trim();
+      filtered = filtered.filter(ski => {
+        const dlugosc = (ski.DLUGOSC !== null && ski.DLUGOSC !== undefined) ? ski.DLUGOSC.toString() : '';
+        return dlugosc.includes(dlugoscTerm);
       });
     }
 
@@ -569,7 +688,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // Sortowanie i paginacja z grupowaniem
-  const filteredSkis = filterSkis(allSkis, searchTerm, activeFilter);
+  const filteredSkis = filterSkis(allSkis, searchTerm, activeFilter, searchFlex, searchDlugosc);
   const groupedSkis = groupSkisByModel(filteredSkis); // Grupowanie po modelu
   const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
@@ -641,9 +760,18 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-[#386BB2]">
-      {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
-      {tabs.length > 0 && (
+    <div 
+      className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative"
+      style={{
+        backgroundImage: "url('/images/background.png')",
+      }}
+    >
+      {/* Overlay dla lepszej czytelności */}
+      <div className="absolute inset-0 bg-black/20 pointer-events-none z-0"></div>
+
+      <div className="relative z-10">
+        {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
+        {tabs.length > 0 && (
         <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
           <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
             {/* Renderuj karty */}
@@ -652,8 +780,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 key={tab.id}
                 onClick={() => onTabChange?.(tab.id)}
                 className={`group relative px-4 py-2 rounded-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
-                    ? 'bg-[#386BB2] text-white'
-                    : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
+                  ? 'bg-[#386BB2] text-white'
+                  : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
                   }`}
               >
                 {tab.label}
@@ -722,34 +850,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90">
-                🔍 Wyszukaj narty:
-              </label>
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(e) => {
-                  setSearchTerm(e.target.value);
-                  setCurrentPage(1); // Reset do pierwszej strony przy wyszukiwaniu
-                }}
-                placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
-                className="flex-1 px-4 py-2 bg-primary text-white placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
-              />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm('')}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10"
-                >
-                  Wyczyść
-                </button>
-              )}
-            </div>
-            {searchTerm && (
-              <p className="text-sm text-white/60 mt-2">
-                Znaleziono {sortedSkis.length} pasujących nart.
-              </p>
-            )}
           </div>
 
           {/* Tabela sprzętu */}
@@ -757,21 +857,128 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-[#0f2744]/50 border-b border-white/10">
+                  {/* Wiersz z polami edycji nad nagłówkami kolumn */}
+                  <tr className="bg-[#0f2744]/70 border-b border-white/10">
+                    {/* Pole wyszukiwania rozciągnięte na kolumny Marka i Model */}
+                    <th colSpan={2} className="px-4 py-2">
+                      <Input
+                        type="text"
+                        placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
+                        value={searchTerm}
+                        onChange={(e) => {
+                          setSearchTerm(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-full h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                      />
+                    </th>
+                    {/* Pole wyszukiwania Flex - opcjonalnie */}
+                    {hasAdultBoots && (
+                      <th className="px-4 py-2">
+                        <Input
+                          type="text"
+                          placeholder="Flex"
+                          value={searchFlex}
+                          onChange={(e) => {
+                            setSearchFlex(e.target.value);
+                            setCurrentPage(1);
+                          }}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                        />
+                      </th>
+                    )}
+                    {/* Pole wyszukiwania Długość */}
+                    <th className="px-4 py-2">
+                      <Input
+                        type="text"
+                        placeholder="Długość"
+                        value={searchDlugosc}
+                        onChange={(e) => {
+                          setSearchDlugosc(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                        className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                      />
+                    </th>
+                    {/* Pole Wzrost - tylko gdy !shouldHideColumns */}
+                    {!shouldHideColumns && (
+                      <th className="px-4 py-2">
+                        <Input
+                          type="text"
+                          placeholder="180"
+                          value={editWzrost}
+                          onChange={(e) => handleFieldChange('wzrost', e.target.value)}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                          maxLength={3}
+                        />
+                      </th>
+                    )}
+                    {/* Pole Waga - tylko gdy !shouldHideColumns */}
+                    {!shouldHideColumns && (
+                      <th className="px-4 py-2">
+                        <Input
+                          type="text"
+                          placeholder="70"
+                          value={editWaga}
+                          onChange={(e) => handleFieldChange('waga', e.target.value)}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                          maxLength={3}
+                        />
+                      </th>
+                    )}
+                    {/* Pole Poziom - tylko gdy !shouldHideColumns */}
+                    {!shouldHideColumns && (
+                      <th className="px-4 py-2">
+                        <Input
+                          type="text"
+                          placeholder="1-6"
+                          value={editPoziom}
+                          onChange={(e) => handleFieldChange('poziom', e.target.value)}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                          maxLength={1}
+                        />
+                      </th>
+                    )}
+                    {/* Pole Płeć - tylko gdy !shouldHideColumns && !shouldHideJuniorSkiColumns */}
+                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                      <th className="px-4 py-2">
+                        <Input
+                          type="text"
+                          placeholder="M/K"
+                          value={editPlec}
+                          onChange={(e) => handleFieldChange('plec', e.target.value)}
+                          className="w-20 h-8 text-center font-bold text-sm uppercase bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                          maxLength={1}
+                        />
+                      </th>
+                    )}
+                    {/* Puste komórki dla pozostałych kolumn: Przeznaczenie, Atuty (gdy widoczne) */}
+                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                      <>
+                        <th className="px-4 py-2"></th>
+                        <th className="px-4 py-2"></th>
+                      </>
+                    )}
+                    {/* Dostępność */}
+                    <th className="px-4 py-2"></th>
+                    {/* Akcja - opcjonalnie */}
+                    {isEmployeeMode && <th className="px-4 py-2"></th>}
+                  </tr>
                   {/* NOWA ZMIANA: Nowy układ kolumn */}
                   <tr>
                     <th
-                      className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                      className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                       onClick={() => handleSort('MARKA')}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         Marka {renderSortIcon('MARKA')}
                       </div>
                     </th>
                     <th
-                      className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                      className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                       onClick={() => handleSort('MODEL')}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         Model {renderSortIcon('MODEL')}
                       </div>
                     </th>
@@ -786,22 +993,22 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       </th>
                     )}
                     <th
-                      className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                      className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                       onClick={() => handleSort('DLUGOSC')}
                     >
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-center gap-2">
                         Długość {renderSortIcon('DLUGOSC')}
                       </div>
                     </th>
                     {!shouldHideColumns && (
                       <>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Wzrost (cm)</th>
+                        <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">Wzrost (cm)</th>
                         <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Waga (kg)</th>
                         <th
-                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                          className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                           onClick={() => handleSort('POZIOM')}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             Poziom {renderSortIcon('POZIOM')}
                           </div>
                         </th>
@@ -810,10 +1017,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                       <>
                         <th
-                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                          className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                           onClick={() => handleSort('PLEC')}
                         >
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center justify-center gap-2">
                             Płeć {renderSortIcon('PLEC')}
                           </div>
                         </th>
@@ -949,8 +1156,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
                             className={`relative inline-flex items-center px-4 py-2 border text-sm font-bold transition-all ${currentPage === pageNum
-                                ? 'z-10 bg-[#0f2744]/70 border-white/20 text-white'
-                                : 'bg-[#0f2744]/50 border-white/10 text-white hover:bg-[#0f2744]/70'
+                              ? 'z-10 bg-[#0f2744]/70 border-white/20 text-white'
+                              : 'bg-[#0f2744]/50 border-white/10 text-white hover:bg-[#0f2744]/70'
                               }`}
                           >
                             {pageNum}
@@ -1001,6 +1208,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         isVisible={!!toastMessage}
         onClose={() => setToastMessage('')}
       />
+      </div>
     </div>
   );
 };
