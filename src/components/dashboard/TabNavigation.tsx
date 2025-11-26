@@ -20,36 +20,36 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   onTabChange,
   onAddTab,
   onRemoveTab,
-  isEmployeeMode,
-  onToggleEmployeeMode,
+  isEmployeeMode: _isEmployeeMode, // Zachowane dla przyszłej użyteczności (używane w zakomentowanym kodzie)
+  onToggleEmployeeMode: _onToggleEmployeeMode, // Zachowane dla przyszłej użyteczności (używane w zakomentowanym kodzie)
   appMode: _appMode // Zachowane dla przyszłej użyteczności
 }) => {
   return (
-    <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
-      {/* Przycisk logowania/wylogowania dla pracownika */}
-      <button
+    <div className="relative w-full bg-brand-dark border-b border-white/10 py-2 px-4 shadow-md">
+      {/* Przycisk logowania/wylogowania dla pracownika - WYŁĄCZONY */}
+      {/* <button
         onClick={onToggleEmployeeMode}
         className={`absolute top-1/2 right-4 -translate-y-1/2 z-50 font-bold p-2 rounded-lg shadow-lg transition-all duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
           isEmployeeMode 
-            ? 'bg-green-600/80 hover:bg-green-700/90 text-white' 
-            : 'bg-blue-900/50 hover:bg-blue-800/70 text-white'
+            ? 'bg-green-600 hover:bg-green-700 text-white' 
+            : 'bg-black/20 hover:bg-black/40 text-white/80 hover:text-white'
         }`}
         aria-label={isEmployeeMode ? "Wyloguj się (przełącz na tryb klienta)" : "Zaloguj się jako pracownik"}
         title={isEmployeeMode ? "Kliknij aby wylogować się i przełączyć na tryb klienta" : "Zaloguj się jako pracownik"}
       >
         <span className="text-xl">{isEmployeeMode ? '🔓' : '🔒'}</span>
-      </button>
+      </button> */}
 
-      <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576] pr-16">
+      <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {/* Renderuj karty */}
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => onTabChange(tab.id)}
-            className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${
+            className={`group relative px-4 py-2 rounded-t-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] flex items-center gap-2 ${
               activeTabId === tab.id
-                ? 'bg-[#386BB2] text-white'
-                : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
+                ? 'bg-background text-foreground shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] translate-y-[1px]'
+                : 'bg-black/20 text-white/70 hover:bg-black/30 hover:text-white'
             }`}
           >
             {tab.label}
@@ -60,7 +60,11 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
                   e.stopPropagation();
                   onRemoveTab(tab.id);
                 }}
-                className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
+                className={`ml-2 rounded-full p-0.5 transition-colors ${
+                  activeTabId === tab.id 
+                    ? 'text-muted-foreground hover:text-destructive hover:bg-destructive/10' 
+                    : 'text-white/50 hover:text-red-300'
+                }`}
               >
                 ✕
               </span>
@@ -71,10 +75,10 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
         {/* Przycisk dodawania nowej karty - sticky na mobile */}
         <button
           onClick={onAddTab}
-          className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
+          className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg ml-2"
           title="Dodaj nową osobę"
         >
-          ➕ Nowa osoba
+          ➕ <span className="hidden sm:inline">Nowa osoba</span>
         </button>
       </div>
     </div>

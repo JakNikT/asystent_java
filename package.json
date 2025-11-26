@@ -19,6 +19,7 @@
     "dev:all": "concurrently \"cd FireSnowBridge && start-headless.bat\" \"npm run server\" \"npm run dev\" --names \"JAVA,API,WEB\" --prefix-colors \"yellow,blue,green\""
   },
   "dependencies": {
+    "clsx": "^2.1.1",
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
@@ -28,6 +29,7 @@
     "papaparse": "^5.5.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "tailwind-merge": "^3.4.0",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0"
   },

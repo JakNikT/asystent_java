@@ -110,13 +110,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     <div className="min-h-screen bg-[#386BB2] p-3 lg:p-6">
       <div className="max-w-8xl mx-auto">
         {/* Header */}
-        <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6 mb-6">
+        <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
                 Historia wypożyczeń (23/22 - 19/18 - 18/17 - 17/16 - 16/15 - 15/14 - 14/13 - 13/12 - 12/11)
               </h1>
-              <p className="text-[#A6C2EF] text-sm">
+              <p className="text-white/70 text-sm">
                 {step === 'search' && 'Wyszukaj klienta po nazwisku'}
                 {step === 'dates' && selectedClient && `Klient: ${selectedClient.pelna_nazwa}`}
                 {step === 'equipment' && selectedClient && selectedDate &&
@@ -128,14 +128,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               {step !== 'search' && (
                 <button
                   onClick={handleBack}
-                  className="px-4 py-2 bg-[#2C699F] text-white rounded-lg font-semibold hover:bg-[#1E4D75] transition-all"
+                  className="px-4 py-2 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm"
                 >
                   ← Wstecz
                 </button>
               )}
               <button
                 onClick={onBack}
-                className="px-4 py-2 bg-[#2C699F] text-white rounded-lg font-semibold hover:bg-[#1E4D75] transition-all"
+                className="px-4 py-2 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm"
               >
                 Powrót
               </button>
@@ -145,9 +145,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
 
         {/* Krok 1: Wyszukiwanie klienta */}
         {step === 'search' && (
-          <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6">
             <div className="mb-4">
-              <label className="block text-white font-semibold mb-2">
+              <label className="block text-white font-bold text-sm uppercase tracking-wider mb-2">
                 Wpisz nazwisko klienta:
               </label>
               <input
@@ -155,7 +155,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="np. Kowalczyk"
-                className="w-full px-4 py-2 rounded-lg bg-[#2C699F] text-white placeholder-[#A6C2EF] focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-2 rounded-lg bg-primary text-white placeholder-white/30 border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
                 autoFocus
               />
               {searchTerm.trim().length > 0 && searchTerm.trim().length < 2 && (
@@ -186,7 +186,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                   <button
                     key={client.id}
                     onClick={() => handleClientSelect(client)}
-                    className="w-full text-left p-4 bg-[#2C699F] rounded-lg hover:bg-[#386BB2] transition-all"
+                    className="w-full text-left p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 transition-all shadow-sm"
                   >
                     <div className="text-white font-semibold">
                       {client.pelna_nazwa}
@@ -211,7 +211,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
 
         {/* Krok 2: Wybór daty */}
         {step === 'dates' && selectedClient && (
-          <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6">
             <h3 className="text-white font-semibold mb-4 text-lg">
               Wybierz datę wypożyczenia:
             </h3>
@@ -234,7 +234,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                   <button
                     key={`${dateRange.od}-${dateRange.do}-${index}`}
                     onClick={() => handleDateSelect(dateRange)}
-                    className="w-full text-left p-4 bg-[#2C699F] rounded-lg hover:bg-[#386BB2] transition-all"
+                    className="w-full text-left p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 transition-all shadow-sm"
                   >
                     <div className="text-white font-semibold">
                       Od: {dateRange.od} - Do: {dateRange.do} {dateRange.sezon ? `(Sezon: ${dateRange.sezon})` : ''}
@@ -257,7 +257,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
 
         {/* Krok 3: Wyświetlenie sprzętu */}
         {step === 'equipment' && selectedClient && selectedDate && (
-          <div className="bg-[#194576] rounded-lg shadow-lg p-4 lg:p-6">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6">
             <h3 className="text-white font-semibold mb-4 text-lg">
               Wypożyczony sprzęt:
             </h3>
@@ -291,7 +291,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                     {equipment.map((item, index) => (
                       <tr
                         key={`${item.kod}-${index}`}
-                        className="border-b border-[#2C699F] hover:bg-[#2C699F] transition-colors"
+                        className="border-b border-white/10 hover:bg-white/10 transition-colors"
                       >
                         <td className="px-4 py-2 text-white">{item.kod || '-'}</td>
                         <td className="px-4 py-2 text-white">{item.sprzet || '-'}</td>
