@@ -94,7 +94,40 @@ Użytkownik poprosił o dwa główne ulepszenia:
    - Znajdź rezerwację która była odebrana (wypożyczenie z tym samym kodem/klientem)
    - Sprawdź czy są połączone w jedną pozycję z ikoną 🔄
 
+### 🚧 Bieżące zadania (2025-11-27)
+
+- [x] Pasek filtrów w `BrowseSkisComponent`: wszystkie nowe kontrolki nad tabelą mają półprzezroczyste tło pasujące do reszty layoutu (sukces: wspólne klasy Tailwind zapewniają spójny wygląd, brak niechcianych pełnych kolorów, brak regresji w trybie pracownika).
+- [x] Placeholder głównego pola wyszukiwania nad tabelą uproszczony do "Wyszukaj..." dla spójności z resztą UI.
+- [x] Pasek filtrów nad tabelą ma półprzezroczyste tło również dla całego wiersza (nie tylko pól), aby cała belka stapiała się z layoutem.
+- [x] System kart (tabs) w `BrowseSkisComponent` dostosowany do reszty UI - zastosowano glassmorphism z półprzezroczystymi tłami zamiast solidnych kolorów niebieskich.
+
 ## Executor's Feedback or Assistance Requests
+
+**Data**: 2025-11-27
+
+**Zadanie**: System kart (tabs) w BrowseSkisComponent – spójny design glassmorphism
+- Zaktualizowano system kart aby dopasować do reszty UI z efektem glassmorphism
+- **Zmiany w tab bar container**:
+  - `bg-[#194576]` → `bg-black/20` z `backdrop-blur-md`
+  - Obramowanie: `border-b-2 border-[#2C699F]` → `border-b border-white/10`
+- **Zmiany w przyciskach kart**:
+  - Aktywna karta: `bg-[#386BB2]` → `bg-white/20` z `border border-white/30 shadow-lg`
+  - Nieaktywna karta: `bg-[#2C699F]` → `bg-white/5` z `border border-white/10`
+  - Dodano płynne przejścia hover z półprzezroczystymi kolorami
+- **Zmiany w przycisku "+" (dodaj kartę)**:
+  - `bg-green-600` → `bg-green-600/80` z `backdrop-blur-sm border border-white/20`
+- **Scrollbar**: Zmieniono kolory z solidnych niebieskich na `scrollbar-thumb-white/20` i `scrollbar-track-transparent`
+- Wszystkie zmiany są wyłącznie wizualne - funkcjonalność pozostała bez zmian
+- Sukces: System kart teraz harmonizuje z resztą komponentu używającą półprzezroczystych tłach
+
+**Data**: 2025-11-27 (wcześniej)
+
+**Zadanie**: Pasek filtrów BrowseSkis – spójna przezroczystość
+- Wprowadzono wspólną klasę Tailwind dla wszystkich nowych kontrolek nad tabelą, co nadaje im półprzezroczyste tło (`bg-white/10`) i delikatny `backdrop-blur`, dopasowany do pozostałych elementów UI.
+- Zmiana dotyczy tylko warstwy prezentacji; logika wyszukiwania i walidacje pozostały niezmienione.
+- Prośba: sprawdź wizualnie pasek filtrów w trybie standardowym i pracownika, aby potwierdzić, że przezroczystość odpowiada oczekiwaniom.
+- Dodatkowo uproszczono placeholder głównego pola wyszukiwania do "Wyszukaj..." – zgodnie z Twoją prośbą.
+- Cały wiersz filtrów ma teraz półprzezroczyste tło (`bg-white/5` z `backdrop-blur-sm`), więc belka nie odcina się od gradientowego tła aplikacji.
 
 **Data**: 2025-01-XX
 
@@ -1935,6 +1968,13 @@ Asystent_java/
 - [ ] **4.4**: Testowanie i weryfikacja
 
 ## Current Status / Progress Tracking
+
+### 2025-11-27 — Executor Update (Pasek filtrów nad tabelą)
+- Ujednolicono wszystkie nowe kontrolki wiersza filtrów w `BrowseSkisComponent` poprzez wspólną klasę Tailwind z półprzezroczystym tłem (`bg-white/10` + `backdrop-blur`), dzięki czemu pasek nad tabelą wygląda spójnie z resztą layoutu.
+- Wszystkie pola (wyszukiwarka, Flex, Długość, Wzrost, Waga, Poziom, Płeć) dzielą teraz te same granice i efekty focus, co eliminuje pełne, kryjące kolory.
+- Uproszczono placeholder głównego pola wyszukiwania do tekstu "Wyszukaj...", co poprawia czytelność i wpisuje się w minimalny styl pasków filtrów.
+- Dodatkowo cały wiersz filtrów ma teraz półprzezroczyste tło (`bg-white/5` + `backdrop-blur-sm`), więc cała belka stapia się z resztą interfejsu.
+- Status: gotowe do weryfikacji wizualnej przez użytkownika; brak dodatkowych zależności backendowych.
 
 **PLANNER MODE - Analiza integracji pliku "newrez.csv" z istniejącym systemem**
 
