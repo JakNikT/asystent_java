@@ -35,7 +35,8 @@ function mapFireSnowReservation(item) {
         numer: item.rezerwacja_id ? item.rezerwacja_id.toString() : '',
         typumowy: item.typumowy || 'STANDARD',
         obiekt_id: item.obiekt_id,
-        klient_id: item.klient_id
+        klient_id: item.klient_id,
+        parent_group_id: item.parent_group_id !== undefined ? item.parent_group_id : null
     };
 }
 

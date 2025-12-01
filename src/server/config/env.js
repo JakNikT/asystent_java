@@ -12,8 +12,8 @@ const rootDir = path.resolve(__dirname, '../../../');
 
 
 export const config = {
-    port: process.env.PORT || 3000,
-    fireSnowApiUrl: process.env.FIRESNOW_API_URL || 'http://localhost:8080',
+    port: process.env.PORT || 5001,
+    fireSnowApiUrl: process.env.FIRESNOW_API_URL || 'http://localhost:8081',
     useFireSnowApi: process.env.USE_FIRESNOW_API === 'true',
 
     // Logging configuration

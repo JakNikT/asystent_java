@@ -38,7 +38,8 @@ function mapFireSnowRental(item) {
         numer: item.numer_dokumentu || `WYP-${item.session_id || '?'}`,
         typumowy: 'STANDARD',
         obiekt_id: item.obiekt_id,
-        klient_id: item.klient_id
+        klient_id: item.klient_id,
+        parent_group_id: item.parent_group_id !== undefined ? item.parent_group_id : null
     };
 }
 
@@ -70,6 +71,7 @@ function mapFireSnowPastRental(item) {
         typumowy: 'STANDARD',
         obiekt_id: item.obiekt_id,
         klient_id: item.klient_id,
+        parent_group_id: item.parent_group_id !== undefined ? item.parent_group_id : null,
         source: 'rental'
     };
 }
