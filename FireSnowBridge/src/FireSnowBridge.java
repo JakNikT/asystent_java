@@ -41,7 +41,7 @@ public class FireSnowBridge {
             DB_URL = props.getProperty("db.url", "jdbc:hsqldb:hsql://192.168.8.48:9001/FireSport_database_4");
             DB_USER = props.getProperty("db.user", "SA");
             DB_PASSWORD = props.getProperty("db.password", "");
-            API_PORT = Integer.parseInt(props.getProperty("api.port", "8080"));
+            API_PORT = Integer.parseInt(props.getProperty("api.port", "8081"));
             
             System.out.println("FireSnowBridge: Configuration loaded successfully");
             System.out.println("FireSnowBridge: Database URL: " + DB_URL);
@@ -52,7 +52,7 @@ public class FireSnowBridge {
             DB_URL = "jdbc:hsqldb:hsql://192.168.8.48:9001/FireSport_database_4";
             DB_USER = "SA";
             DB_PASSWORD = "";
-            API_PORT = 8080;
+            API_PORT = 8081;
         }
     }
     
@@ -139,7 +139,9 @@ public class FireSnowBridge {
             }
             
             try (Connection conn = getConnection()) {
-                String response = "{\"status\":\"ok\",\"database\":\"connected\",\"message\":\"FireSnow Bridge API is running\"}";
+                // Użyj zmiennej conn do weryfikacji połączenia
+                boolean isValid = !conn.isClosed();
+                String response = "{\"status\":\"ok\",\"database\":\"connected\",\"connection_valid\":" + isValid + ",\"message\":\"FireSnow Bridge API is running\"}";
                 
                 exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
                 exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
@@ -204,6 +206,7 @@ public class FireSnowBridge {
                     "  rc.FORENAME as imie, " +
                     "  rc.SURNAME as nazwisko, " +
                     "  rc.PHONE1 as telefon, " +
+                    "  rg_parent.ID as parent_group_id, " +
                     "  CASE " +
                     "    WHEN UPPER(TRIM(p.NAME)) = 'PROMOTOR' THEN 'PROMOTOR' " +
                     "    WHEN UPPER(TRIM(p.DESCRIPTION)) LIKE '%P%' THEN 'PROMOTOR' " +
@@ -215,6 +218,9 @@ public class FireSnowBridge {
                     "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
                     "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
                     "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
+                    "LEFT JOIN RENTOBJECTS ro ON ro.ID = rp.RENTOBJECT_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
                     "JOIN RESERVATION_DOCUMENTS rd ON rd.ID = rp.RESERVATIONDOCUMENT_ID " +
                     "JOIN ABSTRACTFACTURABLEDOCUMENT afd ON afd.ID = rd.ID " +
                     "JOIN ABSTRACTCASHABLEDOCUMENT acd ON acd.ID = afd.ID " +
@@ -245,7 +251,13 @@ public class FireSnowBridge {
                     json.append("\"imie\":\"").append(escapeJson(rs.getString("imie"))).append("\",");
                     json.append("\"nazwisko\":\"").append(escapeJson(rs.getString("nazwisko"))).append("\",");
                     json.append("\"telefon\":\"").append(escapeJson(rs.getString("telefon"))).append("\",");
-                    json.append("\"typumowy\":\"").append(escapeJson(rs.getString("typumowy"))).append("\"");
+                    json.append("\"typumowy\":\"").append(escapeJson(rs.getString("typumowy"))).append("\",");
+                    Long parentGroupId = rs.getLong("parent_group_id");
+                    if (rs.wasNull()) {
+                        json.append("\"parent_group_id\":null");
+                    } else {
+                        json.append("\"parent_group_id\":").append(parentGroupId);
+                    }
                     json.append("}");
                 }
                 
@@ -314,11 +326,15 @@ public class FireSnowBridge {
                     "  ae_customer.NAME as klient_nazwa, " +
                     "  ae_equipment.NAME as nazwa_sprzetu, " +
                     "  ae_equipment.CODE as kod_sprzetu, " +
-                    "  doc.NUMBER as numer_dokumentu " +
+                    "  doc.NUMBER as numer_dokumentu, " +
+                    "  rg_parent.ID as parent_group_id " +
                     "FROM SESSIONINFOFGHJ si " +
                     "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
                     "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
                     "LEFT JOIN ABSTRACTDOCUMENT doc ON doc.ID = si.RENTDOCUMENT_ID " +
+                    "LEFT JOIN RENTOBJECTS ro ON ro.ID = si.RENTOBJECT_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
                     "WHERE si.STOPTIME != 0 " +  // != 0 = returned rental
                     "ORDER BY si.STOPTIME DESC";
                 
@@ -345,7 +361,13 @@ public class FireSnowBridge {
                     json.append("\"klient_id\":").append(rs.getLong("klient_id")).append(",");
                     json.append("\"dokument_id\":").append(rs.getLong("dokument_id")).append(",");
                     json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\",");
-                    json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\"");
+                    json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\",");
+                    Long parentGroupId = rs.getLong("parent_group_id");
+                    if (rs.wasNull()) {
+                        json.append("\"parent_group_id\":null");
+                    } else {
+                        json.append("\"parent_group_id\":").append(parentGroupId);
+                    }
                     json.append("}");
                 }
                 
@@ -496,11 +518,15 @@ public class FireSnowBridge {
                     "  ae_customer.NAME as klient_nazwa, " +
                     "  ae_equipment.NAME as nazwa_sprzetu, " +
                     "  ae_equipment.CODE as kod_sprzetu, " +
-                    "  doc.NUMBER as numer_dokumentu " +
+                    "  doc.NUMBER as numer_dokumentu, " +
+                    "  rg_parent.ID as parent_group_id " +
                     "FROM SESSIONINFOFGHJ si " +
                     "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
                     "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
                     "LEFT JOIN ABSTRACTDOCUMENT doc ON doc.ID = si.RENTDOCUMENT_ID " +
+                    "LEFT JOIN RENTOBJECTS ro ON ro.ID = si.RENTOBJECT_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
                     "WHERE si.STOPTIME = 0 " +  // 0 = active rental
                     "ORDER BY si.STARTTIME DESC";
                 
@@ -536,7 +562,13 @@ public class FireSnowBridge {
                     json.append("\"klient_id\":").append(rs.getLong("klient_id")).append(",");
                     json.append("\"dokument_id\":").append(rs.getLong("dokument_id")).append(",");
                     json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\",");
-                    json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\"");
+                    json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\",");
+                    Long parentGroupId = rs.getLong("parent_group_id");
+                    if (rs.wasNull()) {
+                        json.append("\"parent_group_id\":null");
+                    } else {
+                        json.append("\"parent_group_id\":").append(parentGroupId);
+                    }
                     json.append("}");
                 }
                 
@@ -604,8 +636,6 @@ static class DostepnoscOkresHandler implements HttpHandler {
             long bufferAfter = dateTo + (2L * 24 * 60 * 60 * 1000);   // +2 days
             
             // Convert timestamps to Date objects for SQL
-            java.util.Date dateFromDate = new java.util.Date(dateFrom);
-            java.util.Date dateToDate = new java.util.Date(dateTo);
             java.util.Date bufferBeforeDate = new java.util.Date(bufferBefore);
             java.util.Date bufferAfterDate = new java.util.Date(bufferAfter);
             
@@ -620,12 +650,16 @@ static class DostepnoscOkresHandler implements HttpHandler {
                 "  rp.CUSTOMER_ID as klient_id, " +
                 "  ae_customer.NAME as klient_nazwa, " +
                 "  rc.FORENAME as imie, " +
-                "  rc.SURNAME as nazwisko " +
+                "  rc.SURNAME as nazwisko, " +
+                "  rg_parent.ID as parent_group_id " +
                 "FROM RESERVATIONPOSITION rp " +
                 "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
                 "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
                 "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
                 "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
+                "LEFT JOIN RENTOBJECTS ro ON ro.ID = rp.RENTOBJECT_ID " +
+                "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+                "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
                 "WHERE rp.ENDDATE >= ? " +  // Koniec rezerwacji >= początek bufora
                 "  AND rp.BEGINDATE <= ? " +  // Początek rezerwacji <= koniec bufora
                 "  AND rp.BEGINDATE >= TIMESTAMP '2025-01-01 00:00:00' " +
@@ -642,10 +676,14 @@ static class DostepnoscOkresHandler implements HttpHandler {
                 "  si.CUSTOMER_ID as klient_id, " +
                 "  ae_customer.NAME as klient_nazwa, " +
                 "  ae_equipment.NAME as nazwa_sprzetu, " +
-                "  ae_equipment.CODE as kod_sprzetu " +
+                "  ae_equipment.CODE as kod_sprzetu, " +
+                "  rg_parent.ID as parent_group_id " +
                 "FROM SESSIONINFOFGHJ si " +
                 "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
                 "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
+                "LEFT JOIN RENTOBJECTS ro ON ro.ID = si.RENTOBJECT_ID " +
+                "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+                "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
                 "WHERE si.STOPTIME = 0 " +
                 "  AND si.STARTTIME >= 1735689600000 " +  // 2025-01-01
                 "  AND (si.STARTTIME + COALESCE(si.REMAININGTIME, 0)) >= ? " +  // Koniec wypożyczenia >= początek bufora
@@ -689,7 +727,13 @@ static class DostepnoscOkresHandler implements HttpHandler {
                 json.append("\"od\":\"").append(rsRes.getTimestamp("data_od")).append("\",");
                 json.append("\"do\":\"").append(rsRes.getTimestamp("data_do")).append("\",");
                 json.append("\"klient\":\"").append(escapeJson(klientNazwa)).append("\",");
-                json.append("\"sprzet\":\"").append(escapeJson(rsRes.getString("nazwa_sprzetu"))).append("\"");
+                json.append("\"sprzet\":\"").append(escapeJson(rsRes.getString("nazwa_sprzetu"))).append("\",");
+                Long parentGroupIdRes = rsRes.getLong("parent_group_id");
+                if (rsRes.wasNull()) {
+                    json.append("\"parent_group_id\":null");
+                } else {
+                    json.append("\"parent_group_id\":").append(parentGroupIdRes);
+                }
                 json.append("}");
             }
             
@@ -718,7 +762,13 @@ static class DostepnoscOkresHandler implements HttpHandler {
                 json.append("\"od\":").append(dataOd).append(",");
                 json.append("\"do\":").append(dataDo).append(",");
                 json.append("\"klient\":\"").append(escapeJson(klientNazwa)).append("\",");
-                json.append("\"sprzet\":\"").append(escapeJson(rsRent.getString("nazwa_sprzetu"))).append("\"");
+                json.append("\"sprzet\":\"").append(escapeJson(rsRent.getString("nazwa_sprzetu"))).append("\",");
+                Long parentGroupIdRent = rsRent.getLong("parent_group_id");
+                if (rsRent.wasNull()) {
+                    json.append("\"parent_group_id\":null");
+                } else {
+                    json.append("\"parent_group_id\":").append(parentGroupIdRent);
+                }
                 json.append("}");
             }
             
@@ -1019,7 +1069,12 @@ static class DostepnoscOkresHandler implements HttpHandler {
             // Test database connection
             System.out.println("FireSnowBridge: Testing database connection...");
             try (Connection conn = getConnection()) {
-                System.out.println("FireSnowBridge: Database connection OK!");
+                // Użyj zmiennej conn do weryfikacji połączenia
+                if (conn.isReadOnly()) {
+                    System.out.println("FireSnowBridge: Database connection OK! (READ-ONLY mode)");
+                } else {
+                    System.out.println("FireSnowBridge: Database connection OK!");
+                }
             }
             
             // Create HTTP server

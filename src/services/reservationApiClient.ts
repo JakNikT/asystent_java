@@ -155,6 +155,7 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
       zaplacono: '0',
       numer: '',
       typumowy: (r as any).typumowy || 'STANDARD', // Użyj typumowy z API jeśli dostępne
+      parent_group_id: (r as any).parent_group_id !== undefined ? (r as any).parent_group_id : null,
       source: 'reservation' as const
     }));
     
@@ -168,6 +169,7 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
       zaplacono: '0',
       numer: '',
       typumowy: (r as any).typumowy || 'STANDARD', // Użyj typumowy z API jeśli dostępne
+      parent_group_id: (r as any).parent_group_id !== undefined ? (r as any).parent_group_id : null,
       source: 'rental' as const
     }));
     

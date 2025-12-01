@@ -7,6 +7,21 @@ interface ReservationsViewProps {
   onBackToSearch: () => void;
 }
 
+// Mapowanie ID grup na kategorie sprzętu
+const EQUIPMENT_CATEGORIES: Record<number, string> = {
+  82291: 'narty',  // Narty
+  85528: 'narty',  // Narty
+  82737: 'buty',   // Buty narciarskie
+  37758: 'kije',   // Kije
+  38528: 'kask',   // Kask
+  38533: 'kask',   // Kask
+  83762: 'deska',  // Deska snowboardowa
+  85813: 'deska',  // Deska snowboardowa
+  85811: 'wiazania', // Wiązania
+  83760: 'buty_sb', // Buty SB (snowboardowe)
+  84312: 'ski_mojo' // SKI mojo
+};
+
 // Interface dla pogrupowanej rezerwacji
 interface GroupedReservation {
   klient: string;
@@ -14,17 +29,30 @@ interface GroupedReservation {
   do: string;
   typumowy: string; // Typ umowy: "PROMOTOR" lub "STANDARD"
   source?: 'reservation' | 'rental'; // Źródło danych: rezerwacja lub wypożyczenie
-  items: {
-    category: string; // NARTY, BUTY, KIJKI
-    equipment: string; // Full equipment name
-    kod: string; // Equipment code
-  }[];
+  komplety: EquipmentSet[]; // Zachować komplety dla kolorowania
+  sprzet_w_kategoriach: {
+    narty: string[];
+    buty: string[];
+    kije: string[];
+    kask: string[];
+    deska: string[];
+    wiazania: string[];
+    buty_sb: string[];
+    ski_mojo: string[];
+  };
+}
+
+// Interface dla pozycji sprzętu w komplecie
+interface EquipmentItem {
+  category: string;
+  equipment: string;
+  kod: string;
 }
 
 // Interface dla kompletu sprzętu
 interface EquipmentSet {
   id: number;
-  items: GroupedReservation['items'];
+  items: EquipmentItem[];
   color: string; // Kolor tła dla kompletu
   icon: string; // Ikona kompletu (🎿, 🏂, 📦)
 }
@@ -168,20 +196,116 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterText, viewType]);
 
-  // Helper function to determine equipment category
-  const getEquipmentCategory = (sprzet: string): string => {
-    if (!sprzet) return 'INNE';
-    const lower = sprzet.toLowerCase();
-    if (lower.includes('narty') || lower.includes('deska')) return 'NARTY/DESKI';
-    if (lower.includes('buty') || lower.includes('but')) return 'BUTY';
-    if (lower.includes('kijki')) return 'KIJKI';
-    if (lower.includes('wiązania')) return 'WIĄZANIA';
-    if (lower.includes('kask')) return 'KASKI';
-    return 'INNE';
+  // Helper function to determine equipment category based on parent_group_id
+  const getEquipmentCategory = (parentGroupId: number | null | undefined, sprzet?: string): string => {
+    // Najpierw spróbuj użyć parent_group_id
+    if (parentGroupId) {
+      const category = EQUIPMENT_CATEGORIES[parentGroupId];
+      if (category) return category;
+    }
+    
+    // Fallback: użyj nazwy sprzętu jeśli parent_group_id nie jest dostępne
+    if (sprzet) {
+      const lower = sprzet.toLowerCase();
+      if (lower.includes('narty')) return 'narty';
+      if (lower.includes('buty') && !lower.includes('sb') && !lower.includes('snowboard')) return 'buty';
+      if (lower.includes('buty') && (lower.includes('sb') || lower.includes('snowboard'))) return 'buty_sb';
+      if (lower.includes('kij')) return 'kije';
+      if (lower.includes('kask')) return 'kask';
+      if (lower.includes('deska')) return 'deska';
+      if (lower.includes('wiązania') || lower.includes('wiazania')) return 'wiazania';
+      if (lower.includes('mojo')) return 'ski_mojo';
+    }
+    
+    return 'inne';
+  };
+
+  // Helper function to format equipment list (numerowanie)
+  const formatEquipmentList = (items: string[]): string => {
+    if (items.length === 0) return '-';
+    if (items.length === 1) return items[0];
+    return items.map((item, idx) => `${idx + 1}. ${item}`).join('\n');
+  };
+
+  // Określa ikonę dla kompletu na podstawie zawartości
+  const getSetIcon = (items: EquipmentItem[]): string => {
+    const hasNarty = items.some(item => item.equipment.toLowerCase().includes('narty'));
+    const hasDeska = items.some(item => item.equipment.toLowerCase().includes('deska'));
+    
+    if (hasNarty) return '🎿';
+    if (hasDeska) return '🏂';
+    return '📦'; // Dla niekompletnych zestawów
+  };
+
+  // Rozpoznawanie kompletów sprzętu
+  const detectEquipmentSets = (items: EquipmentItem[]): EquipmentSet[] => {
+    const sets: EquipmentSet[] = [];
+    const colors = ['bg-blue-50', 'bg-gray-50', 'bg-green-50'];
+    let currentSet: EquipmentItem[] = [];
+    let setIndex = 0;
+    
+    // Filtruj elementy - usuń pozycje które nie są prawdziwym sprzętem
+    const validItems = items.filter(item => {
+      if (!item.equipment) return false;
+      const equipmentLower = item.equipment.toLowerCase();
+      
+      // ZAWSZE ignoruj "PROMOTOR" - to tylko znacznik, nie sprzęt
+      if (equipmentLower.includes('promotor')) return false;
+      
+      // Ignoruj także inne pozycje nietypowe
+      if (equipmentLower.includes('suma:')) return false;
+      if (equipmentLower.trim() === '') return false;
+      
+      return true;
+    });
+    
+    validItems.forEach((item) => {
+      const equipmentLower = item.equipment.toLowerCase();
+      const isStartOfSet = 
+        equipmentLower.includes('narty') ||
+        equipmentLower.includes('deska');
+      
+      if (isStartOfSet && currentSet.length > 0) {
+        // Zapisz poprzedni komplet
+        const setIcon = getSetIcon(currentSet);
+        sets.push({
+          id: setIndex,
+          items: currentSet,
+          color: colors[setIndex % colors.length],
+          icon: setIcon
+        });
+        setIndex++;
+        currentSet = [item];
+      } else {
+        currentSet.push(item);
+      }
+    });
+    
+    // Dodaj ostatni komplet (tylko jeśli ma elementy)
+    if (currentSet.length > 0) {
+      const setIcon = getSetIcon(currentSet);
+      sets.push({
+        id: setIndex,
+        items: currentSet,
+        color: colors[setIndex % colors.length],
+        icon: setIcon
+      });
+    }
+    
+    return sets;
   };
 
   // Group reservations by client + date range
   const groupReservations = (): GroupedReservation[] => {
+    // Debug: sprawdź pierwsze 3 rezerwacje
+    if (reservations.length > 0) {
+      console.log('ReservationsView: Przykładowe dane rezerwacji:', reservations.slice(0, 3).map(r => ({
+        sprzet: r.sprzet,
+        parent_group_id: r.parent_group_id,
+        category: getEquipmentCategory(r.parent_group_id, r.sprzet)
+      })));
+    }
+    
     const grouped = new Map<string, GroupedReservation>();
 
     reservations.forEach(res => {
@@ -196,16 +320,51 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           do: res.do,
           typumowy: res.typumowy || 'STANDARD',
           source: res.source, // Zachowaj źródło danych (rezerwacja lub wypożyczenie)
-          items: []
+          komplety: [],
+          sprzet_w_kategoriach: {
+            narty: [],
+            buty: [],
+            kije: [],
+            kask: [],
+            deska: [],
+            wiazania: [],
+            buty_sb: [],
+            ski_mojo: []
+          }
         });
       }
 
       const group = grouped.get(key)!;
-      group.items.push({
-        category: getEquipmentCategory(res.sprzet),
-        equipment: res.sprzet,
-        kod: res.kod || '-'
-      });
+      const category = getEquipmentCategory(res.parent_group_id, res.sprzet);
+      
+      // Dodaj sprzęt do odpowiedniej kategorii (zachowując kolejność z umowy)
+      if (category !== 'inne' && res.sprzet && !res.sprzet.toLowerCase().includes('promotor')) {
+        const categoryKey = category as keyof typeof group.sprzet_w_kategoriach;
+        if (group.sprzet_w_kategoriach[categoryKey]) {
+          group.sprzet_w_kategoriach[categoryKey].push(res.sprzet);
+        }
+      }
+    });
+
+    // Po zgrupowaniu wszystkich rezerwacji, wykryj komplety dla każdej grupy
+    grouped.forEach((group, key) => {
+      const groupReservations = reservations.filter(
+        r => {
+          const normalizedKlient = r.klient.trim().replace(/\s+/g, ' ').toUpperCase();
+          const resKey = `${normalizedKlient}_${r.od}_${r.do}`;
+          return resKey === key;
+        }
+      );
+      
+      const items = groupReservations
+        .filter(r => r.sprzet && !r.sprzet.toLowerCase().includes('promotor'))
+        .map(r => ({
+          category: getEquipmentCategory(r.parent_group_id, r.sprzet),
+          equipment: r.sprzet,
+          kod: r.kod || '-'
+        }));
+      
+      group.komplety = detectEquipmentSets(items);
     });
 
     return Array.from(grouped.values());
@@ -221,11 +380,23 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     // Filtruj według tekstu wyszukiwania
     if (!filterText) return true;
     const searchTerm = filterText.toLowerCase();
+    
+    // Sprawdź wszystkie kategorie sprzętu
+    const allEquipment = [
+      ...group.sprzet_w_kategoriach.narty,
+      ...group.sprzet_w_kategoriach.buty,
+      ...group.sprzet_w_kategoriach.kije,
+      ...group.sprzet_w_kategoriach.kask,
+      ...group.sprzet_w_kategoriach.deska,
+      ...group.sprzet_w_kategoriach.wiazania,
+      ...group.sprzet_w_kategoriach.buty_sb,
+      ...group.sprzet_w_kategoriach.ski_mojo
+    ];
+    
     return (
       group.klient?.toLowerCase().includes(searchTerm) ||
-      group.items.some(item => 
-        item.equipment?.toLowerCase().includes(searchTerm) ||
-        item.kod?.toLowerCase().includes(searchTerm)
+      allEquipment.some(equipment => 
+        equipment?.toLowerCase().includes(searchTerm)
       )
     );
   });
@@ -299,74 +470,6 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       newExpanded.add(reservationKey);
     }
     setExpandedReservations(newExpanded);
-  };
-
-  // Rozpoznawanie kompletów sprzętu
-  const detectEquipmentSets = (items: GroupedReservation['items']): EquipmentSet[] => {
-    const sets: EquipmentSet[] = [];
-    const colors = ['bg-blue-50', 'bg-gray-50', 'bg-green-50'];
-    let currentSet: typeof items = [];
-    let setIndex = 0;
-    
-    // Filtruj elementy - usuń pozycje które nie są prawdziwym sprzętem
-    const validItems = items.filter(item => {
-      if (!item.equipment) return false;
-      const equipmentLower = item.equipment.toLowerCase();
-      
-      // ZAWSZE ignoruj "PROMOTOR" - to tylko znacznik, nie sprzęt
-      if (equipmentLower.includes('promotor')) return false;
-      
-      // Ignoruj także inne pozycje nietypowe
-      if (equipmentLower.includes('suma:')) return false;
-      if (equipmentLower.trim() === '') return false;
-      
-      return true;
-    });
-    
-    validItems.forEach((item) => {
-      const equipmentLower = item.equipment.toLowerCase();
-      const isStartOfSet = 
-        equipmentLower.includes('narty') ||
-        equipmentLower.includes('deska');
-      
-      if (isStartOfSet && currentSet.length > 0) {
-        // Zapisz poprzedni komplet
-        const setIcon = getSetIcon(currentSet);
-        sets.push({
-          id: setIndex,
-          items: currentSet,
-          color: colors[setIndex % colors.length],
-          icon: setIcon
-        });
-        setIndex++;
-        currentSet = [item];
-      } else {
-        currentSet.push(item);
-      }
-    });
-    
-    // Dodaj ostatni komplet (tylko jeśli ma elementy)
-    if (currentSet.length > 0) {
-      const setIcon = getSetIcon(currentSet);
-      sets.push({
-        id: setIndex,
-        items: currentSet,
-        color: colors[setIndex % colors.length],
-        icon: setIcon
-      });
-    }
-    
-    return sets;
-  };
-
-  // Określa ikonę dla kompletu na podstawie zawartości
-  const getSetIcon = (items: GroupedReservation['items']): string => {
-    const hasNarty = items.some(item => item.equipment.toLowerCase().includes('narty'));
-    const hasDeska = items.some(item => item.equipment.toLowerCase().includes('deska'));
-    
-    if (hasNarty) return '🎿';
-    if (hasDeska) return '🏂';
-    return '📦'; // Dla niekompletnych zestawów
   };
 
   // Funkcja przełączania sortowania
@@ -565,16 +668,69 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                         Klient {renderSortIcon('klient')}
                       </div>
                     </th>
-                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                      Sprzęt
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
+                      Narty
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
+                      Buty
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                      Kije
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                      Kask
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
+                      Deska
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                      Wiązania
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                      Buty SB
+                    </th>
+                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                      SKI mojo
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white/5 divide-y divide-white/10">
                   {sortedGroupedReservations.map((group, idx) => {
                     const rowKey = `${group.klient}_${group.od}_${group.do}_${idx}`;
-                    const equipmentSets = detectEquipmentSets(group.items);
+                    const equipmentSets = group.komplety;
                     const isReservationExpanded = expandedReservations.has(rowKey);
+                    
+                    // Funkcja do określenia koloru tła komórki na podstawie kompletu
+                    const getCellBackgroundColor = (category: string): string => {
+                      // Znajdź do którego kompletu należy sprzęt z tej kategorii
+                      const categoryItems = group.sprzet_w_kategoriach[category as keyof typeof group.sprzet_w_kategoriach] || [];
+                      if (categoryItems.length === 0) return '';
+                      
+                      // Znajdź pierwszy komplet zawierający sprzęt z tej kategorii
+                      for (let i = 0; i < equipmentSets.length; i++) {
+                        const set = equipmentSets[i];
+                        const hasCategoryItem = set.items.some(item => {
+                          const reservation = reservations.find(r => 
+                            r.klient.trim() === group.klient && 
+                            r.od === group.od && 
+                            r.do === group.do &&
+                            r.sprzet === item.equipment
+                          );
+                          const itemCategory = getEquipmentCategory(reservation?.parent_group_id, reservation?.sprzet);
+                          return itemCategory === category;
+                        });
+                        if (hasCategoryItem) {
+                          // Użyj koloru kompletu, ale z większą przezroczystością dla lepszej czytelności
+                          const colorMap: Record<string, string> = {
+                            'bg-blue-50': 'bg-blue-100/30',
+                            'bg-gray-50': 'bg-gray-100/30',
+                            'bg-green-50': 'bg-green-100/30'
+                          };
+                          return colorMap[set.color] || '';
+                        }
+                      }
+                      return '';
+                    };
 
                     return (
                       <tr 
@@ -601,63 +757,48 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                                 </span>
                               )}
                             </div>
-                            {/* Mały przycisk do rozwijania wszystkich kompletów */}
-                            <button
-                              onClick={() => toggleReservation(rowKey)}
-                              className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-2 py-1 rounded border border-white/5 hover:border-white/20 text-xs font-bold uppercase tracking-wider transition-all shadow-sm flex items-center gap-1"
-                            >
-                              <span className="text-xs">{isReservationExpanded ? '▼' : '▶'}</span>
-                              <span className="text-xs">
-                                {isReservationExpanded ? 'Zwiń' : 'Rozwiń'}
-                              </span>
-                              <span className="text-[10px] opacity-80">({equipmentSets.length})</span>
-                            </button>
                           </div>
                         </td>
                         
-                        {/* Kolumna ze wszystkimi kompletami w poziomej siatce */}
-                        <td className="px-4 py-4 text-sm text-[#194576]">
-                          
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                            {equipmentSets.map((set) => {
-                              return (
-                                <div 
-                                  key={set.id}
-                                  className={`${set.color} rounded-lg p-3 border-2 border-[#2C699F]/20 shadow-sm`}
-                                >
-                                  {/* Nagłówek kompletu */}
-                                  <div className="w-full bg-[#0f2744]/50 text-white px-3 py-2 rounded border border-white/5 text-xs font-bold uppercase tracking-wider text-left flex items-center justify-between gap-2 shadow-sm">
-                                    <div className="flex items-center gap-2">
-                                      <span>{set.icon}</span>
-                                      <span>KOMPLET {set.id + 1}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <span className="text-[10px] opacity-80">({set.items.length})</span>
-                                      <span className="text-sm">{isReservationExpanded ? '▼' : '▶'}</span>
-                                    </div>
-                                  </div>
-                                  
-                                  {/* Lista sprzętu w komplecie - pokazuje się tylko gdy rozwinięty */}
-                                  {isReservationExpanded && (
-                                    <div className="mt-2 space-y-1 animate-fade-in">
-                                      {set.items.map((item, itemIdx) => (
-                                        <div 
-                                          key={itemIdx} 
-                                          className="text-[10px] text-[#194576] bg-white/70 rounded p-2 border border-[#2C699F]/30"
-                                        >
-                                          <div className="font-medium break-words leading-tight" title={item.equipment}>
-                                            {item.equipment}
-                                          </div>
-                                          <div className="text-gray-600 font-mono text-[9px] mt-1">
-                                            {item.kod}
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
+                        {/* Kolumny sprzętu */}
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('narty')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.narty)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('buty')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.buty)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('kije')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.kije)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('kask')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.kask)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('deska')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.deska)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('wiazania')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.wiazania)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('buty_sb')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.buty_sb)}
+                          </div>
+                        </td>
+                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('ski_mojo')}`}>
+                          <div className="whitespace-pre-line text-xs">
+                            {formatEquipmentList(group.sprzet_w_kategoriach.ski_mojo)}
                           </div>
                         </td>
                       </tr>

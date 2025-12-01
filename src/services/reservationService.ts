@@ -17,6 +17,7 @@ export interface ReservationData {
   zaplacono?: string;   // Zapłacono (opcjonalne, domyślnie 0)
   uwagi?: string;       // Uwagi (opcjonalne)
   source?: 'reservation' | 'rental'; // Źródło danych: rezerwacja lub wypożyczenie
+  parent_group_id?: number | null; // ID grupy głównej sprzętu (dla kategoryzacji)
 }
 
 export interface ReservationInfo {
