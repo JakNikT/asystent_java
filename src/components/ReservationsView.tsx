@@ -220,11 +220,24 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     return 'inne';
   };
 
-  // Helper function to format equipment list (numerowanie)
-  const formatEquipmentList = (items: string[]): string => {
-    if (items.length === 0) return '-';
-    if (items.length === 1) return items[0];
-    return items.map((item, idx) => `${idx + 1}. ${item}`).join('\n');
+  // Helper function to render equipment list as separate cells
+  const renderEquipmentList = (items: string[]): JSX.Element => {
+    if (items.length === 0) {
+      return <span className="text-white/50">-</span>;
+    }
+    
+    return (
+      <div className="flex flex-col gap-2">
+        {items.map((item, idx) => (
+          <div
+            key={idx}
+            className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white h-[48px] flex items-center"
+          >
+            {item}
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // Określa ikonę dla kompletu na podstawie zawartości
@@ -762,44 +775,28 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                         
                         {/* Kolumny sprzętu */}
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('narty')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.narty)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.narty)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('buty')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.buty)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.buty)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('kije')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.kije)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.kije)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('kask')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.kask)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.kask)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('deska')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.deska)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.deska)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('wiazania')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.wiazania)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.wiazania)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('buty_sb')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.buty_sb)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.buty_sb)}
                         </td>
                         <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('ski_mojo')}`}>
-                          <div className="whitespace-pre-line text-xs">
-                            {formatEquipmentList(group.sprzet_w_kategoriach.ski_mojo)}
-                          </div>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.ski_mojo)}
                         </td>
                       </tr>
                     );
