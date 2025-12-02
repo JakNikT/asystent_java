@@ -63,7 +63,6 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [sortField, setSortField] = useState<'od' | 'klient'>('od');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
-  const [expandedReservations, setExpandedReservations] = useState<Set<string>>(new Set());
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
   const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past'>('all');
   const [toast, setToast] = useState({
@@ -221,7 +220,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   };
 
   // Helper function to render equipment list as separate cells
-  const renderEquipmentList = (items: string[]): JSX.Element => {
+  const renderEquipmentList = (items: string[]): React.ReactElement => {
     if (items.length === 0) {
       return <span className="text-white/50">-</span>;
     }
@@ -474,16 +473,6 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     }
   };
 
-  // Toggle wszystkich kompletów w rezerwacji
-  const toggleReservation = (reservationKey: string) => {
-    const newExpanded = new Set(expandedReservations);
-    if (newExpanded.has(reservationKey)) {
-      newExpanded.delete(reservationKey);
-    } else {
-      newExpanded.add(reservationKey);
-    }
-    setExpandedReservations(newExpanded);
-  };
 
   // Funkcja przełączania sortowania
   const handleSort = (field: 'od' | 'klient') => {
@@ -711,7 +700,6 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   {sortedGroupedReservations.map((group, idx) => {
                     const rowKey = `${group.klient}_${group.od}_${group.do}_${idx}`;
                     const equipmentSets = group.komplety;
-                    const isReservationExpanded = expandedReservations.has(rowKey);
                     
                     // Funkcja do określenia koloru tła komórki na podstawie kompletu
                     const getCellBackgroundColor = (category: string): string => {

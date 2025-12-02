@@ -53,13 +53,19 @@ function filterCsvReservations(reservations) {
 
 export const reservationService = {
     async getAll() {
+        // src/server/services/reservationService.js: Próba pobrania rezerwacji z FireSnow API
         if (config.useFireSnowApi) {
             try {
                 const data = await fireSnowService.getActiveReservations();
-                logger.info(`Mapped ${data.length} reservations from API`);
+                logger.info(`src/server/services/reservationService.js: Pobrano ${data.length} rezerwacji z FireSnow API`);
                 return data.map(mapFireSnowReservation);
             } catch (error) {
-                logger.warn('FireSnow API unavailable, fallback to CSV', { error: error.message });
+                // src/server/services/reservationService.js: FireSnow API niedostępne - użycie fallback do CSV
+                logger.warn(`src/server/services/reservationService.js: FireSnow API unavailable, fallback to CSV`, { 
+                    error: error.message,
+                    code: error.code || 'UNKNOWN',
+                    hint: 'Sprawdź czy FireSnow Bridge jest uruchomiony (port 8081) i czy Java jest poprawnie skonfigurowana'
+                });
             }
         }
 
