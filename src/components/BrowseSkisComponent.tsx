@@ -759,10 +759,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
-  // Wspólne klasy zapewniające półprzezroczysty wygląd nowych kontrolek nad tabelą
-  const filterToolbarInputClasses =
-    'h-8 text-center font-bold text-sm text-white bg-white/10 border border-white/15 focus:border-white/40 placeholder:text-white/40 rounded-md shadow-inner shadow-black/30 backdrop-blur-sm transition-colors duration-200';
-
   return (
     <div 
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative"
@@ -776,16 +772,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       <div className="relative z-10">
         {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
         {tabs.length > 0 && (
-        <div className="relative w-full bg-black/20 backdrop-blur-md border-b border-white/10 py-2 px-4">
-          <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent">
+        <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
+          <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
             {/* Renderuj karty */}
             {tabs.map(tab => (
               <button
                 key={tab.id}
                 onClick={() => onTabChange?.(tab.id)}
                 className={`group relative px-4 py-2 rounded-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
-                  ? 'bg-white/20 text-white border border-white/30 shadow-lg'
-                  : 'bg-white/5 text-white/70 border border-white/10 hover:bg-white/10 hover:text-white hover:border-white/20'
+                  ? 'bg-[#386BB2] text-white'
+                  : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
                   }`}
               >
                 {tab.label}
@@ -796,7 +792,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       e.stopPropagation();
                       onRemoveTab?.(tab.id);
                     }}
-                    className="ml-2 text-red-400 hover:text-red-600 cursor-pointer transition-colors"
+                    className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
                   >
                     ✕
                   </span>
@@ -808,7 +804,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             {onAddTab && (
               <button
                 onClick={onAddTab}
-                className="px-3 py-2 bg-green-600/80 hover:bg-green-600 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg border border-white/20 backdrop-blur-sm"
+                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
                 title="Dodaj nową osobę"
               >
                 +
@@ -862,18 +858,18 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               <table className="w-full">
                 <thead className="bg-[#0f2744]/50 border-b border-white/10">
                   {/* Wiersz z polami edycji nad nagłówkami kolumn */}
-                  <tr className="bg-white/5 backdrop-blur-sm border-b border-white/10 transition-colors duration-200">
+                  <tr className="bg-[#0f2744]/70 border-b border-white/10">
                     {/* Pole wyszukiwania rozciągnięte na kolumny Marka i Model */}
                     <th colSpan={2} className="px-4 py-2">
                       <Input
                         type="text"
-                        placeholder="Wyszukaj..."
+                        placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
                         value={searchTerm}
                         onChange={(e) => {
                           setSearchTerm(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className={`w-full ${filterToolbarInputClasses}`}
+                        className="w-full h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                       />
                     </th>
                     {/* Pole wyszukiwania Flex - opcjonalnie */}
@@ -887,7 +883,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             setSearchFlex(e.target.value);
                             setCurrentPage(1);
                           }}
-                          className={`w-20 ${filterToolbarInputClasses}`}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                         />
                       </th>
                     )}
@@ -901,7 +897,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           setSearchDlugosc(e.target.value);
                           setCurrentPage(1);
                         }}
-                        className={`w-20 ${filterToolbarInputClasses}`}
+                        className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                       />
                     </th>
                     {/* Pole Wzrost - tylko gdy !shouldHideColumns */}
@@ -912,7 +908,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           placeholder="180"
                           value={editWzrost}
                           onChange={(e) => handleFieldChange('wzrost', e.target.value)}
-                          className={`w-20 ${filterToolbarInputClasses}`}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                           maxLength={3}
                         />
                       </th>
@@ -925,7 +921,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           placeholder="70"
                           value={editWaga}
                           onChange={(e) => handleFieldChange('waga', e.target.value)}
-                          className={`w-20 ${filterToolbarInputClasses}`}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                           maxLength={3}
                         />
                       </th>
@@ -938,7 +934,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           placeholder="1-6"
                           value={editPoziom}
                           onChange={(e) => handleFieldChange('poziom', e.target.value)}
-                          className={`w-20 ${filterToolbarInputClasses}`}
+                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                           maxLength={1}
                         />
                       </th>
@@ -951,7 +947,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           placeholder="M/K"
                           value={editPlec}
                           onChange={(e) => handleFieldChange('plec', e.target.value)}
-                          className={`w-20 uppercase ${filterToolbarInputClasses}`}
+                          className="w-20 h-8 text-center font-bold text-sm uppercase bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
                           maxLength={1}
                         />
                       </th>
@@ -1065,7 +1061,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                         </td>
                       )}
                       <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                        {ski.DLUGOSC} cm
+                        {/* src/components/BrowseSkisComponent.tsx: Wyświetlanie rozmiarów z połówkami (24.5 → "24,5 cm") */}
+                        {typeof ski.DLUGOSC === 'number' && ski.DLUGOSC % 1 !== 0 
+                          ? ski.DLUGOSC.toFixed(1).replace('.', ',') + ' cm'  // 24.5 → "24,5 cm"
+                          : ski.DLUGOSC + ' cm'}  {/* 24 → "24 cm" */}
                       </td>
                       {!shouldHideColumns && (
                         <>

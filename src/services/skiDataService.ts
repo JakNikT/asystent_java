@@ -41,9 +41,10 @@ export class SkiDataService {
       const skis = await response.json();
       
       // Przekonwertuj pola numeryczne
+      // src/services/skiDataService.ts: Używamy parseFloat dla DLUGOSC aby zachować połówki butów (24.5)
       const processedSkis = skis.map((ski: any) => ({
         ...ski,
-        DLUGOSC: parseInt(ski.DLUGOSC) || 0,
+        DLUGOSC: parseFloat(ski.DLUGOSC) || 0,  // parseFloat zamiast parseInt dla połówki butów (24.5)
         ILOSC: parseInt(ski.ILOSC) || 0,
         WAGA_MIN: parseInt(ski.WAGA_MIN) || 0,
         WAGA_MAX: parseInt(ski.WAGA_MAX) || 0,
