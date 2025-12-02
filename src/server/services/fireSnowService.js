@@ -3,6 +3,7 @@ import logger from '../config/logger.js';
 
 /**
  * Generic fetch wrapper for FireSnow API
+ * src/server/services/fireSnowService.js: Wrapper do komunikacji z FireSnow Bridge API
  */
 async function fetchFireSnow(endpoint, options = {}) {
     const url = `${config.fireSnowApiUrl}${endpoint}`;
@@ -15,12 +16,32 @@ async function fetchFireSnow(endpoint, options = {}) {
         });
 
         if (!response.ok) {
-            throw new Error(`FireSnow API error: ${response.status}`);
+            const errorMsg = `FireSnow API error: ${response.status} ${response.statusText}`;
+            logger.error(`src/server/services/fireSnowService.js: ${errorMsg} for ${url}`);
+            throw new Error(errorMsg);
         }
 
         return await response.json();
     } catch (error) {
-        logger.error(`FireSnow API fetch error for ${url}:`, { error: error.message });
+        // src/server/services/fireSnowService.js: Szczegółowe logowanie błędów połączenia
+        const errorDetails = {
+            message: error.message,
+            code: error.code || 'UNKNOWN',
+            cause: error.cause?.message || error.cause || null,
+            url: url
+        };
+        
+        // Sprawdź typ błędu i dodaj pomocne komunikaty
+        if (error.code === 'ECONNREFUSED' || error.message.includes('fetch failed')) {
+            logger.error(`src/server/services/fireSnowService.js: FireSnow Bridge nie odpowiada na ${url}`, errorDetails);
+            logger.error(`src/server/services/fireSnowService.js: Sprawdź czy FireSnow Bridge jest uruchomiony na porcie 8081`);
+            logger.error(`src/server/services/fireSnowService.js: Upewnij się że Java Bridge działa (sprawdź błędy Java w logach)`);
+        } else if (error.name === 'AbortError' || error.message.includes('timeout')) {
+            logger.error(`src/server/services/fireSnowService.js: Timeout połączenia z FireSnow API: ${url}`, errorDetails);
+        } else {
+            logger.error(`src/server/services/fireSnowService.js: FireSnow API fetch error for ${url}:`, errorDetails);
+        }
+        
         throw error;
     }
 }
