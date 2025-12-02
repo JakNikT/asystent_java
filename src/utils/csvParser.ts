@@ -81,7 +81,7 @@ export class CSVParser {
           KATEGORIA: '', // Puste dla starej bazy
           MARKA: fields[1].trim(),
           MODEL: fields[2].trim(),
-          DLUGOSC: parseInt(fields[3]) || 0,
+          DLUGOSC: parseFloat(fields[3]) || 0,  // parseFloat dla połówki butów (24.5)
           ILOSC: parseInt(fields[4]) || 0,
           POZIOM: fields[5].trim(),
           PLEC: fields[6].trim(),
@@ -114,7 +114,7 @@ export class CSVParser {
           KATEGORIA: '', // Puste
           MARKA: fields[1].trim(),
           MODEL: fields[2].trim(),
-          DLUGOSC: parseInt(fields[3]) || 0,
+          DLUGOSC: parseFloat(fields[3]) || 0,  // parseFloat dla połówki butów (24.5)
           ILOSC: parseInt(fields[4]) || 0,
           POZIOM: fields[5].trim(),
           PLEC: fields[6].trim(),
