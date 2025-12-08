@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
+import type { FilterSearchState, FilterKey } from '../types/dashboard.types';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
@@ -33,6 +34,10 @@ interface BrowseSkisComponentProps {
   onRefreshData?: () => Promise<void>;
   isEmployeeMode?: boolean;
   onCriteriaChange?: (criteria: Partial<SearchCriteria>) => void;
+  onFilterSearchChange?: (filterKey: FilterKey, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => void; // NOWE: Callback do aktualizacji stanu wyszukiwania
+  filterSearchStates?: Record<FilterKey, FilterSearchState>; // NOWE: Stan pól wyszukiwania z Dashboard
+  hasSelectedGroup?: boolean; // NOWE: Czy użytkownik wybrał już grupę
+  onGroupSelected?: () => void; // NOWE: Callback wywoływany po wyborze grupy
 }
 
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
@@ -56,6 +61,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   onRefreshData,
   isEmployeeMode = false,
   onCriteriaChange,
+  onFilterSearchChange,
+  filterSearchStates,
+  hasSelectedGroup = true, // Domyślnie true dla kompatybilności wstecznej
+  onGroupSelected
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'DLUGOSC',
@@ -69,11 +78,71 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
   const itemsPerPage = 10000;
 
-  // NOWY STAN: Wyszukiwanie tekstowe
-  const [searchTerm, setSearchTerm] = useState('');
-
   // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
+
+  // Pomocnicze funkcje do pobierania i aktualizowania wartości wyszukiwania dla aktywnego filtra
+  const getCurrentSearchState = (): FilterSearchState => {
+    const filterKey = activeFilter as FilterKey;
+    return filterSearchStates?.[filterKey] || { searchTerm: '', searchFlex: '', searchDlugosc: '' };
+  };
+
+  // Lokalny stan pól wyszukiwania, który będzie aktualizowany przez callback z Dashboard
+  const [localSearchStates, setLocalSearchStates] = useState<Record<FilterKey, FilterSearchState>>({
+    all: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    TOP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    VIP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    BUTY_JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    DOROSLE: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    DESKI: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+    BUTY_SNOWBOARD: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+  });
+
+  // Synchronizuj lokalny stan z propsami, gdy się zmieniają (w tym przy przełączaniu kart)
+  useEffect(() => {
+    if (filterSearchStates) {
+      console.log('BrowseSkisComponent: Synchronizuję stan wyszukiwania z propsów dla karty:', activeTabId, filterSearchStates);
+      setLocalSearchStates(filterSearchStates);
+    } else {
+      // Jeśli filterSearchStates nie jest przekazany, użyj domyślnych wartości
+      console.log('BrowseSkisComponent: filterSearchStates nie jest przekazany, używam domyślnych wartości');
+      setLocalSearchStates({
+        all: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        TOP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        VIP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        BUTY_JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        DOROSLE: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        DESKI: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        BUTY_SNOWBOARD: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+      });
+    }
+  }, [filterSearchStates, activeTabId]);
+
+  // Pobierz aktualny stan wyszukiwania z lokalnego stanu
+  const getLocalSearchState = (): FilterSearchState => {
+    const filterKey = activeFilter as FilterKey;
+    return localSearchStates[filterKey] || { searchTerm: '', searchFlex: '', searchDlugosc: '' };
+  };
+
+  const updateSearchState = (field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => {
+    const filterKey = activeFilter as FilterKey;
+    
+    // Aktualizuj lokalny stan natychmiast
+    setLocalSearchStates(prev => ({
+      ...prev,
+      [filterKey]: {
+        ...prev[filterKey],
+        [field]: value
+      }
+    }));
+    
+    // Wywołaj callback do Dashboard
+    if (onFilterSearchChange) {
+      onFilterSearchChange(filterKey, field, value);
+    }
+  };
 
   // Zmienna pomocnicza do sprawdzania czy wyświetlamy buty (dla ukrywania kolumn)
   // Dla butów junior, snowboard i dorosłych ukrywamy kolumny: Wzrost, Waga, Poziom, Płeć, Przeznaczenie, Atuty
@@ -113,10 +182,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [editWaga, setEditWaga] = useState<string>('');
   const [editPoziom, setEditPoziom] = useState<string>('');
   const [editPlec, setEditPlec] = useState<string>('');
-
-  // NOWY STAN: Pola wyszukiwania (Flex, Długość)
-  const [searchFlex, setSearchFlex] = useState<string>('');
-  const [searchDlugosc, setSearchDlugosc] = useState<string>('');
 
   // Ładowanie statusów dostępności
   useEffect(() => {
@@ -688,7 +753,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // Sortowanie i paginacja z grupowaniem
-  const filteredSkis = filterSkis(allSkis, searchTerm, activeFilter, searchFlex, searchDlugosc);
+  // Pobierz wartości wyszukiwania dla aktywnego filtra
+  const currentSearchState = getLocalSearchState();
+  const filteredSkis = filterSkis(allSkis, currentSearchState.searchTerm, activeFilter, currentSearchState.searchFlex, currentSearchState.searchDlugosc);
   const groupedSkis = groupSkisByModel(filteredSkis); // Grupowanie po modelu
   const sortedSkis = sortSkis(groupedSkis, sortConfig);
   const totalPages = Math.ceil(sortedSkis.length / itemsPerPage);
@@ -740,6 +807,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     console.log(`BrowseSkisComponent: Szybki filtr - ${filter}`);
     setActiveFilter(filter);
     setCurrentPage(1); // Reset do pierwszej strony
+    
+    // Jeśli użytkownik jeszcze nie wybrał grupy, wywołaj callback
+    if (!hasSelectedGroup && onGroupSelected) {
+      onGroupSelected();
+    }
   };
 
   // NOWA ZMIANA: Funkcja pomocnicza do pobierania klasy koloru
@@ -830,7 +902,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
               {/* Przyciski filtrów */}
               <div className="flex flex-wrap gap-2">
-                <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 Cały sprzęt</button>
                 <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 Narty TOP</button>
                 <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-700 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 Narty VIP</button>
                 <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 Narty JUNIOR</button>
@@ -838,6 +909,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🥾 Buty Dorosłe</button>
                 <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🏂 Deski</button>
                 <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👢 Buty SB</button>
+                <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 Cały sprzęt</button>
               </div>
 
               <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
@@ -852,8 +924,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
           </div>
 
-          {/* Tabela sprzętu */}
-          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
+          {/* Wyświetl napis "Wybierz grupę" jeśli użytkownik jeszcze nie wybrał grupy */}
+          {!hasSelectedGroup ? (
+            <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-8 text-center">
+              <p className="text-white text-xl font-bold">Wybierz grupę</p>
+            </div>
+          ) : (
+            <>
+              {/* Tabela sprzętu */}
+              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-[#0f2744]/50 border-b border-white/10">
@@ -864,9 +943,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       <Input
                         type="text"
                         placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
-                        value={searchTerm}
+                        value={currentSearchState.searchTerm}
                         onChange={(e) => {
-                          setSearchTerm(e.target.value);
+                          updateSearchState('searchTerm', e.target.value);
                           setCurrentPage(1);
                         }}
                         className="w-full h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
@@ -878,9 +957,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                         <Input
                           type="text"
                           placeholder="Flex"
-                          value={searchFlex}
+                          value={currentSearchState.searchFlex}
                           onChange={(e) => {
-                            setSearchFlex(e.target.value);
+                            updateSearchState('searchFlex', e.target.value);
                             setCurrentPage(1);
                           }}
                           className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
@@ -892,9 +971,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       <Input
                         type="text"
                         placeholder="Długość"
-                        value={searchDlugosc}
+                        value={currentSearchState.searchDlugosc}
                         onChange={(e) => {
-                          setSearchDlugosc(e.target.value);
+                          updateSearchState('searchDlugosc', e.target.value);
                           setCurrentPage(1);
                         }}
                         className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
@@ -1183,12 +1262,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </div>
 
           {/* Informacje o sortowaniu */}
-          <div className="mt-4 text-sm text-white/80">
-            <p>
-              Sortowanie: <span className="font-bold">{sortConfig.field}</span> (
-              {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
-            </p>
-          </div>
+          {hasSelectedGroup && (
+            <div className="mt-4 text-sm text-white/80">
+              <p>
+                Sortowanie: <span className="font-bold">{sortConfig.field}</span> (
+                {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
+              </p>
+            </div>
+          )}
+            </>
+          )}
         </div>
       </div>
 

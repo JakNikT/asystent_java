@@ -4,6 +4,20 @@ import type { SearchResults, SearchCriteria } from './ski.types';
 import type { FormErrors } from '../utils/formValidation';
 
 /**
+ * Stan pól wyszukiwania dla pojedynczego filtra
+ */
+export interface FilterSearchState {
+  searchTerm: string;
+  searchFlex: string;
+  searchDlugosc: string;
+}
+
+/**
+ * Typ klucza filtra
+ */
+export type FilterKey = 'all' | 'TOP' | 'VIP' | 'JUNIOR' | 'BUTY_JUNIOR' | 'DOROSLE' | 'DESKI' | 'BUTY_SNOWBOARD';
+
+/**
  * Dane formularza użytkownika (wzrost, waga, poziom, płeć, daty, rozmiar buta)
  */
 export interface FormData {
@@ -50,12 +64,15 @@ export interface TabData {
     na_sile: boolean;
   };
   expandedRows: Record<string, number[]>;
+  filterSearchStates: Record<FilterKey, FilterSearchState>; // NOWE: Stan pól wyszukiwania dla każdego filtra
 }
 
 /**
  * Tryb aplikacji - określa aktualny widok użytkownika
  */
 export type AppMode = 'search' | 'browse' | 'reservations' | 'history';
+
+
 
 
 

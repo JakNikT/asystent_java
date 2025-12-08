@@ -88,6 +88,16 @@ const Dashboard: React.FC = () => {
         poziom_za_nisko: [],
         inna_plec: [],
         na_sile: []
+      },
+      filterSearchStates: {
+        all: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        TOP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        VIP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        BUTY_JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        DOROSLE: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        DESKI: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        BUTY_SNOWBOARD: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
       }
     }
   ]);
@@ -99,6 +109,9 @@ const Dashboard: React.FC = () => {
 
   // NOWY STAN: Tryb aplikacji (wyszukiwanie vs przeglądanie vs rezerwacje vs historia)
   const [appMode, setAppMode] = useState<AppMode>('search');
+
+  // NOWY STAN: Śledzenie, czy użytkownik wybrał już grupę w trybie przeglądania
+  const [hasSelectedGroup, setHasSelectedGroup] = useState<boolean>(false);
 
   // NOWY STAN: Filtry kategorii sprzętu
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
@@ -207,6 +220,16 @@ const Dashboard: React.FC = () => {
         poziom_za_nisko: [],
         inna_plec: [],
         na_sile: []
+      },
+      filterSearchStates: {
+        all: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        TOP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        VIP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        BUTY_JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        DOROSLE: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        DESKI: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+        BUTY_SNOWBOARD: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
       }
     };
     setTabs(prev => [...prev, newTab]);
@@ -473,7 +496,7 @@ const Dashboard: React.FC = () => {
     // React batchuje aktualizacje state, więc wszystkie będą zastosowane przed renderowaniem
     setEquipmentTypeFilter(type);
     setCategoryFilter(category);
-    setAppMode('browse');
+    handleBrowseMode(true); // Użytkownik już wybrał grupę
     
     console.log(`src/components/dashboard/Dashboard.tsx: Filtry ustawione - typ: ${type}, kategoria: ${category}, otwieram "Przeglądaj"`);
   };
@@ -545,6 +568,16 @@ const Dashboard: React.FC = () => {
           poziom_za_nisko: [],
           inna_plec: [],
           na_sile: []
+        },
+        filterSearchStates: (savedTab as any).filterSearchStates || {
+          all: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          TOP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          VIP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          BUTY_JUNIOR: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          DOROSLE: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          DESKI: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
+          BUTY_SNOWBOARD: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
         }
       }));
       
@@ -814,7 +847,7 @@ const Dashboard: React.FC = () => {
       // Miesiąc "od" → Rok "od"
       else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
         console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do roku "od"`);
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "od" → Dzień "do"
@@ -831,7 +864,7 @@ const Dashboard: React.FC = () => {
       // Miesiąc "do" → Rok "do"
       else if (section === 'dateTo' && field === 'month' && value.length === 2) {
         console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do roku "do"`);
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="25"]') as HTMLInputElement;
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "do" → Wzrost
@@ -1116,12 +1149,24 @@ const Dashboard: React.FC = () => {
     }
   };
 
+  // Funkcja pomocnicza do przełączania trybu przeglądania
+  const handleBrowseMode = (hasGroup: boolean = false) => {
+    setHasSelectedGroup(hasGroup);
+    setAppMode('browse');
+  };
+
+  // Funkcja pomocnicza do powrotu do trybu wyszukiwania
+  const handleBackToSearch = () => {
+    setHasSelectedGroup(false);
+    setAppMode('search');
+  };
+
   // Funkcja obsługująca przycisk "Cały sprzęt"
   const handleShowAllEquipment = () => {
     console.log('src/components/dashboard/Dashboard.tsx: Przycisk Cały sprzęt - otwieranie Browse bez filtrów');
     setEquipmentTypeFilter('');
     setCategoryFilter('');
-    setAppMode('browse');
+    handleBrowseMode(false);
   };
 
   // Oblicz initialFilter używając useMemo dla aktualnych wartości filtrów
@@ -1152,6 +1197,21 @@ const Dashboard: React.FC = () => {
     console.log('src/components/dashboard/Dashboard.tsx: initialFilter = all (domyślny)');
     return 'all';
   }, [equipmentTypeFilter, categoryFilter]);
+
+  // NOWA FUNKCJA: Aktualizacja stanu pól wyszukiwania dla aktywnej karty
+  const handleFilterSearchChange = (filterKey: any, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => {
+    console.log(`Dashboard: Aktualizuję stan wyszukiwania dla filtra ${filterKey}, pole: ${field}, wartość: ${value}`);
+    
+    updateActiveTab({
+      filterSearchStates: {
+        ...activeTab.filterSearchStates,
+        [filterKey]: {
+          ...activeTab.filterSearchStates[filterKey],
+          [field]: value
+        }
+      }
+    });
+  };
 
   return (
     <Layout
@@ -1198,7 +1258,7 @@ const Dashboard: React.FC = () => {
             isEmployeeMode={isEmployeeMode}
             appMode={appMode}
             onClear={handleClear}
-            onBrowse={() => setAppMode('browse')}
+            onBrowse={() => handleBrowseMode(false)}
             onHistory={() => setAppMode('history')}
             onReservations={() => setAppMode('reservations')}
           />
@@ -1660,7 +1720,7 @@ const Dashboard: React.FC = () => {
               </div>
             </motion.div>
           </>
-          )}
+        )}
       
       {/* Renderowanie komponentu przeglądania */}
       {appMode === 'browse' && (
@@ -1675,7 +1735,7 @@ const Dashboard: React.FC = () => {
               dateFrom: parseDate(formData.dateFrom),
               dateTo: parseDate(formData.dateTo)
             }}
-            onBack={() => setAppMode('search')}
+            onBack={handleBackToSearch}
             initialFilter={computedInitialFilter}
             tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
             activeTabId={activeTabId}
@@ -1685,6 +1745,10 @@ const Dashboard: React.FC = () => {
             onRefreshData={loadDatabase}
             isEmployeeMode={isEmployeeMode}
             onCriteriaChange={handleBrowseCriteriaChange}
+            onFilterSearchChange={handleFilterSearchChange}
+            filterSearchStates={activeTab.filterSearchStates}
+            hasSelectedGroup={hasSelectedGroup}
+            onGroupSelected={() => setHasSelectedGroup(true)}
           />
         </div>
       )}
