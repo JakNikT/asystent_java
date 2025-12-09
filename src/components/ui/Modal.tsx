@@ -34,18 +34,20 @@ function Modal({ isOpen, onClose, title, description, children, footer, classNam
   }, [])
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">
       <div 
         className={cn(
-          "relative w-full max-w-lg rounded-lg border bg-background p-6 shadow-lg animate-slide-up sm:max-w-xl", 
+          "relative w-full rounded-[20px] border border-white/10 bg-brand-dark/50 backdrop-blur-sm p-6 shadow-xl shadow-black/30 animate-slide-up",
+          // Domyślne wartości tylko jeśli nie przekazano własnego className
+          !className && "max-w-lg sm:max-w-xl",
           className
         )}
         role="dialog"
         aria-modal="true"
       >
         <div className="flex flex-col space-y-1.5 text-center sm:text-left mb-4">
-          {title && <h2 className="text-lg font-semibold leading-none tracking-tight">{title}</h2>}
-          {description && <p className="text-sm text-muted-foreground">{description}</p>}
+          {title && <h2 className="text-lg font-semibold leading-none tracking-tight text-white">{title}</h2>}
+          {description && <p className="text-sm text-muted-foreground text-white/70">{description}</p>}
         </div>
         
         <div className="my-4">
