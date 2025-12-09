@@ -7,7 +7,6 @@ import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { SkiDataService } from '../services/skiDataService';
-import type { ReservationInfo } from '../services/reservationService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 import { Input } from './ui/Input';
 import { Label } from './ui/Label';
@@ -56,6 +55,20 @@ interface SortConfig {
   direction: SortDirection;
 }
 
+interface AvailabilityStatus {
+  status: string;
+  color: string;
+  message: string;
+  reservations?: Array<{
+    startDate: Date | string;
+    endDate: Date | string;
+    clientName?: string;
+    id?: string;
+    equipment?: string;
+    notes?: string;
+    price?: number;
+  }>;
+}
 export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   allSkis,
   browseCriteria,
@@ -83,7 +96,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, AvailabilityStatus>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
   // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
   // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
@@ -99,10 +112,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
 
   // Pomocnicze funkcje do pobierania i aktualizowania wartości wyszukiwania dla aktywnego filtra
-  const getCurrentSearchState = (): FilterSearchState => {
-    const filterKey = activeFilter as FilterKey;
-    return filterSearchStates?.[filterKey] || { searchTerm: '', searchFlex: '', searchDlugosc: '' };
-  };
 
   // Lokalny stan pól wyszukiwania, który będzie aktualizowany przez callback z Dashboard
   const [localSearchStates, setLocalSearchStates] = useState<Record<FilterKey, FilterSearchState>>({
@@ -204,7 +213,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   useEffect(() => {
     const loadAvailabilityStatuses = async () => {
       const startTime = Date.now();
-      const statusMap = new Map<string, any>();
+
+      
+      const statusMap = new Map<string, AvailabilityStatus>();
 
       try {
         // Sprawdź czy użytkownik wpisał daty
@@ -359,7 +370,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         // Dodaj informacje o rezerwacjach/wypożyczeniach z datami
         if (availabilityInfo.reservations && availabilityInfo.reservations.length > 0) {
           tooltip += `\n\n📅 Rezerwacje/Wypożyczenia:`;
-          availabilityInfo.reservations.forEach((reservation: ReservationInfo, resIndex: number) => {
+          availabilityInfo.reservations.forEach((reservation: {
+            startDate: Date | string;
+            endDate: Date | string;
+            clientName?: string;
+            id?: string;
+            equipment?: string;
+            notes?: string;
+            price?: number;
+          }, resIndex: number) => {
             // Sprawdź czy reservation ma pola startDate i endDate
             if (reservation.startDate && reservation.endDate) {
               const startDate = reservation.startDate instanceof Date
@@ -683,8 +702,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Funkcja sortowania nart
   const sortSkis = (skis: SkiData[], config: SortConfig): SkiData[] => {
     return [...skis].sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number;
+      let bValue: string | number;
 
       // Sortowanie po flexie - wyciągnij flex z nazwy modelu
       if (config.field === 'FLEX') {
