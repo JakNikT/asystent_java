@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
 import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.types';
 import type { FormErrors } from '../utils/formValidation';
@@ -209,13 +209,17 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [editPoziom, setEditPoziom] = useState<string>('');
   const [editPlec, setEditPlec] = useState<string>('');
 
-  // Ładowanie statusów dostępności
-  useEffect(() => {
-    const loadAvailabilityStatuses = async () => {
-      const startTime = Date.now();
+  // NOWY STAN: Auto-refresh dostępności
+  const [isRefreshingAvailability, setIsRefreshingAvailability] = useState<boolean>(false);
+  const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
+  const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
 
-      
-      const statusMap = new Map<string, AvailabilityStatus>();
+  // src/components/BrowseSkisComponent.tsx: Funkcja wielokrotnego użytku do ładowania statusów dostępności
+  const loadAvailabilityStatuses = useCallback(async () => {
+    setIsRefreshingAvailability(true);
+    const startTime = Date.now();
+    
+    const statusMap = new Map<string, AvailabilityStatus>();
 
       try {
         // Sprawdź czy użytkownik wpisał daty
@@ -293,13 +297,40 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         console.log('═══════════════════════════════════════════════════════');
 
         setAvailabilityStatuses(statusMap);
+        setLastRefreshTime(new Date());
       } catch (error) {
         console.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
+      } finally {
+        setIsRefreshingAvailability(false);
       }
-    };
-
-    loadAvailabilityStatuses();
   }, [allSkis, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
+
+  // src/components/BrowseSkisComponent.tsx: Początkowe załadowanie statusów dostępności
+  useEffect(() => {
+    loadAvailabilityStatuses();
+  }, [loadAvailabilityStatuses]);
+
+  // src/components/BrowseSkisComponent.tsx: Automatyczne odświeżanie dostępności co 30 sekund
+  useEffect(() => {
+    if (!autoRefreshEnabled || !browseCriteria?.dateFrom || !browseCriteria?.dateTo) {
+      return;
+    }
+    
+    const interval = setInterval(() => {
+      console.log('BrowseSkisComponent: 🔄 Automatyczne odświeżanie dostępności...');
+      loadAvailabilityStatuses();
+    }, 30000); // 30 sekund
+    
+    return () => clearInterval(interval);
+  }, [autoRefreshEnabled, loadAvailabilityStatuses, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
+
+  // src/components/BrowseSkisComponent.tsx: Funkcja ręcznego odświeżania dostępności
+  const handleManualRefresh = useCallback(async () => {
+    console.log('BrowseSkisComponent: 🔄 Ręczne odświeżanie dostępności...');
+    await loadAvailabilityStatuses();
+    setToastMessage('Dostępność zaktualizowana');
+    setToastType('success');
+  }, [loadAvailabilityStatuses]);
 
   // NOWA ZMIANA: Efekt do obliczania kolorów dopasowania
   useEffect(() => {
@@ -1032,9 +1063,26 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
                   Przeglądaj sprzęt
                 </h1>
-                <p className="text-white/70 text-sm">
-                  Znaleziono {sortedSkis.length} nart
-                </p>
+                <div className="flex items-center gap-3">
+                  <p className="text-white/70 text-sm">
+                    Znaleziono {sortedSkis.length} nart
+                  </p>
+                  {lastRefreshTime && browseCriteria?.dateFrom && browseCriteria?.dateTo && (
+                    <p className="text-white/50 text-xs flex items-center gap-1">
+                      {isRefreshingAvailability ? (
+                        <>
+                          <span className="animate-pulse">⟳</span>
+                          <span>Odświeżanie...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>Ostatnie odświeżenie:</span>
+                          <span>{Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu</span>
+                        </>
+                      )}
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* 2. Pola daty w dwóch wierszach */}
@@ -1344,7 +1392,40 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                         </th>
                       </>
                     )}
-                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Dostępność</th>
+                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                      <div className="flex items-center gap-2">
+                        <span>Dostępność</span>
+                        <button
+                          onClick={handleManualRefresh}
+                          disabled={isRefreshingAvailability}
+                          className="p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={lastRefreshTime 
+                            ? `Odśwież dostępność (ostatnie: ${Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu)`
+                            : 'Odśwież dostępność'}
+                        >
+                          {isRefreshingAvailability ? (
+                            <span className="animate-spin">⟳</span>
+                          ) : (
+                            <span>🔄</span>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                          className={`p-1 rounded transition-colors ${
+                            autoRefreshEnabled 
+                              ? 'bg-green-500/20 hover:bg-green-500/30' 
+                              : 'bg-gray-500/20 hover:bg-gray-500/30'
+                          }`}
+                          title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
+                        >
+                          {autoRefreshEnabled ? (
+                            <span className="text-green-400">⏱️</span>
+                          ) : (
+                            <span className="text-gray-400">⏸️</span>
+                          )}
+                        </button>
+                      </div>
+                    </th>
                     {isEmployeeMode && (
                       <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Akcja</th>
                     )}
