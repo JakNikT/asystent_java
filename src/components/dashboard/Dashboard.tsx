@@ -724,6 +724,18 @@ const Dashboard: React.FC = () => {
   };
 
   // src/components/dashboard/Dashboard.tsx: Funkcja obsługi zmian kryteriów z BrowseSkisComponent
+  // src/components/dashboard/Dashboard.tsx: Obsługa zmiany daty z BrowseSkisComponent
+  const handleDateChange = (
+    section: 'dateFrom' | 'dateTo',
+    field: 'day' | 'month' | 'year',
+    value: string,
+    inputRef?: HTMLInputElement
+  ) => {
+    console.log(`src/components/dashboard/Dashboard.tsx: Zmiana daty z BrowseSkisComponent - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    // Użyj istniejącej funkcji handleInputChange, która aktualizuje formData i formErrors
+    handleInputChange(section, field, value, inputRef);
+  };
+
   const handleBrowseCriteriaChange = (criteria: Partial<SearchCriteria>) => {
     console.log('Dashboard: Otrzymano zmienione kryteria z BrowseSkisComponent:', criteria);
     
@@ -1749,6 +1761,9 @@ const Dashboard: React.FC = () => {
             filterSearchStates={activeTab.filterSearchStates}
             hasSelectedGroup={hasSelectedGroup}
             onGroupSelected={() => setHasSelectedGroup(true)}
+            formData={formData}
+            formErrors={formErrors}
+            onDateChange={handleDateChange}
           />
         </div>
       )}

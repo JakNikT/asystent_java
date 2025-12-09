@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
-import type { FilterSearchState, FilterKey } from '../types/dashboard.types';
+import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.types';
+import type { FormErrors } from '../utils/formValidation';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
 import { Toast } from './Toast';
@@ -9,11 +10,15 @@ import { SkiDataService } from '../services/skiDataService';
 import type { ReservationInfo } from '../services/reservationService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 import { Input } from './ui/Input';
+import { Label } from './ui/Label';
 import { 
   validateHeightRealtime, 
   validateWeightRealtime, 
   validateLevelRealtime, 
-  validateGenderRealtime 
+  validateGenderRealtime,
+  validateDay,
+  validateMonth,
+  validateYear
 } from '../utils/formValidation';
 
 interface TabInfo {
@@ -38,6 +43,9 @@ interface BrowseSkisComponentProps {
   filterSearchStates?: Record<FilterKey, FilterSearchState>; // NOWE: Stan pól wyszukiwania z Dashboard
   hasSelectedGroup?: boolean; // NOWE: Czy użytkownik wybrał już grupę
   onGroupSelected?: () => void; // NOWE: Callback wywoływany po wyborze grupy
+  formData?: FormData; // NOWE: Dane formularza z datami
+  formErrors?: FormErrors; // NOWE: Błędy walidacji formularza
+  onDateChange?: (section: 'dateFrom' | 'dateTo', field: 'day' | 'month' | 'year', value: string, inputRef?: HTMLInputElement) => void; // NOWE: Callback do aktualizacji dat
 }
 
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
@@ -64,7 +72,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   onFilterSearchChange,
   filterSearchStates,
   hasSelectedGroup = true, // Domyślnie true dla kompatybilności wstecznej
-  onGroupSelected
+  onGroupSelected,
+  formData,
+  formErrors,
+  onDateChange
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'DLUGOSC',
@@ -77,6 +88,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
   // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
   const itemsPerPage = 10000;
+
+  // Refs dla pól daty - używane do automatycznego przechodzenia między polami
+  const dayFromRef = useRef<HTMLInputElement | null>(null);
+  const monthFromRef = useRef<HTMLInputElement | null>(null);
+  const dayToRef = useRef<HTMLInputElement | null>(null);
+  const monthToRef = useRef<HTMLInputElement | null>(null);
 
   // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
@@ -802,6 +819,105 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
+  // src/components/BrowseSkisComponent.tsx: Funkcja pomocnicza do automatycznego przechodzenia między polami
+  const focusAndSelectIfValue = (input: HTMLInputElement | null) => {
+    if (input) {
+      input.focus();
+      if (input.value) {
+        input.select();
+      }
+    }
+  };
+
+  // src/components/BrowseSkisComponent.tsx: Obsługa zmiany daty
+  const handleDateFieldChange = (
+    section: 'dateFrom' | 'dateTo',
+    field: 'day' | 'month' | 'year',
+    value: string,
+    inputRef?: HTMLInputElement
+  ) => {
+    console.log(`🔴 BrowseSkisComponent.tsx: handleDateFieldChange WYWOŁANY - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    console.log(`🔴 BrowseSkisComponent.tsx: onDateChange exists: ${!!onDateChange}`);
+
+    // Walidacja w czasie rzeczywistym
+    let isValid = true;
+    let errorMessage = '';
+
+    if (field === 'day') {
+      const validation = validateDay(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+      console.log(`🔴 Walidacja dnia - isValid: ${isValid}, message: ${errorMessage}`);
+    } else if (field === 'month') {
+      const validation = validateMonth(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+      console.log(`🔴 Walidacja miesiąca - isValid: ${isValid}, message: ${errorMessage}`);
+    } else if (field === 'year') {
+      const validation = validateYear(value);
+      isValid = validation.isValid;
+      errorMessage = validation.message;
+      console.log(`🔴 Walidacja roku - isValid: ${isValid}, message: ${errorMessage}`);
+    }
+
+    // Jeśli walidacja nie przeszła, nie aktualizuj wartości
+    if (!isValid) {
+      console.log(`🔴 BrowseSkisComponent.tsx: Walidacja nie przeszła - ${errorMessage}`);
+      return;
+    }
+
+    console.log(`🔴 BrowseSkisComponent.tsx: Walidacja przeszła, wywołuję onDateChange`);
+
+    // Wywołaj callback do aktualizacji w komponencie nadrzędnym
+    if (onDateChange) {
+      console.log(`🔴 BrowseSkisComponent.tsx: Wywołuję onDateChange z wartością: "${value}"`);
+      onDateChange(section, field, value, inputRef);
+    } else {
+      console.log(`🔴 BrowseSkisComponent.tsx: onDateChange NIE ISTNIEJE!`);
+    }
+
+    // Automatyczne przechodzenie do następnego pola
+    if (inputRef) {
+      // Dzień "od" → Miesiąc "od"
+      if (section === 'dateFrom' && field === 'day' && value.length === 2) {
+        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "od"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
+        focusAndSelectIfValue(nextInput);
+      }
+      // Miesiąc "od" → Rok "od"
+      else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
+        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "od"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
+        focusAndSelectIfValue(nextInput);
+      }
+      // Rok "od" → Dzień "do"
+      else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
+        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do dnia "do"`);
+        focusAndSelectIfValue(dayToRef.current);
+      }
+      // Dzień "do" → Miesiąc "do"
+      else if (section === 'dateTo' && field === 'day' && value.length === 2) {
+        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "do"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
+        focusAndSelectIfValue(nextInput);
+      }
+      // Miesiąc "do" → Rok "do"
+      else if (section === 'dateTo' && field === 'month' && value.length === 2) {
+        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "do"`);
+        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
+        focusAndSelectIfValue(nextInput);
+      }
+    }
+  };
+
+  // src/components/BrowseSkisComponent.tsx: Obsługa kliknięcia w pole daty
+  const handleDateFieldClick = (e: React.MouseEvent<HTMLInputElement>) => {
+    const input = e.currentTarget;
+    if (input.value) {
+      input.select();
+    }
+  };
+
   // src/components/BrowseSkisComponent.tsx: Funkcje obsługi szybkich filtrów
   const handleQuickFilter = (filter: string) => {
     console.log(`BrowseSkisComponent: Szybki filtr - ${filter}`);
@@ -890,7 +1006,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         <div className="max-w-8xl mx-auto">
           {/* Header z wyszukiwaniem - responsywny */}
           <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
-            <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-4 gap-4">
+            {/* Wszystkie elementy w jednym wierszu poziomo */}
+            <div className="flex flex-wrap items-center gap-6">
+              {/* 1. Napis "Przeglądaj sprzęt" */}
               <div className="flex-shrink-0">
                 <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
                   Przeglądaj sprzęt
@@ -900,22 +1018,113 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 </p>
               </div>
 
-              {/* Przyciski filtrów */}
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 Narty TOP</button>
-                <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-700 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 Narty VIP</button>
-                <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 Narty JUNIOR</button>
-                <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 Buty Junior</button>
-                <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🥾 Buty Dorosłe</button>
-                <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🏂 Deski</button>
-                <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👢 Buty SB</button>
-                <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 Cały sprzęt</button>
+              {/* 2. Pola daty w dwóch wierszach */}
+              {formData && onDateChange && (
+                <div className="flex flex-col gap-2 mr-24">
+                  {/* Data od - pierwszy wiersz */}
+                  <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
+                    <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
+                      📅 Data od:
+                    </Label>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        ref={dayFromRef}
+                        type="text"
+                        placeholder="DD"
+                        value={formData.dateFrom?.day || ''}
+                        onClick={handleDateFieldClick}
+                        onChange={(e) => handleDateFieldChange('dateFrom', 'day', e.target.value, e.target)}
+                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateFrom?.day ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                        maxLength={2}
+                      />
+                      <span className="text-white/50 font-bold text-xl">/</span>
+                      <Input
+                        ref={monthFromRef}
+                        type="text"
+                        placeholder="MM"
+                        value={formData.dateFrom?.month || ''}
+                        onClick={handleDateFieldClick}
+                        onChange={(e) => handleDateFieldChange('dateFrom', 'month', e.target.value, e.target)}
+                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateFrom?.month ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                        maxLength={2}
+                      />
+                      <span className="text-white/50 font-bold text-xl">/</span>
+                      <Input
+                        type="text"
+                        placeholder="YY"
+                        value={formData.dateFrom?.year || ''}
+                        onClick={handleDateFieldClick}
+                        onChange={(e) => handleDateFieldChange('dateFrom', 'year', e.target.value, e.target)}
+                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateFrom?.year ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
+                  {/* Data do - drugi wiersz */}
+                  <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
+                    <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
+                      📅 Data do:
+                    </Label>
+                    <div className="flex items-center gap-1">
+                      <Input
+                        ref={dayToRef}
+                        type="text"
+                        placeholder="DD"
+                        value={formData.dateTo?.day || ''}
+                        onClick={handleDateFieldClick}
+                        onChange={(e) => handleDateFieldChange('dateTo', 'day', e.target.value, e.target)}
+                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateTo?.day ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                        maxLength={2}
+                      />
+                      <span className="text-white/50 font-bold text-xl">/</span>
+                      <Input
+                        ref={monthToRef}
+                        type="text"
+                        placeholder="MM"
+                        value={formData.dateTo?.month || ''}
+                        onClick={handleDateFieldClick}
+                        onChange={(e) => handleDateFieldChange('dateTo', 'month', e.target.value, e.target)}
+                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateTo?.month ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                        maxLength={2}
+                      />
+                      <span className="text-white/50 font-bold text-xl">/</span>
+                      <Input
+                        type="text"
+                        placeholder="YY"
+                        value={formData.dateTo?.year || ''}
+                        onClick={handleDateFieldClick}
+                        onChange={(e) => handleDateFieldChange('dateTo', 'year', e.target.value, e.target)}
+                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateTo?.year ? 'border-red-500 ring-2 ring-red-500' : ''}`}
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 3. Przyciski filtrów w dwóch wierszach */}
+              <div className="flex flex-col gap-2 mr-2">
+                {/* Pierwszy wiersz - pierwsze 4 przyciski */}
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 NARTY TOP</button>
+                  <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-700 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 NARTY VIP</button>
+                  <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 NARTY JUNIOR</button>
+                  <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 BUTY JUNIOR</button>
+                </div>
+                {/* Drugi wiersz - pozostałe 4 przyciski */}
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🥾 BUTY DOROSŁE</button>
+                  <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🏂 DESKI</button>
+                  <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👢 BUTY SB</button>
+                  <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 CAŁY SPRZĘT</button>
+                </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-2 flex-shrink-0">
+              {/* 4. Przycisk powrotu */}
+              <div className="flex-shrink-0 ml-auto">
                 <button
                   onClick={onBack}
-                  className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-4 py-2 rounded-lg border border-white/5 hover:border-white/20 text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
+                  className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-6 py-2 rounded-lg border border-white/5 hover:border-white/20 text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
                 >
                   ← Wróć
                 </button>
