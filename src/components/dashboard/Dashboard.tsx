@@ -22,7 +22,7 @@ import { BrowseSkisComponent } from '../BrowseSkisComponent';
 import { ReservationsView } from '../ReservationsView';
 import { HistoryView } from '../HistoryView';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../../types/ski.types';
-import type { FormData, TabData, AppMode } from '../../types/dashboard.types';
+import type { FormData, TabData, AppMode, FilterKey } from '../../types/dashboard.types';
 import PasswordModal from '../PasswordModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatModelName, formatBrandName } from '../../utils/nameFormatter';
@@ -1211,7 +1211,7 @@ const Dashboard: React.FC = () => {
   }, [equipmentTypeFilter, categoryFilter]);
 
   // NOWA FUNKCJA: Aktualizacja stanu pól wyszukiwania dla aktywnej karty
-  const handleFilterSearchChange = (filterKey: any, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => {
+  const handleFilterSearchChange = (filterKey: FilterKey, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => {
     console.log(`Dashboard: Aktualizuję stan wyszukiwania dla filtra ${filterKey}, pole: ${field}, wartość: ${value}`);
     
     updateActiveTab({
