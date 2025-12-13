@@ -3,9 +3,11 @@
  * Zastępuje bezpośredni odczyt CSV przez HTTP API
  */
 
+import { createLogger } from '../utils/logger';
 import type { ReservationData, ReservationInfo, AvailabilityInfo } from './reservationService';
 
 const API_BASE_URL = '/api';
+const logger = createLogger('ReservationApiClient');
 
 /**
  * Klient API dla rezerwacji
@@ -25,12 +27,12 @@ export class ReservationApiClient {
     
     // Użyj cache jeśli dane są świeże
     if (this.cache.length > 0 && (now - this.lastFetch) < this.CACHE_DURATION) {
-      console.log('ReservationApiClient: Używam danych z cache');
+      logger.debug('Używam danych z cache');
       return this.cache;
     }
 
     try {
-      console.log('ReservationApiClient: Pobieram rezerwacje z serwera...');
+      logger.info('Pobieram rezerwacje z serwera...');
       const response = await fetch(`${API_BASE_URL}/reservations`);
       
       if (!response.ok) {
@@ -41,10 +43,10 @@ export class ReservationApiClient {
       this.cache = reservations;
       this.lastFetch = now;
       
-      console.log(`ReservationApiClient: Pobrano ${reservations.length} rezerwacji`);
+      logger.info(`Pobrano ${reservations.length} rezerwacji`);
       return reservations;
     } catch (error) {
-      console.error('ReservationApiClient: Błąd pobierania rezerwacji:', error);
+      logger.error('Błąd pobierania rezerwacji:', error);
       
       // Jeśli cache jest pusty, zwróć pustą tablicę
       if (this.cache.length === 0) {
@@ -52,7 +54,7 @@ export class ReservationApiClient {
       }
       
       // W przeciwnym razie użyj cache (może być nieaktualny)
-      console.log('ReservationApiClient: Używam cache mimo błędu');
+      logger.warn('Używam cache mimo błędu');
       return this.cache;
     }
   }
@@ -65,12 +67,12 @@ export class ReservationApiClient {
     
     // Użyj cache jeśli dane są świeże
     if (this.cacheRentals.length > 0 && (now - this.lastFetchRentals) < this.CACHE_DURATION) {
-      console.log('ReservationApiClient: Używam danych z cache (wypożyczenia)');
+      logger.debug('Używam danych z cache (wypożyczenia)');
       return this.cacheRentals;
     }
 
     try {
-      console.log('ReservationApiClient: Pobieram wypożyczenia z serwera...');
+      logger.info('Pobieram wypożyczenia z serwera...');
       const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`);
       
       if (!response.ok) {
@@ -81,10 +83,10 @@ export class ReservationApiClient {
       this.cacheRentals = rentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
       this.lastFetchRentals = now;
       
-      console.log(`ReservationApiClient: Pobrano ${rentals.length} wypożyczeń`);
+      logger.info(`Pobrano ${rentals.length} wypożyczeń`);
       return this.cacheRentals;
     } catch (error) {
-      console.error('ReservationApiClient: Błąd pobierania wypożyczeń:', error);
+      logger.error('Błąd pobierania wypożyczeń:', error);
       
       // Jeśli cache jest pusty, zwróć pustą tablicę
       if (this.cacheRentals.length === 0) {
@@ -92,7 +94,7 @@ export class ReservationApiClient {
       }
       
       // W przeciwnym razie użyj cache (może być nieaktualny)
-      console.log('ReservationApiClient: Używam cache mimo błędu (wypożyczenia)');
+      logger.warn('Używam cache mimo błędu (wypożyczenia)');
       return this.cacheRentals;
     }
   }
@@ -102,7 +104,7 @@ export class ReservationApiClient {
    */
   static async loadAll(): Promise<ReservationData[]> {
     try {
-      console.log('ReservationApiClient: Pobieram wszystkie dane (rezerwacje + wypożyczenia)...');
+      logger.info('Pobieram wszystkie dane (rezerwacje + wypożyczenia)...');
       
       const [reservations, rentals] = await Promise.all([
         this.loadReservations(),
@@ -116,11 +118,11 @@ export class ReservationApiClient {
       }));
       
       const allData = [...reservationsWithSource, ...rentals];
-      console.log(`ReservationApiClient: Pobrano łącznie ${allData.length} pozycji (${reservationsWithSource.length} rezerwacji + ${rentals.length} wypożyczeń)`);
+      logger.info(`Pobrano łącznie ${allData.length} pozycji (${reservationsWithSource.length} rezerwacji + ${rentals.length} wypożyczeń)`);
       
       return allData;
     } catch (error) {
-      console.error('ReservationApiClient: Błąd pobierania wszystkich danych:', error);
+      logger.error('Błąd pobierania wszystkich danych:', error);
       return [];
     }
   }
@@ -134,7 +136,7 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
     const fromTimestamp = dateFrom.getTime();
     const toTimestamp = dateTo.getTime();
     
-    console.log(`ReservationApiClient: Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
+    logger.debug(`Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
     
     const response = await fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
     
@@ -174,11 +176,11 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
     }));
     
     const allData = [...reservations, ...rentals];
-    console.log(`ReservationApiClient: Pobrano ${allData.length} pozycji (${reservations.length} rezerwacji + ${rentals.length} wypożyczeń)`);
+    logger.info(`Pobrano ${allData.length} pozycji (${reservations.length} rezerwacji + ${rentals.length} wypożyczeń)`);
     
     return allData;
   } catch (error) {
-    console.error('ReservationApiClient: Błąd pobierania dostępności dla okresu:', error);
+    logger.error('Błąd pobierania dostępności dla okresu:', error);
     return [];
   }
 }
@@ -204,7 +206,7 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
    */
   static async loadPastRentals(): Promise<ReservationData[]> {
     try {
-      console.log('ReservationApiClient: Pobieram przeszłe wypożyczenia z serwera...');
+      logger.info('Pobieram przeszłe wypożyczenia z serwera...');
       const response = await fetch(`${API_BASE_URL}/wypozyczenia/przeszle`);
       
       if (!response.ok) {
@@ -212,12 +214,12 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
       }
       
       const pastRentals = await response.json();
-      console.log(`ReservationApiClient: Pobrano ${pastRentals.length} przeszłych wypożyczeń`);
+      logger.info(`Pobrano ${pastRentals.length} przeszłych wypożyczeń`);
       
       // Dodaj pole source='rental' do każdego wypożyczenia
       return pastRentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
     } catch (error) {
-      console.error('ReservationApiClient: Błąd pobierania przeszłych wypożyczeń:', error);
+      logger.error('Błąd pobierania przeszłych wypożyczeń:', error);
       return [];
     }
   }
@@ -227,7 +229,7 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
    */
   static async loadPastReservations(): Promise<ReservationData[]> {
     try {
-      console.log('ReservationApiClient: Filtuję przeszłe rezerwacje...');
+      logger.info('Filtuję przeszłe rezerwacje...');
       const allReservations = await this.loadReservations();
       const today = new Date();
       today.setHours(0, 0, 0, 0); // Reset do początku dnia
@@ -237,7 +239,7 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
         return startDate <= today;
       });
       
-      console.log(`ReservationApiClient: Znaleziono ${pastReservations.length} przeszłych rezerwacji`);
+      logger.info(`Znaleziono ${pastReservations.length} przeszłych rezerwacji`);
       
       // Dodaj pole source='reservation'
       return pastReservations.map(r => ({ 
@@ -245,7 +247,7 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
         source: (r.source || 'reservation') as 'reservation' | 'rental'
       }));
     } catch (error) {
-      console.error('ReservationApiClient: Błąd filtrowania przeszłych rezerwacji:', error);
+      logger.error('Błąd filtrowania przeszłych rezerwacji:', error);
       return [];
     }
   }
@@ -267,8 +269,8 @@ static async getSkiAvailabilityStatus(
   
   // Loguj tylko przy pierwszym wywołaniu (gdy nie ma cache)
   if (!cachedData) {
-    console.log('🔍 Sprawdzam rezerwacje i wypożyczenia dla okresu użytkownika (zoptymalizowane)');
-    console.log(`ReservationApiClient.getSkiAvailabilityStatus: Pobrano ${allData.length} pozycji (tylko istotne dla okresu)`);
+    logger.debug('Sprawdzam rezerwacje i wypożyczenia dla okresu użytkownika (zoptymalizowane)');
+    logger.debug(`Pobrano ${allData.length} pozycji (tylko istotne dla okresu)`);
   }
     
   const allReservations: ReservationInfo[] = [];
@@ -350,7 +352,7 @@ static async getSkiAvailabilityStatus(
    */
   static async createReservation(reservationData: Partial<ReservationData>): Promise<boolean> {
     try {
-      console.log('ReservationApiClient: Tworzenie nowej rezerwacji:', reservationData);
+      logger.info('Tworzenie nowej rezerwacji:', reservationData);
       
       const response = await fetch(`${API_BASE_URL}/reservations`, {
         method: 'POST',
@@ -368,10 +370,10 @@ static async getSkiAvailabilityStatus(
       this.cache = [];
       this.lastFetch = 0;
       
-      console.log('ReservationApiClient: Rezerwacja utworzona pomyślnie');
+      logger.info('Rezerwacja utworzona pomyślnie');
       return true;
     } catch (error) {
-      console.error('ReservationApiClient: Błąd tworzenia rezerwacji:', error);
+      logger.error('Błąd tworzenia rezerwacji:', error);
       return false;
     }
   }
@@ -381,7 +383,7 @@ static async getSkiAvailabilityStatus(
    */
   static async updateReservation(id: string, updates: Partial<ReservationData>): Promise<boolean> {
     try {
-      console.log('ReservationApiClient: Aktualizacja rezerwacji:', id, updates);
+      logger.info('Aktualizacja rezerwacji:', id, updates);
       
       const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
         method: 'PUT',
@@ -399,10 +401,10 @@ static async getSkiAvailabilityStatus(
       this.cache = [];
       this.lastFetch = 0;
       
-      console.log('ReservationApiClient: Rezerwacja zaktualizowana pomyślnie');
+      logger.info('Rezerwacja zaktualizowana pomyślnie');
       return true;
     } catch (error) {
-      console.error('ReservationApiClient: Błąd aktualizacji rezerwacji:', error);
+      logger.error('Błąd aktualizacji rezerwacji:', error);
       return false;
     }
   }
@@ -412,7 +414,7 @@ static async getSkiAvailabilityStatus(
    */
   static async deleteReservation(id: string): Promise<boolean> {
     try {
-      console.log('ReservationApiClient: Usuwanie rezerwacji:', id);
+      logger.info('Usuwanie rezerwacji:', id);
       
       const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
         method: 'DELETE'
@@ -426,10 +428,10 @@ static async getSkiAvailabilityStatus(
       this.cache = [];
       this.lastFetch = 0;
       
-      console.log('ReservationApiClient: Rezerwacja usunięta pomyślnie');
+      logger.info('Rezerwacja usunięta pomyślnie');
       return true;
     } catch (error) {
-      console.error('ReservationApiClient: Błąd usuwania rezerwacji:', error);
+      logger.error('Błąd usuwania rezerwacji:', error);
       return false;
     }
   }

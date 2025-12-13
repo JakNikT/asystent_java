@@ -1,0 +1,213 @@
+# 📋 Przegląd Aplikacji "Asystent Doboru Nart" - Checklist
+
+**Data przeglądu**: 2025-12-13  
+**Status**: W trakcie weryfikacji
+
+---
+
+## ✅ Pozytywne Aspekty
+
+- [x] **Architektura** - Modułowa struktura backendu i frontendu
+- [x] **Technologie** - Nowoczesny stack (React 19, TypeScript, Express.js)
+- [x] **Testy** - 39 testów jednostkowych (wszystkie przechodzą)
+- [x] **Dokumentacja** - Dobrze udokumentowany projekt
+
+---
+
+## 🔴 Problemy do Naprawienia
+
+### 1. Bezpieczeństwo - KRYTYCZNE ⚠️
+
+- [x] **Usunąć hardcoded hasła z kodu** ✅
+  - [x] Usunąć fallback `'Mypass123!'` z `src/server/config/env.js`
+  - [x] Wymusić zmienne środowiskowe w produkcji (throw error jeśli brak)
+  
+- [x] **Dodać plik `.env.example`** ✅
+  - [x] Utworzyć `env.example` z placeholderami
+  - [x] Dodać komentarze wyjaśniające każdą zmienną
+  
+- [x] **Zabezpieczyć `.env` w repozytorium** ✅
+  - [x] Sprawdzić czy `.env` jest w `.gitignore`
+  - [x] Sprawdzić historię git czy `.env` nie był commitowany
+  - [x] Jeśli był - zmienić hasła w bazie danych
+
+**Lokalizacja problemu**: `src/server/config/env.js:26` - NAPRAWIONE ✅
+
+---
+
+### 2. Logowanie - WYSOKI PRIORYTET ⚠️
+
+- [x] **Utworzyć logger dla frontendu** ✅
+  - [x] Utworzyć `src/utils/logger.ts` z poziomami logowania
+  - [x] Dodać możliwość wyłączenia logów w produkcji
+  
+- [ ] **Zamienić console.log na logger w frontendzie** 🔄 W TRAKCIE
+  - [x] `src/services/reservationApiClient.ts` (~50 wystąpień) ✅
+  - [x] `src/services/skiDataService.ts` (~20 wystąpień) ✅
+  - [ ] `src/services/reservationService.ts` (~30 wystąpień) - DUŻY PLIK
+  - [ ] `src/services/historyService.ts` (~10 wystąpień)
+  - [ ] `src/utils/csvParser.ts` (~10 wystąpień)
+  - [ ] `src/components/BrowseSkisComponent.tsx` (~100+ wystąpień) - DUŻY PLIK
+  - [ ] `src/components/ReservationsView.tsx` (~50+ wystąpień)
+  - [ ] Inne pliki w `src/` (~200+ wystąpień)
+
+**Łącznie**: ~480+ wystąpień `console.log/error/warn` do zamiany
+**Postęp**: 2/8 plików głównych zakończonych ✅ (~70/480 wystąpień)
+
+---
+
+### 3. Obsługa Błędów - ŚREDNI PRIORYTET ⚠️
+
+- [ ] **Dodać React Error Boundary**
+  - [ ] Utworzyć `src/components/ErrorBoundary.tsx`
+  - [ ] Owinąć główną aplikację w Error Boundary
+  - [ ] Dodać przyjazny komunikat błędu dla użytkownika
+  
+- [ ] **Utworzyć globalny error handler dla API**
+  - [ ] Dodać middleware do Express (`src/server/middleware/errorHandler.js`)
+  - [ ] Obsłużyć różne typy błędów (walidacja, baza danych, API)
+  - [ ] Zwracać spójne formaty odpowiedzi błędów
+  
+- [ ] **Dodać powiadomienia dla użytkownika**
+  - [ ] Użyć istniejącego komponentu `Toast.tsx` do wyświetlania błędów
+  - [ ] Dodać obsługę błędów w wszystkich API calls
+  - [ ] Pokazywać komunikaty przy nieudanych operacjach
+
+---
+
+### 4. TODO/FIXME - ŚREDNI PRIORYTET
+
+- [ ] **Zrealizować lub usunąć TODO w kodzie**
+  - [ ] `src/services/reservationService.ts:507` - Dodać logikę dla anulowanych rezerwacji
+  - [ ] `src/services/reservationService.ts:558` - Implementuj logikę sprawdzania konkretnej sztuki
+  - [ ] `src/services/reservationService.ts:604` - Implementuj tworzenie nowej rezerwacji
+  - [ ] `src/services/reservationService.ts:619` - Implementuj aktualizację rezerwacji
+  - [ ] `src/services/reservationService.ts:633` - Implementuj usuwanie rezerwacji
+  - [ ] Sprawdzić czy wszystkie TODO są aktualne
+
+---
+
+### 5. TypeScript - NISKI PRIORYTET
+
+- [ ] **Migracja backendu na TypeScript (opcjonalnie)**
+  - [ ] Migrować `src/server/config/*.js` → `*.ts`
+  - [ ] Migrować `src/server/controllers/*.js` → `*.ts`
+  - [ ] Migrować `src/server/services/*.js` → `*.ts`
+  - [ ] Migrować `src/server/routes/*.js` → `*.ts`
+  - [ ] Dodać typy dla wszystkich funkcji
+
+---
+
+## 💡 Sugestie Ulepszeń
+
+### 1. Performance
+
+- [ ] **Optymalizacja React**
+  - [ ] Dodać `React.memo` dla ciężkich komponentów
+  - [ ] Dodać `useMemo` dla kosztownych obliczeń
+  - [ ] Dodać `useCallback` dla funkcji przekazywanych jako props
+  - [ ] Zaimplementować lazy loading dla komponentów (`React.lazy`)
+
+### 2. Walidacja Danych
+
+- [ ] **Walidacja po stronie serwera**
+  - [ ] Dodać bibliotekę walidacji (Joi/Zod)
+  - [ ] Utworzyć schematy walidacji dla wszystkich endpointów
+  - [ ] Dodać sanitization danych wejściowych
+  - [ ] Walidować typy danych przed zapisem do bazy
+
+### 3. Monitoring
+
+- [ ] **Health Check**
+  - [ ] Dodać endpoint `/api/health`
+  - [ ] Sprawdzać połączenie z bazą danych
+  - [ ] Sprawdzać dostępność FireSnow API
+  
+- [ ] **Error Tracking**
+  - [ ] Zintegrować Sentry lub podobne narzędzie
+  - [ ] Dodać logowanie błędów do zewnętrznego serwisu
+  
+- [ ] **Metryki Wydajności**
+  - [ ] Dodać timing dla API calls
+  - [ ] Monitorować czas odpowiedzi endpointów
+
+### 4. CI/CD
+
+- [ ] **GitHub Actions / GitLab CI**
+  - [ ] Utworzyć workflow dla testów automatycznych
+  - [ ] Dodać linting przed commit
+  - [ ] Automatyczny build przy PR
+  - [ ] Automatyczny deploy na staging/produkcję
+
+### 5. Dokumentacja API
+
+- [ ] **Swagger/OpenAPI**
+  - [ ] Dodać swagger-ui dla dokumentacji API
+  - [ ] Opisać wszystkie endpointy
+  - [ ] Dodać przykłady requestów/odpowiedzi
+  - [ ] Dodać schematy danych
+
+---
+
+## 📊 Metryki Jakości Kodu
+
+| Aspekt | Status | Uwagi |
+|--------|--------|-------|
+| Architektura | ✅ Dobra | Modułowa struktura |
+| Testy | ✅ Dobra | 39 testów, wszystkie przechodzą |
+| Bezpieczeństwo | ⚠️ Wymaga poprawy | Hardcoded hasła |
+| Logowanie | ⚠️ Wymaga poprawy | 480+ console.log |
+| Obsługa błędów | ⚠️ Wymaga poprawy | Brak error boundary |
+| TypeScript | ✅ Dobra | Frontend w pełni typowany |
+| Dokumentacja | ✅ Dobra | README + docs |
+
+---
+
+## 🎯 Priorytety Działań
+
+### Krytyczne (Natychmiast) 🔴
+
+1. [ ] Usunąć hardcoded hasła z kodu
+2. [ ] Dodać `.env.example`
+3. [ ] Sprawdzić `.gitignore` i historię git
+
+### Wysokie (W tym tygodniu) 🟠
+
+1. [ ] Zamienić `console.log` na logger w frontendzie
+2. [ ] Dodać Error Boundary
+3. [ ] Dodać walidację po stronie serwera
+
+### Średnie (W tym miesiącu) 🟡
+
+1. [ ] Zrealizować TODO
+2. [ ] Dodać health check
+3. [ ] Optymalizacja wydajności
+
+### Niskie (Opcjonalnie) 🟢
+
+1. [ ] Migracja backendu na TypeScript
+2. [ ] CI/CD pipeline
+3. [ ] Monitoring i error tracking
+
+---
+
+## 📝 Notatki
+
+### Znalezione Problemy
+
+1. **Hardcoded hasło**: `src/server/config/env.js:26` - fallback `'Mypass123!'`
+2. **Console.log**: 480+ wystąpień w kodzie frontendowym
+3. **Brak Error Boundary**: Aplikacja może crashować bez informacji dla użytkownika
+4. **TODO**: 6 TODO w kodzie wymagają realizacji lub usunięcia
+
+### Zalecane Następne Kroki
+
+1. Zacząć od problemów bezpieczeństwa (krytyczne)
+2. Następnie poprawić logowanie (wysoki priorytety)
+3. Dodać obsługę błędów (średni priorytet)
+4. Stopniowo wprowadzać ulepszenia z listy sugestii
+
+---
+
+**Ostatnia aktualizacja**: 2025-12-13
+
