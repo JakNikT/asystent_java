@@ -5,10 +5,12 @@
  * FALLBACK: Jeśli API nie działa, wczytuje z lokalnego CSV
  */
 
+import { createLogger } from '../utils/logger';
 import type { SkiData } from '../types/ski.types';
 import { CSVParser } from '../utils/csvParser';
 
 const API_BASE_URL = '/api';
+const logger = createLogger('SkiDataService');
 
 /**
  * Serwis do zarządzania danymi nart przez API
@@ -26,12 +28,12 @@ export class SkiDataService {
     
     // Użyj cache jeśli dane są świeże
     if (this.cache.length > 0 && (now - this.lastFetch) < this.CACHE_DURATION) {
-      console.log('SkiDataService: Używam danych z cache');
+      logger.debug('Używam danych z cache');
       return this.cache;
     }
 
     try {
-      console.log('SkiDataService: Pobieram narty z serwera...');
+      logger.info('Pobieram narty z serwera...');
       const response = await fetch(`${API_BASE_URL}/skis`);
       
       if (!response.ok) {
@@ -55,28 +57,28 @@ export class SkiDataService {
       this.cache = processedSkis;
       this.lastFetch = now;
       
-      console.log(`SkiDataService: Pobrano ${processedSkis.length} nart`);
+      logger.info(`Pobrano ${processedSkis.length} nart`);
       return processedSkis;
     } catch (error) {
-      console.error('SkiDataService: Błąd pobierania nart z API:', error);
+      logger.error('Błąd pobierania nart z API:', error);
       
       // FALLBACK: Spróbuj wczytać z lokalnego CSV
       if (this.cache.length === 0) {
         try {
-          console.log('SkiDataService: Próbuję wczytać z lokalnego CSV...');
+          logger.info('Próbuję wczytać z lokalnego CSV...');
           const skisFromCSV = await CSVParser.loadFromPublic();
           this.cache = skisFromCSV;
           this.lastFetch = Date.now();
-          console.log(`SkiDataService: Załadowano ${skisFromCSV.length} nart z CSV`);
+          logger.info(`Załadowano ${skisFromCSV.length} nart z CSV`);
           return skisFromCSV;
         } catch (csvError) {
-          console.error('SkiDataService: Błąd wczytywania CSV:', csvError);
+          logger.error('Błąd wczytywania CSV:', csvError);
           return [];
         }
       }
       
       // W przeciwnym razie użyj cache (może być nieaktualny)
-      console.log('SkiDataService: Używam cache mimo błędu');
+      logger.warn('Używam cache mimo błędu');
       return this.cache;
     }
   }
@@ -86,11 +88,11 @@ export class SkiDataService {
    */
   static async updateSki(id: string, updates: Partial<SkiData>): Promise<SkiData | null> {
     try {
-      console.log('SkiDataService: Aktualizacja narty:', id);
-      console.log('SkiDataService: Wszystkie pola do aktualizacji:', updates);
-      console.log('SkiDataService: KATEGORIA do wysłania:', updates.KATEGORIA);
-      console.log('SkiDataService: TYP_SPRZETU do wysłania:', updates.TYP_SPRZETU);
-      console.log('SkiDataService: PRZEZNACZENIE do wysłania:', updates.PRZEZNACZENIE);
+      logger.info('Aktualizacja narty:', id);
+      logger.debug('Wszystkie pola do aktualizacji:', updates);
+      logger.debug('KATEGORIA do wysłania:', updates.KATEGORIA);
+      logger.debug('TYP_SPRZETU do wysłania:', updates.TYP_SPRZETU);
+      logger.debug('PRZEZNACZENIE do wysłania:', updates.PRZEZNACZENIE);
       
       const response = await fetch(`${API_BASE_URL}/skis/${id}`, {
         method: 'PUT',
@@ -110,10 +112,10 @@ export class SkiDataService {
       this.cache = [];
       this.lastFetch = 0;
       
-      console.log('SkiDataService: Narta zaktualizowana pomyślnie');
+      logger.info('Narta zaktualizowana pomyślnie');
       return updatedSki;
     } catch (error) {
-      console.error('SkiDataService: Błąd aktualizacji narty:', error);
+      logger.error('Błąd aktualizacji narty:', error);
       return null;
     }
   }
@@ -123,7 +125,7 @@ export class SkiDataService {
    */
   static async addSki(skiData: Partial<SkiData>): Promise<SkiData | null> {
     try {
-      console.log('SkiDataService: Dodawanie nowej narty:', skiData);
+      logger.info('Dodawanie nowej narty:', skiData);
       
       const response = await fetch(`${API_BASE_URL}/skis`, {
         method: 'POST',
@@ -143,10 +145,10 @@ export class SkiDataService {
       this.cache = [];
       this.lastFetch = 0;
       
-      console.log('SkiDataService: Narta dodana pomyślnie:', newSki);
+      logger.info('Narta dodana pomyślnie:', newSki);
       return newSki;
     } catch (error) {
-      console.error('SkiDataService: Błąd dodawania narty:', error);
+      logger.error('Błąd dodawania narty:', error);
       return null;
     }
   }
@@ -156,8 +158,8 @@ export class SkiDataService {
    */
   static async updateMultipleSkis(ids: string[], updates: Partial<SkiData>): Promise<SkiData[] | null> {
     try {
-      console.log('SkiDataService: Aktualizacja wielu nart:', ids);
-      console.log('SkiDataService: Dane do aktualizacji:', updates);
+      logger.info('Aktualizacja wielu nart:', ids);
+      logger.debug('Dane do aktualizacji:', updates);
       
       const response = await fetch(`${API_BASE_URL}/skis/bulk`, {
         method: 'PUT',
@@ -177,10 +179,10 @@ export class SkiDataService {
       this.cache = [];
       this.lastFetch = 0;
       
-      console.log(`SkiDataService: ${updatedSkis.length} nart zaktualizowanych pomyślnie`);
+      logger.info(`${updatedSkis.length} nart zaktualizowanych pomyślnie`);
       return updatedSkis;
     } catch (error) {
-      console.error('SkiDataService: Błąd aktualizacji wielu nart:', error);
+      logger.error('Błąd aktualizacji wielu nart:', error);
       return null;
     }
   }
@@ -191,7 +193,7 @@ export class SkiDataService {
   static clearCache(): void {
     this.cache = [];
     this.lastFetch = 0;
-    console.log('SkiDataService: Cache wyczyszczony');
+    logger.debug('Cache wyczyszczony');
   }
 
   /**
@@ -202,7 +204,7 @@ export class SkiDataService {
       const response = await fetch(`${API_BASE_URL}/health`);
       return response.ok;
     } catch (error) {
-      console.error('SkiDataService: Serwer niedostępny:', error);
+      logger.error('Serwer niedostępny:', error);
       return false;
     }
   }

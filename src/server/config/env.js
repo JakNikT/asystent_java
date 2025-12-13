@@ -9,7 +9,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../../../');
 
+// Validate required environment variables
+const requiredEnvVars = ['DB_PASSWORD'];
+const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
+if (missingEnvVars.length > 0) {
+    console.error('❌ Błąd konfiguracji: Brakujące wymagane zmienne środowiskowe:');
+    missingEnvVars.forEach(varName => console.error(`   - ${varName}`));
+    console.error('\n💡 Wskazówka: Skopiuj plik .env.example do .env i uzupełnij wartości.');
+    process.exit(1);
+}
 
 export const config = {
     port: process.env.PORT || 5001,
@@ -23,7 +32,7 @@ export const config = {
     db: {
         host: process.env.DB_HOST || 'localhost',
         user: process.env.DB_USER || 'root',
-        password: process.env.DB_PASSWORD || 'Mypass123!',
+        password: process.env.DB_PASSWORD, // REQUIRED - no fallback for security
         database: process.env.DB_NAME || 'sprzet_narciarski',
         historyDatabase: process.env.DB_HISTORY_NAME || 'history',
         waitForConnections: true,
