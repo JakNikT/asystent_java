@@ -1,8 +1,8 @@
 # 🎿 Asystent Doboru Nart - Kompleksowa Dokumentacja Projektu
 
-**Wersja dokumentu:** 1.1  
+**Wersja dokumentu:** 1.2  
 **Data utworzenia:** 2025-11-01  
-**Ostatnia aktualizacja:** 2025-01-XX  
+**Ostatnia aktualizacja:** 2025-12-14  
 **Wersja aplikacji:** 6.0+
 
 ---
@@ -35,6 +35,7 @@
 - ✅ **Integracja w czasie rzeczywistym** z systemem FireSnow
 - ✅ **System wielokartowy** - obsługa wielu klientów jednocześnie
 - ✅ **Automatyczne wyszukiwanie** z optymalizacją wydajności
+- ✅ **Obsługa błędów** - React Error Boundary, globalny error handler API, system powiadomień Toast
 - ✅ **Responsywny design** - działanie na desktop i mobile
 
 ---
@@ -69,7 +70,10 @@ asystent_java/
 │   │   ├── ReservationsView.tsx
 │   │   ├── DetailedCompatibility.tsx
 │   │   ├── SkiEditModal.tsx
+│   │   ├── ErrorBoundary.tsx  # React Error Boundary
 │   │   └── ... (7+ innych)
+│   ├── hooks/               # React Hooks
+│   │   └── useToast.ts      # Toast Manager hook
 │   ├── server/              # Backend Express.js
 │   │   ├── app.js           # Główna aplikacja Express
 │   │   ├── config/          # Konfiguracja
@@ -95,6 +99,8 @@ asystent_java/
 │   │   │   ├── skis.js
 │   │   │   ├── firesnow.js
 │   │   │   └── history.js
+│   │   ├── middleware/      # Middleware Express
+│   │   │   └── errorHandler.js  # Global error handler
 │   │   └── utils/           # Narzędzia pomocnicze
 │   ├── services/            # 5 serwisów biznesowych
 │   │   ├── skiMatchingServiceV2.ts (1,851 linii)
@@ -615,7 +621,47 @@ Każde pole jest walidowane podczas wprowadzania:
 - Zapisywanie do CSV
 - Tylko w trybie pracownika
 
-### 6.2 Serwisy
+#### ErrorBoundary.tsx
+
+**React Error Boundary** - przechwytuje błędy renderowania React.
+
+**Funkcjonalności:**
+- Przechwytywanie błędów w drzewie komponentów
+- Wyświetlanie przyjaznego komunikatu błędu
+- Przycisk "Spróbuj ponownie" (resetuje stan)
+- Przycisk "Wróć do strony głównej" (reload aplikacji)
+- Logowanie błędów do console w development
+- Przygotowane pod integrację z zewnętrznym serwisem (Sentry, LogRocket)
+
+**Integracja:** Owinąć główną aplikację w `App.tsx`
+
+### 6.2 Hooks
+
+#### useToast.ts
+
+**Toast Manager** - centralny system powiadomień użytkownika.
+
+**Funkcjonalności:**
+- Context API dla globalnego stanu Toast
+- Hook `useToast()` dostępny w każdym komponencie
+- Singleton `toastService` dostępny poza komponentami React (dla API clients)
+- Kolejka powiadomień (maksymalnie 3 naraz)
+- Auto-dismiss po 4 sekundach
+- Debouncing dla identycznych komunikatów (ignoruj duplikaty w ciągu 1 sekundy)
+
+**Użycie w komponentach:**
+```typescript
+const { showSuccess, showError, showInfo } = useToast();
+showSuccess('Operacja zakończona pomyślnie');
+```
+
+**Użycie w API clients:**
+```typescript
+import { toastService } from '../hooks/useToast';
+toastService.showError('Błąd pobierania danych');
+```
+
+### 6.3 Serwisy
 
 #### SkiMatchingServiceV2.ts (1,851 linii)
 
@@ -786,6 +832,13 @@ Każde pole jest walidowane podczas wprowadzania:
 - Dokumentacja
 - Deployment
 
+#### Faza 6: Obsługa błędów (Grudzień 2025)
+
+- React Error Boundary
+- Toast Manager (Context API + Singleton)
+- Globalny error handler dla Express API
+- Integracja powiadomień z API clients i komponentami
+
 
 
 ### Najważniejsze funkcjonalności dodane w czasie
@@ -799,7 +852,8 @@ Każde pole jest walidowane podczas wprowadzania:
 7. **Przeszłe rezerwacje i wypożyczenia**
 8. **Łączenie rezerwacji z wypożyczeniami**
 9. **Funkcje gaussowskie** dla precyzyjnego dopasowania
-10. **Responsywny design** (mobile + desktop)
+10. **Obsługa błędów** - Error Boundary, Toast Manager, globalny error handler API
+11. **Responsywny design** (mobile + desktop)
 
 ---
 
@@ -911,7 +965,77 @@ useEffect(() => {
 - **Proxy** do FireSnow Bridge API
 - **CSV parsing** dla lokalnej bazy
 - **CORS** - cross-origin requests
-- **Error handling** - obsługa błędów
+- **Global Error Handler** - standaryzowana obsługa błędów
+
+### Obsługa błędów
+
+Aplikacja posiada kompleksowy system obsługi błędów na poziomie frontendu i backendu:
+
+#### Frontend - React Error Boundary
+
+**ErrorBoundary.tsx** przechwytuje błędy renderowania React:
+- Przechwytuje błędy w metodach lifecycle i renderowaniu
+- Wyświetla przyjazny komunikat z opcjami odzyskania
+- Loguje błędy do console w development
+- Przygotowane pod integrację z zewnętrznym serwisem (Sentry, LogRocket)
+
+**Ograniczenia:**
+- NIE przechwytuje błędów w event handlerach (użyj try/catch)
+- NIE przechwytuje błędów asynchronicznych (użyj try/catch + Toast)
+
+#### Frontend - Toast Manager
+
+**useToast.ts** - centralny system powiadomień:
+- **Context API** - dostęp w komponentach React przez hook `useToast()`
+- **Singleton Service** - dostęp poza komponentami przez `toastService`
+- **Kolejka** - maksymalnie 3 Toastów naraz, reszta czeka
+- **Auto-dismiss** - automatyczne zamykanie po 4 sekundach
+- **Debouncing** - ignoruje duplikaty w ciągu 1 sekundy
+
+**Integracja z API clients:**
+- `reservationApiClient.ts` - powiadomienia o błędach i sukcesach operacji CRUD
+- `skiDataService.ts` - powiadomienia o operacjach na sprzęcie
+- `historyService.ts` - powiadomienia o błędach wyszukiwania
+
+#### Backend - Global Error Handler
+
+**errorHandler.js** - middleware Express do standaryzacji błędów:
+- **Standaryzowany format** odpowiedzi błędów
+- **Automatyczna klasyfikacja** typów błędów:
+  - Błędy walidacji (400) → `VALIDATION_ERROR`
+  - Błędy bazy danych (500) → `DATABASE_ERROR`
+  - Błędy zewnętrznych API (503) → `EXTERNAL_API_ERROR`
+  - Błędy autoryzacji (401/403) → `AUTHENTICATION_ERROR` / `AUTHORIZATION_ERROR`
+  - Nieznane błędy (500) → `INTERNAL_SERVER_ERROR`
+- **Logowanie** błędów z pełnym kontekstem (metoda, URL, body, query, params)
+- **Przyjazne komunikaty** dla użytkownika
+- **Szczegóły techniczne** tylko w development
+
+**Format odpowiedzi błędów:**
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Przyjazny komunikat dla użytkownika",
+    "code": "ERROR_CODE",
+    "details": {
+      "message": "Technical error message",
+      "stack": "Error stack trace",
+      "name": "Error"
+    }
+  }
+}
+```
+
+**Użycie w kontrolerach:**
+```javascript
+try {
+  const data = await service.getData();
+  res.json(data);
+} catch (error) {
+  next(error); // Przekaż błąd do error handlera
+}
+```
 
 ---
 
@@ -1039,6 +1163,7 @@ useEffect(() => {
 - ✅ **Integracja w czasie rzeczywistym** (FireSnow Bridge API)
 - ✅ **System wielokartowy** (wielu użytkowników)
 - ✅ **Automatyczne wyszukiwanie** (debounce, optymalizacja)
+- ✅ **Obsługa błędów** (Error Boundary, Toast Manager, globalny error handler)
 - ✅ **Responsywny design** (mobile + desktop)
 
 ### Wartość biznesowa

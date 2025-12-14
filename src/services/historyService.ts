@@ -4,6 +4,8 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { toastService } from '../hooks/useToast';
+import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 
 const API_BASE_URL = '/api';
 
@@ -74,7 +76,8 @@ export class HistoryService {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
 
       const clients = await response.json();
@@ -82,7 +85,9 @@ export class HistoryService {
       return clients;
     } catch (error) {
       this.logger.error('Błąd wyszukiwania klientów:', error);
-      throw error;
+      const errorMessage = handleApiError(error, 'Nie udało się wyszukać klientów');
+      toastService.showError(errorMessage);
+      return []; // Zwróć pustą tablicę zamiast rzucać błąd
     }
   }
 
@@ -97,7 +102,8 @@ export class HistoryService {
       const response = await fetch(`${API_BASE_URL}/historia/klient/${clientId}/daty`);
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
 
       const dates = await response.json();
@@ -105,7 +111,9 @@ export class HistoryService {
       return dates;
     } catch (error) {
       this.logger.error('Błąd pobierania dat klienta:', error);
-      throw error;
+      const errorMessage = handleApiError(error, 'Nie udało się załadować dat wypożyczeń');
+      toastService.showError(errorMessage);
+      return []; // Zwróć pustą tablicę zamiast rzucać błąd
     }
   }
 
@@ -138,7 +146,8 @@ export class HistoryService {
       );
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
 
       const equipment = await response.json();
@@ -146,7 +155,9 @@ export class HistoryService {
       return equipment;
     } catch (error) {
       this.logger.error('Błąd pobierania sprzętu klienta:', error);
-      throw error;
+      const errorMessage = handleApiError(error, 'Nie udało się załadować sprzętu klienta');
+      toastService.showError(errorMessage);
+      return []; // Zwróć pustą tablicę zamiast rzucać błąd
     }
   }
 }

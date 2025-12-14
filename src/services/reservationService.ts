@@ -5,6 +5,7 @@
 
 import Papa from 'papaparse';
 import { createLogger } from '../utils/logger';
+import { handleApiError } from '../utils/apiErrorHandler';
 
 export interface ReservationData {
   klient: string;       // Klient
@@ -153,7 +154,11 @@ export class ReservationService {
       const response = await fetch('/data/rezerwacja.csv');
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        // For static CSV files, use status-based message (not JSON API response)
+        const statusMessage = response.status === 404 
+          ? 'Plik rezerwacji nie został znaleziony'
+          : `Błąd wczytywania pliku rezerwacji (status: ${response.status})`;
+        throw new Error(statusMessage);
       }
       
       // Pobierz plik jako tekst do wykrycia formatu
@@ -244,7 +249,10 @@ export class ReservationService {
       return this.reservations;
     } catch (error) {
       this.logger.error('Błąd wczytywania rezerwacji:', error);
-      this.logger.error('Szczegóły błędu:', error);
+      // Note: This service doesn't use toastService, errors are handled by callers
+      // But we still log the user-friendly message for debugging
+      const errorMessage = handleApiError(error, 'Nie udało się wczytać rezerwacji z pliku CSV');
+      this.logger.error('Szczegóły błędu:', errorMessage);
       return [];
     }
   }

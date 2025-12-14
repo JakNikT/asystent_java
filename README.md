@@ -12,6 +12,7 @@ Nowoczesna aplikacja webowa do inteligentnego doboru sprzętu narciarskiego i sn
 - **Zarządzanie sprzętem** - możliwość dodawania, edytowania i usuwania pozycji z bazy danych (tryb pracownika)
 - **System rezerwacji** - integracja w czasie rzeczywistym z systemem FireSnow, wizualizacja dostępności sprzętu
 - **Historia klientów** - przeglądanie historii wypożyczeń i rezerwacji
+- **Obsługa błędów** - React Error Boundary, globalny error handler API, system powiadomień Toast
 - **Nowoczesny interfejs** - zaprojektowany z użyciem Tailwind CSS i Framer Motion
 - **Responsywność** - aplikacja dostosowana do urządzeń mobilnych i desktopowych
 
@@ -89,13 +90,18 @@ asystent_java/
 │   │   ├── BrowseSkisComponent.tsx
 │   │   ├── ReservationsView.tsx
 │   │   ├── HistoryView.tsx
+│   │   ├── ErrorBoundary.tsx  # React Error Boundary
 │   │   └── ui/              # Komponenty UI (Button, Input, etc.)
+│   ├── hooks/               # React Hooks
+│   │   └── useToast.ts      # Toast Manager hook
 │   ├── server/              # Backend Express.js
 │   │   ├── app.js           # Główna aplikacja Express
 │   │   ├── config/          # Konfiguracja (env, database, logger)
 │   │   ├── controllers/     # Kontrolery API
 │   │   ├── services/        # Logika biznesowa
 │   │   ├── routes/         # Routing API
+│   │   ├── middleware/      # Middleware Express
+│   │   │   └── errorHandler.js  # Global error handler
 │   │   └── utils/          # Narzędzia pomocnicze
 │   ├── services/            # Serwisy frontend (TypeScript)
 │   │   ├── skiMatchingServiceV2.ts (1,851 linii)
@@ -186,6 +192,40 @@ asystent_java/
 ### Integracja
 - **Java 21** - FireSnow Bridge API (wymagana)
 - **HSQLDB** - Połączenie z bazą FireSnow
+
+## 🛡️ Obsługa błędów
+
+Aplikacja posiada kompleksowy system obsługi błędów:
+
+### Frontend
+- **Error Boundary** (`src/components/ErrorBoundary.tsx`) - przechwytuje błędy renderowania React i wyświetla przyjazny komunikat z opcjami odzyskania
+- **Toast Manager** (`src/hooks/useToast.ts`) - centralny system powiadomień użytkownika:
+  - Context API dla komponentów React
+  - Singleton service dla API clients
+  - Kolejka powiadomień (max 3 naraz)
+  - Auto-dismiss i debouncing
+- **Integracja z API clients** - automatyczne powiadomienia o błędach i sukcesach operacji
+
+### Backend
+- **Global Error Handler** (`src/server/middleware/errorHandler.js`) - standaryzowany format odpowiedzi błędów:
+  - Obsługa błędów walidacji (400)
+  - Obsługa błędów bazy danych (500)
+  - Obsługa błędów zewnętrznych API (503)
+  - Logowanie błędów z kontekstem
+  - Przyjazne komunikaty dla użytkownika
+
+### Format odpowiedzi błędów API
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "Przyjazny komunikat dla użytkownika",
+    "code": "ERROR_CODE",
+    "details": {} // Tylko w development
+  }
+}
+```
 
 ## 📊 Algorytm dopasowywania
 
@@ -294,10 +334,10 @@ Projekt prywatny - WYPAS Ski Rental
 
 ## 🔄 Historia wersji
 
-- **v6.0+** - Pełna migracja do React/TypeScript, integracja z FireSnow
+- **v6.0+** - Pełna migracja do React/TypeScript, integracja z FireSnow, obsługa błędów
 - **v5.x** - Wersja Python/PyQt5 (archiwum)
 
 ---
 
-**Ostatnia aktualizacja:** 2025-01-XX  
+**Ostatnia aktualizacja:** 2025-12-14  
 **Wersja aplikacji:** 6.0+

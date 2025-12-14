@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import type { ReservationData } from '../services/reservationService';
-import { Toast } from './Toast';
 import { createLogger } from '../utils/logger';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
@@ -69,11 +68,6 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [filterText, setFilterText] = useState('');
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
   const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past'>('all');
-  const [toast, setToast] = useState({
-    message: '',
-    type: 'info' as 'info' | 'success' | 'error',
-    isVisible: false
-  });
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
     const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past' = viewType) => {
@@ -87,6 +81,10 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
       setIsLoading(true);
       try {
+        // src/components/ReservationsView.tsx: ReservationApiClient metody nie rzucają błędów
+        // Wszystkie metody (loadAll, loadReservations, loadRentals, loadPastReservations, loadPastRentals)
+        // mają wewnętrzne try/catch które obsługują błędy, wyświetlają toasty i zwracają puste tablice lub cache
+        // Dlatego nie potrzebujemy tutaj bloku catch - błędy są już obsłużone w API client
         let data: ReservationData[];
         
         if (type === 'all') {
@@ -168,14 +166,9 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         logger.info(`Wczytano ${data.length} pozycji (typ: ${type})`);
         logger.debug('Przykładowe dane:', data.slice(0, 3));
         setReservations(data);
-      } catch (error) {
-        logger.error('Błąd wczytywania danych:', error);
-        setToast({
-          message: 'Błąd wczytywania danych',
-          type: 'error',
-          isVisible: true
-        });
       } finally {
+        // Zawsze wyłącz loading, nawet jeśli wystąpił nieoczekiwany błąd
+        // (choć API client metody nie rzucają błędów, try/finally zapewnia bezpieczeństwo)
         setIsLoading(false);
       }
     };
@@ -823,13 +816,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         )}
       </div>
       
-      {/* Toast notifications */}
-      <Toast
-        message={toast.message}
-        type={toast.type}
-        isVisible={toast.isVisible}
-        onClose={() => setToast({ ...toast, isVisible: false })}
-      />
+      {/* Toast notifications są teraz obsługiwane przez ToastProvider w App.tsx */}
     </div>
   );
 };
