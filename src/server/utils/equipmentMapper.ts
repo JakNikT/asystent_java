@@ -1,10 +1,27 @@
+/**
+ * src/server/utils/equipmentMapper.ts: Mapowanie danych sprzętu z FireSnow
+ * Konwersja danych z FireSnow API na format aplikacji
+ */
+
 import logger from '../config/logger.js';
+import type { FireSnowEquipment, Equipment } from '../types/services.types.js';
+
+/**
+ * Typ dla mapowania typu i kategorii sprzętu
+ */
+interface EquipmentTypeMapping {
+    TYP_SPRZETU: 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD';
+    KATEGORIA: 'VIP' | 'TOP' | 'JUNIOR' | 'DOROSLE' | '';
+}
 
 /**
  * Mapuje ID grupy z FireSnow na TYP_SPRZETU i KATEGORIA
  * Mapuje bezpośrednio po parentGroupId (parent grup podrzędnych)
  */
-export function mapGroupToEquipmentType(subGroupId, parentGroupId) {
+export function mapGroupToEquipmentType(
+    subGroupId: number | undefined,
+    parentGroupId: number | undefined
+): EquipmentTypeMapping {
     // Mapuj bezpośrednio po parentGroupId (parent grup podrzędnych)
     switch (parentGroupId) {
         // NARTY - TOP (parent grup TOP)
@@ -37,7 +54,7 @@ export function mapGroupToEquipmentType(subGroupId, parentGroupId) {
 
         // Domyślnie (nie powinno się zdarzyć, ale na wszelki wypadek)
         default:
-            logger.warn('src/server/utils/equipmentMapper.js: Nieznany parentGroupId:', { parentGroupId, subGroupId });
+            logger.warn('src/server/utils/equipmentMapper.ts: Nieznany parentGroupId:', { parentGroupId, subGroupId });
             return { TYP_SPRZETU: 'NARTY', KATEGORIA: '' };
     }
 }
@@ -46,7 +63,7 @@ export function mapGroupToEquipmentType(subGroupId, parentGroupId) {
  * Wyciąga płeć z pola POZIOM
  * Parsowanie płci z poziomu (4m→M, 4k→K, 4k/5m→U, 1-2u→U)
  */
-export function extractPlecFromPoziom(poziomText) {
+export function extractPlecFromPoziom(poziomText: string | null | undefined): 'M' | 'K' | 'U' {
     if (!poziomText) return 'U';
 
     const clean = poziomText.trim().toLowerCase();
@@ -70,12 +87,21 @@ export function extractPlecFromPoziom(poziomText) {
 }
 
 /**
+ * Wynik parsowania nazwy sprzętu
+ */
+interface ParsedEquipmentName {
+    NAZWA: string;  // Marka + model (bez długości, rozmiaru, roku, kodu, typu)
+    DLUGOSC: number | null;
+    ROK: number | null;
+}
+
+/**
  * Parsuje nazwę sprzętu z FireSnow
  * Wyciąganie marki, modelu, długości/rozmiaru i roku z nazwy
  * Usuwa z nazwy: typ sprzętu (NARTY, BUTY), długość (144cm), rozmiar butów (rozm23), rok (/2025), numer narty (//01, /01, #01)
  */
-export function parseEquipmentName(nazwa) {
-    const result = {
+export function parseEquipmentName(nazwa: string | null | undefined): ParsedEquipmentName {
+    const result: ParsedEquipmentName = {
         NAZWA: '',  // Marka + model (bez długości, rozmiaru, roku, kodu, typu)
         DLUGOSC: null,
         ROK: null
@@ -92,7 +118,7 @@ export function parseEquipmentName(nazwa) {
     // Priorytet: najpierw sprawdź rozmiar butów, potem długość nart
     const bootSizeMatch = cleanName.match(/rozm\s*(\d+)(?:[,.](\d+))?/i);
     if (bootSizeMatch) {
-        const wholePart = parseInt(bootSizeMatch[1]);
+        const wholePart = parseInt(bootSizeMatch[1]!);
         const decimalPart = bootSizeMatch[2] ? parseInt(bootSizeMatch[2]) : 0;
         // Jeśli jest część dziesiętna, zapisz jako liczbę zmiennoprzecinkową
         if (decimalPart > 0) {
@@ -109,7 +135,7 @@ export function parseEquipmentName(nazwa) {
         // Jeśli nie znaleziono rozmiaru butów, szukaj długości nart (np. "144cm", "156cm" lub "144")
         const lengthMatch = cleanName.match(/(\d{2,4})\s*cm/i) || cleanName.match(/\s(\d{2,4})\s/);
         if (lengthMatch) {
-            result.DLUGOSC = parseInt(lengthMatch[1]);
+            result.DLUGOSC = parseInt(lengthMatch[1]!);
             // Usuń długość z nazwy (obsługuje różne formaty: "156cm", " 156cm ", "156 cm")
             cleanName = cleanName.replace(/\s*\d{2,4}\s*cm\s*/i, ' ').replace(/\s+\d{2,4}\s+/g, ' ');
         }
@@ -118,7 +144,7 @@ export function parseEquipmentName(nazwa) {
     // WAŻNE: Najpierw wyciągnij rok (4 cyfry po "/") - to musi być PRZED usuwaniem numerów nart
     const yearMatch = cleanName.match(/\/(\d{4})(?!\d)/);
     if (yearMatch) {
-        result.ROK = parseInt(yearMatch[1]);
+        result.ROK = parseInt(yearMatch[1]!);
         // Usuń rok z nazwy
         cleanName = cleanName.replace(/\s*\/\d{4}(?!\d)\s*/g, ' ');
     }
@@ -137,18 +163,20 @@ export function parseEquipmentName(nazwa) {
 /**
  * Mapuje dane z FireSnow API na format SkiData aplikacji
  */
-export function mapFireSnowToSkiData(fireSnowItem) {
+export function mapFireSnowToSkiData(fireSnowItem: FireSnowEquipment): Equipment {
     // Mapuj grupę na TYP_SPRZETU i KATEGORIA
     const typeMapping = mapGroupToEquipmentType(
-        fireSnowItem.sub_group_id,
-        fireSnowItem.parent_group_id
+        fireSnowItem.sub_group_id as number | undefined,
+        fireSnowItem.parent_group_id as number | undefined
     );
 
-    // Wyciągnij płeć z poziomu
-    const plec = extractPlecFromPoziom(fireSnowItem.poziom || '');
+    // Wyciągnij płeć z poziomu (sprawdź obie wersje: poziom i POZIOM)
+    const poziomValue = fireSnowItem.poziom || fireSnowItem.POZIOM || '';
+    const plec = extractPlecFromPoziom(poziomValue);
 
-    // Parsuj nazwę sprzętu
-    const parsedName = parseEquipmentName(fireSnowItem.nazwa_sprzetu || '');
+    // Parsuj nazwę sprzętu (sprawdź obie wersje: nazwa_sprzetu i NAZWA_SPRZETU)
+    const nazwaValue = fireSnowItem.nazwa_sprzetu || '';
+    const parsedName = parseEquipmentName(nazwaValue);
 
     // Generuj ID w formacie: N-{obiekt_id}, B-{obiekt_id}, D-{obiekt_id}, BS-{obiekt_id}
     let idPrefix = 'N';
@@ -156,7 +184,8 @@ export function mapFireSnowToSkiData(fireSnowItem) {
     else if (typeMapping.TYP_SPRZETU === 'DESKI') idPrefix = 'D';
     else if (typeMapping.TYP_SPRZETU === 'BUTY_SNOWBOARD') idPrefix = 'BS';
 
-    const id = `${idPrefix}-${String(fireSnowItem.obiekt_id).padStart(4, '0')}`;
+    const obiektId = fireSnowItem.obiekt_id ? String(fireSnowItem.obiekt_id) : '0';
+    const id = `${idPrefix}-${obiektId.padStart(4, '0')}`;
 
     // Rozdziel nazwę na markę (pierwsze słowo) i model (reszta)
     const words = parsedName.NAZWA.split(/\s+/).filter(w => w.trim() !== '');
@@ -175,17 +204,16 @@ export function mapFireSnowToSkiData(fireSnowItem) {
         KATEGORIA: typeMapping.KATEGORIA,
         MARKA: marka,  // Tylko pierwsze słowo (np. "HEAD")
         MODEL: modelWithYear,  // Reszta + rocznik (np. "SHAPE 3.0 (2025)")
-        DLUGOSC: parsedName.DLUGOSC,
+        DLUGOSC: parsedName.DLUGOSC || 0,
         ILOSC: 1,  // Zawsze 1 (każda sztuka osobno)
-        POZIOM: fireSnowItem.poziom || '',
+        POZIOM: poziomValue,
         PLEC: plec,
-        WAGA_MIN: fireSnowItem.waga_min || null,
-        WAGA_MAX: fireSnowItem.waga_max || null,
-        WZROST_MIN: fireSnowItem.wzrost_min || null,
-        WZROST_MAX: fireSnowItem.wzrost_max || null,
-        PRZEZNACZENIE: fireSnowItem.przeznaczenie || '',
-        ATUTY: fireSnowItem.typ || '',  // PARAM7 to typ/atuty
-        ROK: parsedName.ROK || null,  // Zachowaj dla kompatybilności, ale nie używane w UI
-        KOD: fireSnowItem.kod || ''
+        WAGA_MIN: fireSnowItem.waga_min || fireSnowItem.WAGA_MIN,
+        WAGA_MAX: fireSnowItem.waga_max || fireSnowItem.WAGA_MAX,
+        WZROST_MIN: fireSnowItem.wzrost_min || fireSnowItem.WZROST_MIN,
+        WZROST_MAX: fireSnowItem.wzrost_max || fireSnowItem.WZROST_MAX,
+        PRZEZNACZENIE: fireSnowItem.przeznaczenie || fireSnowItem.PRZEZNACZENIE || '',
+        ATUTY: (fireSnowItem.typ as string) || fireSnowItem.ATUTY || '',  // PARAM7 to typ/atuty
+        KOD: fireSnowItem.kod || fireSnowItem.KOD || ''
     };
 }

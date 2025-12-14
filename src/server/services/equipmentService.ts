@@ -1,18 +1,37 @@
+/**
+ * src/server/services/equipmentService.ts: Serwis do obsługi sprzętu narciarskiego
+ * Pobiera sprzęt z FireSnow API lub CSV fallback
+ */
+
 import { config } from '../config/env.js';
 import { fireSnowService } from './fireSnowService.js';
 import { csvService } from './csvService.js';
-import { mapFireSnowToSkiData, parseEquipmentName } from '../utils/equipmentMapper.js';
+import { mapFireSnowToSkiData } from '../utils/equipmentMapper.js';
 import logger from '../config/logger.js';
+import type { Equipment, CreateEquipmentData, UpdateEquipmentData } from '../types/services.types.js';
+
+/**
+ * Definicja grup sprzętu
+ */
+interface EquipmentGroup {
+    id: number;
+    name: string;
+    type: 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD';
+    category: 'VIP' | 'TOP' | 'JUNIOR' | 'DOROSLE' | '';
+}
 
 export const equipmentService = {
-    async getAll() {
+    /**
+     * Pobiera wszystkie urządzenia
+     */
+    async getAll(): Promise<Equipment[]> {
         if (config.useFireSnowApi) {
             try {
                 const fireSnowData = await fireSnowService.getAllEquipment();
                 logger.info(`Received ${fireSnowData.length} equipment records from API`);
 
                 // Definition of groups (same as original)
-                const groups = [
+                const groups: EquipmentGroup[] = [
                     { id: 82293, name: 'NARTY TOP', type: 'NARTY', category: 'TOP' },
                     { id: 82412, name: 'NARTY VIP', type: 'NARTY', category: 'VIP' },
                     { id: 82758, name: 'NARTY JUNIOR', type: 'NARTY', category: 'JUNIOR' },
@@ -22,15 +41,15 @@ export const equipmentService = {
                     { id: 83760, name: 'SNOWBOARD BUTY S', type: 'BUTY_SNOWBOARD', category: '' }
                 ];
 
-                const allEquipment = [];
+                const allEquipment: Equipment[] = [];
 
                 for (const group of groups) {
-                    const groupData = fireSnowData.filter(item => item.parent_group_id === group.id);
+                    const groupData = fireSnowData.filter(item => (item.parent_group_id as number) === group.id);
 
                     // Preserve detailed logging for HEAD SHAPE in TOP group
                     if (group.id === 82293) {
                         const headShapeItems = groupData.filter(item =>
-                            item.nazwa_sprzetu && item.nazwa_sprzetu.toUpperCase().includes('HEAD SHAPE')
+                            item.nazwa_sprzetu && String(item.nazwa_sprzetu).toUpperCase().includes('HEAD SHAPE')
                         );
                         if (headShapeItems.length > 0) {
                             logger.info(`Found ${headShapeItems.length} HEAD SHAPE items in ${group.name}`);
@@ -45,16 +64,22 @@ export const equipmentService = {
                 return allEquipment;
 
             } catch (error) {
-                logger.warn('FireSnow API unavailable, fallback to CSV', { error: error.message });
+                const err = error as Error;
+                logger.warn('FireSnow API unavailable, fallback to CSV', { error: err.message });
             }
         }
 
         logger.info('Loading equipment from CSV');
-        return csvService.getSkis();
+        const csvData = await csvService.getSkis();
+        return csvData as unknown as Equipment[];
     },
 
-    async create(data) {
-        const skis = await csvService.getSkis();
+    /**
+     * Tworzy nowy sprzęt
+     */
+    async create(data: CreateEquipmentData): Promise<Equipment> {
+        const csvData = await csvService.getSkis();
+        const skis = csvData as unknown as Equipment[];
 
         // Generate ID
         const maxId = Math.max(...skis.map(ski => parseInt(ski.ID) || 0), 0);
@@ -71,20 +96,20 @@ export const equipmentService = {
             } while (existingCodes.includes(newKod));
         }
 
-        const newSki = {
+        const newSki: Equipment = {
             ID: newId,
             TYP_SPRZETU: data.TYP_SPRZETU || 'NARTY',
             KATEGORIA: data.KATEGORIA || '',
             MARKA: data.MARKA || '',
             MODEL: data.MODEL || '',
             DLUGOSC: data.DLUGOSC || 0,
-            ILOSC: data.ILOSC || 1,
-            POZIOM: data.POZIOM || '',
-            PLEC: data.PLEC || '',
-            WAGA_MIN: data.WAGA_MIN || 0,
-            WAGA_MAX: data.WAGA_MAX || 0,
-            WZROST_MIN: data.WZROST_MIN || 0,
-            WZROST_MAX: data.WZROST_MAX || 0,
+            ILOSC: 1,
+            POZIOM: data.POZIOM,
+            PLEC: data.PLEC || 'U',
+            WAGA_MIN: data.WAGA_MIN,
+            WAGA_MAX: data.WAGA_MAX,
+            WZROST_MIN: data.WZROST_MIN,
+            WZROST_MAX: data.WZROST_MAX,
             PRZEZNACZENIE: data.PRZEZNACZENIE || '',
             ATUTY: data.ATUTY || '',
             KOD: newKod
@@ -95,20 +120,29 @@ export const equipmentService = {
         return newSki;
     },
 
-    async update(id, data) {
-        const skis = await csvService.getSkis();
+    /**
+     * Aktualizuje istniejący sprzęt
+     */
+    async update(id: string, data: UpdateEquipmentData): Promise<Equipment | null> {
+        const csvData = await csvService.getSkis();
+        const skis = csvData as unknown as Equipment[];
         const index = skis.findIndex(ski => ski.ID === id);
 
         if (index === -1) return null;
 
-        skis[index] = { ...skis[index], ...data };
+        const updated = { ...skis[index]!, ...data };
+        skis[index] = updated;
         await csvService.saveSkis(skis);
-        return skis[index];
+        return updated;
     },
 
-    async bulkUpdate(ids, updates) {
-        const skis = await csvService.getSkis();
-        const updatedSkis = [];
+    /**
+     * Masowa aktualizacja wielu sprzętów
+     */
+    async bulkUpdate(ids: string[], updates: Partial<UpdateEquipmentData>): Promise<Equipment[]> {
+        const csvData = await csvService.getSkis();
+        const skis = csvData as unknown as Equipment[];
+        const updatedSkis: Equipment[] = [];
 
         // Protect ID and KOD
         const safeUpdates = { ...updates };
@@ -118,8 +152,9 @@ export const equipmentService = {
         ids.forEach(id => {
             const index = skis.findIndex(ski => ski.ID === id);
             if (index !== -1) {
-                skis[index] = { ...skis[index], ...safeUpdates };
-                updatedSkis.push(skis[index]);
+                const updated = { ...skis[index]!, ...safeUpdates };
+                skis[index] = updated;
+                updatedSkis.push(updated);
             }
         });
 

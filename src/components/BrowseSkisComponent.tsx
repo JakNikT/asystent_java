@@ -204,7 +204,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
 
   // Toast notifications - używamy useToast hook
-  const { showSuccess, showError } = useToast();
+  const { showSuccess } = useToast();
 
   // NOWY STAN: Pola edycji kryteriów (wzrost, waga, poziom, płeć)
   const [editWzrost, setEditWzrost] = useState<string>('');

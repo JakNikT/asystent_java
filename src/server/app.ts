@@ -1,5 +1,5 @@
 /**
- * src/server/app.js: Główna konfiguracja Express aplikacji
+ * src/server/app.ts: Główna konfiguracja Express aplikacji
  * Integruje routing, middleware i globalny error handler
  */
 
@@ -28,12 +28,12 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(rootDir, 'dist')));
 
     // Catch-all route for React
-    app.use((req, res) => {
+    app.use((_req, res) => {
         res.sendFile(path.join(rootDir, 'dist', 'index.html'));
     });
 } else {
     // In development, just send a message or 404 for non-API routes
-    app.get('/', (req, res) => {
+    app.get('/', (_req, res) => {
         res.send('Backend API server is running in DEVELOPMENT mode. Use frontend dev server (Vite) to access the app.');
     });
 }

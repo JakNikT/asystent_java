@@ -1,8 +1,16 @@
+/**
+ * src/server/controllers/rentalController.ts: Kontroler do obsługi wypożyczeń
+ */
+
 import { rentalService } from '../services/rentalService.js';
 import logger from '../config/logger.js';
+import type { AppRequest, AppResponse } from '../types/express.types.js';
 
 export const rentalController = {
-    async getActive(req, res) {
+    /**
+     * Pobiera aktywne wypożyczenia
+     */
+    async getActive(_req: AppRequest, res: AppResponse): Promise<void> {
         try {
             const data = await rentalService.getActive();
             res.json(data);
@@ -12,7 +20,10 @@ export const rentalController = {
         }
     },
 
-    async getPast(req, res) {
+    /**
+     * Pobiera przeszłe wypożyczenia
+     */
+    async getPast(_req: AppRequest, res: AppResponse): Promise<void> {
         try {
             const data = await rentalService.getPast();
             res.json(data);

@@ -4,7 +4,8 @@
  * i wyświetla przyjazny komunikat błędu zamiast crashować aplikację
  */
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ErrorBoundary');

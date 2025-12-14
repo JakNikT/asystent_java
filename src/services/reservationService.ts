@@ -554,28 +554,6 @@ export class ReservationService {
   }
 
   /**
-   * Sprawdza dostępność konkretnej sztuki nart
-   */
-  static async checkSkiAvailability(
-    marka: string, 
-    model: string, 
-    dlugosc: string, 
-    _sztukaNumber: number,
-    startDate: Date, 
-    endDate: Date
-  ): Promise<{ isAvailable: boolean; reservations: ReservationInfo[] }> {
-    const reservations = await this.isSkiReserved(marka, model, dlugosc, startDate, endDate);
-    
-    // TODO: Implementuj logikę sprawdzania konkretnej sztuki
-    // Na razie sprawdzamy ogólną dostępność nart
-    
-    return {
-      isAvailable: reservations.length === 0,
-      reservations: reservations
-    };
-  }
-
-  /**
    * Pobiera wszystkie rezerwacje w danym okresie
    */
   static async getReservationsInPeriod(startDate: Date, endDate: Date): Promise<ReservationInfo[]> {
@@ -605,44 +583,5 @@ export class ReservationService {
     }
     
     return reservations;
-  }
-
-  /**
-   * Tworzy nową rezerwację
-   */
-  static async createReservation(reservationData: Partial<ReservationData>): Promise<boolean> {
-    try {
-      this.logger.info('Tworzenie nowej rezerwacji:', reservationData);
-      return true;
-    } catch (error) {
-      this.logger.error('Błąd tworzenia rezerwacji:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Aktualizuje istniejącą rezerwację
-   */
-  static async updateReservation(id: string, updates: Partial<ReservationData>): Promise<boolean> {
-    try {
-      this.logger.info('Aktualizacja rezerwacji:', id, updates);
-      return true;
-    } catch (error) {
-      this.logger.error('Błąd aktualizacji rezerwacji:', error);
-      return false;
-    }
-  }
-
-  /**
-   * Usuwa rezerwację
-   */
-  static async deleteReservation(id: string): Promise<boolean> {
-    try {
-      this.logger.info('Usuwanie rezerwacji:', id);
-      return true;
-    } catch (error) {
-      this.logger.error('Błąd usuwania rezerwacji:', error);
-      return false;
-    }
   }
 }

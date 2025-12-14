@@ -1,3 +1,7 @@
+/**
+ * src/server/routes/reservations.ts: Route'y dla rezerwacji
+ */
+
 import express from 'express';
 import { reservationController } from '../controllers/reservationController.js';
 

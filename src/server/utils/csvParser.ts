@@ -1,7 +1,12 @@
 /**
+ * src/server/utils/csvParser.ts: Narzędzia do parsowania CSV
+ * Wykrywa i konwertuje format FireFnow
+ */
+
+/**
  * Wykrywa format FireFnow
  */
-export function detectFirefnowFormat(csvText) {
+export function detectFirefnowFormat(csvText: string | null | undefined): boolean {
     if (!csvText || csvText.trim() === '') return false;
 
     const sample = csvText.substring(0, 500);
@@ -23,9 +28,9 @@ export function detectFirefnowFormat(csvText) {
 /**
  * Konwertuje z formatu FireFnow
  */
-export function convertFromFirefnow(csvText) {
+export function convertFromFirefnow(csvText: string): string {
     const lines = csvText.split(/\r?\n/);
-    const convertedLines = [];
+    const convertedLines: string[] = [];
 
     lines.forEach(line => {
         if (line.trim() === '') return;

@@ -42,5 +42,37 @@ export default defineConfig({
         global: 'globalThis'
       }
     }
+  },
+  // Optymalizacja chunków - podział na mniejsze fragmenty dla lepszej wydajności
+  build: {
+    // Tymczasowe podniesienie limitu ostrzeżeń podczas optymalizacji
+    chunkSizeWarningLimit: 800,
+    rollupOptions: {
+      output: {
+        // Manualne chunki dla głównych bibliotek - lepsza cache'owalność i szybsze ładowanie
+        manualChunks: (id) => {
+          // Vendor chunk - React i React DOM
+          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+            return 'vendor';
+          }
+          // Animations chunk - Framer Motion
+          if (id.includes('node_modules/framer-motion')) {
+            return 'animations';
+          }
+          // CSV parsing chunk - PapaParse
+          if (id.includes('node_modules/papaparse')) {
+            return 'csv';
+          }
+          // Timeline chunk - react-calendar-timeline
+          if (id.includes('node_modules/react-calendar-timeline')) {
+            return 'timeline';
+          }
+          // Inne node_modules do osobnego chunka
+          if (id.includes('node_modules')) {
+            return 'vendor-other';
+          }
+        }
+      }
+    }
   }
 })

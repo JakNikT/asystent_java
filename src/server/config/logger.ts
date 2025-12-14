@@ -1,5 +1,5 @@
 /**
- * Winston Logger Configuration
+ * src/server/config/logger.ts: Winston Logger Configuration
  * Centralna konfiguracja systemu logowania dla aplikacji
  */
 
@@ -29,7 +29,7 @@ const logFormat = winston.format.combine(
 );
 
 // Transporty - gdzie zapisywać logi
-const transports = [
+const transports: winston.transport[] = [
     // Console - kolorowe logi w konsoli (development)
     new winston.transports.Console({
         format: winston.format.combine(
@@ -56,22 +56,30 @@ const transports = [
     })
 ];
 
+// Typ dla rozszerzonego loggera z metodami pomocniczymi
+interface ExtendedLogger extends winston.Logger {
+    logInfo: (message: string, meta?: Record<string, unknown>) => void;
+    logError: (message: string, error?: Error | string, meta?: Record<string, unknown>) => void;
+    logWarn: (message: string, meta?: Record<string, unknown>) => void;
+    logDebug: (message: string, meta?: Record<string, unknown>) => void;
+}
+
 // Tworzenie loggera
 const logger = winston.createLogger({
     level: config.logLevel || 'info',
     transports
-});
+}) as ExtendedLogger;
 
 // Helper methods dla łatwiejszego użycia
-logger.logInfo = (message, meta = {}) => logger.info(message, meta);
-logger.logError = (message, error, meta = {}) => {
+logger.logInfo = (message: string, meta: Record<string, unknown> = {}) => logger.info(message, meta);
+logger.logError = (message: string, error?: Error | string, meta: Record<string, unknown> = {}) => {
     logger.error(message, {
         ...meta,
-        error: error?.message || error,
-        stack: error?.stack
+        error: error instanceof Error ? error.message : error,
+        stack: error instanceof Error ? error.stack : undefined
     });
 };
-logger.logWarn = (message, meta = {}) => logger.warn(message, meta);
-logger.logDebug = (message, meta = {}) => logger.debug(message, meta);
+logger.logWarn = (message: string, meta: Record<string, unknown> = {}) => logger.warn(message, meta);
+logger.logDebug = (message: string, meta: Record<string, unknown> = {}) => logger.debug(message, meta);
 
 export default logger;

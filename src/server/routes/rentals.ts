@@ -1,3 +1,7 @@
+/**
+ * src/server/routes/rentals.ts: Route'y dla wypożyczeń
+ */
+
 import express from 'express';
 import { rentalController } from '../controllers/rentalController.js';
 
