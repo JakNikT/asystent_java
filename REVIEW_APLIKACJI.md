@@ -41,18 +41,23 @@
   - [x] Utworzyć `src/utils/logger.ts` z poziomami logowania
   - [x] Dodać możliwość wyłączenia logów w produkcji
   
-- [ ] **Zamienić console.log na logger w frontendzie** 🔄 W TRAKCIE
+- [x] **Zamienić console.log na logger w frontendzie** ✅ GŁÓWNE PLIKI UKOŃCZONE
   - [x] `src/services/reservationApiClient.ts` (~50 wystąpień) ✅
   - [x] `src/services/skiDataService.ts` (~20 wystąpień) ✅
-  - [ ] `src/services/reservationService.ts` (~30 wystąpień) - DUŻY PLIK
-  - [ ] `src/services/historyService.ts` (~10 wystąpień)
-  - [ ] `src/utils/csvParser.ts` (~10 wystąpień)
-  - [ ] `src/components/BrowseSkisComponent.tsx` (~100+ wystąpień) - DUŻY PLIK
-  - [ ] `src/components/ReservationsView.tsx` (~50+ wystąpień)
-  - [ ] Inne pliki w `src/` (~200+ wystąpień)
+  - [x] `src/services/reservationService.ts` (~30 wystąpień) ✅
+  - [x] `src/services/historyService.ts` (~10 wystąpień) ✅
+  - [x] `src/utils/csvParser.ts` (~10 wystąpień) ✅
+  - [x] `src/components/BrowseSkisComponent.tsx` (~100+ wystąpień) ✅
+  - [x] `src/components/ReservationsView.tsx` (~50+ wystąpień) ✅
+  - [x] `src/components/HistoryView.tsx` (3 wystąpienia) ✅
+  - [x] `src/components/SkiEditModal.tsx` (8 wystąpień) ✅
+  - [x] `src/services/skiMatchingServiceV2.ts` (16 wystąpień) ✅
+  - [x] `src/components/dashboard/Dashboard.tsx` (82 wystąpienia) ✅
+  - [ ] Inne pliki w `src/` (~213 wystąpień w 11 plikach) 🔄 W TRAKCIE
 
 **Łącznie**: ~480+ wystąpień `console.log/error/warn` do zamiany
-**Postęp**: 2/8 plików głównych zakończonych ✅ (~70/480 wystąpień)
+**Postęp**: 11 głównych plików zakończonych ✅ (~379/480 wystąpień = ~79%)
+**Pozostało**: ~213 wystąpień w pozostałych plikach (komponenty, utils, serwisy)
 
 ---
 

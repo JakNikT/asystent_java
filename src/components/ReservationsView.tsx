@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import type { ReservationData } from '../services/reservationService';
 import { Toast } from './Toast';
+import { createLogger } from '../utils/logger';
+
+// src/components/ReservationsView.tsx: Logger dla ReservationsView
+const logger = createLogger('ReservationsView');
 
 interface ReservationsViewProps {
   onBackToSearch: () => void;
@@ -75,7 +79,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past' = viewType) => {
       // Dla widoku "przeszłe" - wczytuj tylko jeśli jest co najmniej 3 znaki w wyszukiwarce
       if (type === 'past' && filterText.trim().length < 3) {
-        console.log('ReservationsView: Widok "przeszłe" wymaga co najmniej 3 znaków w wyszukiwarce');
+        logger.debug('ReservationsView: Widok "przeszłe" wymaga co najmniej 3 znaków w wyszukiwarce');
         setReservations([]);
         setIsLoading(false);
         return;
@@ -154,18 +158,18 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           
           data = merged;
           
-          console.log(`ReservationsView: Znaleziono ${pastReservations.length} przeszłych rezerwacji + ${pastRentals.length} zwróconych wypożyczeń`);
-          console.log(`ReservationsView: Połączono ${usedRentalIndices.size} par rezerwacja+wypożyczenie`);
+          logger.info(`Znaleziono ${pastReservations.length} przeszłych rezerwacji + ${pastRentals.length} zwróconych wypożyczeń`);
+          logger.info(`Połączono ${usedRentalIndices.size} par rezerwacja+wypożyczenie`);
         } else {
           // Pobierz tylko rezerwacje
           data = await ReservationApiClient.loadReservations();
         }
         
-        console.log(`ReservationsView: Wczytano ${data.length} pozycji (typ: ${type})`);
-        console.log('ReservationsView: Przykładowe dane:', data.slice(0, 3));
+        logger.info(`Wczytano ${data.length} pozycji (typ: ${type})`);
+        logger.debug('Przykładowe dane:', data.slice(0, 3));
         setReservations(data);
       } catch (error) {
-        console.error('Błąd wczytywania danych:', error);
+        logger.error('Błąd wczytywania danych:', error);
         setToast({
           message: 'Błąd wczytywania danych',
           type: 'error',
@@ -311,7 +315,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const groupReservations = (): GroupedReservation[] => {
     // Debug: sprawdź pierwsze 3 rezerwacje
     if (reservations.length > 0) {
-      console.log('ReservationsView: Przykładowe dane rezerwacji:', reservations.slice(0, 3).map(r => ({
+      logger.debug('Przykładowe dane rezerwacji:', reservations.slice(0, 3).map(r => ({
         sprzet: r.sprzet,
         parent_group_id: r.parent_group_id,
         category: getEquipmentCategory(r.parent_group_id, r.sprzet)
@@ -443,9 +447,9 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const uniqueClients = new Set(clientNames).size;
   
   // Debug: Sprawdź czy są duplikaty z różnymi spacjami/wielkością liter
-  console.log('📊 Debug liczników:');
-  console.log('   Liczba rezerwacji:', totalReservations);
-  console.log('   Liczba unikalnych klientów (raw):', uniqueClients);
+  logger.debug('📊 Debug liczników:');
+  logger.debug('   Liczba rezerwacji:', totalReservations);
+  logger.debug('   Liczba unikalnych klientów (raw):', uniqueClients);
   
   // Znajdź klientów z wieloma rezerwacjami
   const clientCounts = new Map<string, number>();
@@ -456,8 +460,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     .filter(([, count]) => count > 1)
     .sort((a, b) => b[1] - a[1]);
     
-  console.log('   Klienci z wieloma rezerwacjami:', multipleReservations.length);
-  console.log('   Szczegóły:', multipleReservations.slice(0, 10));
+  logger.debug('   Klienci z wieloma rezerwacjami:', multipleReservations.length);
+  logger.debug('   Szczegóły:', multipleReservations.slice(0, 10));
 
   // Funkcja formatowania daty
   const formatDate = (dateString: string) => {

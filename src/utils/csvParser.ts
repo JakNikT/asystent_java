@@ -1,7 +1,11 @@
 // Parser CSV dla bazy danych nart
 import type { SkiData } from '../types/ski.types';
+import { createLogger } from './logger';
 
 export class CSVParser {
+  // src/utils/csvParser.ts: Logger dla CSVParser
+  private static logger = createLogger('CSVParser');
+
   /**
    * Parsuje plik CSV i zwraca tablicę obiektów SkiData
    */
@@ -24,7 +28,7 @@ export class CSVParser {
           skis.push(ski);
         }
       } catch (error) {
-        console.error('Błąd parsowania linii:', line, error);
+        this.logger.error('Błąd parsowania linii:', line, error);
       }
     }
 
@@ -42,17 +46,17 @@ export class CSVParser {
     // src/utils/csvParser.ts: Dzieli linię zachowując przecinki w cudzysłowach
     const fields = this.splitCSVLine(line);
     
-    console.log(`src/utils/csvParser.ts: Parsowanie linii z ${fields.length} polami`);
+    this.logger.debug(`Parsowanie linii z ${fields.length} polami`);
     
     if (fields.length < 14) {
-      console.warn('src/utils/csvParser.ts: Zbyt mało pól w linii CSV:', fields.length);
+      this.logger.warn('Zbyt mało pól w linii CSV:', fields.length);
       return null;
     }
 
     try {
       // NOWY FORMAT z TYP_SPRZETU i KATEGORIA (16 pól - bez ROK)
       if (fields.length >= 16) {
-        console.log('src/utils/csvParser.ts: Wykryto nowy format (16 pól) z TYP_SPRZETU i KATEGORIA');
+        this.logger.debug('Wykryto nowy format (16 pól) z TYP_SPRZETU i KATEGORIA');
         return {
           ID: fields[0].trim(),
           TYP_SPRZETU: fields[1].trim() as 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD',
@@ -74,7 +78,7 @@ export class CSVParser {
       }
       // Format z kodem (14 pól) - stara baza NOWABAZA_final.csv (bez ROK)
       else if (fields.length >= 14) {
-        console.log('src/utils/csvParser.ts: Wykryto format z kodem (14 pól)');
+        this.logger.debug('Wykryto format z kodem (14 pól)');
         return {
           ID: fields[0].trim(),
           TYP_SPRZETU: 'NARTY', // Domyślnie narty dla starej bazy
@@ -95,7 +99,7 @@ export class CSVParser {
         };
       } else {
         // Stary format (13 pól) - kompatybilność wsteczna (bez ROK)
-        console.log('src/utils/csvParser.ts: Wykryto stary format (13 pól)');
+        this.logger.debug('Wykryto stary format (13 pól)');
         const przeznaczenie = fields[11].trim();
         let newPrzeznaczenie = przeznaczenie;
         let atuty = '';
@@ -128,7 +132,7 @@ export class CSVParser {
         };
       }
     } catch (error) {
-      console.error('src/utils/csvParser.ts: Błąd tworzenia obiektu SkiData:', error);
+      this.logger.error('Błąd tworzenia obiektu SkiData:', error);
       return null;
     }
   }
@@ -173,7 +177,7 @@ export class CSVParser {
       const csvContent = await response.text();
       return this.parseCSV(csvContent);
     } catch (error) {
-      console.error('Błąd ładowania CSV:', error);
+      this.logger.error('Błąd ładowania CSV:', error);
       throw error;
     }
   }

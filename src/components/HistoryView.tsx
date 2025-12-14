@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { HistoryService } from '../services/historyService';
 import type { ClientData, DateRange, HistoryEquipmentData } from '../services/historyService';
+import { createLogger } from '../utils/logger';
 
 interface HistoryViewProps {
   onBack: () => void;
@@ -14,6 +15,9 @@ interface HistoryViewProps {
 type HistoryStep = 'search' | 'dates' | 'equipment';
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
+  // src/components/HistoryView.tsx: Logger dla HistoryView
+  const logger = createLogger('HistoryView');
+
   const [step, setStep] = useState<HistoryStep>('search');
   const [searchTerm, setSearchTerm] = useState('');
   const [clients, setClients] = useState<ClientData[]>([]);
@@ -38,7 +42,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
         const results = await HistoryService.searchClients(searchTerm);
         setClients(results);
       } catch (err) {
-        console.error('HistoryView: Błąd wyszukiwania klientów:', err);
+        logger.error('Błąd wyszukiwania klientów:', err);
         setError('Błąd wyszukiwania klientów. Sprawdź połączenie z bazą danych.');
         setClients([]);
       } finally {
@@ -60,7 +64,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
       setDates(clientDates);
       setStep('dates');
     } catch (err) {
-      console.error('HistoryView: Błąd pobierania dat:', err);
+      logger.error('Błąd pobierania dat:', err);
       setError('Błąd pobierania dat wypożyczeń. Sprawdź połączenie z bazą danych.');
     } finally {
       setIsLoading(false);
@@ -85,7 +89,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
       setEquipment(clientEquipment);
       setStep('equipment');
     } catch (err) {
-      console.error('HistoryView: Błąd pobierania sprzętu:', err);
+      logger.error('Błąd pobierania sprzętu:', err);
       setError('Błąd pobierania sprzętu. Sprawdź połączenie z bazą danych.');
     } finally {
       setIsLoading(false);
