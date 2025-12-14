@@ -10,6 +10,7 @@ import { SkiDataService } from '../services/skiDataService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 import { Input } from './ui/Input';
 import { Label } from './ui/Label';
+import { createLogger } from '../utils/logger';
 import { 
   validateHeightRealtime, 
   validateWeightRealtime, 
@@ -90,6 +91,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   formErrors,
   onDateChange
 }) => {
+  // src/components/BrowseSkisComponent.tsx: Logger dla BrowseSkisComponent
+  const logger = createLogger('BrowseSkisComponent');
+
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'DLUGOSC',
     direction: 'asc'
@@ -128,11 +132,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Synchronizuj lokalny stan z propsami, gdy się zmieniają (w tym przy przełączaniu kart)
   useEffect(() => {
     if (filterSearchStates) {
-      console.log('BrowseSkisComponent: Synchronizuję stan wyszukiwania z propsów dla karty:', activeTabId, filterSearchStates);
+      logger.info('BrowseSkisComponent: Synchronizuję stan wyszukiwania z propsów dla karty:', activeTabId, filterSearchStates);
       setLocalSearchStates(filterSearchStates);
     } else {
       // Jeśli filterSearchStates nie jest przekazany, użyj domyślnych wartości
-      console.log('BrowseSkisComponent: filterSearchStates nie jest przekazany, używam domyślnych wartości');
+      logger.info('BrowseSkisComponent: filterSearchStates nie jest przekazany, używam domyślnych wartości');
       setLocalSearchStates({
         all: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
         TOP: { searchTerm: '', searchFlex: '', searchDlugosc: '' },
@@ -179,14 +183,14 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
   useEffect(() => {
     if (initialFilter) {
-      console.log(`BrowseSkisComponent: Ustawiam aktywny filtr z initialFilter: ${initialFilter}`);
+      logger.info(`BrowseSkisComponent: Ustawiam aktywny filtr z initialFilter: ${initialFilter}`);
       setActiveFilter(initialFilter);
     }
   }, [initialFilter]);
 
   // Synchronizacja pól edycji z browseCriteria (gdy zmienia się z Dashboard)
   useEffect(() => {
-    console.log('BrowseSkisComponent: Synchronizuję pola edycji z browseCriteria:', browseCriteria);
+    logger.info('BrowseSkisComponent: Synchronizuję pola edycji z browseCriteria:', browseCriteria);
     setEditWzrost(browseCriteria.wzrost?.toString() || '');
     setEditWaga(browseCriteria.waga?.toString() || '');
     setEditPoziom(browseCriteria.poziom?.toString() || '');
@@ -226,7 +230,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const hasUserDates = browseCriteria?.dateFrom && browseCriteria?.dateTo;
 
         if (!hasUserDates) {
-          console.log('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
+          logger.info('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
           setAvailabilityStatuses(new Map());
           return;
         }
@@ -236,7 +240,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const endDate = browseCriteria.dateTo;
 
         if (!startDate || !endDate) {
-          console.log('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
+          logger.info('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
           return;
         }
 
@@ -244,16 +248,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const skisWithCode = allSkis.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
         const totalSkis = skisWithCode.length;
 
-        console.log('═══════════════════════════════════════════════════════');
-        console.log('BrowseSkisComponent: 📋 PRZEGLĄDAJ - Rozpoczęcie sprawdzania dostępności');
-        console.log('BrowseSkisComponent:   Okres:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
-        console.log('BrowseSkisComponent:   Nart do sprawdzenia:', totalSkis);
+        logger.info('═══════════════════════════════════════════════════════');
+        logger.info('BrowseSkisComponent: 📋 PRZEGLĄDAJ - Rozpoczęcie sprawdzania dostępności');
+        logger.info('BrowseSkisComponent:   Okres:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
+        logger.info('BrowseSkisComponent:   Nart do sprawdzenia:', totalSkis);
 
         // OPTYMALIZACJA: Pobierz dane dostępności RAZ dla całego okresu
-        console.log('BrowseSkisComponent:   Pobieram dane dostępności z API (jedno zapytanie)...');
+        logger.info('BrowseSkisComponent:   Pobieram dane dostępności z API (jedno zapytanie)...');
         const allAvailabilityData = await ReservationApiClient.loadAvailabilityForPeriod(startDate, endDate);
-        console.log(`BrowseSkisComponent:   ✅ Pobrano ${allAvailabilityData.length} pozycji (dostępne dla wszystkich nart)`);
-        console.log('BrowseSkisComponent:   Rozpoczynam sprawdzanie dostępności...');
+        logger.info(`BrowseSkisComponent:   ✅ Pobrano ${allAvailabilityData.length} pozycji (dostępne dla wszystkich nart)`);
+        logger.info('BrowseSkisComponent:   Rozpoczynam sprawdzanie dostępności...');
 
         let checkedCount = 0;
         let availableCount = 0;
@@ -280,26 +284,26 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
             // Loguj co 100 nart (żeby nie spamować konsoli)
             if (checkedCount % 100 === 0 || checkedCount === totalSkis) {
-              console.log(`BrowseSkisComponent:   Postęp: ${checkedCount}/${totalSkis} nart sprawdzonych`);
+              logger.info(`BrowseSkisComponent:   Postęp: ${checkedCount}/${totalSkis} nart sprawdzonych`);
             }
           } catch (error) {
-            console.error(`BrowseSkisComponent:   ❌ Błąd dla kodu ${ski.KOD}:`, error);
+            logger.error(`BrowseSkisComponent:   ❌ Błąd dla kodu ${ski.KOD}:`, error);
           }
         }
 
         const duration = Date.now() - startTime;
-        console.log('BrowseSkisComponent:   ✅ Zakończono sprawdzanie dostępności:');
-        console.log('BrowseSkisComponent:      - Sprawdzonych nart:', checkedCount);
-        console.log('BrowseSkisComponent:      - 🟢 Dostępne:', availableCount);
-        console.log('BrowseSkisComponent:      - 🟡 Ostrzeżenie:', warningCount);
-        console.log('BrowseSkisComponent:      - 🔴 Zarezerwowane:', reservedCount);
-        console.log('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
-        console.log('═══════════════════════════════════════════════════════');
+        logger.info('BrowseSkisComponent:   ✅ Zakończono sprawdzanie dostępności:');
+        logger.info('BrowseSkisComponent:      - Sprawdzonych nart:', checkedCount);
+        logger.info('BrowseSkisComponent:      - 🟢 Dostępne:', availableCount);
+        logger.info('BrowseSkisComponent:      - 🟡 Ostrzeżenie:', warningCount);
+        logger.info('BrowseSkisComponent:      - 🔴 Zarezerwowane:', reservedCount);
+        logger.info('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
+        logger.info('═══════════════════════════════════════════════════════');
 
         setAvailabilityStatuses(statusMap);
         setLastRefreshTime(new Date());
       } catch (error) {
-        console.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
+        logger.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
       } finally {
         setIsRefreshingAvailability(false);
       }
@@ -317,7 +321,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
     
     const interval = setInterval(() => {
-      console.log('BrowseSkisComponent: 🔄 Automatyczne odświeżanie dostępności...');
+      logger.info('BrowseSkisComponent: 🔄 Automatyczne odświeżanie dostępności...');
       loadAvailabilityStatuses();
     }, 30000); // 30 sekund
     
@@ -326,7 +330,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // src/components/BrowseSkisComponent.tsx: Funkcja ręcznego odświeżania dostępności
   const handleManualRefresh = useCallback(async () => {
-    console.log('BrowseSkisComponent: 🔄 Ręczne odświeżanie dostępności...');
+    logger.info('BrowseSkisComponent: �� Ręczne odświeżanie dostępności...');
     await loadAvailabilityStatuses();
     setToastMessage('Dostępność zaktualizowana');
     setToastType('success');
@@ -334,7 +338,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // NOWA ZMIANA: Efekt do obliczania kolorów dopasowania
   useEffect(() => {
-    console.log('BrowseSkisComponent: Obliczanie kolorów dopasowania dla kryteriów:', browseCriteria);
+    logger.info('BrowseSkisComponent: Obliczanie kolorów dopasowania dla kryteriów:', browseCriteria);
     const newMatchDetails = new Map<string, MatchDetails>();
 
     // Jeśli nie ma żadnych kryteriów, nie rób nic (wszystko będzie zielone/domyślne)
@@ -351,7 +355,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       }
     });
 
-    console.log(`BrowseSkisComponent: Znaleziono ${newMatchDetails.size} szczegółów dopasowania.`);
+    logger.info(`BrowseSkisComponent: Znaleziono ${newMatchDetails.size} szczegółów dopasowania.`);
     setMatchDetails(newMatchDetails);
   }, [browseCriteria, allSkis]);
 
@@ -456,7 +460,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // src/components/BrowseSkisComponent.tsx: Funkcja obsługi zmian pól edycji kryteriów
   const handleFieldChange = (field: 'wzrost' | 'waga' | 'poziom' | 'plec', value: string) => {
-    console.log(`BrowseSkisComponent: Zmiana pola ${field} - wartość: ${value}`);
+    logger.info(`BrowseSkisComponent: Zmiana pola ${field} - wartość: ${value}`);
 
     // Walidacja w czasie rzeczywistym
     let isValid = true;
@@ -482,7 +486,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
     // Jeśli walidacja nie przeszła, nie aktualizuj wartości
     if (!isValid) {
-      console.log(`BrowseSkisComponent: Walidacja nie przeszła dla ${field} - ${errorMessage}`);
+      logger.info(`BrowseSkisComponent: Walidacja nie przeszła dla ${field} - ${errorMessage}`);
       return;
     }
 
@@ -514,14 +518,14 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
     // Wywołaj callback do aktualizacji w Dashboard
     if (onCriteriaChange) {
-      console.log(`BrowseSkisComponent: Aktualizuję kryteria w Dashboard:`, updatedCriteria);
+      logger.info(`BrowseSkisComponent: Aktualizuję kryteria w Dashboard:`, updatedCriteria);
       onCriteriaChange(updatedCriteria);
     }
   };
 
   // src/components/BrowseSkisComponent.tsx: Funkcja otwierania modala edycji
   const handleEdit = (ski: SkiData) => {
-    console.log('BrowseSkisComponent: Otwieranie modala edycji dla narty:', ski.ID);
+    logger.info('BrowseSkisComponent: Otwieranie modala edycji dla narty:', ski.ID);
     setSelectedSki(ski);
     setModalMode('edit');
     setIsModalOpen(true);
@@ -534,7 +538,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     updateAll?: boolean
   ): Promise<void> => {
     try {
-      console.log('BrowseSkisComponent: Zapisuję zmiany:', { skiData, targetSkiId, updateAll });
+      logger.info('BrowseSkisComponent: Zapisuję zmiany:', { skiData, targetSkiId, updateAll });
 
       if (updateAll && targetSkiId === undefined) {
         // Aktualizacja wszystkich nart w grupie
@@ -556,7 +560,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const result = await SkiDataService.updateMultipleSkis(ids, skiData);
 
         if (result) {
-          console.log('BrowseSkisComponent: Zaktualizowano wszystkie narty w grupie:', ids.length);
+          logger.info('BrowseSkisComponent: Zaktualizowano wszystkie narty w grupie:', ids.length);
           setToastMessage(`Zaktualizowano ${ids.length} nart w grupie`);
           setToastType('success');
         } else {
@@ -567,7 +571,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const result = await SkiDataService.updateSki(targetSkiId, skiData);
 
         if (result) {
-          console.log('BrowseSkisComponent: Zaktualizowano nartę:', targetSkiId);
+          logger.info('BrowseSkisComponent: Zaktualizowano nartę:', targetSkiId);
           setToastMessage('Narta zaktualizowana pomyślnie');
           setToastType('success');
         } else {
@@ -578,7 +582,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const result = await SkiDataService.updateSki(selectedSki.ID, skiData);
 
         if (result) {
-          console.log('BrowseSkisComponent: Zaktualizowano nartę:', selectedSki.ID);
+          logger.info('BrowseSkisComponent: Zaktualizowano nartę:', selectedSki.ID);
           setToastMessage('Narta zaktualizowana pomyślnie');
           setToastType('success');
         } else {
@@ -593,7 +597,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
       // Zamykamy modal po udanym zapisie (onSave w modalu już wywołuje onClose)
     } catch (error) {
-      console.error('BrowseSkisComponent: Błąd zapisywania:', error);
+      logger.error('BrowseSkisComponent: Błąd zapisywania:', error);
       setToastMessage(error instanceof Error ? error.message : 'Błąd zapisywania narty');
       setToastType('error');
       throw error; // Rzuć błąd aby modal mógł go obsłużyć
@@ -629,7 +633,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   ): SkiData[] => {
     // Zabezpieczenie: sprawdź czy skis jest tablicą
     if (!Array.isArray(skis) || skis.length === 0) {
-      console.warn('BrowseSkisComponent: filterSkis otrzymał pustą tablicę lub nie-tablicę:', skis);
+      logger.warn('BrowseSkisComponent: filterSkis otrzymał pustą tablicę lub nie-tablicę:', skis);
       return [];
     }
 
@@ -886,8 +890,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     value: string,
     inputRef?: HTMLInputElement
   ) => {
-    console.log(`🔴 BrowseSkisComponent.tsx: handleDateFieldChange WYWOŁANY - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
-    console.log(`🔴 BrowseSkisComponent.tsx: onDateChange exists: ${!!onDateChange}`);
+    logger.info(`🔴 BrowseSkisComponent.tsx: handleDateFieldChange WYWOŁANY - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    logger.info(`🔴 BrowseSkisComponent.tsx: onDateChange exists: ${!!onDateChange}`);
 
     // Walidacja w czasie rzeczywistym
     let isValid = true;
@@ -897,63 +901,63 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       const validation = validateDay(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
-      console.log(`🔴 Walidacja dnia - isValid: ${isValid}, message: ${errorMessage}`);
+      logger.info(`🔴 Walidacja dnia - isValid: ${isValid}, message: ${errorMessage}`);
     } else if (field === 'month') {
       const validation = validateMonth(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
-      console.log(`🔴 Walidacja miesiąca - isValid: ${isValid}, message: ${errorMessage}`);
+      logger.info(`�� Walidacja miesiąca - isValid: ${isValid}, message: ${errorMessage}`);
     } else if (field === 'year') {
       const validation = validateYear(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
-      console.log(`🔴 Walidacja roku - isValid: ${isValid}, message: ${errorMessage}`);
+      logger.info(`🔴 Walidacja roku - isValid: ${isValid}, message: ${errorMessage}`);
     }
 
     // Jeśli walidacja nie przeszła, nie aktualizuj wartości
     if (!isValid) {
-      console.log(`🔴 BrowseSkisComponent.tsx: Walidacja nie przeszła - ${errorMessage}`);
+      logger.info(`🔴 BrowseSkisComponent.tsx: Walidacja nie przeszła - ${errorMessage}`);
       return;
     }
 
-    console.log(`🔴 BrowseSkisComponent.tsx: Walidacja przeszła, wywołuję onDateChange`);
+    logger.info(`🔴 BrowseSkisComponent.tsx: Walidacja przeszła, wywołuję onDateChange`);
 
     // Wywołaj callback do aktualizacji w komponencie nadrzędnym
     if (onDateChange) {
-      console.log(`🔴 BrowseSkisComponent.tsx: Wywołuję onDateChange z wartością: "${value}"`);
+      logger.info(`🔴 BrowseSkisComponent.tsx: Wywołuję onDateChange z wartością: "${value}"`);
       onDateChange(section, field, value, inputRef);
     } else {
-      console.log(`🔴 BrowseSkisComponent.tsx: onDateChange NIE ISTNIEJE!`);
+      logger.info(`🔴 BrowseSkisComponent.tsx: onDateChange NIE ISTNIEJE!`);
     }
 
     // Automatyczne przechodzenie do następnego pola
     if (inputRef) {
       // Dzień "od" → Miesiąc "od"
       if (section === 'dateFrom' && field === 'day' && value.length === 2) {
-        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "od"`);
+        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "od" → Rok "od"
       else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
-        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "od"`);
+        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "od" → Dzień "do"
       else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
-        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do dnia "do"`);
+        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do dnia "do"`);
         focusAndSelectIfValue(dayToRef.current);
       }
       // Dzień "do" → Miesiąc "do"
       else if (section === 'dateTo' && field === 'day' && value.length === 2) {
-        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "do"`);
+        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "do" → Rok "do"
       else if (section === 'dateTo' && field === 'month' && value.length === 2) {
-        console.log(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "do"`);
+        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
@@ -970,7 +974,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // src/components/BrowseSkisComponent.tsx: Funkcje obsługi szybkich filtrów
   const handleQuickFilter = (filter: string) => {
-    console.log(`BrowseSkisComponent: Szybki filtr - ${filter}`);
+    logger.info(`BrowseSkisComponent: Szybki filtr - ${filter}`);
     setActiveFilter(filter);
     setCurrentPage(1); // Reset do pierwszej strony
     

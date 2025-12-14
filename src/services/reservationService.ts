@@ -4,6 +4,7 @@
  */
 
 import Papa from 'papaparse';
+import { createLogger } from '../utils/logger';
 
 export interface ReservationData {
   klient: string;       // Klient
@@ -45,6 +46,8 @@ export interface AvailabilityInfo {
 
 export class ReservationService {
   private static reservations: ReservationData[] = [];
+  // src/services/reservationService.ts: Logger dla ReservationService
+  private static logger = createLogger('ReservationService');
   // private static isLoaded = false; // Wyłączone dla debugowania
   
   // Callback dla powiadomień toast (będzie ustawiony przez ReservationsView)
@@ -84,7 +87,7 @@ export class ReservationService {
    * @returns Skonwertowany tekst CSV
    */
   private static async convertFromFirefnow(rawResponse: Response): Promise<string> {
-    console.log('ReservationService: Konwersja z formatu FireFnow...');
+    this.logger.info('Konwersja z formatu FireFnow...');
     
     try {
       // Pobierz plik jako ArrayBuffer
@@ -95,9 +98,9 @@ export class ReservationService {
       try {
         const decoder = new TextDecoder('windows-1250');
         content = decoder.decode(arrayBuffer);
-        console.log('ReservationService: Dekodowanie Windows-1250 → UTF-8 (pierwsze 200 znaków):', content.substring(0, 200));
+        this.logger.debug('Dekodowanie Windows-1250 → UTF-8 (pierwsze 200 znaków):', content.substring(0, 200));
       } catch (decodeError) {
-        console.log('ReservationService: Błąd TextDecoder, próbuję fallback:', decodeError);
+        this.logger.warn('Błąd TextDecoder, próbuję fallback:', decodeError);
         // Fallback: użyj oryginalnego tekstu
         content = await rawResponse.text();
       }
@@ -127,16 +130,16 @@ export class ReservationService {
         convertedLines.push(convertedLine);
         
         if (index === 0) {
-          console.log('ReservationService: Nagłówek po konwersji:', convertedLine);
+          this.logger.debug('Nagłówek po konwersji:', convertedLine);
         }
       });
       
       const result = convertedLines.join('\n');
-      console.log('ReservationService: Konwersja zakończona. Liczba linii:', convertedLines.length);
+      this.logger.info('Konwersja zakończona. Liczba linii:', convertedLines.length);
       
       return result;
     } catch (error) {
-      console.error('ReservationService: Błąd konwersji FireFnow:', error);
+      this.logger.error('Błąd konwersji FireFnow:', error);
       // Fallback: zwróć oryginalny tekst
       return await rawResponse.text();
     }
@@ -161,11 +164,11 @@ export class ReservationService {
       const isFirefnow = this.detectFirefnowFormat(csvText);
       
       if (isFirefnow) {
-        console.log('ReservationService: Rozpoczynam konwersję FireFnow...');
+        this.logger.info('Rozpoczynam konwersję FireFnow...');
         
         // Wywołaj callback toast (jeśli ustawiony)
         if (this.onConversionStart) {
-          console.log('ReservationService: Wywołuję onConversionStart callback');
+          this.logger.debug('Wywołuję onConversionStart callback');
           this.onConversionStart();
         }
         
@@ -236,12 +239,12 @@ export class ReservationService {
         return true;
       });
       
-      console.log('ReservationService: Wczytano', this.reservations.length, 'rezerwacji');
+      this.logger.info(`Wczytano ${this.reservations.length} rezerwacji`);
       
       return this.reservations;
     } catch (error) {
-      console.error('ReservationService: Błąd wczytywania rezerwacji:', error);
-      console.error('ReservationService: Szczegóły błędu:', error);
+      this.logger.error('Błąd wczytywania rezerwacji:', error);
+      this.logger.error('Szczegóły błędu:', error);
       return [];
     }
   }
@@ -256,14 +259,14 @@ export class ReservationService {
   ): Promise<ReservationInfo[]> {
     await this.loadReservations();
     
-    console.log(`ReservationService.isSkiReservedByCode: Sprawdzam kod ${kod} w okresie ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
+    this.logger.debug(`Sprawdzam kod ${kod} w okresie ${startDate.toLocaleDateString()} - ${endDate.toLocaleDateString()}`);
     
     const reservations: ReservationInfo[] = [];
     
     for (const reservation of this.reservations) {
       // Sprawdź czy kod się zgadza
       if (reservation.kod === kod) {
-        console.log(`ReservationService: Znaleziono rezerwację dla kodu ${kod}:`, reservation);
+        this.logger.debug(`Znaleziono rezerwację dla kodu ${kod}:`, reservation);
         // Sprawdź czy okresy się nakładają
         if (this.isDateRangeOverlapping(
           new Date(reservation.od),
@@ -271,7 +274,7 @@ export class ReservationService {
           startDate,
           endDate
         )) {
-          console.log(`ReservationService: Okresy się nakładają dla kodu ${kod}`);
+          this.logger.debug(`Okresy się nakładają dla kodu ${kod}`);
           reservations.push({
             id: reservation.kod,
             clientName: reservation.klient,
@@ -284,12 +287,12 @@ export class ReservationService {
             status: this.getReservationStatus(reservation)
           });
         } else {
-          console.log(`ReservationService: Okresy się NIE nakładają dla kodu ${kod}`);
+          this.logger.debug(`Okresy się NIE nakładają dla kodu ${kod}`);
         }
       }
     }
     
-    console.log(`ReservationService: Zwracam ${reservations.length} rezerwacji dla kodu ${kod}`);
+    this.logger.info(`Zwracam ${reservations.length} rezerwacji dla kodu ${kod}`);
     return reservations;
   }
 
@@ -400,7 +403,7 @@ export class ReservationService {
   ): Promise<AvailabilityInfo> {
     await this.loadReservations();
     
-    console.log(`ReservationService.getSkiAvailabilityStatus: Sprawdzam kod ${kod} dla okresu ${userDateFrom.toLocaleDateString()} - ${userDateTo.toLocaleDateString()}`);
+    this.logger.debug(`Sprawdzam kod ${kod} dla okresu ${userDateFrom.toLocaleDateString()} - ${userDateTo.toLocaleDateString()}`);
     
     const allReservations: ReservationInfo[] = [];
     let hasDirectConflict = false;
@@ -429,7 +432,7 @@ export class ReservationService {
         if (resStart <= userDateTo && resEnd >= userDateFrom) {
           hasDirectConflict = true;
           allReservations.push(reservationInfo);
-          console.log(`  🔴 CZERWONY: Rezerwacja ${resStart.toLocaleDateString()}-${resEnd.toLocaleDateString()} nachodzi na okres klienta`);
+          this.logger.warn(`🔴 CZERWONY: Rezerwacja ${resStart.toLocaleDateString()}-${resEnd.toLocaleDateString()} nachodzi na okres klienta`);
         }
         // PRIORYTET 2: Sprawdź ŻÓŁTY (bufor 1-2 dni)
         else {
@@ -450,13 +453,13 @@ export class ReservationService {
             allReservations.push(reservationInfo);
             
             if (isBeforeWarning) {
-              console.log(`  🟡 ŻÓŁTY: Rezerwacja kończy się ${daysBefore} dni przed okresem klienta (za mało czasu na serwis)`);
+              this.logger.warn(`🟡 ŻÓŁTY: Rezerwacja kończy się ${daysBefore} dni przed okresem klienta (za mało czasu na serwis)`);
             }
             if (isAfterWarning) {
-              console.log(`  🟡 ŻÓŁTY: Rezerwacja zaczyna się ${daysAfter} dni po okresie klienta (za mało czasu na serwis)`);
+              this.logger.warn(`🟡 ŻÓŁTY: Rezerwacja zaczyna się ${daysAfter} dni po okresie klienta (za mało czasu na serwis)`);
             }
           } else {
-            console.log(`  🟢 ZIELONY: Rezerwacja ${resStart.toLocaleDateString()}-${resEnd.toLocaleDateString()} nie koliduje z okresem klienta`);
+            this.logger.debug(`🟢 ZIELONY: Rezerwacja ${resStart.toLocaleDateString()}-${resEnd.toLocaleDateString()} nie koliduje z okresem klienta`);
           }
         }
       }
@@ -601,12 +604,10 @@ export class ReservationService {
    */
   static async createReservation(reservationData: Partial<ReservationData>): Promise<boolean> {
     try {
-      // TODO: Implementuj tworzenie nowej rezerwacji
-      // Na razie tylko logujemy
-      console.log('ReservationService: Tworzenie nowej rezerwacji:', reservationData);
+      this.logger.info('Tworzenie nowej rezerwacji:', reservationData);
       return true;
     } catch (error) {
-      console.error('ReservationService: Błąd tworzenia rezerwacji:', error);
+      this.logger.error('Błąd tworzenia rezerwacji:', error);
       return false;
     }
   }
@@ -616,11 +617,10 @@ export class ReservationService {
    */
   static async updateReservation(id: string, updates: Partial<ReservationData>): Promise<boolean> {
     try {
-      // TODO: Implementuj aktualizację rezerwacji
-      console.log('ReservationService: Aktualizacja rezerwacji:', id, updates);
+      this.logger.info('Aktualizacja rezerwacji:', id, updates);
       return true;
     } catch (error) {
-      console.error('ReservationService: Błąd aktualizacji rezerwacji:', error);
+      this.logger.error('Błąd aktualizacji rezerwacji:', error);
       return false;
     }
   }
@@ -630,11 +630,10 @@ export class ReservationService {
    */
   static async deleteReservation(id: string): Promise<boolean> {
     try {
-      // TODO: Implementuj usuwanie rezerwacji
-      console.log('ReservationService: Usuwanie rezerwacji:', id);
+      this.logger.info('Usuwanie rezerwacji:', id);
       return true;
     } catch (error) {
-      console.error('ReservationService: Błąd usuwania rezerwacji:', error);
+      this.logger.error('Błąd usuwania rezerwacji:', error);
       return false;
     }
   }

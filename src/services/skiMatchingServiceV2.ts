@@ -1,6 +1,7 @@
 // Serwis dopasowywania nart - UPROSZCZONA WERSJA
 import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails, MatchDetails } from '../types/ski.types';
 import { ReservationApiClient } from './reservationApiClient'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { createLogger } from '../utils/logger';
 
 // Konfiguracja tolerancji - uproszczona logika
 interface ToleranceConfig {
@@ -46,13 +47,16 @@ const DEFAULT_CRITERIA_WEIGHTS = {
 // USUNIĘTO: ADAPTIVE_WEIGHTS - nie używane w nowym systemie
 
 export class SkiMatchingServiceV2 {
+  // src/services/skiMatchingServiceV2.ts: Logger dla SkiMatchingServiceV2
+  private static logger = createLogger('SkiMatchingServiceV2');
+
   /**
    * Główna funkcja wyszukiwania nart - DWUETAPOWY SYSTEM
    * Etap 1: Wyszukiwanie podstawowe (bez filtrów stylu)
    * Etap 2: Opcjonalne filtrowanie po stylu
    */
   public static findMatchingSkis(skis: SkiData[], criteria: SearchCriteria): SearchResults {
-    console.log(`SkiMatchingServiceV2: Wyszukiwanie nart dla kryteriów:`, criteria);
+    this.logger.info('Wyszukiwanie nart dla kryteriów:', criteria);
     
     // ETAP 1: Wyszukiwanie podstawowe (ignoruj styl_jazdy)
     const basicCriteria = {
@@ -82,7 +86,7 @@ export class SkiMatchingServiceV2 {
     // Sortuj każdą kategorię według średniej kompatybilności
     const sortedResults = this.sortResults(categorized, criteria);
     
-    console.log(`SkiMatchingServiceV2: Znaleziono: ${sortedResults.idealne.length} idealnych, ${sortedResults.alternatywy.length} alternatyw, ${sortedResults.poziom_za_nisko.length} poziom za nisko, ${sortedResults.inna_plec.length} inna płeć, ${sortedResults.na_sile.length} na siłę`);
+    this.logger.info(`Znaleziono: ${sortedResults.idealne.length} idealnych, ${sortedResults.alternatywy.length} alternatyw, ${sortedResults.poziom_za_nisko.length} poziom za nisko, ${sortedResults.inna_plec.length} inna płeć, ${sortedResults.na_sile.length} na siłę`);
     
     return sortedResults;
   }
@@ -98,7 +102,7 @@ export class SkiMatchingServiceV2 {
 
     // SINGLE SELECT: Weź tylko pierwszy wybrany styl (ignoruj resztę)
     const selectedStyle = selectedStyles[0];
-    console.log(`SkiMatchingServiceV2.filterByStyles: Filtrowanie ${matches.length} nart po stylu: ${selectedStyle}`);
+    this.logger.info(`filterByStyles: Filtrowanie ${matches.length} nart po stylu: ${selectedStyle}`);
 
     return matches.filter(match => {
       const skiPrzeznaczenie = match.ski.PRZEZNACZENIE;
@@ -386,7 +390,7 @@ export class SkiMatchingServiceV2 {
    * WAŻNE: Reguły są WYŁĄCZAJĄCE - jeśli jedna reguła pasuje, inne nie mogą się zastosować!
    */
   private static isNaSile(dopasowanie: Record<string, string>): boolean {
-    console.log('SkiMatchingServiceV2: Sprawdzanie kategorii NA SIŁĘ dla:', dopasowanie);
+    this.logger.debug('Sprawdzanie kategorii NA SIŁĘ dla:', dopasowanie);
     
     // Sprawdź statusy poziomu
     const poziomZaWysoki = typeof dopasowanie.poziom === 'string' && dopasowanie.poziom.includes('poziom za wysoki');
@@ -405,7 +409,7 @@ export class SkiMatchingServiceV2 {
     const wagaZielona = typeof dopasowanie.waga === 'string' && dopasowanie.waga.includes('✅ zielony');
     const wzrostZielony = typeof dopasowanie.wzrost === 'string' && dopasowanie.wzrost.includes('✅ zielony');
     
-    console.log('SkiMatchingServiceV2: Analiza statusów:', {
+    this.logger.debug('Analiza statusów:', {
       poziomZaWysoki,
       poziomZaNiski,
       poziomZielony,
@@ -420,7 +424,7 @@ export class SkiMatchingServiceV2 {
     
     // REGUŁA 1: poziom za niski + waga ALBO wzrost na żółto (WYŁĄCZAJĄCA)
     if (poziomZaNiski && (wagaNaZolto || wzrostNaZolto)) {
-      console.log('SkiMatchingServiceV2: ✅ REGUŁA 1 zastosowana (poziom za niski + waga/wzrost żółte)');
+      this.logger.debug('✅ REGUŁA 1 zastosowana (poziom za niski + waga/wzrost żółte)');
       return true;
     }
     
@@ -428,7 +432,7 @@ export class SkiMatchingServiceV2 {
     
     // REGUŁA 3: waga+wzrost w tolerancji żółtej + poziom zielony (WYŁĄCZAJĄCA - tylko gdy poziom zielony)
     if (poziomZielony && wagaNaZolto && wzrostNaZolto) {
-      console.log('SkiMatchingServiceV2: ✅ REGUŁA 3 zastosowana (waga+wzrost żółte + poziom zielony)');
+      this.logger.debug('✅ REGUŁA 3 zastosowana (waga+wzrost żółte + poziom zielony)');
       return true;
     }
     
@@ -436,12 +440,12 @@ export class SkiMatchingServiceV2 {
     // UWAGA: Czerwone tolerancje (6-10 różnicy) są za duże dla kategorii NA SIŁĘ!
     // Ta reguła może być zbyt liberalna - sprawdź czy nie powinna być usunięta
     if (wagaNaCzerwono || wzrostNaCzerwono) {
-      console.log('SkiMatchingServiceV2: ⚠️ REGUŁA 4 zastosowana (waga/wzrost czerwone) - SPRAWDŹ CZY TO PRAWIDŁOWE!');
-      console.log('SkiMatchingServiceV2: Statusy:', { wagaNaCzerwono, wzrostNaCzerwono, waga: dopasowanie.waga, wzrost: dopasowanie.wzrost });
+      this.logger.warn('⚠️ REGUŁA 4 zastosowana (waga/wzrost czerwone) - SPRAWDŹ CZY TO PRAWIDŁOWE!');
+      this.logger.debug('Statusy:', { wagaNaCzerwono, wzrostNaCzerwono, waga: dopasowanie.waga, wzrost: dopasowanie.wzrost });
       return true;
     }
     
-    console.log('SkiMatchingServiceV2: ❌ Żadna reguła nie pasuje - nie jest NA SIŁĘ');
+    this.logger.debug('❌ Żadna reguła nie pasuje - nie jest NA SIŁĘ');
     return false;
   }
 
@@ -533,13 +537,13 @@ export class SkiMatchingServiceV2 {
         try {
           return pattern.handler(match) as [number, string];
         } catch (error) {
-          console.warn(`SkiMatchingServiceV2: Błąd parsowania poziomu "${poziomText}":`, error);
+          this.logger.warn(`Błąd parsowania poziomu "${poziomText}":`, error);
           continue;
         }
       }
     }
     
-    console.warn(`SkiMatchingServiceV2: Nieznany format poziomu: "${poziomText}"`);
+    this.logger.warn(`Nieznany format poziomu: "${poziomText}"`);
     return null;
   }
 
@@ -1304,7 +1308,7 @@ export class SkiMatchingServiceV2 {
 
       return availability;
     } catch (error) {
-      console.error('SkiMatchingServiceV2: Błąd sprawdzania dostępności:', error);
+      this.logger.error('Błąd sprawdzania dostępności:', error);
       return {
         total: parseInt(String(ski.ILOSC) || '2'),
         available: [],
@@ -1339,7 +1343,7 @@ export class SkiMatchingServiceV2 {
 
       return reservations.length > 0;
     } catch (error) {
-      console.error('SkiMatchingServiceV2: Błąd sprawdzania rezerwacji:', error);
+      this.logger.error('Błąd sprawdzania rezerwacji:', error);
       return false;
     }
   }
@@ -1373,7 +1377,7 @@ export class SkiMatchingServiceV2 {
 
       return null;
     } catch (error) {
-      console.error('SkiMatchingServiceV2: Błąd pobierania informacji o rezerwacji:', error);
+      this.logger.error('Błąd pobierania informacji o rezerwacji:', error);
       return null;
     }
   }
@@ -1956,7 +1960,7 @@ export class SkiMatchingServiceV2 {
       };
     }
 
-    console.log(`SkiMatchingServiceV2.getMatchDetails dla ${ski.MARKA} ${ski.MODEL}:`, details);
+    this.logger.debug(`getMatchDetails dla ${ski.MARKA} ${ski.MODEL}:`, details);
     return details;
   }
 }

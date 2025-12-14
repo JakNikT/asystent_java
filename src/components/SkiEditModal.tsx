@@ -4,6 +4,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { SkiData } from '../types/ski.types';
+import { createLogger } from '../utils/logger';
 
 interface SkiEditModalProps {
   isOpen: boolean;
@@ -22,6 +23,9 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
   onClose,
   onSave
 }) => {
+  // src/components/SkiEditModal.tsx: Logger dla SkiEditModal
+  const logger = createLogger('SkiEditModal');
+
   const [formData, setFormData] = useState<Partial<SkiData>>({
     TYP_SPRZETU: 'NARTY',
     KATEGORIA: '',
@@ -51,7 +55,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
     if (allSkisInGroup && allSkisInGroup.length > 0) {
       setSkisInGroup(allSkisInGroup);
       setSelectedSkiIndex(-1); // Domyślnie "Wszystkie"
-      console.log('SkiEditModal: Załadowano grupę nart:', allSkisInGroup.length);
+      logger.info('Załadowano grupę nart:', allSkisInGroup.length);
     } else {
       setSkisInGroup([]);
       setSelectedSkiIndex(-1);
@@ -68,7 +72,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
         KATEGORIA: ski.KATEGORIA || '',
         PRZEZNACZENIE: ski.PRZEZNACZENIE || 'SLG'
       });
-      console.log('SkiEditModal: Załadowano nartę do edycji:', ski.ID, {
+      logger.info('Załadowano nartę do edycji:', ski.ID, {
         TYP_SPRZETU: ski.TYP_SPRZETU || 'NARTY',
         KATEGORIA: ski.KATEGORIA || 'brak',
         PRZEZNACZENIE: ski.PRZEZNACZENIE || 'SLG'
@@ -179,20 +183,20 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
 
     setIsSaving(true);
     try {
-      console.log('SkiEditModal: Zapisuję dane narty:', formData);
-      console.log('SkiEditModal: KATEGORIA przed zapisem:', formData.KATEGORIA);
-      console.log('SkiEditModal: TYP_SPRZETU przed zapisem:', formData.TYP_SPRZETU);
-      console.log('SkiEditModal: PRZEZNACZENIE przed zapisem:', formData.PRZEZNACZENIE);
-      
+      logger.info('Zapisuję dane narty:', formData);
+      logger.debug('KATEGORIA przed zapisem:', formData.KATEGORIA);
+      logger.debug('TYP_SPRZETU przed zapisem:', formData.TYP_SPRZETU);
+      logger.debug('PRZEZNACZENIE przed zapisem:', formData.PRZEZNACZENIE);
+
       const updateAll = selectedSkiIndex === -1 && skisInGroup.length > 1;
       const targetSkiId = updateAll ? undefined : (selectedSkiIndex >= 0 ? skisInGroup[selectedSkiIndex]?.ID : ski?.ID);
-      
-      console.log('SkiEditModal: updateAll:', updateAll, 'targetSkiId:', targetSkiId);
-      
+
+      logger.debug('updateAll:', updateAll, 'targetSkiId:', targetSkiId);
+
       await onSave(formData, targetSkiId, updateAll);
       onClose();
     } catch (error) {
-      console.error('Błąd zapisywania narty:', error);
+      logger.error('Błąd zapisywania narty:', error);
     } finally {
       setIsSaving(false);
     }

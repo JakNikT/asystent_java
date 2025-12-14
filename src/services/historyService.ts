@@ -3,6 +3,8 @@
  * Komunikacja z API historii wypożyczeń
  */
 
+import { createLogger } from '../utils/logger';
+
 const API_BASE_URL = '/api';
 
 /**
@@ -52,6 +54,9 @@ export interface HistoryEquipmentData {
  * Serwis historii wypożyczeń
  */
 export class HistoryService {
+  // src/services/historyService.ts: Logger dla HistoryService
+  private static logger = createLogger('HistoryService');
+
   /**
    * Wyszukuje klientów po nazwisku
    * historyService.ts: Wyszukiwanie klientów w bazie historii
@@ -62,7 +67,7 @@ export class HistoryService {
     }
 
     try {
-      console.log('HistoryService: Wyszukiwanie klientów po nazwisku:', nazwisko);
+      this.logger.info('Wyszukiwanie klientów po nazwisku:', nazwisko);
 
       const response = await fetch(
         `${API_BASE_URL}/historia/klienci/wyszukaj?nazwisko=${encodeURIComponent(nazwisko)}`
@@ -73,10 +78,10 @@ export class HistoryService {
       }
 
       const clients = await response.json();
-      console.log(`HistoryService: Znaleziono ${clients.length} klientów`);
+      this.logger.info(`Znaleziono ${clients.length} klientów`);
       return clients;
     } catch (error) {
-      console.error('HistoryService: Błąd wyszukiwania klientów:', error);
+      this.logger.error('Błąd wyszukiwania klientów:', error);
       throw error;
     }
   }
@@ -87,7 +92,7 @@ export class HistoryService {
    */
   static async getClientDates(clientId: number): Promise<DateRange[]> {
     try {
-      console.log('HistoryService: Pobieranie dat dla klienta ID:', clientId);
+      this.logger.debug('Pobieranie dat dla klienta ID:', clientId);
 
       const response = await fetch(`${API_BASE_URL}/historia/klient/${clientId}/daty`);
 
@@ -96,10 +101,10 @@ export class HistoryService {
       }
 
       const dates = await response.json();
-      console.log(`HistoryService: Znaleziono ${dates.length} unikalnych dat`);
+      this.logger.info(`Znaleziono ${dates.length} unikalnych dat`);
       return dates;
     } catch (error) {
-      console.error('HistoryService: Błąd pobierania dat klienta:', error);
+      this.logger.error('Błąd pobierania dat klienta:', error);
       throw error;
     }
   }
@@ -115,7 +120,7 @@ export class HistoryService {
     sezon?: string
   ): Promise<HistoryEquipmentData[]> {
     try {
-      console.log('HistoryService: Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate, 'sezon:', sezon);
+      this.logger.debug('Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate, 'sezon:', sezon);
 
       const params: Record<string, string> = {
         od: od,
@@ -137,10 +142,10 @@ export class HistoryService {
       }
 
       const equipment = await response.json();
-      console.log(`HistoryService: Znaleziono ${equipment.length} pozycji sprzętu`);
+      this.logger.info(`Znaleziono ${equipment.length} pozycji sprzętu`);
       return equipment;
     } catch (error) {
-      console.error('HistoryService: Błąd pobierania sprzętu klienta:', error);
+      this.logger.error('Błąd pobierania sprzętu klienta:', error);
       throw error;
     }
   }

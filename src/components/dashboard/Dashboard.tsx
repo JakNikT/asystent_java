@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { CSVParser } from '../../utils/csvParser';
 import { SkiDataService } from '../../services/skiDataService';
 import { SkiMatchingServiceV2 } from '../../services/skiMatchingServiceV2';
@@ -30,6 +30,7 @@ import TabNavigation from './TabNavigation';
 import DashboardHeader from './DashboardHeader';
 import SkierForm from './SkierForm';
 import EmployeeControls from './EmployeeControls';
+import { createLogger } from '../../utils/logger';
 import { Layout } from '../layout/Layout';
 
 const containerVariants = {
@@ -56,6 +57,8 @@ const itemVariants = {
 };
 
 const Dashboard: React.FC = () => {
+  // src/components/dashboard/Dashboard.tsx: Logger dla Dashboard
+  const logger = createLogger('Dashboard');
   // NOWY STAN: System kart - każda karta to jedna osoba
   const [tabs, setTabs] = useState<TabData[]>([
     {
@@ -314,7 +317,7 @@ const Dashboard: React.FC = () => {
     if (!results) return null;
     if (!equipmentTypeFilter && !categoryFilter) return results;
     
-    console.log('src/components/dashboard/Dashboard.tsx: Filtrowanie wyników - typ:', equipmentTypeFilter, 'kategoria:', categoryFilter);
+    logger.info('src/components/dashboard/Dashboard.tsx: Filtrowanie wyników - typ:', equipmentTypeFilter, 'kategoria:', categoryFilter);
     
     // Filtruj każdą kategorię wyników
     const filterMatches = (matches: SkiMatch[]) => {
@@ -348,7 +351,7 @@ const Dashboard: React.FC = () => {
       wszystkie: filterMatches(results.wszystkie)
     };
     
-    console.log('src/components/dashboard/Dashboard.tsx: Wyniki po filtrowaniu:', {
+    logger.info('src/components/dashboard/Dashboard.tsx: Wyniki po filtrowaniu:', {
       idealne: filtered.idealne.length,
       alternatywy: filtered.alternatywy.length,
       wszystkie: filtered.wszystkie.length
@@ -359,7 +362,7 @@ const Dashboard: React.FC = () => {
 
   // Funkcja automatycznego wyboru pierwszej dostępnej kategorii
   const autoSelectFirstCategory = (results: SearchResults) => {
-    console.log('src/components/dashboard/Dashboard.tsx: Automatyczny wybór pierwszej kategorii z wynikami');
+    logger.info('src/components/dashboard/Dashboard.tsx: Automatyczny wybór pierwszej kategorii z wynikami');
     
     // Znajdź pierwszą kategorię z wynikami
     const categories = [
@@ -389,20 +392,20 @@ const Dashboard: React.FC = () => {
       });
       
       if (filtered.length > 0) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Wybrano kategorię ${cat.label} (${filtered.length} wyników)`);
+        logger.info(`Wybrano kategorię ${cat.label} (${filtered.length} wyników)`);
         setEquipmentTypeFilter(cat.type);
         setCategoryFilter(cat.category);
         return;
       }
     }
     
-    console.log('src/components/dashboard/Dashboard.tsx: Nie znaleziono żadnej kategorii z wynikami');
+    logger.info('src/components/dashboard/Dashboard.tsx: Nie znaleziono żadnej kategorii z wynikami');
   };
 
   // NOWA FUNKCJA: Wyszukiwanie butów po rozmiarze
   // @ts-expect-error - funkcja zarezerwowana na przyszłość
   const handleShoeSearch = (type: string, category: string, shoeSize: number) => {
-    console.log(`src/components/dashboard/Dashboard.tsx: Wyszukiwanie butów - typ: ${type}, kategoria: ${category}, rozmiar: ${shoeSize}`);
+    logger.info(`Wyszukiwanie butów - typ: ${type}, kategoria: ${category}, rozmiar: ${shoeSize}`);
     
     try {
       setIsLoading(true);
@@ -423,7 +426,7 @@ const Dashboard: React.FC = () => {
         return true;
       });
       
-      console.log(`src/components/dashboard/Dashboard.tsx: Znaleziono ${matchingShoes.length} butów`);
+      logger.info(`Znaleziono ${matchingShoes.length} butów`);
       
       if (matchingShoes.length === 0) {
         setError(`Nie znaleziono butów w rozmiarze ${shoeSize} cm`);
@@ -476,9 +479,9 @@ const Dashboard: React.FC = () => {
       setEquipmentTypeFilter(type);
       setCategoryFilter(category);
       
-      console.log(`src/components/dashboard/Dashboard.tsx: Wyświetlono ${matchingShoes.length} butów`);
+      logger.info(`Wyświetlono ${matchingShoes.length} butów`);
     } catch (err) {
-      console.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania butów:', err);
+      logger.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania butów:', err);
       setError('Wystąpił błąd podczas wyszukiwania butów');
     } finally {
       setIsLoading(false);
@@ -487,7 +490,7 @@ const Dashboard: React.FC = () => {
 
   // Funkcja obsługi szybkich filtrów - NOWA LOGIKA: Przyciski otwierają widok "Przeglądaj" z filtrem
   const handleQuickFilterInSearch = (type: string, category: string) => {
-    console.log(`src/components/dashboard/Dashboard.tsx: Otwieranie przeglądania - typ: ${type}, kategoria: ${category}`);
+    logger.info(`Otwieranie przeglądania - typ: ${type}, kategoria: ${category}`);
     
     // Wyczyść wybrane style aby nie filtrowały wyników
     setSelectedStyles([]);
@@ -498,7 +501,7 @@ const Dashboard: React.FC = () => {
     setCategoryFilter(category);
     handleBrowseMode(true); // Użytkownik już wybrał grupę
     
-    console.log(`src/components/dashboard/Dashboard.tsx: Filtry ustawione - typ: ${type}, kategoria: ${category}, otwieram "Przeglądaj"`);
+    logger.info(`Filtry ustawione - typ: ${type}, kategoria: ${category}, otwieram "Przeglądaj"`);
   };
 
   // USUNIĘTO: clearEquipmentFilters - nie jest już potrzebna (brak przycisku "Wszystkie")
@@ -539,11 +542,11 @@ const Dashboard: React.FC = () => {
 
   // NOWY: Wczytaj karty z LocalStorage przy starcie
   useEffect(() => {
-    console.log('src/components/dashboard/Dashboard.tsx: Wczytuję karty z LocalStorage przy starcie aplikacji');
+    logger.info('src/components/dashboard/Dashboard.tsx: Wczytuję karty z LocalStorage przy starcie aplikacji');
     const savedTabs = loadAllTabs();
     
     if (savedTabs && savedTabs.tabs.length > 0) {
-      console.log('src/components/dashboard/Dashboard.tsx: Znaleziono zapisane karty:', savedTabs);
+      logger.info('src/components/dashboard/Dashboard.tsx: Znaleziono zapisane karty:', savedTabs);
       
       // Odtwórz karty z domyślnymi wartościami dla pól, które nie są zapisywane
       const restoredTabs = savedTabs.tabs.map((savedTab: { id: string; label: string; formData: FormData; selectedStyles?: string[] }) => ({
@@ -583,16 +586,16 @@ const Dashboard: React.FC = () => {
       
       setTabs(restoredTabs);
       setActiveTabId(savedTabs.activeTabId);
-      console.log('src/components/dashboard/Dashboard.tsx: Karty przywrócone z LocalStorage');
+      logger.info('src/components/dashboard/Dashboard.tsx: Karty przywrócone z LocalStorage');
     } else {
-      console.log('src/components/dashboard/Dashboard.tsx: Brak zapisanych kart, używam domyślnych');
+      logger.info('src/components/dashboard/Dashboard.tsx: Brak zapisanych kart, używam domyślnych');
     }
   }, []);
 
   // NOWY: Automatycznie zapisuj karty do LocalStorage przy każdej zmianie
   useEffect(() => {
     if (tabs.length > 0) {
-      console.log('src/components/dashboard/Dashboard.tsx: Auto-zapisywanie kart do LocalStorage');
+      logger.info('src/components/dashboard/Dashboard.tsx: Auto-zapisywanie kart do LocalStorage');
       saveAllTabs(tabs, activeTabId);
     }
   }, [tabs, activeTabId]);
@@ -611,7 +614,7 @@ const Dashboard: React.FC = () => {
   // NOWA FUNKCJA: Ładowanie bazy danych (może być wywołana wielokrotnie)
   const loadDatabase = async () => {
     try {
-      console.log('src/components/dashboard/Dashboard.tsx: Ładuję bazę danych nart...');
+      logger.info('src/components/dashboard/Dashboard.tsx: Ładuję bazę danych nart...');
       
       // Sprawdź czy serwer API jest dostępny
       const isServerAvailable = await SkiDataService.checkServerHealth();
@@ -619,18 +622,18 @@ const Dashboard: React.FC = () => {
       let skis: SkiData[];
       if (isServerAvailable) {
         // Ładuj z API (zawsze aktualne dane!)
-        console.log('src/components/dashboard/Dashboard.tsx: Ładuję dane z API serwera');
+        logger.info('src/components/dashboard/Dashboard.tsx: Ładuję dane z API serwera');
         skis = await SkiDataService.getAllSkis();
       } else {
         // Fallback do statycznego CSV (gdy serwer nie działa)
-        console.log('src/components/dashboard/Dashboard.tsx: Serwer niedostępny - ładuję ze statycznego CSV');
+        logger.info('src/components/dashboard/Dashboard.tsx: Serwer niedostępny - ładuję ze statycznego CSV');
         skis = await CSVParser.loadFromPublic();
       }
       
       setSkisDatabase(skis);
-      console.log(`src/components/dashboard/Dashboard.tsx: Załadowano ${skis.length} nart z bazy danych`);
+      logger.info(`Załadowano ${skis.length} nart z bazy danych`);
     } catch (err) {
-      console.error('src/components/dashboard/Dashboard.tsx: Błąd ładowania bazy:', err);
+      logger.error('src/components/dashboard/Dashboard.tsx: Błąd ładowania bazy:', err);
       setError('Nie udało się załadować bazy danych nart');
     }
   };
@@ -657,7 +660,7 @@ const Dashboard: React.FC = () => {
       clearTimeout(autoSearchTimerRef.current);
     }
 
-    console.log('src/components/dashboard/Dashboard.tsx: Zmiana w formData - sprawdzam czy uruchomić automatyczne wyszukiwanie');
+    logger.info('src/components/dashboard/Dashboard.tsx: Zmiana w formData - sprawdzam czy uruchomić automatyczne wyszukiwanie');
 
     // Sprawdź czy wszystkie wymagane pola są wypełnione
     const isFormComplete = 
@@ -672,25 +675,25 @@ const Dashboard: React.FC = () => {
       formData.level !== '' &&
       formData.gender !== '';
 
-    console.log('src/components/dashboard/Dashboard.tsx: Formularz kompletny:', isFormComplete);
+    logger.info('src/components/dashboard/Dashboard.tsx: Formularz kompletny:', isFormComplete);
 
     if (isFormComplete) {
       // Waliduj formularz
       const validation = validateForm(formData);
       
       if (validation.isValid) {
-        console.log('src/components/dashboard/Dashboard.tsx: Formularz wypełniony i poprawny - uruchamiam automatyczne wyszukiwanie za 500ms');
+        logger.info('src/components/dashboard/Dashboard.tsx: Formularz wypełniony i poprawny - uruchamiam automatyczne wyszukiwanie za 500ms');
         
         // Odczekaj 500ms przed wyszukiwaniem (debounce)
         autoSearchTimerRef.current = setTimeout(() => {
-          console.log('src/components/dashboard/Dashboard.tsx: Uruchamiam automatyczne wyszukiwanie');
+          logger.info('src/components/dashboard/Dashboard.tsx: Uruchamiam automatyczne wyszukiwanie');
           handleSubmit(formData);
         }, 500);
       } else {
-        console.log('src/components/dashboard/Dashboard.tsx: Formularz wypełniony ale zawiera błędy - nie uruchamiam wyszukiwania');
+        logger.info('src/components/dashboard/Dashboard.tsx: Formularz wypełniony ale zawiera błędy - nie uruchamiam wyszukiwania');
       }
     } else {
-      console.log('src/components/dashboard/Dashboard.tsx: Formularz niekompletny - nie uruchamiam automatycznego wyszukiwania');
+      logger.info('src/components/dashboard/Dashboard.tsx: Formularz niekompletny - nie uruchamiam automatycznego wyszukiwania');
     }
 
     // Cleanup timer przy odmontowywaniu
@@ -731,13 +734,13 @@ const Dashboard: React.FC = () => {
     value: string,
     inputRef?: HTMLInputElement
   ) => {
-    console.log(`src/components/dashboard/Dashboard.tsx: Zmiana daty z BrowseSkisComponent - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    logger.info(`Zmiana daty z BrowseSkisComponent - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
     // Użyj istniejącej funkcji handleInputChange, która aktualizuje formData i formErrors
     handleInputChange(section, field, value, inputRef);
   };
 
   const handleBrowseCriteriaChange = (criteria: Partial<SearchCriteria>) => {
-    console.log('Dashboard: Otrzymano zmienione kryteria z BrowseSkisComponent:', criteria);
+    logger.info('Otrzymano zmienione kryteria z BrowseSkisComponent:', criteria);
     
     // Konwertuj Partial<SearchCriteria> na format FormData i zaktualizuj activeTab.formData
     setFormData(prev => ({
@@ -754,12 +757,12 @@ const Dashboard: React.FC = () => {
       gender: criteria.plec?.toUpperCase() || prev.gender
     }));
     
-    console.log('Dashboard: Zaktualizowano formData z kryteriów BrowseSkisComponent');
+    logger.info('Zaktualizowano formData z kryteriów BrowseSkisComponent');
   };
 
   const handleInputChange = (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => {
-    console.log(`src/components/dashboard/Dashboard.tsx: Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
-    console.log(`src/components/dashboard/Dashboard.tsx: Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
+    logger.debug(`Zmiana pola - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
+    logger.debug(`Typ sekcji: ${typeof section}, wartość sekcji: "${section}"`);
     
     // Walidacja w czasie rzeczywistym
     let isValid = true;
@@ -783,7 +786,7 @@ const Dashboard: React.FC = () => {
       const validation = validateHeightRealtime(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
-      console.log(`src/components/dashboard/Dashboard.tsx: Walidacja wzrostu - wartość: ${value}, isValid: ${isValid}`);
+      logger.debug(`Walidacja wzrostu - wartość: ${value}, isValid: ${isValid}`);
     } else if (section === 'weight' && field === 'value') {
       const validation = validateWeightRealtime(value);
       isValid = validation.isValid;
@@ -804,11 +807,11 @@ const Dashboard: React.FC = () => {
 
     // Jeśli walidacja nie przeszła, nie aktualizuj wartości
     if (!isValid) {
-      console.log(`src/components/dashboard/Dashboard.tsx: Walidacja nie przeszła - ${errorMessage}`);
+      logger.debug(`Walidacja nie przeszła - ${errorMessage}`);
       return;
     }
 
-    console.log(`src/components/dashboard/Dashboard.tsx: Walidacja przeszła, aktualizuję dane`);
+    logger.debug(`Walidacja przeszła, aktualizuję dane`);
 
     // Aktualizuj dane formularza (bez formatowania)
     if (section === 'dateFrom' || section === 'dateTo') {
@@ -828,7 +831,7 @@ const Dashboard: React.FC = () => {
         }
       }));
     } else {
-      console.log(`src/components/dashboard/Dashboard.tsx: Aktualizuję ${section} na wartość: ${value}`);
+      logger.debug(`Aktualizuję ${section} na wartość: ${value}`);
       setFormData(prev => ({
         ...prev,
         [section]: value
@@ -847,76 +850,76 @@ const Dashboard: React.FC = () => {
     });
 
     // Automatyczne przechodzenie do następnego pola
-    console.log(`src/components/dashboard/Dashboard.tsx: Sprawdzanie automatycznego przechodzenia - sekcja: ${section}, pole: ${field}, wartość: "${value}", długość: ${value.length}`);
+    logger.debug(`Sprawdzanie automatycznego przechodzenia - sekcja: ${section}, pole: ${field}, wartość: "${value}", długość: ${value.length}`);
     
     if (inputRef) {
       // Dzień "od" → Miesiąc "od"
       if (section === 'dateFrom' && field === 'day' && value.length === 2) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do miesiąca "od"`);
+        logger.debug(`Przechodzenie do miesiąca "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "od" → Rok "od"
       else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do roku "od"`);
+        logger.debug(`Przechodzenie do roku "od"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "od" → Dzień "do"
       else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do dnia "do"`);
+        logger.debug(`Przechodzenie do dnia "do"`);
         focusAndSelectIfValue(dayToRef.current);
       }
       // Dzień "do" → Miesiąc "do"
       else if (section === 'dateTo' && field === 'day' && value.length === 2) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do miesiąca "do"`);
+        logger.debug(`Przechodzenie do miesiąca "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Miesiąc "do" → Rok "do"
       else if (section === 'dateTo' && field === 'month' && value.length === 2) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do roku "do"`);
+        logger.debug(`Przechodzenie do roku "do"`);
         const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
         focusAndSelectIfValue(nextInput);
       }
       // Rok "do" → Wzrost
       else if (section === 'dateTo' && field === 'year' && value.length === 2) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do wzrostu`);
+        logger.debug(`Przechodzenie do wzrostu`);
         focusAndSelectIfValue(heightRef.current);
       }
       // Wzrost → Waga (po 3 cyfrach lub gdy wartość >= 100)
       else if (section === 'height' && field === 'value') {
         const heightNum = parseInt(value);
-        console.log(`src/components/dashboard/Dashboard.tsx: Sprawdzanie wzrostu - wartość: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
-        console.log(`src/components/dashboard/Dashboard.tsx: Warunek 1 (długość >= 3): ${value.length >= 3}`);
-        console.log(`src/components/dashboard/Dashboard.tsx: Warunek 2 (długość >= 2 && liczba >= 100): ${value.length >= 2 && heightNum >= 100}`);
+        logger.debug(`Sprawdzanie wzrostu - wartość: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
+        logger.debug(`Warunek 1 (długość >= 3): ${value.length >= 3}`);
+        logger.debug(`Warunek 2 (długość >= 2 && liczba >= 100): ${value.length >= 2 && heightNum >= 100}`);
         
         if (value.length >= 3 || (value.length >= 2 && heightNum >= 100)) {
-          console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do wagi - wzrost: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
+          logger.debug(`Przechodzenie do wagi - wzrost: ${value}, długość: ${value.length}, liczba: ${heightNum}`);
           const nextInput = weightRef.current;
           if (nextInput) {
-            console.log(`src/components/dashboard/Dashboard.tsx: Znaleziono pole wagi, przechodzę`);
+            logger.debug(`Znaleziono pole wagi, przechodzę`);
             focusAndSelectIfValue(nextInput);
           } else {
-            console.log(`src/components/dashboard/Dashboard.tsx: Nie znaleziono pola wagi`);
+            logger.debug(`Nie znaleziono pola wagi`);
           }
         } else {
-          console.log(`src/components/dashboard/Dashboard.tsx: Warunek nie spełniony - nie przechodzę`);
+          logger.debug(`Warunek nie spełniony - nie przechodzę`);
         }
       }
       // Waga → Poziom (po 2 cyfrach lub 3 cyfrach jeśli zaczyna się na 1 lub 2)
       else if (section === 'weight' && field === 'value') {
         if (value.length === 2 && !value.startsWith('1') && !value.startsWith('2')) {
-          console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do poziomu - waga: ${value} (2 cyfry, nie zaczyna się na 1/2)`);
+          logger.debug(`Przechodzenie do poziomu - waga: ${value} (2 cyfry, nie zaczyna się na 1/2)`);
           focusAndSelectIfValue(levelRef.current);
         } else if (value.length === 3 && (value.startsWith('1') || value.startsWith('2'))) {
-          console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do poziomu - waga: ${value} (3 cyfry, zaczyna się na 1/2)`);
+          logger.debug(`Przechodzenie do poziomu - waga: ${value} (3 cyfry, zaczyna się na 1/2)`);
           focusAndSelectIfValue(levelRef.current);
         }
       }
       // Poziom → Płeć (po 1 cyfrze)
       else if (section === 'level' && value.length >= 1) {
-        console.log(`src/components/dashboard/Dashboard.tsx: Przechodzenie do płci - poziom: ${value}`);
+        logger.debug(`Przechodzenie do płci - poziom: ${value}`);
         focusAndSelectIfValue(genderRef.current);
       }
       // USUNIĘTO: Stare automatyczne wyszukiwanie po wpisaniu płci
@@ -934,13 +937,13 @@ const Dashboard: React.FC = () => {
     // Kliknięcie innego stylu = tylko ten jeden
     const newStyles = selectedStyles.includes(style) ? [] : [style];
     
-    console.log(`src/components/dashboard/Dashboard.tsx: Wybrano styl ${style}, nowe style:`, newStyles);
+    logger.info(`Wybrano styl ${style}, nowe style:`, newStyles);
     setSelectedStyles(newStyles);
     
     // Automatyczne wyszukiwanie po KAŻDEJ zmianie filtrów (jeśli są już wyniki)
     if (searchResults) {
       setTimeout(() => {
-        console.log(`src/components/dashboard/Dashboard.tsx: Automatyczne wyszukiwanie po przełączeniu filtra`);
+        logger.info(`Automatyczne wyszukiwanie po przełączeniu filtra`);
         handleSubmitWithStyles(newStyles);
       }, 100);
     }
@@ -950,7 +953,7 @@ const Dashboard: React.FC = () => {
    * Wyszukuje narty z określonymi stylami (dla automatycznego wyszukiwania po zmianie filtrów)
    */
   const handleSubmitWithStyles = (styles: string[]) => {
-    console.log('src/components/dashboard/Dashboard.tsx: Wyszukiwanie z stylami:', styles);
+    logger.info('src/components/dashboard/Dashboard.tsx: Wyszukiwanie z stylami:', styles);
     
     try {
       setIsLoading(true);
@@ -967,7 +970,7 @@ const Dashboard: React.FC = () => {
         dateTo: parseDate(formData.dateTo)
       };
 
-      console.log('src/components/dashboard/Dashboard.tsx: Kryteria wyszukiwania z stylami:', criteria);
+      logger.info('src/components/dashboard/Dashboard.tsx: Kryteria wyszukiwania z stylami:', criteria);
 
       // Zapisz kryteria dla MatchIndicators
       setCurrentCriteria(criteria);
@@ -980,7 +983,7 @@ const Dashboard: React.FC = () => {
       const sortedResults = SkiMatchingServiceV2.sortAllResultsByAvailabilityAndCompatibility(results);
       setSearchResults(sortedResults);
 
-      console.log('src/components/dashboard/Dashboard.tsx: Zaktualizowano wyniki z stylami:', {
+      logger.info('src/components/dashboard/Dashboard.tsx: Zaktualizowano wyniki z stylami:', {
         idealne: results.idealne.length,
         alternatywy: results.alternatywy.length,
         poziom_za_nisko: results.poziom_za_nisko.length,
@@ -989,7 +992,7 @@ const Dashboard: React.FC = () => {
         wszystkie: results.wszystkie.length
       });
     } catch (err) {
-      console.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania z stylami:', err);
+      logger.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania z stylami:', err);
       setError('Wystąpił błąd podczas wyszukiwania nart');
     } finally {
       setIsLoading(false);
@@ -998,8 +1001,8 @@ const Dashboard: React.FC = () => {
 
   const handleSubmit = (customFormData?: FormData) => {
     const dataToValidate = customFormData || formData;
-    console.log('src/components/dashboard/Dashboard.tsx: Rozpoczęcie walidacji formularza');
-    console.log('src/components/dashboard/Dashboard.tsx: Aktualne dane formularza:', dataToValidate);
+    logger.info('src/components/dashboard/Dashboard.tsx: Rozpoczęcie walidacji formularza');
+    logger.info('src/components/dashboard/Dashboard.tsx: Aktualne dane formularza:', dataToValidate);
     
     // Wyczyść poprzednie błędy
     setFormErrors(initialFormErrors);
@@ -1009,7 +1012,7 @@ const Dashboard: React.FC = () => {
     const validation = validateForm(dataToValidate);
     
     if (!validation.isValid) {
-      console.log('src/components/dashboard/Dashboard.tsx: Formularz zawiera błędy walidacji');
+      logger.info('src/components/dashboard/Dashboard.tsx: Formularz zawiera błędy walidacji');
       setFormErrors(validation.errors);
       setError('Proszę poprawić błędy w formularzu');
       return;
@@ -1032,7 +1035,7 @@ const Dashboard: React.FC = () => {
         dateTo: parseDate(dataToValidate.dateTo)
       };
 
-      console.log('src/components/dashboard/Dashboard.tsx: Kryteria wyszukiwania:', criteria);
+      logger.info('src/components/dashboard/Dashboard.tsx: Kryteria wyszukiwania:', criteria);
 
       // Zapisz kryteria dla MatchIndicators
       setCurrentCriteria(criteria);
@@ -1053,10 +1056,10 @@ const Dashboard: React.FC = () => {
       // Automatycznie wybierz pierwszą dostępną kategorię TYLKO jeśli użytkownik nie wybrał już kategorii
       // (czyli jeśli equipmentTypeFilter i categoryFilter są puste)
       if (!equipmentTypeFilter && !categoryFilter) {
-        console.log('src/components/dashboard/Dashboard.tsx: Automatyczny wybór kategorii (brak filtrów)');
+        logger.info('src/components/dashboard/Dashboard.tsx: Automatyczny wybór kategorii (brak filtrów)');
         autoSelectFirstCategory(sortedResults);
       } else {
-        console.log('src/components/dashboard/Dashboard.tsx: Pomijam automatyczny wybór - użytkownik wybrał filtry:', equipmentTypeFilter, categoryFilter);
+        logger.info('src/components/dashboard/Dashboard.tsx: Pomijam automatyczny wybór - użytkownik wybrał filtry:', equipmentTypeFilter, categoryFilter);
       }
 
       // Zapisz historię wyszukiwania
@@ -1072,7 +1075,7 @@ const Dashboard: React.FC = () => {
         }
       });
 
-      console.log('src/components/dashboard/Dashboard.tsx: Znaleziono wyników:', {
+      logger.info('src/components/dashboard/Dashboard.tsx: Znaleziono wyników:', {
         idealne: results.idealne.length,
         alternatywy: results.alternatywy.length,
         poziom_za_nisko: results.poziom_za_nisko.length,
@@ -1081,7 +1084,7 @@ const Dashboard: React.FC = () => {
         wszystkie: results.wszystkie.length
       });
     } catch (err) {
-      console.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania:', err);
+      logger.error('src/components/dashboard/Dashboard.tsx: Błąd wyszukiwania:', err);
       setError('Wystąpił błąd podczas wyszukiwania nart');
     } finally {
       setIsLoading(false);
@@ -1091,7 +1094,7 @@ const Dashboard: React.FC = () => {
   // USUNIĘTO: handleSubmitClick - nie jest już potrzebna (brak przycisku "Wyszukaj")
 
   const handleClear = () => {
-    console.log('src/components/dashboard/Dashboard.tsx: Czyszczenie formularza aktywnej karty');
+    logger.info('src/components/dashboard/Dashboard.tsx: Czyszczenie formularza aktywnej karty');
     const defaultData = {
       dateFrom: { day: '', month: '', year: '' },
       dateTo: { day: '', month: '', year: '' },
@@ -1116,7 +1119,7 @@ const Dashboard: React.FC = () => {
     setEquipmentTypeFilter('');
     setCategoryFilter('');
     
-    console.log('src/components/dashboard/Dashboard.tsx: Aktywna karta wyczyszczona');
+    logger.info('src/components/dashboard/Dashboard.tsx: Aktywna karta wyczyszczona');
   };
 
   // Grupowanie wyników po modelu (jedna karta na model nart)
@@ -1132,14 +1135,14 @@ const Dashboard: React.FC = () => {
   } : null;
 
   const handlePasswordSubmit = (password: string) => {
-    console.log('src/components/dashboard/Dashboard.tsx: Weryfikacja hasła pracownika');
+    logger.info('src/components/dashboard/Dashboard.tsx: Weryfikacja hasła pracownika');
     if (password === EMPLOYEE_PASSWORD) {
-      console.log('src/components/dashboard/Dashboard.tsx: Hasło poprawne - przełączanie na tryb pracownika');
+      logger.info('src/components/dashboard/Dashboard.tsx: Hasło poprawne - przełączanie na tryb pracownika');
       setIsEmployeeMode(true);
       setIsPasswordModalOpen(false);
       setPasswordError(''); // Wyczyść błąd przy poprawnym haśle
     } else {
-      console.log('src/components/dashboard/Dashboard.tsx: Hasło błędne - pozostanie w trybie klienta');
+      logger.info('src/components/dashboard/Dashboard.tsx: Hasło błędne - pozostanie w trybie klienta');
       setPasswordError('Nieprawidłowe hasło. Spróbuj ponownie.');
     }
   };
@@ -1148,7 +1151,7 @@ const Dashboard: React.FC = () => {
   const handleToggleEmployeeMode = () => {
     if (isEmployeeMode) {
       // Wyloguj - przełącz na tryb klienta
-      console.log('src/components/dashboard/Dashboard.tsx: Wylogowanie - przełączanie na tryb klienta');
+      logger.info('src/components/dashboard/Dashboard.tsx: Wylogowanie - przełączanie na tryb klienta');
       setIsEmployeeMode(false);
       // Jeśli jesteśmy w widoku rezerwacji, wróć do wyszukiwania
       if (appMode === 'reservations') {
@@ -1175,7 +1178,7 @@ const Dashboard: React.FC = () => {
 
   // Funkcja obsługująca przycisk "Cały sprzęt"
   const handleShowAllEquipment = () => {
-    console.log('src/components/dashboard/Dashboard.tsx: Przycisk Cały sprzęt - otwieranie Browse bez filtrów');
+    logger.info('src/components/dashboard/Dashboard.tsx: Przycisk Cały sprzęt - otwieranie Browse bez filtrów');
     setEquipmentTypeFilter('');
     setCategoryFilter('');
     handleBrowseMode(false);
@@ -1184,35 +1187,35 @@ const Dashboard: React.FC = () => {
   // Oblicz initialFilter używając useMemo dla aktualnych wartości filtrów
   const computedInitialFilter = useMemo(() => {
     // Logika mapowania filtrów ze strony głównej do BrowseSkisComponent
-    console.log(`src/components/dashboard/Dashboard.tsx: Obliczanie initialFilter - equipmentTypeFilter: ${equipmentTypeFilter}, categoryFilter: ${categoryFilter}`);
+    logger.debug(`Obliczanie initialFilter - equipmentTypeFilter: ${equipmentTypeFilter}, categoryFilter: ${categoryFilter}`);
     
     if (equipmentTypeFilter === 'DESKI') {
-      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = DESKI');
+      logger.info('src/components/dashboard/Dashboard.tsx: initialFilter = DESKI');
       return 'DESKI';
     }
     if (equipmentTypeFilter === 'BUTY_SNOWBOARD') {
-      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = BUTY_SNOWBOARD');
+      logger.info('src/components/dashboard/Dashboard.tsx: initialFilter = BUTY_SNOWBOARD');
       return 'BUTY_SNOWBOARD';
     }
     if (equipmentTypeFilter === 'BUTY' && categoryFilter === 'JUNIOR') {
-      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = BUTY_JUNIOR');
+      logger.info('src/components/dashboard/Dashboard.tsx: initialFilter = BUTY_JUNIOR');
       return 'BUTY_JUNIOR';
     }
     if (equipmentTypeFilter === 'BUTY' && categoryFilter === 'DOROSLE') {
-      console.log('src/components/dashboard/Dashboard.tsx: initialFilter = DOROSLE');
+      logger.info('src/components/dashboard/Dashboard.tsx: initialFilter = DOROSLE');
       return 'DOROSLE';
     }
     if (equipmentTypeFilter === 'NARTY' && categoryFilter) {
-      console.log(`src/components/dashboard/Dashboard.tsx: initialFilter = ${categoryFilter} (NARTY)`);
+      logger.debug(`initialFilter = ${categoryFilter} (NARTY)`);
       return categoryFilter; // TOP, VIP, JUNIOR
     }
-    console.log('src/components/dashboard/Dashboard.tsx: initialFilter = all (domyślny)');
+    logger.info('src/components/dashboard/Dashboard.tsx: initialFilter = all (domyślny)');
     return 'all';
   }, [equipmentTypeFilter, categoryFilter]);
 
   // NOWA FUNKCJA: Aktualizacja stanu pól wyszukiwania dla aktywnej karty
   const handleFilterSearchChange = (filterKey: FilterKey, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => {
-    console.log(`Dashboard: Aktualizuję stan wyszukiwania dla filtra ${filterKey}, pole: ${field}, wartość: ${value}`);
+    logger.info(`Aktualizuję stan wyszukiwania dla filtra ${filterKey}, pole: ${field}, wartość: ${value}`);
     
     updateActiveTab({
       filterSearchStates: {
