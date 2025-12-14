@@ -194,9 +194,16 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
       logger.debug('updateAll:', updateAll, 'targetSkiId:', targetSkiId);
 
       await onSave(formData, targetSkiId, updateAll);
+      // Toast success i error są już pokazywane przez skiDataService
       onClose();
     } catch (error) {
+      // src/components/SkiEditModal.tsx: Logowanie błędu
+      // Wszystkie błędy są już obsłużone przez skiDataService (pokazuje toast i zwraca null)
+      // BrowseSkisComponent rzuca błąd tylko gdy skiDataService zwróci null (już pokazał toast)
+      // Więc nie musimy pokazywać toast tutaj - wszystkie błędy są już obsłużone
       logger.error('Błąd zapisywania narty:', error);
+      // NIE zamykamy modala w przypadku błędu - użytkownik może spróbować ponownie
+      // isSaving zostanie zresetowany w finally
     } finally {
       setIsSaving(false);
     }

@@ -64,12 +64,14 @@ RUN mkdir -p logs public/data && \
 USER nodejs
 
 # Expose porty
-EXPOSE 3000 5173
+# Port 5001 - Backend Express API (domyślny zgodnie z env.example i dokumentacją)
+# Port 5173 - Vite Dev Server (tylko w development mode)
+EXPOSE 5001 5173
 
-# Healthcheck (opcjonalny)
-# Sprawdza czy endpoint /api/health odpowiada
+# Healthcheck
+# Sprawdza czy endpoint /api/health odpowiada na porcie 5001 (domyślny port aplikacji)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
-  CMD node -e "const http=require('http');http.get('http://localhost:3000/api/health',(r)=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>process.exit(r.statusCode===200?0:1));r.on('error',()=>process.exit(1))})"
+  CMD node -e "const http=require('http');http.get('http://localhost:5001/api/health',(r)=>{let d='';r.on('data',c=>d+=c);r.on('end',()=>process.exit(r.statusCode===200?0:1));r.on('error',()=>process.exit(1))})"
 
 # Domyślny command (może być nadpisany przez docker-compose)
 CMD ["node", "server.js"]

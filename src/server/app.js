@@ -1,8 +1,14 @@
+/**
+ * src/server/app.js: Główna konfiguracja Express aplikacji
+ * Integruje routing, middleware i globalny error handler
+ */
+
 import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import routes from './routes/index.js';
+import errorHandler from './middleware/errorHandler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -31,5 +37,8 @@ if (process.env.NODE_ENV === 'production') {
         res.send('Backend API server is running in DEVELOPMENT mode. Use frontend dev server (Vite) to access the app.');
     });
 }
+
+// Global Error Handler Middleware (MUSI być ostatnim middleware)
+app.use(errorHandler);
 
 export default app;

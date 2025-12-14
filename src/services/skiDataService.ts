@@ -6,6 +6,8 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { toastService } from '../hooks/useToast';
+import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 import type { SkiData } from '../types/ski.types';
 import { CSVParser } from '../utils/csvParser';
 
@@ -37,7 +39,8 @@ export class SkiDataService {
       const response = await fetch(`${API_BASE_URL}/skis`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const skis = await response.json();
@@ -70,15 +73,20 @@ export class SkiDataService {
           this.cache = skisFromCSV;
           this.lastFetch = Date.now();
           logger.info(`Załadowano ${skisFromCSV.length} nart z CSV`);
+          toastService.showInfo('Używam danych z lokalnego pliku (API niedostępne)');
           return skisFromCSV;
         } catch (csvError) {
           logger.error('Błąd wczytywania CSV:', csvError);
+          const errorMessage = handleApiError(csvError, 'Nie udało się załadować danych o nartach');
+          toastService.showError(errorMessage);
           return [];
         }
       }
       
       // W przeciwnym razie użyj cache (może być nieaktualny)
       logger.warn('Używam cache mimo błędu');
+      const errorMessage = handleApiError(error, 'Problem z połączeniem. Używam danych z cache.');
+      toastService.showInfo(errorMessage);
       return this.cache;
     }
   }
@@ -103,7 +111,8 @@ export class SkiDataService {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const updatedSki = await response.json();
@@ -113,9 +122,12 @@ export class SkiDataService {
       this.lastFetch = 0;
       
       logger.info('Narta zaktualizowana pomyślnie');
+      toastService.showSuccess('Narta została zaktualizowana');
       return updatedSki;
     } catch (error) {
       logger.error('Błąd aktualizacji narty:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się zaktualizować narty');
+      toastService.showError(errorMessage);
       return null;
     }
   }
@@ -136,7 +148,8 @@ export class SkiDataService {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const newSki = await response.json();
@@ -146,9 +159,12 @@ export class SkiDataService {
       this.lastFetch = 0;
       
       logger.info('Narta dodana pomyślnie:', newSki);
+      toastService.showSuccess('Narta została dodana');
       return newSki;
     } catch (error) {
       logger.error('Błąd dodawania narty:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się dodać narty');
+      toastService.showError(errorMessage);
       return null;
     }
   }
@@ -170,7 +186,8 @@ export class SkiDataService {
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const updatedSkis = await response.json();
@@ -180,9 +197,12 @@ export class SkiDataService {
       this.lastFetch = 0;
       
       logger.info(`${updatedSkis.length} nart zaktualizowanych pomyślnie`);
+      toastService.showSuccess(`${updatedSkis.length} nart zostało zaktualizowanych`);
       return updatedSkis;
     } catch (error) {
       logger.error('Błąd aktualizacji wielu nart:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się zaktualizować nart');
+      toastService.showError(errorMessage);
       return null;
     }
   }

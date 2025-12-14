@@ -4,6 +4,8 @@
  */
 
 import { createLogger } from '../utils/logger';
+import { toastService } from '../hooks/useToast';
+import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 import type { ReservationData, ReservationInfo, AvailabilityInfo } from './reservationService';
 
 const API_BASE_URL = '/api';
@@ -36,7 +38,8 @@ export class ReservationApiClient {
       const response = await fetch(`${API_BASE_URL}/reservations`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const reservations = await response.json();
@@ -47,6 +50,10 @@ export class ReservationApiClient {
       return reservations;
     } catch (error) {
       logger.error('Błąd pobierania rezerwacji:', error);
+      
+      // Wyświetl komunikat błędu użytkownikowi (z backend message jeśli dostępne)
+      const errorMessage = handleApiError(error, 'Problem z połączeniem. Używam danych z cache.');
+      toastService.showError(errorMessage);
       
       // Jeśli cache jest pusty, zwróć pustą tablicę
       if (this.cache.length === 0) {
@@ -76,7 +83,8 @@ export class ReservationApiClient {
       const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const rentals = await response.json();
@@ -87,6 +95,10 @@ export class ReservationApiClient {
       return this.cacheRentals;
     } catch (error) {
       logger.error('Błąd pobierania wypożyczeń:', error);
+      
+      // Wyświetl komunikat błędu użytkownikowi (z backend message jeśli dostępne)
+      const errorMessage = handleApiError(error, 'Problem z połączeniem. Używam danych z cache.');
+      toastService.showError(errorMessage);
       
       // Jeśli cache jest pusty, zwróć pustą tablicę
       if (this.cacheRentals.length === 0) {
@@ -123,6 +135,8 @@ export class ReservationApiClient {
       return allData;
     } catch (error) {
       logger.error('Błąd pobierania wszystkich danych:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się załadować wszystkich danych');
+      toastService.showError(errorMessage);
       return [];
     }
   }
@@ -141,7 +155,8 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
     const response = await fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
     
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorMessage = await parseApiError(response);
+      throw new Error(errorMessage);
     }
     
     const data = await response.json() as { reservations?: Array<{ kod?: string; sprzet?: string; klient?: string; od?: string; do?: string }>; rentals?: Array<{ kod?: string; sprzet?: string; klient?: string; od?: number; do?: number }> };
@@ -181,6 +196,8 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
     return allData;
   } catch (error) {
     logger.error('Błąd pobierania dostępności dla okresu:', error);
+    const errorMessage = handleApiError(error, 'Nie udało się sprawdzić dostępności sprzętu');
+    toastService.showError(errorMessage);
     return [];
   }
 }
@@ -210,7 +227,8 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
       const response = await fetch(`${API_BASE_URL}/wypozyczenia/przeszle`);
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       const pastRentals = await response.json();
@@ -220,6 +238,8 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
       return pastRentals.map((r: ReservationData) => ({ ...r, source: 'rental' as const }));
     } catch (error) {
       logger.error('Błąd pobierania przeszłych wypożyczeń:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się załadować przeszłych wypożyczeń');
+      toastService.showError(errorMessage);
       return [];
     }
   }
@@ -248,6 +268,8 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
       }));
     } catch (error) {
       logger.error('Błąd filtrowania przeszłych rezerwacji:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się załadować przeszłych rezerwacji');
+      toastService.showError(errorMessage);
       return [];
     }
   }
@@ -363,7 +385,8 @@ static async getSkiAvailabilityStatus(
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       // Wyczyść cache aby wymusić odświeżenie danych
@@ -371,9 +394,13 @@ static async getSkiAvailabilityStatus(
       this.lastFetch = 0;
       
       logger.info('Rezerwacja utworzona pomyślnie');
+      toastService.showSuccess('Rezerwacja została utworzona pomyślnie');
       return true;
     } catch (error) {
       logger.error('Błąd tworzenia rezerwacji:', error);
+      // Wyświetl szczegółowy komunikat błędu z backend (jeśli dostępny)
+      const errorMessage = handleApiError(error, 'Nie udało się utworzyć rezerwacji');
+      toastService.showError(errorMessage);
       return false;
     }
   }
@@ -394,7 +421,8 @@ static async getSkiAvailabilityStatus(
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       // Wyczyść cache
@@ -402,9 +430,12 @@ static async getSkiAvailabilityStatus(
       this.lastFetch = 0;
       
       logger.info('Rezerwacja zaktualizowana pomyślnie');
+      toastService.showSuccess('Rezerwacja została zaktualizowana');
       return true;
     } catch (error) {
       logger.error('Błąd aktualizacji rezerwacji:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się zaktualizować rezerwacji');
+      toastService.showError(errorMessage);
       return false;
     }
   }
@@ -421,7 +452,8 @@ static async getSkiAvailabilityStatus(
       });
       
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        const errorMessage = await parseApiError(response);
+        throw new Error(errorMessage);
       }
       
       // Wyczyść cache
@@ -429,9 +461,12 @@ static async getSkiAvailabilityStatus(
       this.lastFetch = 0;
       
       logger.info('Rezerwacja usunięta pomyślnie');
+      toastService.showSuccess('Rezerwacja została usunięta');
       return true;
     } catch (error) {
       logger.error('Błąd usuwania rezerwacji:', error);
+      const errorMessage = handleApiError(error, 'Nie udało się usunąć rezerwacji');
+      toastService.showError(errorMessage);
       return false;
     }
   }

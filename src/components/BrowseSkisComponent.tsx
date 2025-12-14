@@ -4,7 +4,7 @@ import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.
 import type { FormErrors } from '../utils/formValidation';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
-import { Toast } from './Toast';
+import { useToast } from '../hooks/useToast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { SkiDataService } from '../services/skiDataService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
@@ -203,9 +203,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [modalMode, setModalMode] = useState<'edit' | 'add'>('edit');
   const [selectedSki, setSelectedSki] = useState<SkiData | undefined>(undefined);
 
-  // NOWY STAN: Toast notifications
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastType, setToastType] = useState<'success' | 'error'>('success');
+  // Toast notifications - używamy useToast hook
+  const { showSuccess, showError } = useToast();
 
   // NOWY STAN: Pola edycji kryteriów (wzrost, waga, poziom, płeć)
   const [editWzrost, setEditWzrost] = useState<string>('');
@@ -332,8 +331,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const handleManualRefresh = useCallback(async () => {
     logger.info('BrowseSkisComponent: �� Ręczne odświeżanie dostępności...');
     await loadAvailabilityStatuses();
-    setToastMessage('Dostępność zaktualizowana');
-    setToastType('success');
+    showSuccess('Dostępność zaktualizowana');
   }, [loadAvailabilityStatuses]);
 
   // NOWA ZMIANA: Efekt do obliczania kolorów dopasowania
@@ -560,9 +558,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const result = await SkiDataService.updateMultipleSkis(ids, skiData);
 
         if (result) {
+          // src/components/BrowseSkisComponent.tsx: Toast success jest już pokazywany przez skiDataService
           logger.info('BrowseSkisComponent: Zaktualizowano wszystkie narty w grupie:', ids.length);
-          setToastMessage(`Zaktualizowano ${ids.length} nart w grupie`);
-          setToastType('success');
+          // NIE pokazujemy Toast tutaj - skiDataService już to zrobił
         } else {
           throw new Error('Błąd aktualizacji wielu nart');
         }
@@ -571,9 +569,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const result = await SkiDataService.updateSki(targetSkiId, skiData);
 
         if (result) {
+          // src/components/BrowseSkisComponent.tsx: Toast success jest już pokazywany przez skiDataService
           logger.info('BrowseSkisComponent: Zaktualizowano nartę:', targetSkiId);
-          setToastMessage('Narta zaktualizowana pomyślnie');
-          setToastType('success');
+          // NIE pokazujemy Toast tutaj - skiDataService już to zrobił
         } else {
           throw new Error('Błąd aktualizacji narty');
         }
@@ -582,9 +580,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const result = await SkiDataService.updateSki(selectedSki.ID, skiData);
 
         if (result) {
+          // src/components/BrowseSkisComponent.tsx: Toast success jest już pokazywany przez skiDataService
           logger.info('BrowseSkisComponent: Zaktualizowano nartę:', selectedSki.ID);
-          setToastMessage('Narta zaktualizowana pomyślnie');
-          setToastType('success');
+          // NIE pokazujemy Toast tutaj - skiDataService już to zrobił
         } else {
           throw new Error('Błąd aktualizacji narty');
         }
@@ -597,9 +595,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
       // Zamykamy modal po udanym zapisie (onSave w modalu już wywołuje onClose)
     } catch (error) {
+      // src/components/BrowseSkisComponent.tsx: Logowanie błędu (Toast jest już pokazany przez skiDataService)
       logger.error('BrowseSkisComponent: Błąd zapisywania:', error);
-      setToastMessage(error instanceof Error ? error.message : 'Błąd zapisywania narty');
-      setToastType('error');
+      // NIE pokazujemy Toast tutaj - skiDataService już to zrobił
       throw error; // Rzuć błąd aby modal mógł go obsłużyć
     }
   };
@@ -1600,13 +1598,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         />
       )}
 
-      {/* Toast notification */}
-      <Toast
-        message={toastMessage}
-        type={toastType}
-        isVisible={!!toastMessage}
-        onClose={() => setToastMessage('')}
-      />
+      {/* Toast notifications są teraz obsługiwane przez ToastProvider w App.tsx */}
       </div>
     </div>
   );

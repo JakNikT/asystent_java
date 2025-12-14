@@ -61,22 +61,23 @@
 
 ---
 
-### 3. Obsługa Błędów - ŚREDNI PRIORYTET ⚠️
+### 3. Obsługa Błędów - ŚREDNI PRIORYTET ⚠️ ✅
 
-- [ ] **Dodać React Error Boundary**
-  - [ ] Utworzyć `src/components/ErrorBoundary.tsx`
-  - [ ] Owinąć główną aplikację w Error Boundary
-  - [ ] Dodać przyjazny komunikat błędu dla użytkownika
+- [x] **Dodać React Error Boundary** ✅
+  - [x] Utworzyć `src/components/ErrorBoundary.tsx`
+  - [x] Owinąć główną aplikację w Error Boundary
+  - [x] Dodać przyjazny komunikat błędu dla użytkownika
   
-- [ ] **Utworzyć globalny error handler dla API**
-  - [ ] Dodać middleware do Express (`src/server/middleware/errorHandler.js`)
-  - [ ] Obsłużyć różne typy błędów (walidacja, baza danych, API)
-  - [ ] Zwracać spójne formaty odpowiedzi błędów
+- [x] **Utworzyć globalny error handler dla API** ✅
+  - [x] Dodać middleware do Express (`src/server/middleware/errorHandler.js`)
+  - [x] Obsłużyć różne typy błędów (walidacja, baza danych, API)
+  - [x] Zwracać spójne formaty odpowiedzi błędów
   
-- [ ] **Dodać powiadomienia dla użytkownika**
-  - [ ] Użyć istniejącego komponentu `Toast.tsx` do wyświetlania błędów
-  - [ ] Dodać obsługę błędów w wszystkich API calls
-  - [ ] Pokazywać komunikaty przy nieudanych operacjach
+- [x] **Dodać powiadomienia dla użytkownika** ✅
+  - [x] Utworzyć Toast Manager (`src/hooks/useToast.ts`) z Context API i singleton service
+  - [x] Zintegrować Toast z głównymi API clients (reservationApiClient, skiDataService, historyService)
+  - [x] Zaktualizować komponenty (ReservationsView, BrowseSkisComponent, SkiEditModal) do używania useToast
+  - [x] Pokazywać komunikaty przy nieudanych operacjach i sukcesach
 
 ---
 
