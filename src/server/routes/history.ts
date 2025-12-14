@@ -1,3 +1,7 @@
+/**
+ * src/server/routes/history.ts: Route'y dla historii klientów
+ */
+
 import express from 'express';
 import { historyController } from '../controllers/historyController.js';
 

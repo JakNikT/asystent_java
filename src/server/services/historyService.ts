@@ -1,12 +1,104 @@
+/**
+ * src/server/services/historyService.ts: Serwis do obsługi historii klientów
+ * Pobiera dane z bazy danych historii
+ */
+
 import { getHistoryDBConnection } from '../config/database.js';
 import { convertDateToISO } from '../utils/formatters.js';
+import type { QueryResult } from '../types/database.types.js';
+import type { RowDataPacket } from 'mysql2/promise';
+
+/**
+ * Wynik wyszukiwania klienta
+ */
+export interface ClientSearchResult {
+    id: number;
+    nazwisko: string;
+    imie: string;
+    telefon: string;
+    pelna_nazwa: string;
+}
+
+/**
+ * Data klienta z historii
+ */
+export interface ClientDate {
+    od: string;
+    do: string;
+    od_iso: string;
+    do_iso: string;
+    sezon: string;
+    liczba_pozycji: number;
+}
+
+/**
+ * Sprzęt klienta z historii
+ */
+export interface ClientEquipment {
+    klient: string;
+    sprzet: string;
+    kod: string;
+    od: string;
+    do: string;
+    cena: string;
+    zaplacono: string;
+    numer: string;
+    typumowy: string;
+    uwagi: string;
+    status: string;
+    source: string;
+    dlugosc: number | null;
+    liczba_dni: number;
+}
+
+/**
+ * Typ dla wierszy z bazy danych historii klientów
+ */
+interface ClientRow extends RowDataPacket {
+    Klient: number;
+    Nazwisko: string | null;
+    Imie: string | null;
+    Telefon: string | null;
+}
+
+/**
+ * Typ dla wierszy z datami klienta
+ */
+interface ClientDateRow extends RowDataPacket {
+    Od: string | null;
+    Do: string | null;
+    sezon: string | null;
+    liczba_pozycji: number;
+}
+
+/**
+ * Typ dla wierszy ze sprzętem klienta
+ */
+interface ClientEquipmentRow extends RowDataPacket {
+    Imie: string | null;
+    Nazwisko: string | null;
+    Telefon: string | null;
+    Symbol: string | null;
+    Nazwa: string | null;
+    Dlugosc: number | null;
+    sezon: string | null;
+    umowa: number | null;
+    Od: string | null;
+    Do: string | null;
+    Kwota: number | null;
+    Oddana: string | null;
+    Liczba_dni: number | null;
+}
 
 export const historyService = {
-    async searchClients(nazwisko) {
+    /**
+     * Wyszukuje klientów po nazwisku
+     */
+    async searchClients(nazwisko: string): Promise<ClientSearchResult[]> {
         if (!nazwisko || nazwisko.trim().length < 2) return [];
 
         const pool = await getHistoryDBConnection();
-        const [rows] = await pool.execute(
+        const [rows] = await pool.execute<QueryResult<ClientRow>>(
             `SELECT DISTINCT k.Klient, k.Nazwisko, k.Imie, k.Telefon 
        FROM id_klient_old k
        INNER JOIN id_daty_old d ON k.Klient = d.Klient
@@ -25,9 +117,12 @@ export const historyService = {
         }));
     },
 
-    async getClientDates(clientId) {
+    /**
+     * Pobiera daty dla danego klienta
+     */
+    async getClientDates(clientId: number): Promise<ClientDate[]> {
         const pool = await getHistoryDBConnection();
-        const [rows] = await pool.execute(
+        const [rows] = await pool.execute<QueryResult<ClientDateRow>>(
             `SELECT DISTINCT Od, Do, sezon, COUNT(*) as liczba_pozycji
        FROM id_daty_old
        WHERE Klient = ?
@@ -46,7 +141,10 @@ export const historyService = {
         }));
     },
 
-    async getClientEquipment(clientId, od, doDate, sezon) {
+    /**
+     * Pobiera sprzęt dla danego klienta w określonym okresie
+     */
+    async getClientEquipment(clientId: number, od: string, doDate: string, sezon?: string): Promise<ClientEquipment[]> {
         const pool = await getHistoryDBConnection();
 
         let query = `
@@ -57,7 +155,7 @@ export const historyService = {
       WHERE d.Klient = ? AND d.Od = ? AND d.Do = ?
     `;
 
-        const params = [clientId, od, doDate];
+        const params: (string | number)[] = [clientId, od, doDate];
 
         if (sezon) {
             query += ` AND d.sezon = ?`;
@@ -66,7 +164,7 @@ export const historyService = {
 
         query += ` ORDER BY s.Nazwa, s.Symbol`;
 
-        const [rows] = await pool.execute(query, params);
+        const [rows] = await pool.execute<QueryResult<ClientEquipmentRow>>(query, params);
 
         return rows.map(row => {
             const oddanaValue = row.Oddana ? String(row.Oddana).trim().toLowerCase() : '';

@@ -1,5 +1,5 @@
 /**
- * src/server/middleware/errorHandler.js: Global Error Handler Middleware
+ * src/server/middleware/errorHandler.ts: Global Error Handler Middleware
  * Standaryzuje obsługę błędów w API i zwraca spójne formaty odpowiedzi
  * 
  * Funkcjonalności:
@@ -9,6 +9,7 @@
  * - Obsługuje różne typy błędów (walidacja, baza danych, API, etc.)
  */
 
+import type { Request, Response, NextFunction } from 'express';
 import logger from '../config/logger.js';
 
 /**
@@ -22,12 +23,25 @@ const ERROR_CODES = {
   AUTHORIZATION_ERROR: 'AUTHORIZATION_ERROR',
   NOT_FOUND: 'NOT_FOUND',
   INTERNAL_SERVER_ERROR: 'INTERNAL_SERVER_ERROR',
-};
+} as const;
+
+type ErrorCode = typeof ERROR_CODES[keyof typeof ERROR_CODES];
+
+/**
+ * Rozszerzony typ błędu z dodatkowymi właściwościami
+ */
+interface AppError extends Error {
+  statusCode?: number;
+  status?: number;
+  code?: string;
+  userMessage?: string;
+  details?: unknown;
+}
 
 /**
  * Mapuje kod statusu HTTP na kod błędu aplikacji
  */
-const getErrorCode = (statusCode) => {
+const getErrorCode = (statusCode: number): ErrorCode => {
   if (statusCode >= 400 && statusCode < 500) {
     if (statusCode === 401) return ERROR_CODES.AUTHENTICATION_ERROR;
     if (statusCode === 403) return ERROR_CODES.AUTHORIZATION_ERROR;
@@ -43,7 +57,7 @@ const getErrorCode = (statusCode) => {
 /**
  * Tworzy przyjazny komunikat błędu dla użytkownika
  */
-const getUserFriendlyMessage = (error, statusCode) => {
+const getUserFriendlyMessage = (error: AppError, statusCode: number): string => {
   // Jeśli błąd ma już przyjazny komunikat, użyj go
   if (error.userMessage) {
     return error.userMessage;
@@ -74,11 +88,12 @@ const getUserFriendlyMessage = (error, statusCode) => {
 /**
  * Sprawdza czy błąd jest związany z bazą danych
  */
-const isDatabaseError = (error) => {
-  if (!error) return false;
+const isDatabaseError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
   
-  const errorMessage = error.message?.toLowerCase() || '';
-  const errorCode = error.code?.toLowerCase() || '';
+  const err = error as Record<string, unknown>;
+  const errorMessage = (err.message as string | undefined)?.toLowerCase() || '';
+  const errorCode = (err.code as string | undefined)?.toLowerCase() || '';
   
   return (
     errorMessage.includes('database') ||
@@ -93,10 +108,11 @@ const isDatabaseError = (error) => {
 /**
  * Sprawdza czy błąd jest związany z zewnętrznym API (np. FireSnow)
  */
-const isExternalApiError = (error) => {
-  if (!error) return false;
+const isExternalApiError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
   
-  const errorMessage = error.message?.toLowerCase() || '';
+  const err = error as Record<string, unknown>;
+  const errorMessage = (err.message as string | undefined)?.toLowerCase() || '';
   
   return (
     errorMessage.includes('firesnow') ||
@@ -111,14 +127,18 @@ const isExternalApiError = (error) => {
 /**
  * Sprawdza czy błąd jest błędem walidacji
  */
-const isValidationError = (error) => {
-  if (!error) return false;
+const isValidationError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  
+  const err = error as Record<string, unknown>;
+  const errorName = err.name as string | undefined;
+  const errorMessage = (err.message as string | undefined)?.toLowerCase() || '';
   
   return (
-    error.name === 'ValidationError' ||
-    error.name === 'CastError' ||
-    error.message?.toLowerCase().includes('validation') ||
-    error.message?.toLowerCase().includes('invalid')
+    errorName === 'ValidationError' ||
+    errorName === 'CastError' ||
+    errorMessage.includes('validation') ||
+    errorMessage.includes('invalid')
   );
 };
 
@@ -126,7 +146,7 @@ const isValidationError = (error) => {
  * Global Error Handler Middleware
  * 
  * Użycie w Express:
- * ```javascript
+ * ```typescript
  * import errorHandler from './middleware/errorHandler.js';
  * 
  * // ... routes ...
@@ -136,7 +156,7 @@ const isValidationError = (error) => {
  * ```
  * 
  * W kontrolerach, przekaż błąd do next():
- * ```javascript
+ * ```typescript
  * try {
  *   // kod
  * } catch (error) {
@@ -144,20 +164,28 @@ const isValidationError = (error) => {
  * }
  * ```
  */
-const errorHandler = (err, req, res, next) => {
-  // src/server/middleware/errorHandler.js: Przechwycono błąd w error handler middleware
+const errorHandler = (
+  err: unknown,
+  req: Request,
+  res: Response,
+  next: NextFunction
+): void => {
+  // src/server/middleware/errorHandler.ts: Przechwycono błąd w error handler middleware
   
   // Jeśli odpowiedź została już wysłana, deleguj do domyślnego Express error handlera
   if (res.headersSent) {
-    // src/server/middleware/errorHandler.js: Odpowiedź już wysłana, delegowanie do domyślnego handlera
+    // src/server/middleware/errorHandler.ts: Odpowiedź już wysłana, delegowanie do domyślnego handlera
     return next(err);
   }
 
+  // Konwertuj błąd na AppError
+  const error = err as AppError;
+
   // Określ kod statusu HTTP
-  const statusCode = err.statusCode || err.status || 500;
+  const statusCode = error.statusCode || error.status || 500;
 
   // Określ typ błędu i kod błędu aplikacji
-  let errorCode = err.code || ERROR_CODES.INTERNAL_SERVER_ERROR;
+  let errorCode: ErrorCode = (error.code as ErrorCode) || ERROR_CODES.INTERNAL_SERVER_ERROR;
   
   if (isDatabaseError(err)) {
     errorCode = ERROR_CODES.DATABASE_ERROR;
@@ -176,30 +204,30 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Przyjazny komunikat dla użytkownika
-  const userMessage = getUserFriendlyMessage(err, statusCode);
+  const userMessage = getUserFriendlyMessage(error, statusCode);
 
   // Szczegóły błędu (tylko w development)
-  const details = process.env.NODE_ENV === 'development' ? {
-    message: err.message,
-    stack: err.stack,
-    name: err.name,
-    ...(err.details && { details: err.details }),
+  const details: Record<string, unknown> | undefined = process.env.NODE_ENV === 'development' ? {
+    message: error.message,
+    stack: error.stack,
+    name: error.name,
+    ...(error.details ? { details: error.details } : {}),
   } : undefined;
 
   // Logowanie błędu
-  const logContext = {
+  const logContext: Record<string, unknown> = {
     method: req.method,
     url: req.url,
     statusCode,
     errorCode,
-    error: err.message,
-    stack: err.stack,
+    error: error.message,
+    stack: error.stack,
     body: req.body,
     query: req.query,
     params: req.params,
   };
 
-  // src/server/middleware/errorHandler.js: Logowanie błędu z kontekstem
+  // src/server/middleware/errorHandler.ts: Logowanie błędu z kontekstem
   if (statusCode >= 500) {
     logger.error(`API Error: ${req.method} ${req.url}`, logContext);
   } else {
@@ -207,13 +235,25 @@ const errorHandler = (err, req, res, next) => {
   }
 
   // Standaryzowany format odpowiedzi
-  const errorResponse = {
-    success: false,
+  const errorResponse: {
+    success: false;
     error: {
-      message: userMessage,
-      code: errorCode,
-      ...(details && { details }),
-    },
+      message: string;
+      code: ErrorCode;
+      details?: unknown;
+    };
+  } = {
+    success: false,
+    error: details
+      ? {
+          message: userMessage,
+          code: errorCode,
+          details,
+        }
+      : {
+          message: userMessage,
+          code: errorCode,
+        },
   };
 
   // Zwróć odpowiedź

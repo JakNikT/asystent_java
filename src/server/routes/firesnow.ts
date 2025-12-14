@@ -1,3 +1,7 @@
+/**
+ * src/server/routes/firesnow.ts: Route'y dla FireSnow API
+ */
+
 import express from 'express';
 import { fireSnowController } from '../controllers/fireSnowController.js';
 

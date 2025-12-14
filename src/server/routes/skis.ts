@@ -1,3 +1,7 @@
+/**
+ * src/server/routes/skis.ts: Route'y dla sprzętu narciarskiego
+ */
+
 import express from 'express';
 import { equipmentController } from '../controllers/equipmentController.js';
 

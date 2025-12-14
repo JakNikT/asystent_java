@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, Suspense, lazy } from 'react';
 import { CSVParser } from '../../utils/csvParser';
 import { SkiDataService } from '../../services/skiDataService';
 import { SkiMatchingServiceV2 } from '../../services/skiMatchingServiceV2';
@@ -18,9 +18,17 @@ import {
 import { saveSearchHistory, saveAllTabs, loadAllTabs } from '../../utils/localStorage';
 import { DetailedCompatibility } from '../DetailedCompatibility';
 import { SkiStyleBadge } from '../SkiStyleBadge';
-import { BrowseSkisComponent } from '../BrowseSkisComponent';
-import { ReservationsView } from '../ReservationsView';
-import { HistoryView } from '../HistoryView';
+// src/components/dashboard/Dashboard.tsx: Lazy loading dla dużych komponentów w celu optymalizacji rozmiaru chunków
+// Konwertujemy named exports na default exports dla React.lazy
+const BrowseSkisComponent = lazy(() => 
+  import('../BrowseSkisComponent').then(module => ({ default: module.BrowseSkisComponent }))
+);
+const ReservationsView = lazy(() => 
+  import('../ReservationsView').then(module => ({ default: module.ReservationsView }))
+);
+const HistoryView = lazy(() => 
+  import('../HistoryView').then(module => ({ default: module.HistoryView }))
+);
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../../types/ski.types';
 import type { FormData, TabData, AppMode, FilterKey } from '../../types/dashboard.types';
 import PasswordModal from '../PasswordModal';
@@ -1740,52 +1748,76 @@ const Dashboard: React.FC = () => {
       {/* Renderowanie komponentu przeglądania */}
       {appMode === 'browse' && (
         <div className="fixed inset-0 bg-background z-50 overflow-auto">
-          <BrowseSkisComponent
-            allSkis={skisDatabase}
-            browseCriteria={{
-              wzrost: formData.height.value ? parseInt(formData.height.value) : undefined,
-              waga: formData.weight.value ? parseInt(formData.weight.value) : undefined,
-              poziom: formData.level ? parseInt(formData.level) : undefined,
-              plec: formData.gender ? (formData.gender.toUpperCase() as 'M' | 'K' | 'W') : undefined,
-              dateFrom: parseDate(formData.dateFrom),
-              dateTo: parseDate(formData.dateTo)
-            }}
-            onBack={handleBackToSearch}
-            initialFilter={computedInitialFilter}
-            tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
-            activeTabId={activeTabId}
-            onTabChange={(tabId) => setActiveTabId(tabId)}
-            onAddTab={addNewTab}
-            onRemoveTab={removeTab}
-            onRefreshData={loadDatabase}
-            isEmployeeMode={isEmployeeMode}
-            onCriteriaChange={handleBrowseCriteriaChange}
-            onFilterSearchChange={handleFilterSearchChange}
-            filterSearchStates={activeTab.filterSearchStates}
-            hasSelectedGroup={hasSelectedGroup}
-            onGroupSelected={() => setHasSelectedGroup(true)}
-            formData={formData}
-            formErrors={formErrors}
-            onDateChange={handleDateChange}
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <span className="text-white text-xl font-black font-['Inter'] italic">
+                ⏳ Ładowanie...
+              </span>
+            </div>
+          }>
+            <BrowseSkisComponent
+              allSkis={skisDatabase}
+              browseCriteria={{
+                wzrost: formData.height.value ? parseInt(formData.height.value) : undefined,
+                waga: formData.weight.value ? parseInt(formData.weight.value) : undefined,
+                poziom: formData.level ? parseInt(formData.level) : undefined,
+                plec: formData.gender ? (formData.gender.toUpperCase() as 'M' | 'K' | 'W') : undefined,
+                dateFrom: parseDate(formData.dateFrom),
+                dateTo: parseDate(formData.dateTo)
+              }}
+              onBack={handleBackToSearch}
+              initialFilter={computedInitialFilter}
+              tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
+              activeTabId={activeTabId}
+              onTabChange={(tabId) => setActiveTabId(tabId)}
+              onAddTab={addNewTab}
+              onRemoveTab={removeTab}
+              onRefreshData={loadDatabase}
+              isEmployeeMode={isEmployeeMode}
+              onCriteriaChange={handleBrowseCriteriaChange}
+              onFilterSearchChange={handleFilterSearchChange}
+              filterSearchStates={activeTab.filterSearchStates}
+              hasSelectedGroup={hasSelectedGroup}
+              onGroupSelected={() => setHasSelectedGroup(true)}
+              formData={formData}
+              formErrors={formErrors}
+              onDateChange={handleDateChange}
+            />
+          </Suspense>
         </div>
       )}
 
       {/* Renderowanie widoku rezerwacji */}
       {appMode === 'reservations' && (
         <div className="fixed inset-0 bg-background z-50 overflow-auto">
-          <ReservationsView 
-            onBackToSearch={() => setAppMode('search')}
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <span className="text-white text-xl font-black font-['Inter'] italic">
+                ⏳ Ładowanie rezerwacji...
+              </span>
+            </div>
+          }>
+            <ReservationsView 
+              onBackToSearch={() => setAppMode('search')}
+            />
+          </Suspense>
         </div>
       )}
 
       {/* Renderowanie widoku historii */}
       {appMode === 'history' && (
         <div className="fixed inset-0 bg-background z-50 overflow-auto">
-          <HistoryView 
-            onBack={() => setAppMode('search')}
-          />
+          <Suspense fallback={
+            <div className="flex items-center justify-center h-full">
+              <span className="text-white text-xl font-black font-['Inter'] italic">
+                ⏳ Ładowanie historii...
+              </span>
+            </div>
+          }>
+            <HistoryView 
+              onBack={() => setAppMode('search')}
+            />
+          </Suspense>
         </div>
       )}
 

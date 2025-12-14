@@ -1,5 +1,5 @@
 /**
- * src/hooks/useToast.ts: Toast Manager - Context API i Hook
+ * src/hooks/useToast.tsx: Toast Manager - Context API i Hook
  * Centralizuje wyświetlanie powiadomień w aplikacji
  * 
  * Funkcjonalności:
@@ -12,7 +12,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { Toast, ToastProps } from '../components/Toast';
+import { Toast } from '../components/Toast';
 import { createLogger } from '../utils/logger';
 
 const logger = createLogger('ToastManager');

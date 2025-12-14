@@ -83,24 +83,27 @@
 
 ### 4. TODO/FIXME - ŚREDNI PRIORYTET
 
-- [ ] **Zrealizować lub usunąć TODO w kodzie**
-  - [ ] `src/services/reservationService.ts:507` - Dodać logikę dla anulowanych rezerwacji
-  - [ ] `src/services/reservationService.ts:558` - Implementuj logikę sprawdzania konkretnej sztuki
-  - [ ] `src/services/reservationService.ts:604` - Implementuj tworzenie nowej rezerwacji
-  - [ ] `src/services/reservationService.ts:619` - Implementuj aktualizację rezerwacji
-  - [ ] `src/services/reservationService.ts:633` - Implementuj usuwanie rezerwacji
-  - [ ] Sprawdzić czy wszystkie TODO są aktualne
+- [x] **Zrealizować lub usunąć TODO w kodzie** ✅ CZĘŚCIOWO
+  - [ ] `src/services/reservationService.ts:507` - Dodać logikę dla anulowanych rezerwacji (NISKI PRIORYTET - wymaga określenia jak identyfikować anulowane rezerwacje)
+  - [x] `src/services/reservationService.ts:558` - Implementuj logikę sprawdzania konkretnej sztuki ✅ USUNIĘTE (martwy kod - funkcja nieużywana, alternatywa w SkiMatchingServiceV2)
+  - [x] `src/services/reservationService.ts:604` - Implementuj tworzenie nowej rezerwacji ✅ USUNIĘTE (martwy kod - frontend używa ReservationApiClient)
+  - [x] `src/services/reservationService.ts:619` - Implementuj aktualizację rezerwacji ✅ USUNIĘTE (martwy kod - frontend używa ReservationApiClient)
+  - [x] `src/services/reservationService.ts:633` - Implementuj usuwanie rezerwacji ✅ USUNIĘTE (martwy kod - frontend używa ReservationApiClient)
+  - [x] Sprawdzić czy wszystkie TODO są aktualne ✅
 
 ---
 
 ### 5. TypeScript - NISKI PRIORYTET
 
-- [ ] **Migracja backendu na TypeScript (opcjonalnie)**
-  - [ ] Migrować `src/server/config/*.js` → `*.ts`
-  - [ ] Migrować `src/server/controllers/*.js` → `*.ts`
-  - [ ] Migrować `src/server/services/*.js` → `*.ts`
-  - [ ] Migrować `src/server/routes/*.js` → `*.ts`
-  - [ ] Dodać typy dla wszystkich funkcji
+- [x] **Migracja backendu na TypeScript (opcjonalnie)** ✅
+  - [x] Migrować `src/server/config/*.js` → `*.ts` ✅
+  - [x] Migrować `src/server/controllers/*.js` → `*.ts` ✅
+  - [x] Migrować `src/server/services/*.js` → `*.ts` ✅
+  - [x] Migrować `src/server/routes/*.js` → `*.ts` ✅
+  - [x] Dodać typy dla wszystkich funkcji ✅
+  - [x] Utworzyć typy wspólne w `src/server/types/` ✅
+  - [x] Skonfigurować `tsconfig.server.json` ✅
+  - [x] Zaktualizować `package.json` z skryptami TypeScript ✅
 
 ---
 

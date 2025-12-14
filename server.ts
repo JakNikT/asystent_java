@@ -1,5 +1,5 @@
 /**
- * Serwer Express.js dla aplikacji asystenta nart
+ * server.ts: Serwer Express.js dla aplikacji asystenta nart
  * Serwuje aplikację React i udostępnia API REST dla rezerwacji
  */
 
