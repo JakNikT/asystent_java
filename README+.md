@@ -1,8 +1,8 @@
 # 🎿 Asystent Doboru Nart - Kompleksowa Dokumentacja Projektu
 
-**Wersja dokumentu:** 1.0  
+**Wersja dokumentu:** 1.1  
 **Data utworzenia:** 2025-11-01  
-**Ostatnia aktualizacja:** 2025-11-01  
+**Ostatnia aktualizacja:** 2025-01-XX  
 **Wersja aplikacji:** 6.0+
 
 ---
@@ -47,7 +47,7 @@
 |---------|---------|
 | **Komponenty React** | 12+ komponentów |
 | **Serwisy TypeScript** | 5 serwisów |
-| **Główny komponent** | AnimaComponent.tsx: **1,944 linii** |
+| **Główny komponent** | Dashboard.tsx: **~1,802 linii** |
 | **Główny algorytm** | SkiMatchingServiceV2.ts: **1,851 linii** |
 | **Starsza wersja algorytmu** | SkiMatchingService.ts: **875 linii** |
 | **Pliki TypeScript/TSX** | 21 plików |
@@ -60,12 +60,42 @@
 asystent_java/
 ├── src/
 │   ├── components/          # 12+ komponentów React
-│   │   ├── AnimaComponent.tsx (1,944 linii)
+│   │   ├── dashboard/
+│   │   │   ├── Dashboard.tsx (~1,802 linii)
+│   │   │   ├── DashboardHeader.tsx
+│   │   │   ├── SkierForm.tsx
+│   │   │   └── TabNavigation.tsx
 │   │   ├── BrowseSkisComponent.tsx
 │   │   ├── ReservationsView.tsx
 │   │   ├── DetailedCompatibility.tsx
 │   │   ├── SkiEditModal.tsx
 │   │   └── ... (7+ innych)
+│   ├── server/              # Backend Express.js
+│   │   ├── app.js           # Główna aplikacja Express
+│   │   ├── config/          # Konfiguracja
+│   │   │   ├── env.js       # Zmienne środowiskowe
+│   │   │   ├── database.js  # Połączenia MySQL
+│   │   │   └── logger.js    # System logowania
+│   │   ├── controllers/     # Kontrolery API
+│   │   │   ├── reservationController.js
+│   │   │   ├── rentalController.js
+│   │   │   ├── equipmentController.js
+│   │   │   ├── fireSnowController.js
+│   │   │   └── historyController.js
+│   │   ├── services/        # Logika biznesowa
+│   │   │   ├── reservationService.js
+│   │   │   ├── rentalService.js
+│   │   │   ├── equipmentService.js
+│   │   │   ├── fireSnowService.js
+│   │   │   └── historyService.js
+│   │   ├── routes/         # Routing API
+│   │   │   ├── index.js
+│   │   │   ├── reservations.js
+│   │   │   ├── rentals.js
+│   │   │   ├── skis.js
+│   │   │   ├── firesnow.js
+│   │   │   └── history.js
+│   │   └── utils/           # Narzędzia pomocnicze
 │   ├── services/            # 5 serwisów biznesowych
 │   │   ├── skiMatchingServiceV2.ts (1,851 linii)
 │   │   ├── skiMatchingService.ts (875 linii)
@@ -81,9 +111,9 @@ asystent_java/
 │   └── App.tsx
 ├── FireSnowBridge/          # Integracja z FireSnow
 │   ├── src/
-│   │   └── FireSnowBridge.java (900+ linii)
+│   │   └── FireSnowBridge.java (1,136+ linii)
 │   └── README.md
-├── server.js                # Backend Express.js
+├── server.js                # Entry point backendu
 ├── docs/                    # Dokumentacja techniczna
 └── public/data/             # Baza danych CSV
 ```
@@ -141,16 +171,22 @@ System wykorzystuje zaawansowany algorytm dopasowywania, który analizuje:
 
 ### 4. 🔌 Integracja z FireSnow
 
-- **FireSnow Bridge API** - Java REST API (900+ linii kodu)
+- **FireSnow Bridge API** - Java REST API (1,136+ linii kodu)
 - **Bezpieczny dostęp READ-ONLY** do bazy FireSnow
 - **Automatyczne pobieranie** rezerwacji i wypożyczeń
 - **Connection pooling** z TTL (Time To Live)
-- **3 endpointy REST:**
+- **Endpointy REST API:**
   - `GET /api/health` - status API
-  - `GET /api/rezerwacje/aktywne` - aktywne rezerwacje
+  - `GET /api/firesnow/status` - status FireSnow Bridge
+  - `POST /api/firesnow/refresh` - odśwież cache
+  - `GET /api/reservations` - wszystkie rezerwacje (GET, POST, PUT, DELETE)
+  - `GET /api/wypozyczenia/aktualne` - aktywne wypożyczenia
   - `GET /api/wypozyczenia/przeszle` - przeszłe wypożyczenia
+  - `GET /api/skis` - zarządzanie sprzętem (GET, POST, PUT)
+  - `GET /api/historia/klienci/wyszukaj` - wyszukiwanie klientów
+  - `GET /api/dostepnosc/okres` - dostępność w okresie
 
-### 5. 👤 Tryb pracownika vs klienta
+### 5. �� Tryb pracownika vs klienta
 
 **Tryb pracownika:**
 - Pełny dostęp do wszystkich funkcji
@@ -191,7 +227,7 @@ Backend:
 └── CORS 2.8.5           # Cross-origin
 
 Integracja:
-├── Java 8                # FireSnow Bridge
+├── Java 21               # FireSnow Bridge (wymagana)
 ├── HSQLDB                # Połączenie z FireSnow
 └── REST API              # Komunikacja
 ```
@@ -207,12 +243,12 @@ Integracja:
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 └─────────────────────────────────────────────────────────────┘
                           │
-                          ↓ HTTP
+                          ↓ HTTP (Port 5002 - Vite Dev Server)
 ┌─────────────────────────────────────────────────────────────┐
-│              EXPRESS.JS BACKEND (server.js)                  │
+│         EXPRESS.JS BACKEND (Port 5001)                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
-│  │   Routes     │→ │   Proxy      │→ │  CSV Parser  │      │
-│  │   /api/*     │  │   FireSnow   │  │   (local)    │      │
+│  │   Routes     │→ │  Controllers │→ │   Services   │      │
+│  │   /api/*     │  │   & Proxy    │  │   & MySQL    │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 └─────────────────────────────────────────────────────────────┘
                           │
@@ -221,7 +257,7 @@ Integracja:
 │         FIRESNOW BRIDGE API (Java REST API)                 │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐      │
 │  │  HTTP Server │→ │  Connection  │→ │   HSQLDB     │      │
-│  │  (Port 8080) │  │    Pooling   │  │   FireSnow   │      │
+│  │  (Port 8081) │  │    Pooling   │  │   FireSnow   │      │
 │  └──────────────┘  └──────────────┘  └──────────────┘      │
 └─────────────────────────────────────────────────────────────┘
                           │
@@ -245,16 +281,17 @@ Aplikacja wykorzystuje **React Hooks** do zarządzania stanem:
 ### Struktura komponentów
 
 ```
-AnimaComponent (główny)
-├── Formularz wyszukiwania
+Dashboard (główny, ~1,802 linii)
+├── DashboardHeader
+│   ├── Logo i filtry
+│   └── Kontrolki pracownika
+├── SkierForm
 │   ├── Pola dat
 │   ├── Wzrost/Waga
 │   ├── Poziom/Płeć
 │   └── Style jazdy
-├── Wyniki wyszukiwania
-│   ├── Kategorie wyników
-│   ├── Szczegóły dopasowania
-│   └── Wskaźniki dostępności
+├── TabNavigation
+│   └── System kart (wielu użytkowników)
 ├── BrowseSkisComponent (tryb przeglądania)
 │   ├── Tabela sprzętu
 │   ├── Filtry
@@ -510,7 +547,7 @@ Każde pole jest walidowane podczas wprowadzania:
 
 ### 6.1 Główne komponenty React
 
-#### AnimaComponent.tsx (1,944 linii)
+#### Dashboard.tsx (~1,802 linii)
 
 **Główny komponent aplikacji** - orchestrator całej aplikacji.
 
@@ -518,7 +555,7 @@ Każde pole jest walidowane podczas wprowadzania:
 - Zarządzanie systemem kart (wielu użytkowników)
 - Formularz wyszukiwania z walidacją
 - Wyświetlanie wyników wyszukiwania
-- Przełączanie między trybami (wyszukiwanie/przeglądanie/rezerwacje)
+- Przełączanie między trybami (wyszukiwanie/przeglądanie/rezerwacje/historia)
 - Tryb pracownika vs klienta
 - Automatyczne zapisywanie stanu w localStorage
 
@@ -527,6 +564,12 @@ Każde pole jest walidowane podczas wprowadzania:
 - `useEffect` - automatyczne wyszukiwanie, ładowanie danych
 - `useRef` - referencje do pól formularza
 - `useMemo` - memoizacja wyników wyszukiwania
+
+**Struktura komponentu:**
+- `DashboardHeader` - nagłówek z logo i kontrolkami
+- `SkierForm` - formularz narciarza
+- `TabNavigation` - system kart dla wielu użytkowników
+- `EmployeeControls` - kontrolki dla trybu pracownika
 
 #### BrowseSkisComponent.tsx
 
@@ -636,8 +679,8 @@ Każde pole jest walidowane podczas wprowadzania:
 
 #### Architektura
 
-**Język:** Java 8 (kompatybilny z JRE z FireSnow)  
-**Rozmiar:** 900+ linii kodu  
+**Język:** Java 21 (wymagana wersja)  
+**Rozmiar:** 1,136+ linii kodu  
 **Typ:** REST API (READ-ONLY)
 
 **Komponenty:**
@@ -651,17 +694,47 @@ Każde pole jest walidowane podczas wprowadzania:
    - Status API i połączenia z bazą
    - Odpowiedź: `{ "status": "ok", "database": "connected" }`
 
-2. **GET /api/rezerwacje/aktywne**
-   - Lista aktywnych rezerwacji (data_do > teraz)
+2. **GET /api/firesnow/status**
+   - Status FireSnow Bridge
+   - Odpowiedź: `{ "status": "ok", "message": "FireSnow Bridge is running" }`
+
+3. **POST /api/firesnow/refresh**
+   - Odśwież cache FireSnow Bridge
+   - Odpowiedź: `{ "message": "Cache refreshed" }`
+
+4. **GET /api/reservations**
+   - Lista wszystkich rezerwacji (GET, POST, PUT, DELETE)
    - Odpowiedź: Tablica obiektów rezerwacji
 
-3. **GET /api/wypozyczenia/aktywne**
+5. **GET /api/wypozyczenia/aktualne**
    - Lista aktywnych wypożyczeń (STOPTIME = 0)
    - Odpowiedź: Tablica obiektów wypożyczeń
 
-4. **GET /api/wypozyczenia/przeszle**
+6. **GET /api/wypozyczenia/przeszle**
    - Lista przeszłych wypożyczeń (STOPTIME ≠ 0)
    - Odpowiedź: Tablica obiektów wypożyczeń
+
+7. **GET /api/skis**
+   - Zarządzanie sprzętem (GET, POST, PUT)
+   - Odpowiedź: Tablica obiektów sprzętu
+
+8. **GET /api/historia/klienci/wyszukaj**
+   - Wyszukiwanie klientów
+   - Odpowiedź: Tablica obiektów klientów
+
+9. **GET /api/dostepnosc/okres**
+   - Dostępność w okresie
+   - Odpowiedź: Obiekt z danymi dostępności
+
+#### Porty serwerów
+
+- **Vite Dev Server:** Port 5002 (frontend development)
+- **Express Backend:** Port 5001 (API)
+- **FireSnow Bridge:** Port 8081 (Java REST API)
+
+**Uruchamianie:**
+- Użyj `start_jedno_okno.bat` aby uruchomić wszystkie serwisy jednocześnie
+- Aplikacja dostępna pod adresem: `http://localhost:5002`
 
 #### Bezpieczeństwo
 
@@ -828,7 +901,7 @@ useEffect(() => {
 
 #### FireSnow Bridge API
 
-- **Java REST API** - 900+ linii kodu
+- **Java REST API** - 1,136+ linii kodu
 - **Connection pooling** z TTL
 - **READ-ONLY** - bezpieczny dostęp
 - **Automatyczne odświeżanie** danych
@@ -924,7 +997,7 @@ useEffect(() => {
 
 | Technologia | Wersja | Zastosowanie |
 |-------------|--------|--------------|
-| **Java** | 8 | FireSnow Bridge |
+| **Java** | 21 | FireSnow Bridge |
 | **HSQLDB** | - | Połączenie z FireSnow |
 | **REST API** | - | Komunikacja |
 
@@ -951,12 +1024,13 @@ useEffect(() => {
 
 - **13+ miesięcy** intensywnego rozwoju
 - **1,851 linii** w głównym algorytmie
-- **1,944 linie** w głównym komponencie
+- **~1,802 linie** w głównym komponencie (Dashboard.tsx)
 - **21 plików** TypeScript/TSX
 - **62+ definicji** typów/interfejsów
 - **12+ komponentów** React
 - **5 serwisów** biznesowych
-- **900+ linii** Java (FireSnow Bridge)
+- **1,136+ linii** Java (FireSnow Bridge)
+- **Pełna architektura backendu** (controllers, services, routes)
 
 ### Zaawansowanie techniczne
 
