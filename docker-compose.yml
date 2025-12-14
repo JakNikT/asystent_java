@@ -22,7 +22,7 @@ services:
       - USE_FIRESNOW_API=${USE_FIRESNOW_API:-true}
       - DB_HOST=${DB_HOST:-host.docker.internal}
       - DB_USER=${DB_USER:-root}
-      - DB_PASSWORD=${DB_PASSWORD:-Mypass123!}
+      - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME:-sprzet_narciarski}
       - DB_HISTORY_NAME=${DB_HISTORY_NAME:-history}
       - LOG_LEVEL=${LOG_LEVEL:-info}
