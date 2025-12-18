@@ -217,3 +217,6 @@ export function mapFireSnowToSkiData(fireSnowItem: FireSnowEquipment): Equipment
         KOD: fireSnowItem.kod || fireSnowItem.KOD || ''
     };
 }
+
+
+

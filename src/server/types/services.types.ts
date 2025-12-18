@@ -177,3 +177,6 @@ export interface BulkUpdateData {
   ids: string[];
   updates: Partial<UpdateEquipmentData>;
 }
+
+
+

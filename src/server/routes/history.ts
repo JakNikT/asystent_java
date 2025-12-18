@@ -12,3 +12,6 @@ router.get('/klient/:id/daty', historyController.getClientDates);
 router.get('/klient/:id/sprzet', historyController.getClientEquipment);
 
 export default router;
+
+
+

@@ -13,3 +13,6 @@ router.put('/bulk', equipmentController.bulkUpdate); // Must be before /:id
 router.put('/:id', equipmentController.update);
 
 export default router;
+
+
+
