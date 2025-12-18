@@ -11,3 +11,6 @@ router.get('/aktualne', rentalController.getActive);
 router.get('/przeszle', rentalController.getPast);
 
 export default router;
+
+
+

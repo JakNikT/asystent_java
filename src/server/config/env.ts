@@ -60,3 +60,6 @@ export const config = {
         skisCsv: path.join(rootDir, 'public', 'data', 'NOWA_BAZA_KOMPLETNA.csv')
     }
 } as const;
+
+
+

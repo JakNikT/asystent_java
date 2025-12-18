@@ -11,3 +11,6 @@ router.get('/status', fireSnowController.checkHealth);
 router.post('/refresh', fireSnowController.refreshCache);
 
 export default router;
+
+
+
