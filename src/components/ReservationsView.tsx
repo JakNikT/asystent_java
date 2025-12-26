@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
+import { EquipmentHandoutView } from './EquipmentHandoutView';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
 const logger = createLogger('ReservationsView');
@@ -67,10 +68,19 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past'>('all');
+  // src/components/ReservationsView.tsx: Domyślny widok zmieniony na 'reservations' ponieważ przycisk "Wszystko" jest wyłączony
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout'>('reservations');
+  // src/components/ReservationsView.tsx: Stany dla filtrowania po dacie - wyniki pokazują się dopiero po wpisaniu daty od
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  // src/components/ReservationsView.tsx: Stany dla debounce - wyszukiwanie rozpocznie się po zakończeniu wpisywania daty
+  const [dateFromFilter, setDateFromFilter] = useState<string>('');
+  const [dateToFilter, setDateToFilter] = useState<string>('');
+  const dateDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
-    const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past' = viewType) => {
+  // src/components/ReservationsView.tsx: Nie akceptuje typu 'handout' - ten widok ma własne ładowanie
+  const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past') => {
       // Dla widoku "przeszłe" - wczytuj tylko jeśli jest co najmniej 3 znaki w wyszukiwarce
       if (type === 'past' && filterText.trim().length < 3) {
         logger.debug('ReservationsView: Widok "przeszłe" wymaga co najmniej 3 znaków w wyszukiwarce');
@@ -176,9 +186,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // USUNIĘTO: Callbacki konwersji - ReservationApiClient obsługuje to po stronie serwera
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
-  // Wczytaj dane gdy zmienia się typ widoku
+  // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout" - ten widok ma własne ładowanie)
   useEffect(() => {
-    loadReservations(viewType);
+    if (viewType !== 'handout') {
+      loadReservations(viewType);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewType]);
 
   // Dla widoku "przeszłe" - wczytuj dane również gdy zmienia się filterText (tylko jeśli >= 3 znaki)
@@ -191,6 +204,28 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filterText, viewType]);
+
+  // src/components/ReservationsView.tsx: Debounce dla pól daty - wyszukiwanie rozpocznie się 500ms po zakończeniu wpisywania
+  useEffect(() => {
+    // Wyczyść poprzedni timer jeśli istnieje
+    if (dateDebounceRef.current) {
+      clearTimeout(dateDebounceRef.current);
+    }
+    
+    // Ustaw nowy timer - wyszukiwanie rozpocznie się po 500ms od ostatniej zmiany
+    dateDebounceRef.current = setTimeout(() => {
+      setDateFromFilter(dateFrom);
+      setDateToFilter(dateTo);
+      logger.debug('ReservationsView: Zastosowano filtry daty (debounce)', { dateFrom, dateTo });
+    }, 500);
+    
+    // Cleanup - wyczyść timer przy unmount lub zmianie wartości
+    return () => {
+      if (dateDebounceRef.current) {
+        clearTimeout(dateDebounceRef.current);
+      }
+    };
+  }, [dateFrom, dateTo]);
 
   // Helper function to determine equipment category based on parent_group_id
   const getEquipmentCategory = (parentGroupId: number | null | undefined, sprzet?: string): string => {
@@ -381,6 +416,37 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
   // Filter grouped reservations
   const filteredGroupedReservations = groupReservations().filter(group => {
+    // src/components/ReservationsView.tsx: Filtrowanie po dacie od - wyniki pokazują się dopiero po wpisaniu daty od (używamy dateFromFilter z debounce)
+    // Jeśli nie ma daty od, nie pokazuj żadnych wyników
+    if (!dateFromFilter) {
+      return false;
+    }
+    
+    // src/components/ReservationsView.tsx: Filtrowanie po dacie od - jeśli tylko data od, pokaż tylko umowy z tego dnia
+    // Jeśli jest data do, pokaż umowy z zakresu [dateFrom, dateTo]
+    const reservationDate = new Date(group.od);
+    const fromDate = new Date(dateFromFilter);
+    fromDate.setHours(0, 0, 0, 0); // Ustaw na początek dnia
+    const fromDateEnd = new Date(dateFromFilter);
+    fromDateEnd.setHours(23, 59, 59, 999); // Ustaw na koniec dnia
+    
+    // Jeśli podano datę do, sprawdź zakres dat
+    if (dateToFilter) {
+      const toDate = new Date(dateToFilter);
+      toDate.setHours(23, 59, 59, 999); // Ustaw na koniec dnia
+      
+      // Data od rezerwacji musi być w zakresie [dateFrom, dateTo]
+      if (reservationDate < fromDate || reservationDate > toDate) {
+        return false;
+      }
+    } else {
+      // Jeśli nie ma daty do, pokaż TYLKO umowy z dokładnie tego dnia (dateFrom)
+      reservationDate.setHours(0, 0, 0, 0);
+      if (reservationDate.getTime() !== fromDate.getTime()) {
+        return false;
+      }
+    }
+    
     // Filtruj według checkbox PROMOTOR
     if (showPromotorOnly && group.typumowy !== 'PROMOTOR') {
       return false;
@@ -506,7 +572,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             <div className="w-full lg:w-auto">
               {/* Przyciski filtrowania - zastępują napis "Rezerwacje" */}
               <div className="flex flex-wrap gap-3 mb-4">
-                <button
+                {/* Przycisk "Wszystko" wyłączony na żądanie użytkownika */}
+                {/* <button
                   onClick={() => setViewType('all')}
                   className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
                     viewType === 'all'
@@ -515,6 +582,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   }`}
                 >
                   📋 Wszystko
+                </button> */}
+                <button
+                  onClick={() => setViewType('handout')}
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
+                    viewType === 'handout'
+                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  }`}
+                >
+                  📦 Wydania
                 </button>
                 <button
                   onClick={() => setViewType('reservations')}
@@ -547,19 +624,84 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   🕒 Przeszłe
                 </button>
               </div>
-              <div className="space-y-1">
-                <p className="text-white/70 text-sm lg:text-base">
-                  📋 Liczba pozycji: <strong className="text-white">{totalReservations}</strong>
-                  {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
-                </p>
-                <p className="text-white/70 text-sm lg:text-base">
-                  👥 Liczba unikalnych klientów: <strong className="text-white">{uniqueClients}</strong> 
-                  <span className="text-xs ml-2">(porównaj z FireFnow)</span>
-                </p>
-                <p className="text-white/60 text-xs lg:text-sm mt-1">
-                  🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
-                </p>
-              </div>
+              
+              {/* Pola do wpisywania daty od i do - ukryj dla widoku "Wydania" */}
+              {viewType !== 'handout' && (
+                <>
+                  <div className="flex flex-wrap items-center gap-4 mb-4 bg-[#0f2744]/30 px-4 py-3 rounded-lg border border-white/5">
+                    <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 whitespace-nowrap">
+                      📅 Data od:
+                    </label>
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      className="px-4 py-2 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
+                    />
+                    <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 whitespace-nowrap">
+                      📅 Data do:
+                    </label>
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      className="px-4 py-2 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
+                    />
+                    {(dateFrom || dateTo) && (
+                      <button
+                        onClick={() => {
+                          setDateFrom('');
+                          setDateTo('');
+                        }}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 whitespace-nowrap"
+                      >
+                        Wyczyść daty
+                      </button>
+                    )}
+                  </div>
+                  
+                  {/* Komunikat informujący o konieczności wpisania daty */}
+                  {!dateFromFilter && (
+                    <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-3 mb-4">
+                      <p className="text-yellow-200 text-sm font-medium">
+                        ⚠️ Wpisz <strong>datę od</strong>, aby zobaczyć wyniki. Filtrowanie odbywa się po kolumnie "Data od".
+                        <br />
+                        <span className="text-xs opacity-90 mt-1 block">
+                          Tylko data od = umowy z tego dnia | Data od + do = umowy z zakresu dat
+                        </span>
+                      </p>
+                    </div>
+                  )}
+                  {dateFromFilter && !dateToFilter && (
+                    <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-3 mb-4">
+                      <p className="text-blue-200 text-sm font-medium">
+                        ℹ️ Wyświetlane są tylko umowy z dnia <strong>{dateFromFilter}</strong>. Wpisz datę "do", aby zobaczyć umowy z zakresu dat.
+                      </p>
+                    </div>
+                  )}
+                  {dateFrom && !dateFromFilter && (
+                    <div className="bg-gray-600/30 border border-gray-500 rounded-lg p-2 mb-4">
+                      <p className="text-gray-200 text-xs font-medium">
+                        ⏳ Wpisywanie daty... Wyszukiwanie rozpocznie się automatycznie po zakończeniu.
+                      </p>
+                    </div>
+                  )}
+                  
+                  <div className="space-y-1">
+                    <p className="text-white/70 text-sm lg:text-base">
+                      📋 Liczba pozycji: <strong className="text-white">{totalReservations}</strong>
+                      {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
+                    </p>
+                    <p className="text-white/70 text-sm lg:text-base">
+                      👥 Liczba unikalnych klientów: <strong className="text-white">{uniqueClients}</strong> 
+                      <span className="text-xs ml-2">(porównaj z FireFnow)</span>
+                    </p>
+                    <p className="text-white/60 text-xs lg:text-sm mt-1">
+                      🎿 Sprzęt pogrupowany w komplety - kliknij "Rozwiń wszystkie komplety" aby zobaczyć szczegóły
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
             <div className="flex flex-col gap-3 w-full lg:w-auto">
               <button
@@ -571,64 +713,80 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             </div>
           </div>
 
-          {/* Wyszukiwanie - responsywne */}
-          <div className="space-y-3">
-            {/* Wyszukiwarka - responsywna */}
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-              <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90">
-                🔍 Szukaj:
-              </label>
-              <input
-                type="text"
-                value={filterText}
-                onChange={(e) => setFilterText(e.target.value)}
-                placeholder={viewType === 'past' 
-                  ? "Wpisz co najmniej 3 znaki aby wyszukać przeszłe rezerwacje..." 
-                  : "Wpisz klienta, sprzęt lub kod..."}
-                className="flex-1 px-4 py-2 bg-primary text-white placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
-              />
-              {filterText && (
-                <button
-                  onClick={() => setFilterText('')}
-                  className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10"
-                >
-                  Wyczyść
-                </button>
-              )}
-            </div>
-            
-            {/* Komunikat dla widoku "przeszłe" */}
-            {viewType === 'past' && filterText.trim().length < 3 && (
-              <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-4">
-                <p className="text-yellow-200 text-sm font-medium">
-                  ⚠️ Wpisz co najmniej <strong>3 znaki</strong> w wyszukiwarce, aby wczytać przeszłe rezerwacje.
-                  <br />
-                  <span className="text-xs opacity-90 mt-1 block">
-                    To pomaga uniknąć wczytywania zbyt dużej ilości danych na raz.
-                  </span>
-                </p>
-              </div>
-            )}
-            
-            {/* Checkbox PROMOTOR */}
-            <div className="flex items-center gap-3 bg-[#0f2744]/50 px-4 py-2 rounded-lg border border-white/5 w-fit shadow-sm">
-              <label className="flex items-center gap-2 cursor-pointer text-white text-sm font-bold uppercase tracking-wider">
+          {/* Wyszukiwanie - responsywne - ukryj dla widoku "Wydania" */}
+          {viewType !== 'handout' && (
+            <div className="space-y-3">
+              {/* Wyszukiwarka - responsywna */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+                <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90">
+                  🔍 Szukaj:
+                </label>
                 <input
-                  type="checkbox"
-                  checked={showPromotorOnly}
-                  onChange={(e) => setShowPromotorOnly(e.target.checked)}
-                  className="w-4 h-4 cursor-pointer"
+                  type="text"
+                  value={filterText}
+                  onChange={(e) => setFilterText(e.target.value)}
+                  placeholder={viewType === 'past' 
+                    ? "Wpisz co najmniej 3 znaki aby wyszukać przeszłe rezerwacje..." 
+                    : "Wpisz klienta, sprzęt lub kod..."}
+                  className="flex-1 px-4 py-2 bg-primary text-white placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
                 />
-                <span>📋 Pokaż tylko umowy PROMOTOR</span>
-              </label>
+                {filterText && (
+                  <button
+                    onClick={() => setFilterText('')}
+                    className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10"
+                  >
+                    Wyczyść
+                  </button>
+                )}
+              </div>
+              
+              {/* Komunikat dla widoku "przeszłe" */}
+              {viewType === 'past' && filterText.trim().length < 3 && (
+                <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-4">
+                  <p className="text-yellow-200 text-sm font-medium">
+                    ⚠️ Wpisz co najmniej <strong>3 znaki</strong> w wyszukiwarce, aby wczytać przeszłe rezerwacje.
+                    <br />
+                    <span className="text-xs opacity-90 mt-1 block">
+                      To pomaga uniknąć wczytywania zbyt dużej ilości danych na raz.
+                    </span>
+                  </p>
+                </div>
+              )}
+              
+              {/* Checkbox PROMOTOR */}
+              <div className="flex items-center gap-3 bg-[#0f2744]/50 px-4 py-2 rounded-lg border border-white/5 w-fit shadow-sm">
+                <label className="flex items-center gap-2 cursor-pointer text-white text-sm font-bold uppercase tracking-wider">
+                  <input
+                    type="checkbox"
+                    checked={showPromotorOnly}
+                    onChange={(e) => setShowPromotorOnly(e.target.checked)}
+                    className="w-4 h-4 cursor-pointer"
+                  />
+                  <span>📋 Pokaż tylko umowy PROMOTOR</span>
+                </label>
+              </div>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Tabela rezerwacji */}
-        {isLoading ? (
+        {/* Warunkowe renderowanie: Widok wydania lub tabela rezerwacji */}
+        {viewType === 'handout' ? (
+          <EquipmentHandoutView 
+            reservations={reservations}
+            onBack={() => setViewType('reservations')}
+          />
+        ) : (
+          <>
+            {/* Tabela rezerwacji */}
+            {isLoading ? (
           <div className="text-center text-white text-xl py-20">
             Ładowanie rezerwacji...
+          </div>
+        ) : !dateFromFilter ? (
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
+            <span className="text-white text-xl font-medium">
+              📅 Wpisz <strong>datę od</strong>, aby zobaczyć wyniki. Filtrowanie odbywa się po kolumnie "Data od".
+            </span>
           </div>
         ) : viewType === 'past' && filterText.trim().length < 3 ? (
           <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
@@ -639,7 +797,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         ) : sortedGroupedReservations.length === 0 ? (
           <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
             <span className="text-white text-xl font-medium">
-              {filterText ? '😔 Nie znaleziono rezerwacji pasujących do wyszukiwania' : '📋 Brak rezerwacji w systemie'}
+              {filterText ? '😔 Nie znaleziono rezerwacji pasujących do wyszukiwania' : '📋 Brak rezerwacji w wybranym zakresie dat'}
             </span>
           </div>
         ) : (
@@ -792,27 +950,29 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           </div>
         )}
 
-        {/* Statystyki - Podsumowanie */}
-        {!isLoading && totalReservations > 0 && (
-          <div className="mt-6 bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6">
-            <h2 className="text-xl font-bold text-white mb-4">📊 Statystyki</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="bg-[#0f2744]/50 rounded-lg border border-white/5 p-4 shadow-sm">
-                <div className="text-white/70 text-sm font-bold mb-1 uppercase tracking-wider">Łączna liczba rezerwacji</div>
-                <div className="text-white text-3xl font-bold">{totalReservations}</div>
-                <div className="text-white/60 text-xs mt-1">
-                  (ta sama osoba + te same daty = 1 rezerwacja)
+            {/* Statystyki - Podsumowanie */}
+            {!isLoading && totalReservations > 0 && (
+              <div className="mt-6 bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6">
+                <h2 className="text-xl font-bold text-white mb-4">📊 Statystyki</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-[#0f2744]/50 rounded-lg border border-white/5 p-4 shadow-sm">
+                    <div className="text-white/70 text-sm font-bold mb-1 uppercase tracking-wider">Łączna liczba rezerwacji</div>
+                    <div className="text-white text-3xl font-bold">{totalReservations}</div>
+                    <div className="text-white/60 text-xs mt-1">
+                      (ta sama osoba + te same daty = 1 rezerwacja)
+                    </div>
+                  </div>
+                  <div className="bg-[#0f2744]/50 rounded-lg border border-white/5 p-4 shadow-sm">
+                    <div className="text-white/70 text-sm font-bold mb-1 uppercase tracking-wider">Łączna liczba pozycji sprzętu</div>
+                    <div className="text-white text-3xl font-bold">{reservations.length}</div>
+                    <div className="text-white/60 text-xs mt-1">
+                      (wszystkie narty, buty, kijki, akcesoria)
+                    </div>
+                  </div>
                 </div>
               </div>
-              <div className="bg-[#0f2744]/50 rounded-lg border border-white/5 p-4 shadow-sm">
-                <div className="text-white/70 text-sm font-bold mb-1 uppercase tracking-wider">Łączna liczba pozycji sprzętu</div>
-                <div className="text-white text-3xl font-bold">{reservations.length}</div>
-                <div className="text-white/60 text-xs mt-1">
-                  (wszystkie narty, buty, kijki, akcesoria)
-                </div>
-              </div>
-            </div>
-          </div>
+            )}
+          </>
         )}
       </div>
       
