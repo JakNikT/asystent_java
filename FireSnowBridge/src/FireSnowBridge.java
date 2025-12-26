@@ -226,6 +226,7 @@ public class FireSnowBridge {
                     "JOIN ABSTRACTCASHABLEDOCUMENT acd ON acd.ID = afd.ID " +
                     "JOIN ABSTRACTDOCUMENT doc ON doc.ID = acd.ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
+                    "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
                     "ORDER BY rp.BEGINDATE";
                 
                 Statement stmt = conn.createStatement();
@@ -663,6 +664,7 @@ static class DostepnoscOkresHandler implements HttpHandler {
                 "WHERE rp.ENDDATE >= ? " +  // Koniec rezerwacji >= początek bufora
                 "  AND rp.BEGINDATE <= ? " +  // Początek rezerwacji <= koniec bufora
                 "  AND rp.BEGINDATE >= TIMESTAMP '2025-01-01 00:00:00' " +
+                "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
                 "ORDER BY rp.BEGINDATE";
             
             // SQL dla wypożyczeń aktywnych

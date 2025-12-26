@@ -55,6 +55,37 @@ function sortReservationsChronologically(reservations: ReservationData[]): Reser
 }
 
 /**
+ * Sprawdza czy rezerwacja dotyczy nart lub butów narciarskich
+ * Filtruje tylko sprzęt typu NARTY i BUTY (wyklucza kije, kaski, deski, buty snowboardowe, etc.)
+ * 
+ * @param reservation - Rezerwacja do sprawdzenia
+ * @returns true jeśli sprzęt to narty lub buty narciarskie
+ */
+function isSkiOrBoot(reservation: ReservationData): boolean {
+  // src/utils/conflictDetector.ts: Sprawdzanie typu sprzętu na podstawie parent_group_id
+  // Equipment type IDs for skis and boots
+  const SKI_BOOT_PARENT_GROUP_IDS = [
+    82293, // NARTY TOP
+    82412, // NARTY VIP  
+    82758, // NARTY JUNIOR
+    82738, // BUTY DOROSLE
+    82827  // BUTY JUNIOR
+  ];
+  
+  // Check parent_group_id if available (preferred method)
+  if (reservation.parent_group_id) {
+    return SKI_BOOT_PARENT_GROUP_IDS.includes(reservation.parent_group_id);
+  }
+  
+  // Fallback: check equipment name if parent_group_id is not available
+  const sprzet = reservation.sprzet.toLowerCase();
+  const isSki = sprzet.includes('narty');
+  const isBoot = sprzet.includes('buty') && !sprzet.includes('snowboard') && !sprzet.includes('sb');
+  
+  return isSki || isBoot;
+}
+
+/**
  * Wykrywa konflikty dla pojedynczego sprzętu (kodu)
  * Konflikt = przerwa < 2 dni między kolejnymi rezerwacjami
  */
@@ -139,10 +170,40 @@ export function detectConflicts(
     return resStart <= dateTo && resEnd >= dateFrom;
   });
   
-  console.log(`conflictDetector.ts: Po filtrowaniu: ${filteredData.length} rezerwacji w zakresie`);
+  console.log(`conflictDetector.ts: Po filtrowaniu dat: ${filteredData.length} rezerwacji w zakresie`);
   
-  // Grupuj po kodzie sprzętu
-  const grouped = groupByEquipmentCode(filteredData);
+  // Filtruj tylko narty i buty (wyklucz kije, kaski, deski, buty snowboardowe, etc.)
+  const skiBootData = filteredData.filter(isSkiOrBoot);
+  
+  const filteredOutCount = filteredData.length - skiBootData.length;
+  if (filteredOutCount > 0) {
+    console.log(`conflictDetector.ts: Wykluczono ${filteredOutCount} rezerwacji innych typów sprzętu (kije, kaski, deski, etc.)`);
+  }
+  console.log(`conflictDetector.ts: Po filtrowaniu typów: ${skiBootData.length} rezerwacji (tylko narty i buty)`);
+  
+  // src/utils/conflictDetector.ts: Deduplikuj rezerwacje - usuń duplikaty na podstawie klient+kod+data
+  // Ta sama rezerwacja może być w systemie zarówno jako 'reservation' jak i 'rental'
+  const deduplicated = skiBootData.reduce((acc, curr) => {
+    const key = `${curr.klient}|${curr.kod}|${curr.od}|${curr.do}`;
+    
+    // Jeśli już mamy tę rezerwację, zachowaj 'reservation' nad 'rental' (lepsze źródło)
+    const existing = acc.get(key);
+    if (!existing || (existing.source === 'rental' && curr.source === 'reservation')) {
+      acc.set(key, curr);
+    }
+    
+    return acc;
+  }, new Map<string, ReservationData>());
+  
+  const uniqueData = Array.from(deduplicated.values());
+  const duplicatesRemoved = skiBootData.length - uniqueData.length;
+  if (duplicatesRemoved > 0) {
+    console.log(`conflictDetector.ts: Usunięto ${duplicatesRemoved} duplikatów rezerwacji`);
+  }
+  console.log(`conflictDetector.ts: Po deduplikacji: ${uniqueData.length} unikalnych rezerwacji`);
+  
+  // Grupuj po kodzie sprzętu (tylko unikalne narty i buty)
+  const grouped = groupByEquipmentCode(uniqueData);
   console.log(`conflictDetector.ts: Znaleziono ${grouped.size} unikalnych kodów sprzętu`);
   
   const sprzetyZKonfliktami: ConflictInfo[] = [];

@@ -115,6 +115,49 @@ export const EquipmentTimeline: React.FC<EquipmentTimelineProps> = ({
     return end.getTime(); // Konwersja na timestamp
   }, [dateTo]);
   
+  // src/components/EquipmentTimeline.tsx: Oblicz dynamiczną wysokość na podstawie liczby stackowanych itemów
+  const timelineHeight = useMemo(() => {
+    // Dla każdej grupy, oblicz ile itemów jest stackowanych (nakładających się czasowo)
+    let maxHeight = 0;
+    
+    for (const group of groups) {
+      const groupItems = items.filter(item => item.group === group.id);
+      
+      // Sortuj itemy po czasie rozpoczęcia
+      const sortedItems = [...groupItems].sort((a, b) => a.start_time - b.start_time);
+      
+      // Oblicz maksymalną liczbę poziomów stackowania dla tej grupy
+      let maxLevels = 1;
+      const levels: Array<{ end: number }> = [];
+      
+      for (const item of sortedItems) {
+        // Znajdź pierwszy wolny poziom
+        let foundLevel = false;
+        for (let i = 0; i < levels.length; i++) {
+          if (levels[i].end <= item.start_time) {
+            // Ten poziom jest wolny, użyj go
+            levels[i] = { end: item.end_time };
+            foundLevel = true;
+            break;
+          }
+        }
+        
+        if (!foundLevel) {
+          // Wszystkie poziomy zajęte, dodaj nowy
+          levels.push({ end: item.end_time });
+          maxLevels = Math.max(maxLevels, levels.length);
+        }
+      }
+      
+      // Wysokość grupy = lineHeight (60px) + miejsce na stackowane itemy
+      const groupHeight = 60 + (maxLevels - 1) * 45; // 45px na każdy dodatkowy poziom
+      maxHeight += groupHeight;
+    }
+    
+    // Dodaj margines na nagłówek (około 80px) i minimalną wysokość
+    return Math.max(400, maxHeight + 100);
+  }, [groups, items]);
+  
   return (
     <div className="w-full bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20 p-4">
       <div className="mb-4 flex items-center gap-4 text-sm">
@@ -128,7 +171,7 @@ export const EquipmentTimeline: React.FC<EquipmentTimelineProps> = ({
         </div>
       </div>
       
-      <div className="timeline-container" style={{ height: Math.max(400, groups.length * 60) }}>
+      <div className="timeline-container" style={{ minHeight: timelineHeight, height: 'auto' }}>
         <Timeline
           groups={groups}
           items={items}
@@ -142,6 +185,7 @@ export const EquipmentTimeline: React.FC<EquipmentTimelineProps> = ({
           canResize={false}
           canChangeGroup={false}
           stackItems={true}
+          sidebarWidth={200} // src/components/EquipmentTimeline.tsx: Poszerzenie sidebar do 200px dla lepszej czytelności
         >
           <TimelineMarkers>
             <TodayMarker />
@@ -196,6 +240,16 @@ export const EquipmentTimeline: React.FC<EquipmentTimelineProps> = ({
         .timeline-container .rct-sidebar-row {
           border-bottom: 1px solid rgba(255, 255, 255, 0.05) !important;
           color: rgba(255, 255, 255, 0.95) !important;
+          white-space: normal !important;      /* src/components/EquipmentTimeline.tsx: Zezwól na zawijanie tekstu */
+          word-wrap: break-word !important;    /* src/components/EquipmentTimeline.tsx: Złam długie słowa */
+          overflow-wrap: break-word !important; /* src/components/EquipmentTimeline.tsx: Nowoczesna alternatywa */
+          padding: 8px 12px !important;        /* src/components/EquipmentTimeline.tsx: Więcej paddingu poziomego dla lepszego odstępu */
+          line-height: 1.4 !important;         /* src/components/EquipmentTimeline.tsx: Lepszy line-height dla czytelności */
+          display: flex !important;            /* src/components/EquipmentTimeline.tsx: Użyj flexbox */
+          align-items: center !important;      /* src/components/EquipmentTimeline.tsx: Wyśrodkuj tekst pionowo */
+          font-size: 13px !important;         /* src/components/EquipmentTimeline.tsx: Nieco mniejsza czcionka dla lepszego dopasowania */
+          background-color: rgba(30, 30, 40, 0.5) !important;  /* src/components/EquipmentTimeline.tsx: Subtelne tło dla każdego wiersza */
+          margin-bottom: 2px !important;      /* src/components/EquipmentTimeline.tsx: Wizualne oddzielenie między wierszami */
         }
         
         .timeline-container .rct-sidebar-row:hover {
