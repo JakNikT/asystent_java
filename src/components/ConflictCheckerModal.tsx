@@ -40,6 +40,9 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
   const [analysisResult, setAnalysisResult] = useState<ConflictAnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   
+  // src/components/ConflictCheckerModal.tsx: Stan aktywnej zakładki (timeline lub lista)
+  const [activeView, setActiveView] = useState<'timeline' | 'list'>('timeline');
+  
   /**
    * Obsługa sprawdzania konfliktów
    */
@@ -374,64 +377,89 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
               </div>
             </div>
             
-            {/* Timeline */}
+            {/* Zakładki - Timeline i Lista konfliktów */}
             {analysisResult.sprzetyZKonfliktami.length > 0 && (
               <div>
-                <h3 className="text-lg font-semibold mb-2 text-white">Wizualizacja timeline</h3>
-                <EquipmentTimeline
-                  conflictInfo={analysisResult.sprzetyZKonfliktami}
-                  dateFrom={analysisResult.okresOd}
-                  dateTo={analysisResult.okresDo}
-                />
+                {/* src/components/ConflictCheckerModal.tsx: Pasek zakładek */}
+                <div className="flex gap-2 border-b border-white/10 mb-4">
+                  <button
+                    onClick={() => setActiveView('timeline')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all rounded-t-lg ${
+                      activeView === 'timeline'
+                        ? 'bg-brand-dark/60 text-white border-b-2 border-blue-400 shadow-lg'
+                        : 'bg-transparent text-white/60 hover:text-white/90 hover:bg-white/5'
+                    }`}
+                  >
+                    📊 Wizualizacja timeline
+                  </button>
+                  <button
+                    onClick={() => setActiveView('list')}
+                    className={`px-6 py-3 font-semibold text-sm transition-all rounded-t-lg ${
+                      activeView === 'list'
+                        ? 'bg-brand-dark/60 text-white border-b-2 border-blue-400 shadow-lg'
+                        : 'bg-transparent text-white/60 hover:text-white/90 hover:bg-white/5'
+                    }`}
+                  >
+                    📋 Szczegółowa lista
+                  </button>
+                </div>
+                
+                {/* src/components/ConflictCheckerModal.tsx: Zawartość zakładek */}
+                {activeView === 'timeline' ? (
+                  <div>
+                    <EquipmentTimeline
+                      conflictInfo={analysisResult.sprzetyZKonfliktami}
+                      dateFrom={analysisResult.okresOd}
+                      dateTo={analysisResult.okresDo}
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {analysisResult.sprzetyZKonfliktami.map((info) => (
+                      <div
+                        key={info.kod}
+                        className="p-4 bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20"
+                      >
+                        <div className="font-semibold text-lg mb-2 text-white">
+                          {info.sprzet} ({info.kod})
+                        </div>
+                        <div className="space-y-2">
+                          {info.konflikty.map((conflict, idx) => (
+                            <div
+                              key={idx}
+                              className="p-3 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg"
+                            >
+                              <div className="text-sm text-red-300 mb-1">
+                                Konflikt #{idx + 1} - Przerwa: {conflict.przerwaDni} dzień{conflict.przerwaDni !== 1 ? 'i' : ''}
+                              </div>
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
+                                <div>
+                                  <div className="font-medium text-white">Rezerwacja 1:</div>
+                                  <div className="text-white/90">{conflict.rezerwacja1.klient}</div>
+                                  <div className="text-white/70">
+                                    {conflict.rezerwacja1.od.toLocaleDateString('pl-PL')} - {conflict.rezerwacja1.do.toLocaleDateString('pl-PL')}
+                                  </div>
+                                </div>
+                                <div>
+                                  <div className="font-medium text-white">Rezerwacja 2:</div>
+                                  <div className="text-white/90">{conflict.rezerwacja2.klient}</div>
+                                  <div className="text-white/70">
+                                    {conflict.rezerwacja2.od.toLocaleDateString('pl-PL')} - {conflict.rezerwacja2.do.toLocaleDateString('pl-PL')}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
             
-            {/* Lista konfliktów */}
-            {analysisResult.sprzetyZKonfliktami.length > 0 ? (
-              <div>
-                <h3 className="text-lg font-semibold mb-2 text-white">Szczegółowa lista konfliktów</h3>
-                <div className="space-y-4">
-                  {analysisResult.sprzetyZKonfliktami.map((info) => (
-                    <div
-                      key={info.kod}
-                      className="p-4 bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20"
-                    >
-                      <div className="font-semibold text-lg mb-2 text-white">
-                        {info.sprzet} ({info.kod})
-                      </div>
-                      <div className="space-y-2">
-                        {info.konflikty.map((conflict, idx) => (
-                          <div
-                            key={idx}
-                            className="p-3 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg"
-                          >
-                            <div className="text-sm text-red-300 mb-1">
-                              Konflikt #{idx + 1} - Przerwa: {conflict.przerwaDni} dzień{conflict.przerwaDni !== 1 ? 'i' : ''}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
-                              <div>
-                                <div className="font-medium text-white">Rezerwacja 1:</div>
-                                <div className="text-white/90">{conflict.rezerwacja1.klient}</div>
-                                <div className="text-white/70">
-                                  {conflict.rezerwacja1.od.toLocaleDateString('pl-PL')} - {conflict.rezerwacja1.do.toLocaleDateString('pl-PL')}
-                                </div>
-                              </div>
-                              <div>
-                                <div className="font-medium text-white">Rezerwacja 2:</div>
-                                <div className="text-white/90">{conflict.rezerwacja2.klient}</div>
-                                <div className="text-white/70">
-                                  {conflict.rezerwacja2.od.toLocaleDateString('pl-PL')} - {conflict.rezerwacja2.do.toLocaleDateString('pl-PL')}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : (
+            {/* Komunikat o braku konfliktów */}
+            {analysisResult.sprzetyZKonfliktami.length === 0 && (
               <div className="p-8 text-center bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20">
                 <p className="text-lg font-semibold mb-2 text-green-400">✅ Brak konfliktów!</p>
                 <p className="text-white/70">
