@@ -69,7 +69,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [filterText, setFilterText] = useState('');
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
   // src/components/ReservationsView.tsx: Domyślny widok ustawiony na 'handout' (Wydania) - najpopularniejsza funkcja
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout'>('handout');
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns'>('handout');
   // src/components/ReservationsView.tsx: Stany dla filtrowania po dacie - wyniki pokazują się dopiero po wpisaniu daty od
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
@@ -77,6 +77,11 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
   const dateDebounceRef = useRef<NodeJS.Timeout | null>(null);
+  // src/components/ReservationsView.tsx: Stany dla widoku zwrotów
+  const [returnDate, setReturnDate] = useState<string>('');
+  const [returnsOnDate, setReturnsOnDate] = useState<number>(0);
+  const [returnsOverdue, setReturnsOverdue] = useState<number>(0);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
   // src/components/ReservationsView.tsx: Nie akceptuje typu 'handout' - ten widok ma własne ładowanie
@@ -186,11 +191,97 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // USUNIĘTO: Callbacki konwersji - ReservationApiClient obsługuje to po stronie serwera
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
-  // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout" - ten widok ma własne ładowanie)
+  // src/components/ReservationsView.tsx: Funkcja do liczenia zwrotów dla wybranej daty
+  const countReturnsForDate = async (selectedDate: string): Promise<{ onDate: number; overdue: number }> => {
+    if (!selectedDate) {
+      return { onDate: 0, overdue: 0 };
+    }
+
+    try {
+      logger.debug('ReservationsView: Liczenie zwrotów dla daty', selectedDate);
+      
+      // Pobierz wszystkie dane (rezerwacje + wypożyczenia)
+      const allData = await ReservationApiClient.loadAll();
+      
+      const selectedDateObj = new Date(selectedDate);
+      selectedDateObj.setHours(0, 0, 0, 0); // Początek wybranego dnia
+      
+      // Grupowanie po kliencie + data od + data do (podobnie jak w groupReservations)
+      const grouped = new Map<string, { klient: string; od: string; do: string }>();
+      
+      allData.forEach(res => {
+        // Normalizuj nazwę klienta (usuń dodatkowe spacje, trim)
+        const normalizedKlient = res.klient.trim().replace(/\s+/g, ' ').toUpperCase();
+        const key = `${normalizedKlient}_${res.od}_${res.do}`;
+        
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            klient: res.klient.trim(),
+            od: res.od,
+            do: res.do
+          });
+        }
+      });
+      
+      // LICZNIK 1: Zwroty z wybranego dnia (data do == wybrana data)
+      const returnsOnDate = Array.from(grouped.values()).filter(group => {
+        const endDate = new Date(group.do);
+        endDate.setHours(0, 0, 0, 0);
+        return endDate.getTime() === selectedDateObj.getTime();
+      });
+      
+      // LICZNIK 2: Zaległe zwroty (data do < wybrana data)
+      const overdueReturns = Array.from(grouped.values()).filter(group => {
+        const endDate = new Date(group.do);
+        endDate.setHours(23, 59, 59, 999);
+        return endDate < selectedDateObj;
+      });
+      
+      const result = {
+        onDate: returnsOnDate.length,
+        overdue: overdueReturns.length
+      };
+      
+      logger.info('ReservationsView: Liczniki zwrotów', result);
+      return result;
+    } catch (error) {
+      logger.error('ReservationsView: Błąd liczenia zwrotów', error);
+      return { onDate: 0, overdue: 0 };
+    }
+  };
+
+  // src/components/ReservationsView.tsx: Funkcja odświeżania liczników zwrotów
+  const refreshReturnsCount = async () => {
+    if (!returnDate) return;
+    
+    setIsRefreshing(true);
+    try {
+      // Wymuś pobranie świeżych danych (wyczyść cache)
+      // Uwaga: cache jest prywatny w ReservationApiClient, więc musimy po prostu wywołać loadAll ponownie
+      // Cache zostanie automatycznie odświeżony jeśli minie CACHE_DURATION (30s)
+      // Dla pewności możemy ustawić nową datę, która wymusi ponowne pobranie
+      
+      // Przelicz liczniki (2 osobne)
+      const counts = await countReturnsForDate(returnDate);
+      setReturnsOnDate(counts.onDate);
+      setReturnsOverdue(counts.overdue);
+      
+      logger.info('ReservationsView: Odświeżono liczniki zwrotów', counts);
+    } catch (error) {
+      logger.error('ReservationsView: Błąd odświeżania liczników zwrotów', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout" i "returns" - te widoki mają własne ładowanie)
   useEffect(() => {
     if (viewType === 'handout') {
       // Dla widoku wydania - wczytaj wszystkie aktywne rezerwacje
       loadReservations('reservations');
+    } else if (viewType === 'returns') {
+      // Dla widoku zwrotów - nie ładuj danych tutaj, countReturnsForDate robi to samodzielnie
+      // Dane będą ładowane gdy użytkownik wybierze datę (w useEffect dla returnDate)
     } else {
       loadReservations(viewType);
     }
@@ -229,6 +320,20 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       }
     };
   }, [dateFrom, dateTo]);
+
+  // src/components/ReservationsView.tsx: Liczenie zwrotów gdy wybrana zostanie data
+  useEffect(() => {
+    if (viewType === 'returns' && returnDate) {
+      countReturnsForDate(returnDate).then(counts => {
+        setReturnsOnDate(counts.onDate);
+        setReturnsOverdue(counts.overdue);
+      });
+    } else if (viewType === 'returns' && !returnDate) {
+      // Wyczyść liczniki gdy nie ma daty
+      setReturnsOnDate(0);
+      setReturnsOverdue(0);
+    }
+  }, [returnDate, viewType]);
 
   // Helper function to determine equipment category based on parent_group_id
   const getEquipmentCategory = (parentGroupId: number | null | undefined, sprzet?: string): string => {
@@ -594,7 +699,17 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                   }`}
                 >
-                  📦 Wydania
+                  📦 Wydaj
+                </button>
+                <button
+                  onClick={() => setViewType('returns')}
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
+                    viewType === 'returns'
+                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  }`}
+                >
+                  🔄 Zwroty
                 </button>
                 <button
                   onClick={() => setViewType('reservations')}
@@ -772,12 +887,148 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           )}
         </div>
 
-        {/* Warunkowe renderowanie: Widok wydania lub tabela rezerwacji */}
+        {/* Warunkowe renderowanie: Widok wydania, zwrotów lub tabela rezerwacji */}
         {viewType === 'handout' ? (
           <EquipmentHandoutView 
             reservations={reservations}
             onBack={() => setViewType('reservations')}
           />
+        ) : viewType === 'returns' ? (
+          // WIDOK ZWROTÓW
+          <div 
+            className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
+            style={{
+              backgroundImage: "url('/images/background.png')",
+            }}
+          >
+            {/* Overlay dla lepszej czytelności */}
+            <div className="absolute inset-0 bg-black/20 pointer-events-none z-0"></div>
+
+            <div className="relative z-10 max-w-4xl mx-auto">
+              {!returnDate ? (
+                // STAN 1: Wybór daty
+                <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6 lg:p-8">
+                  <h2 className="text-2xl lg:text-3xl font-bold text-white mb-6 text-center">
+                    🔄 Zwroty Sprzętu
+                  </h2>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-white font-bold text-lg mb-3 uppercase tracking-wider">
+                        Wybierz datę zwrotów:
+                      </label>
+                      <input
+                        type="date"
+                        value={returnDate}
+                        onChange={(e) => setReturnDate(e.target.value)}
+                        className="w-full px-6 py-4 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm text-lg"
+                      />
+                    </div>
+
+                    <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-4">
+                      <p className="text-blue-200 text-sm font-medium">
+                        ℹ️ Wybierz datę, aby zobaczyć liczbę umów kończących się tego dnia oraz zaległe zwroty.
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => setViewType('reservations')}
+                      className="w-full py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+                    >
+                      ← Powrót do rezerwacji
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                // STAN 2: Wyświetlenie liczników
+                <div className="space-y-6">
+                  {/* Nagłówek sticky */}
+                  <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-4 mb-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <h2 className="text-xl lg:text-2xl font-bold text-white">
+                        📅 Zwroty na dzień: {formatDate(returnDate)}
+                      </h2>
+                      <button
+                        onClick={() => setReturnDate('')}
+                        className="px-4 py-2 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-sm"
+                      >
+                        Zmień datę
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Sekcja 1: Zwroty z wybranego dnia */}
+                  <div className="bg-blue-500/30 rounded-xl border border-blue-400/50 shadow-lg backdrop-blur-md p-6 lg:p-8">
+                    <div className="text-center">
+                      <div className="text-white/70 text-sm lg:text-base font-bold uppercase tracking-wider mb-3">
+                        🔵 ZWROTY Z TEGO DNIA
+                      </div>
+                      <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
+                        {returnsOnDate}
+                      </div>
+                      <div className="text-white/80 text-base lg:text-lg">
+                        umów kończy się {formatDate(returnDate)}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Sekcja 2: Zaległe zwroty */}
+                  <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${
+                    returnsOverdue > 0
+                      ? 'bg-orange-500/30 border-orange-400/50'
+                      : 'bg-green-500/30 border-green-400/50'
+                  }`}>
+                    <div className="text-center">
+                      <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${
+                        returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
+                      }`}>
+                        {returnsOverdue > 0 ? '🟠 ZALEGŁE ZWROTY' : '✅ BRAK ZALEGŁOŚCI'}
+                      </div>
+                      <div className={`text-6xl lg:text-8xl font-bold mb-3 ${
+                        returnsOverdue > 0 ? 'text-white' : 'text-white'
+                      }`}>
+                        {returnsOverdue}
+                      </div>
+                      <div className={`text-base lg:text-lg ${
+                        returnsOverdue > 0 ? 'text-white/80' : 'text-white/80'
+                      }`}>
+                        {returnsOverdue > 0 
+                          ? `umów powinno było być zwróconych wcześniej niż ${formatDate(returnDate)}`
+                          : 'Wszystkie zwroty są na czas ✓'
+                        }
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Przyciski akcji */}
+                  <div className="flex flex-col sm:flex-row gap-4">
+                    <button
+                      onClick={refreshReturnsCount}
+                      disabled={isRefreshing}
+                      className="flex-1 py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg flex items-center justify-center gap-2"
+                    >
+                      {isRefreshing ? (
+                        <>
+                          <span className="animate-spin">🔄</span>
+                          Odświeżanie...
+                        </>
+                      ) : (
+                        <>
+                          🔄 Odśwież
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setViewType('reservations')}
+                      className="flex-1 py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+                    >
+                      ← Powrót do rezerwacji
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         ) : (
           <>
             {/* Tabela rezerwacji */}
