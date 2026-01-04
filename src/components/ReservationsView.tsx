@@ -26,6 +26,32 @@ const EQUIPMENT_CATEGORIES: Record<number, string> = {
   84312: 'ski_mojo' // SKI mojo
 };
 
+// src/components/ReservationsView.tsx: Mapowanie ID grup na szczegółowe kategorie sprzętu dla statystyk zwrotów
+const EQUIPMENT_DETAILED_CATEGORIES: Record<number, string> = {
+  82293: 'narty_top',     // Narty TOP
+  82412: 'narty_vip',     // Narty VIP
+  82758: 'narty_junior',  // Narty JUNIOR
+  82738: 'buty_dorosle',  // Buty narciarskie dorosłe
+  82827: 'buty_junior',   // Buty narciarskie junior
+  83762: 'deski',         // Deski snowboardowe
+  83760: 'buty_sb',       // Buty snowboardowe
+  // Fallback dla starych ID bez szczegółowej kategorii
+  82291: 'narty_inne',    // Narty (bez kategorii)
+  85528: 'narty_inne',    // Narty (bez kategorii)
+  82737: 'buty_inne',     // Buty (bez kategorii)
+};
+
+// src/components/ReservationsView.tsx: Interface dla statystyk kategorii sprzętu w zwrotach
+interface EquipmentCategoryStats {
+  narty_top: number;
+  narty_vip: number;
+  narty_junior: number;
+  buty_dorosle: number;
+  buty_junior: number;
+  deski: number;
+  buty_sb: number;
+}
+
 // Interface dla pogrupowanej rezerwacji
 interface GroupedReservation {
   klient: string;
@@ -82,6 +108,15 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [returnsOnDate, setReturnsOnDate] = useState<number>(0);
   const [returnsOverdue, setReturnsOverdue] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+  // src/components/ReservationsView.tsx: Stany dla statystyk kategorii sprzętu w zwrotach
+  const [onDateStats, setOnDateStats] = useState<EquipmentCategoryStats>({
+    narty_top: 0, narty_vip: 0, narty_junior: 0,
+    buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0
+  });
+  const [overdueStats, setOverdueStats] = useState<EquipmentCategoryStats>({
+    narty_top: 0, narty_vip: 0, narty_junior: 0,
+    buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0
+  });
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
   // src/components/ReservationsView.tsx: Nie akceptuje typu 'handout' - ten widok ma własne ładowanie
@@ -192,9 +227,20 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
   // src/components/ReservationsView.tsx: Funkcja do liczenia zwrotów dla wybranej daty
-  const countReturnsForDate = async (selectedDate: string): Promise<{ onDate: number; overdue: number }> => {
+  const countReturnsForDate = async (selectedDate: string): Promise<{
+    onDate: number;
+    overdue: number;
+    onDateStats: EquipmentCategoryStats;
+    overdueStats: EquipmentCategoryStats;
+  }> => {
+    // Inicjalizacja statystyk
+    const emptyStats: EquipmentCategoryStats = {
+      narty_top: 0, narty_vip: 0, narty_junior: 0,
+      buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0
+    };
+
     if (!selectedDate) {
-      return { onDate: 0, overdue: 0 };
+      return { onDate: 0, overdue: 0, onDateStats: emptyStats, overdueStats: emptyStats };
     }
 
     try {
@@ -237,16 +283,51 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         return endDate < selectedDateObj;
       });
       
+      // Inicjalizacja statystyk kategorii
+      const onDateStats: EquipmentCategoryStats = { ...emptyStats };
+      const overdueStats: EquipmentCategoryStats = { ...emptyStats };
+      
+      // Zlicz pozycje sprzętu według parent_group_id dla każdej rezerwacji
+      allData.forEach(res => {
+        // Ignoruj pozycje PROMOTOR i inne nietypowe
+        if (!res.sprzet || res.sprzet.toLowerCase().includes('promotor')) {
+          return;
+        }
+        
+        const endDate = new Date(res.do);
+        endDate.setHours(0, 0, 0, 0);
+        const endDateWithTime = new Date(res.do);
+        endDateWithTime.setHours(23, 59, 59, 999);
+        
+        // Sprawdź parent_group_id i przypisz do kategorii
+        if (res.parent_group_id && EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id]) {
+          const category = EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id] as keyof EquipmentCategoryStats;
+          
+          // Sprawdź czy kategoria jest w naszym interface (pomijamy 'narty_inne', 'buty_inne')
+          if (category in onDateStats) {
+            if (endDate.getTime() === selectedDateObj.getTime()) {
+              // Zwroty na dzień
+              onDateStats[category]++;
+            } else if (endDateWithTime < selectedDateObj) {
+              // Zaległe zwroty
+              overdueStats[category]++;
+            }
+          }
+        }
+      });
+      
       const result = {
         onDate: returnsOnDate.length,
-        overdue: overdueReturns.length
+        overdue: overdueReturns.length,
+        onDateStats,
+        overdueStats
       };
       
       logger.info('ReservationsView: Liczniki zwrotów', result);
       return result;
     } catch (error) {
       logger.error('ReservationsView: Błąd liczenia zwrotów', error);
-      return { onDate: 0, overdue: 0 };
+      return { onDate: 0, overdue: 0, onDateStats: emptyStats, overdueStats: emptyStats };
     }
   };
 
@@ -261,12 +342,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       // Cache zostanie automatycznie odświeżony jeśli minie CACHE_DURATION (30s)
       // Dla pewności możemy ustawić nową datę, która wymusi ponowne pobranie
       
-      // Przelicz liczniki (2 osobne)
-      const counts = await countReturnsForDate(returnDate);
-      setReturnsOnDate(counts.onDate);
-      setReturnsOverdue(counts.overdue);
+      // Przelicz liczniki i statystyki
+      const result = await countReturnsForDate(returnDate);
+      setReturnsOnDate(result.onDate);
+      setReturnsOverdue(result.overdue);
+      setOnDateStats(result.onDateStats);
+      setOverdueStats(result.overdueStats);
       
-      logger.info('ReservationsView: Odświeżono liczniki zwrotów', counts);
+      logger.info('ReservationsView: Odświeżono liczniki zwrotów', result);
     } catch (error) {
       logger.error('ReservationsView: Błąd odświeżania liczników zwrotów', error);
     } finally {
@@ -324,14 +407,18 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // src/components/ReservationsView.tsx: Liczenie zwrotów gdy wybrana zostanie data
   useEffect(() => {
     if (viewType === 'returns' && returnDate) {
-      countReturnsForDate(returnDate).then(counts => {
-        setReturnsOnDate(counts.onDate);
-        setReturnsOverdue(counts.overdue);
+      countReturnsForDate(returnDate).then(result => {
+        setReturnsOnDate(result.onDate);
+        setReturnsOverdue(result.overdue);
+        setOnDateStats(result.onDateStats);
+        setOverdueStats(result.overdueStats);
       });
     } else if (viewType === 'returns' && !returnDate) {
-      // Wyczyść liczniki gdy nie ma daty
+      // Wyczyść liczniki i statystyki gdy nie ma daty
       setReturnsOnDate(0);
       setReturnsOverdue(0);
+      setOnDateStats({ narty_top: 0, narty_vip: 0, narty_junior: 0, buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0 });
+      setOverdueStats({ narty_top: 0, narty_vip: 0, narty_junior: 0, buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0 });
     }
   }, [returnDate, viewType]);
 
@@ -663,6 +750,185 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       <span className="text-blue-600">↓</span>;
   };
 
+  // src/components/ReservationsView.tsx: Funkcja renderowania statystyk kategorii sprzętu
+  const renderCategoryStats = (stats: EquipmentCategoryStats) => {
+    const categories = [
+      { key: 'narty_top', label: 'Narty TOP', emoji: '🎿', color: 'bg-blue-600/80' },
+      { key: 'narty_vip', label: 'Narty VIP', emoji: '🎿', color: 'bg-purple-600/80' },
+      { key: 'narty_junior', label: 'Narty JUNIOR', emoji: '👶', color: 'bg-green-600/80' },
+      { key: 'buty_dorosle', label: 'Buty dorosłe', emoji: '👢', color: 'bg-orange-600/80' },
+      { key: 'buty_junior', label: 'Buty junior', emoji: '👟', color: 'bg-yellow-600/80' },
+      { key: 'deski', label: 'Deski SB', emoji: '🏂', color: 'bg-cyan-600/80' },
+      { key: 'buty_sb', label: 'Buty SB', emoji: '🥾', color: 'bg-teal-600/80' }
+    ];
+    
+    return (
+      <div className="flex flex-wrap gap-2 justify-center mt-4">
+        {categories.map(cat => {
+          const count = stats[cat.key as keyof EquipmentCategoryStats];
+          if (count === 0) return null; // Ukryj kategorie z zerowymi wartościami
+          
+          return (
+            <div
+              key={cat.key}
+              className={`${cat.color} text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 border border-white/20 shadow-sm`}
+            >
+              <span>{cat.emoji}</span>
+              <span>{cat.label}:</span>
+              <span className="text-lg">{count}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // src/components/ReservationsView.tsx: Renderowanie widoku zwrotów (przed header'em, podobnie jak "handout")
+  if (viewType === 'returns') {
+    return (
+      <div 
+        className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
+        style={{
+          backgroundImage: "url('/images/background.png')",
+        }}
+      >
+        {/* Overlay dla lepszej czytelności */}
+        <div className="absolute inset-0 bg-black/20 pointer-events-none z-0"></div>
+
+        <div className="relative z-10 max-w-4xl mx-auto">
+          {!returnDate ? (
+            // STAN 1: Wybór daty
+            <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6 lg:p-8">
+              <h2 className="text-2xl lg:text-3xl font-bold text-white mb-6 text-center">
+                🔄 Zwroty Sprzętu
+              </h2>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-white font-bold text-lg mb-3 uppercase tracking-wider">
+                    Wybierz datę zwrotów:
+                  </label>
+                  <input
+                    type="date"
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                    className="w-full px-6 py-4 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm text-lg"
+                  />
+                </div>
+
+                <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-4">
+                  <p className="text-blue-200 text-sm font-medium">
+                    ℹ️ Wybierz datę, aby zobaczyć liczbę umów kończących się tego dnia oraz zaległe zwroty.
+                  </p>
+                </div>
+
+                <button
+                  onClick={() => setViewType('reservations')}
+                  className="w-full py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+                >
+                  ← Powrót do rezerwacji
+                </button>
+              </div>
+            </div>
+          ) : (
+            // STAN 2: Wyświetlenie liczników
+            <div className="space-y-6">
+              {/* Nagłówek sticky */}
+              <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-4 mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h2 className="text-xl lg:text-2xl font-bold text-white">
+                    📅 Zwroty na dzień: {formatDate(returnDate)}
+                  </h2>
+                  <button
+                    onClick={() => setReturnDate('')}
+                    className="px-4 py-2 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-sm"
+                  >
+                    Zmień datę
+                  </button>
+                </div>
+              </div>
+
+              {/* Sekcja 1: Zwroty z wybranego dnia */}
+              <div className="bg-blue-500/30 rounded-xl border border-blue-400/50 shadow-lg backdrop-blur-md p-6 lg:p-8">
+                <div className="text-center">
+                  <div className="text-white/70 text-sm lg:text-base font-bold uppercase tracking-wider mb-3">
+                    🔵 ZWROTY Z TEGO DNIA
+                  </div>
+                  <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
+                    {returnsOnDate}
+                  </div>
+                  <div className="text-white/80 text-base lg:text-lg">
+                    umów kończy się {formatDate(returnDate)}
+                  </div>
+                  
+                  {/* Statystyki kategorii sprzętu */}
+                  {renderCategoryStats(onDateStats)}
+                </div>
+              </div>
+
+              {/* Sekcja 2: Zaległe zwroty */}
+              <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${
+                returnsOverdue > 0
+                  ? 'bg-orange-500/30 border-orange-400/50'
+                  : 'bg-green-500/30 border-green-400/50'
+              }`}>
+                <div className="text-center">
+                  <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${
+                    returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
+                  }`}>
+                    {returnsOverdue > 0 ? '🟠 ZALEGŁE ZWROTY' : '✅ BRAK ZALEGŁOŚCI'}
+                  </div>
+                  <div className={`text-6xl lg:text-8xl font-bold mb-3 ${
+                    returnsOverdue > 0 ? 'text-white' : 'text-white'
+                  }`}>
+                    {returnsOverdue}
+                  </div>
+                  <div className={`text-base lg:text-lg ${
+                    returnsOverdue > 0 ? 'text-white/80' : 'text-white/80'
+                  }`}>
+                    {returnsOverdue > 0 
+                      ? `umów powinno było być zwróconych wcześniej niż ${formatDate(returnDate)}`
+                      : 'Wszystkie zwroty są na czas ✓'
+                    }
+                  </div>
+                  
+                  {/* Statystyki kategorii sprzętu */}
+                  {renderCategoryStats(overdueStats)}
+                </div>
+              </div>
+
+              {/* Przyciski akcji */}
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button
+                  onClick={refreshReturnsCount}
+                  disabled={isRefreshing}
+                  className="flex-1 py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg flex items-center justify-center gap-2"
+                >
+                  {isRefreshing ? (
+                    <>
+                      <span className="animate-spin">🔄</span>
+                      Odświeżanie...
+                    </>
+                  ) : (
+                    <>
+                      🔄 Odśwież
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => setViewType('reservations')}
+                  className="flex-1 py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+                >
+                  ← Powrót do rezerwacji
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div 
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-3 lg:p-6"
@@ -704,7 +970,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 <button
                   onClick={() => setViewType('returns')}
                   className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
-                    viewType === 'returns'
+                    (viewType as string) === 'returns'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                   }`}
@@ -887,148 +1153,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           )}
         </div>
 
-        {/* Warunkowe renderowanie: Widok wydania, zwrotów lub tabela rezerwacji */}
+        {/* Warunkowe renderowanie: Widok wydania lub tabela rezerwacji */}
         {viewType === 'handout' ? (
           <EquipmentHandoutView 
             reservations={reservations}
             onBack={() => setViewType('reservations')}
           />
-        ) : viewType === 'returns' ? (
-          // WIDOK ZWROTÓW
-          <div 
-            className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
-            style={{
-              backgroundImage: "url('/images/background.png')",
-            }}
-          >
-            {/* Overlay dla lepszej czytelności */}
-            <div className="absolute inset-0 bg-black/20 pointer-events-none z-0"></div>
-
-            <div className="relative z-10 max-w-4xl mx-auto">
-              {!returnDate ? (
-                // STAN 1: Wybór daty
-                <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6 lg:p-8">
-                  <h2 className="text-2xl lg:text-3xl font-bold text-white mb-6 text-center">
-                    🔄 Zwroty Sprzętu
-                  </h2>
-                  
-                  <div className="space-y-6">
-                    <div>
-                      <label className="block text-white font-bold text-lg mb-3 uppercase tracking-wider">
-                        Wybierz datę zwrotów:
-                      </label>
-                      <input
-                        type="date"
-                        value={returnDate}
-                        onChange={(e) => setReturnDate(e.target.value)}
-                        className="w-full px-6 py-4 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm text-lg"
-                      />
-                    </div>
-
-                    <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-4">
-                      <p className="text-blue-200 text-sm font-medium">
-                        ℹ️ Wybierz datę, aby zobaczyć liczbę umów kończących się tego dnia oraz zaległe zwroty.
-                      </p>
-                    </div>
-
-                    <button
-                      onClick={() => setViewType('reservations')}
-                      className="w-full py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
-                    >
-                      ← Powrót do rezerwacji
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                // STAN 2: Wyświetlenie liczników
-                <div className="space-y-6">
-                  {/* Nagłówek sticky */}
-                  <div className="sticky top-0 z-10 bg-black/30 backdrop-blur-md rounded-xl border border-white/10 shadow-lg p-4 mb-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <h2 className="text-xl lg:text-2xl font-bold text-white">
-                        📅 Zwroty na dzień: {formatDate(returnDate)}
-                      </h2>
-                      <button
-                        onClick={() => setReturnDate('')}
-                        className="px-4 py-2 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-sm"
-                      >
-                        Zmień datę
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sekcja 1: Zwroty z wybranego dnia */}
-                  <div className="bg-blue-500/30 rounded-xl border border-blue-400/50 shadow-lg backdrop-blur-md p-6 lg:p-8">
-                    <div className="text-center">
-                      <div className="text-white/70 text-sm lg:text-base font-bold uppercase tracking-wider mb-3">
-                        🔵 ZWROTY Z TEGO DNIA
-                      </div>
-                      <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
-                        {returnsOnDate}
-                      </div>
-                      <div className="text-white/80 text-base lg:text-lg">
-                        umów kończy się {formatDate(returnDate)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sekcja 2: Zaległe zwroty */}
-                  <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${
-                    returnsOverdue > 0
-                      ? 'bg-orange-500/30 border-orange-400/50'
-                      : 'bg-green-500/30 border-green-400/50'
-                  }`}>
-                    <div className="text-center">
-                      <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${
-                        returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
-                      }`}>
-                        {returnsOverdue > 0 ? '🟠 ZALEGŁE ZWROTY' : '✅ BRAK ZALEGŁOŚCI'}
-                      </div>
-                      <div className={`text-6xl lg:text-8xl font-bold mb-3 ${
-                        returnsOverdue > 0 ? 'text-white' : 'text-white'
-                      }`}>
-                        {returnsOverdue}
-                      </div>
-                      <div className={`text-base lg:text-lg ${
-                        returnsOverdue > 0 ? 'text-white/80' : 'text-white/80'
-                      }`}>
-                        {returnsOverdue > 0 
-                          ? `umów powinno było być zwróconych wcześniej niż ${formatDate(returnDate)}`
-                          : 'Wszystkie zwroty są na czas ✓'
-                        }
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Przyciski akcji */}
-                  <div className="flex flex-col sm:flex-row gap-4">
-                    <button
-                      onClick={refreshReturnsCount}
-                      disabled={isRefreshing}
-                      className="flex-1 py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg flex items-center justify-center gap-2"
-                    >
-                      {isRefreshing ? (
-                        <>
-                          <span className="animate-spin">🔄</span>
-                          Odświeżanie...
-                        </>
-                      ) : (
-                        <>
-                          🔄 Odśwież
-                        </>
-                      )}
-                    </button>
-                    <button
-                      onClick={() => setViewType('reservations')}
-                      className="flex-1 py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
-                    >
-                      ← Powrót do rezerwacji
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
         ) : (
           <>
             {/* Tabela rezerwacji */}
