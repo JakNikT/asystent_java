@@ -68,8 +68,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
   const [showPromotorOnly, setShowPromotorOnly] = useState(false);
-  // src/components/ReservationsView.tsx: Domyślny widok zmieniony na 'reservations' ponieważ przycisk "Wszystko" jest wyłączony
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout'>('reservations');
+  // src/components/ReservationsView.tsx: Domyślny widok ustawiony na 'handout' (Wydania) - najpopularniejsza funkcja
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout'>('handout');
   // src/components/ReservationsView.tsx: Stany dla filtrowania po dacie - wyniki pokazują się dopiero po wpisaniu daty od
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
@@ -188,7 +188,10 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
   // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout" - ten widok ma własne ładowanie)
   useEffect(() => {
-    if (viewType !== 'handout') {
+    if (viewType === 'handout') {
+      // Dla widoku wydania - wczytaj wszystkie aktywne rezerwacje
+      loadReservations('reservations');
+    } else {
       loadReservations(viewType);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps

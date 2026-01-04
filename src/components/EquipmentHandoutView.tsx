@@ -47,15 +47,21 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
     }
   };
 
-  // src/components/EquipmentHandoutView.tsx: Funkcja do normalizacji daty (YYYY-MM-DD)
+  // src/components/EquipmentHandoutView.tsx: Funkcja do normalizacji daty (YYYY-MM-DD) z obsługą timezone
   const normalizeDate = (dateString: string): string => {
     try {
-      const date = new Date(dateString);
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const day = String(date.getDate()).padStart(2, '0');
-      return `${year}-${month}-${day}`;
-    } catch {
+      // Pobierz tylko część YYYY-MM-DD z różnych formatów
+      const dateOnly = dateString.split('T')[0].split(' ')[0];
+      
+      // Walidacja formatu YYYY-MM-DD
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+        logger.debug('EquipmentHandoutView: Nieprawidłowy format daty', dateString);
+        return '';
+      }
+      
+      return dateOnly;
+    } catch (error) {
+      logger.debug('EquipmentHandoutView: Błąd normalizacji daty', dateString, error);
       return '';
     }
   };

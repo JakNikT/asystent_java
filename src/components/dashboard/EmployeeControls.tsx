@@ -46,12 +46,12 @@ const EmployeeControls: React.FC<EmployeeControlsProps> = ({
         📜 Historia
       </button>
       
-      {/* Przycisk "Rezerwacje" - zawsze widoczny */}
+      {/* Przycisk "Wydania" - zawsze widoczny */}
       <button 
         onClick={onReservations}
         className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider cursor-pointer"
       >
-        🔄 Rezerwacje
+        📦 Wydania
       </button>
     </div>
   );
