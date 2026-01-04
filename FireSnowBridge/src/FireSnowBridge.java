@@ -227,7 +227,7 @@ public class FireSnowBridge {
                     "JOIN ABSTRACTDOCUMENT doc ON doc.ID = acd.ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
                     "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
-                    "ORDER BY rp.BEGINDATE";
+                    "ORDER BY rp.ID";
                 
                 Statement stmt = conn.createStatement();
                 ResultSet rs = stmt.executeQuery(sql);

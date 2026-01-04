@@ -101,7 +101,36 @@ Użytkownik poprosił o dwa główne ulepszenia:
 - [x] Pasek filtrów nad tabelą ma półprzezroczyste tło również dla całego wiersza (nie tylko pól), aby cała belka stapiała się z layoutem.
 - [x] System kart (tabs) w `BrowseSkisComponent` dostosowany do reszty UI - zastosowano glassmorphism z półprzezroczystymi tłami zamiast solidnych kolorów niebieskich.
 
+#### 🔄 Przycisk "ZWROTY" w widoku rezerwacji (2025-11-27)
+- ✅ Dodano przycisk "🔄 Zwroty" obok przycisku "📦 Wydaj" w `ReservationsView.tsx`
+- ✅ Rozszerzono typ `viewType` o `'returns'`
+- ✅ Dodano stany: `returnDate`, `returnsOnDate`, `returnsOverdue`, `isRefreshing`
+- ✅ Zaimplementowano funkcję `countReturnsForDate()` - liczy 2 osobne liczniki:
+  - Zwroty z wybranego dnia (data do == wybrana data)
+  - Zaległe zwroty (data do < wybrana data)
+- ✅ Dodano funkcję `refreshReturnsCount()` do ręcznego odświeżania danych
+- ✅ Stworzono widok wyboru daty (Stan 1)
+- ✅ Stworzono widok z 2 licznikami (Stan 2):
+  - Sekcja 1: Zwroty z wybranego dnia (niebieskie tło)
+  - Sekcja 2: Zaległe zwroty (pomarańczowe gdy >0, zielone gdy =0)
+- ✅ Dodano przycisk "🔄 Odśwież" z loading state
+- ✅ Wszystkie błędy lintowania naprawione
+
 ## Executor's Feedback or Assistance Requests
+
+**Data**: 2025-11-27
+
+**Zadanie**: Przycisk "ZWROTY" w widoku rezerwacji
+- ✅ Zaimplementowano przycisk "🔄 Zwroty" obok przycisku "📦 Wydaj"
+- ✅ Funkcjonalność pokazuje 2 osobne liczniki:
+  - Zwroty z wybranego dnia (dokładnie tego dnia)
+  - Zaległe zwroty (z wcześniejszych dni)
+- ✅ Widok ma 2 stany: wybór daty i wyświetlenie liczników
+- ✅ Dodano przycisk "Odśwież" do ręcznego aktualizowania danych
+- ✅ Wizualne różnicowanie kolorów: niebieski dla zwrotów na dzień, pomarańczowy dla zaległości (zielony gdy brak)
+- ✅ Wykorzystano istniejącą funkcję `groupReservations()` do grupowania danych
+- ✅ Wszystkie błędy lintowania naprawione
+- **Status**: Gotowe do testowania
 
 **Data**: 2025-11-27
 
