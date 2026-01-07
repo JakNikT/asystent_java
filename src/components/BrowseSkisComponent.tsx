@@ -10,6 +10,7 @@ import { SkiDataService } from '../services/skiDataService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 import { Input } from './ui/Input';
 import { Label } from './ui/Label';
+import { DatePickerButton } from './DatePickerButton';
 import { createLogger } from '../utils/logger';
 import { 
   validateHeightRealtime, 
@@ -45,7 +46,7 @@ interface BrowseSkisComponentProps {
   onGroupSelected?: () => void; // NOWE: Callback wywoływany po wyborze grupy
   formData?: FormData; // NOWE: Dane formularza z datami
   formErrors?: FormErrors; // NOWE: Błędy walidacji formularza
-  onDateChange?: (section: 'dateFrom' | 'dateTo', field: 'day' | 'month' | 'year', value: string, inputRef?: HTMLInputElement) => void; // NOWE: Callback do aktualizacji dat
+  onDateChange?: (section: 'dateFrom' | 'dateTo', value: string) => void; // NOWE: Callback do aktualizacji dat
 }
 
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
@@ -102,15 +103,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [currentPage, setCurrentPage] = useState(1);
   const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, AvailabilityStatus>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  // src/components/BrowseSkisComponent.tsx: Stan dla filtrów długości (mobile view dla VIP/TOP)
+  const [selectedLengthFilters, setSelectedLengthFilters] = useState<Set<string>>(new Set());
   // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
   // Ustawiono na bardzo dużą liczbę, aby praktycznie wyłączyć paginację
   const itemsPerPage = 10000;
 
-  // Refs dla pól daty - używane do automatycznego przechodzenia między polami
-  const dayFromRef = useRef<HTMLInputElement | null>(null);
-  const monthFromRef = useRef<HTMLInputElement | null>(null);
-  const dayToRef = useRef<HTMLInputElement | null>(null);
-  const monthToRef = useRef<HTMLInputElement | null>(null);
 
   // NOWY STAN: Filtry typu i kategorii sprzętu - inicjalizuj z initialFilter
   const [activeFilter, setActiveFilter] = useState<string>(initialFilter);
@@ -187,6 +186,15 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       setActiveFilter(initialFilter);
     }
   }, [initialFilter]);
+
+  // src/components/BrowseSkisComponent.tsx: Wyczyść filtry długości przy zmianie kategorii
+  useEffect(() => {
+    // Wyczyść filtry długości gdy zmienia się kategoria
+    if (selectedLengthFilters.size > 0) {
+      logger.info(`BrowseSkisComponent: Czyszczenie filtrów długości przy zmianie kategorii na: ${activeFilter}`);
+      setSelectedLengthFilters(new Set());
+    }
+  }, [activeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Synchronizacja pól edycji z browseCriteria (gdy zmienia się z Dashboard)
   useEffect(() => {
@@ -454,6 +462,19 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     return <div className="flex flex-wrap">{squares}</div>;
   };
 
+  // Funkcja do przełączania stanu rozwiniętej karty
+  const toggleCardExpanded = (skiId: string) => {
+    setExpandedCards(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(skiId)) {
+        newSet.delete(skiId);
+      } else {
+        newSet.add(skiId);
+      }
+      return newSet;
+    });
+  };
+
   // NOWE FUNKCJE: Obsługa edycji i dodawania
 
   // src/components/BrowseSkisComponent.tsx: Funkcja obsługi zmian pól edycji kryteriów
@@ -621,6 +642,21 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     );
   };
 
+  // src/components/BrowseSkisComponent.tsx: Funkcja przełączania filtra długości (mobile view)
+  const toggleLengthFilter = (prefix: string) => {
+    setSelectedLengthFilters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(prefix)) {
+        newSet.delete(prefix);
+        logger.debug(`BrowseSkisComponent: Usunięto filtr długości: ${prefix}`);
+      } else {
+        newSet.add(prefix);
+        logger.debug(`BrowseSkisComponent: Dodano filtr długości: ${prefix}`);
+      }
+      return newSet;
+    });
+  };
+
   // src/components/BrowseSkisComponent.tsx: Funkcja filtrowania sprzętu
   const filterSkis = (
     skis: SkiData[],
@@ -666,6 +702,19 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             return ski.KATEGORIA === activeFilter;
         }
       });
+    }
+
+    // src/components/BrowseSkisComponent.tsx: Filtruj po długości (mobile view - przyciski 14-18)
+    if (selectedLengthFilters.size > 0) {
+      filtered = filtered.filter(ski => {
+        if (!ski.DLUGOSC) return false;
+        const lengthStr = ski.DLUGOSC.toString();
+        // Sprawdź czy długość zaczyna się którymś z wybranych prefiksów
+        return Array.from(selectedLengthFilters).some(prefix => 
+          lengthStr.startsWith(prefix)
+        );
+      });
+      logger.debug(`BrowseSkisComponent: Filtrowanie po długości - aktywne filtry: [${Array.from(selectedLengthFilters).join(', ')}], wyników: ${filtered.length}`);
     }
 
     // Filtruj po tekście wyszukiwania
@@ -1090,84 +1139,20 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               {/* 2. Pola daty w dwóch wierszach */}
               {formData && onDateChange && (
                 <div className="flex flex-col gap-2 mr-24">
-                  {/* Data od - pierwszy wiersz */}
-                  <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
-                    <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
-                      📅 Data od:
-                    </Label>
-                    <div className="flex items-center gap-1">
-                      <Input
-                        ref={dayFromRef}
-                        type="text"
-                        placeholder="DD"
-                        value={formData.dateFrom?.day || ''}
-                        onClick={handleDateFieldClick}
-                        onChange={(e) => handleDateFieldChange('dateFrom', 'day', e.target.value, e.target)}
-                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateFrom?.day ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                        maxLength={2}
-                      />
-                      <span className="text-white/50 font-bold text-xl">/</span>
-                      <Input
-                        ref={monthFromRef}
-                        type="text"
-                        placeholder="MM"
-                        value={formData.dateFrom?.month || ''}
-                        onClick={handleDateFieldClick}
-                        onChange={(e) => handleDateFieldChange('dateFrom', 'month', e.target.value, e.target)}
-                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateFrom?.month ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                        maxLength={2}
-                      />
-                      <span className="text-white/50 font-bold text-xl">/</span>
-                      <Input
-                        type="text"
-                        placeholder="YY"
-                        value={formData.dateFrom?.year || ''}
-                        onClick={handleDateFieldClick}
-                        onChange={(e) => handleDateFieldChange('dateFrom', 'year', e.target.value, e.target)}
-                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateFrom?.year ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                        maxLength={2}
-                      />
-                    </div>
-                  </div>
-                  {/* Data do - drugi wiersz */}
-                  <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
-                    <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
-                      📅 Data do:
-                    </Label>
-                    <div className="flex items-center gap-1">
-                      <Input
-                        ref={dayToRef}
-                        type="text"
-                        placeholder="DD"
-                        value={formData.dateTo?.day || ''}
-                        onClick={handleDateFieldClick}
-                        onChange={(e) => handleDateFieldChange('dateTo', 'day', e.target.value, e.target)}
-                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateTo?.day ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                        maxLength={2}
-                      />
-                      <span className="text-white/50 font-bold text-xl">/</span>
-                      <Input
-                        ref={monthToRef}
-                        type="text"
-                        placeholder="MM"
-                        value={formData.dateTo?.month || ''}
-                        onClick={handleDateFieldClick}
-                        onChange={(e) => handleDateFieldChange('dateTo', 'month', e.target.value, e.target)}
-                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateTo?.month ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                        maxLength={2}
-                      />
-                      <span className="text-white/50 font-bold text-xl">/</span>
-                      <Input
-                        type="text"
-                        placeholder="YY"
-                        value={formData.dateTo?.year || ''}
-                        onClick={handleDateFieldClick}
-                        onChange={(e) => handleDateFieldChange('dateTo', 'year', e.target.value, e.target)}
-                        className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors?.dateTo?.year ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-                        maxLength={2}
-                      />
-                    </div>
-                  </div>
+                  <DatePickerButton
+                    label="Data od"
+                    icon="📅"
+                    value={formData.dateFrom || ''}
+                    onChange={(date) => onDateChange('dateFrom', date)}
+                    maxDate={formData.dateTo || undefined}
+                  />
+                  <DatePickerButton
+                    label="Data do"
+                    icon="📅"
+                    value={formData.dateTo || ''}
+                    onChange={(date) => onDateChange('dateTo', date)}
+                    minDate={formData.dateFrom || undefined}
+                  />
                 </div>
               )}
 
@@ -1209,8 +1194,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             </div>
           ) : (
             <>
-              {/* Tabela sprzętu */}
-              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
+              {/* Tabela sprzętu - widoczna tylko na desktop */}
+              <div className="hidden lg:block bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead className="bg-[#0f2744]/50 border-b border-white/10">
@@ -1568,6 +1553,223 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                     </nav>
                   </div>
                 </div>
+              </div>
+            )}
+          </div>
+
+          {/* Nagłówek dostępności - mobile */}
+          <div className="block lg:hidden mb-4 flex items-center justify-between bg-black/20 rounded-xl border border-white/10 p-3">
+            <span className="text-white font-bold text-sm">Dostępność:</span>
+            <div className="flex gap-2">
+              <button
+                onClick={handleManualRefresh}
+                disabled={isRefreshingAvailability}
+                className="p-2 rounded bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
+                title="Odśwież dostępność"
+              >
+                {isRefreshingAvailability ? (
+                  <span className="animate-spin">⟳</span>
+                ) : (
+                  <span>🔄</span>
+                )}
+              </button>
+              <button
+                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                className={`p-2 rounded transition-colors ${
+                  autoRefreshEnabled 
+                    ? 'bg-green-500/20' 
+                    : 'bg-gray-500/20'
+                }`}
+                title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
+              >
+                {autoRefreshEnabled ? (
+                  <span className="text-green-400">⏱️</span>
+                ) : (
+                  <span className="text-gray-400">⏸️</span>
+                )}
+              </button>
+            </div>
+          </div>
+
+          {/* Przyciski filtrowania długości - tylko dla VIP/TOP w mobile */}
+          {(activeFilter === 'VIP' || activeFilter === 'TOP') && (
+            <div className="block lg:hidden mb-4 bg-black/20 rounded-xl border border-white/10 p-3">
+              <div className="text-white/80 text-sm font-bold uppercase mb-2">
+                Filtruj długość (cm):
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {['14', '15', '16', '17', '18'].map(prefix => (
+                  <button
+                    key={prefix}
+                    onClick={() => toggleLengthFilter(prefix)}
+                    className={`px-4 py-2 rounded-lg font-bold transition-all ${
+                      selectedLengthFilters.has(prefix)
+                        ? 'bg-blue-600 text-white border-2 border-white/30 shadow-lg'
+                        : 'bg-white/10 text-white border-2 border-white/20 hover:bg-white/20'
+                    }`}
+                  >
+                    {prefix}0-{prefix}9
+                  </button>
+                ))}
+              </div>
+              {selectedLengthFilters.size > 0 && (
+                <button
+                  onClick={() => setSelectedLengthFilters(new Set())}
+                  className="mt-2 w-full px-3 py-1.5 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-xs font-bold uppercase transition-all"
+                >
+                  🗑️ Wyczyść filtry długości
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Karty - widoczne tylko na mobile */}
+          <div className="block lg:hidden space-y-3">
+            {currentSkis.map((ski) => (
+              <div 
+                key={ski.ID} 
+                className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4"
+              >
+                {/* Nagłówek karty - Marka, Model */}
+                <div className="mb-3 border-b border-white/10 pb-3">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <div className="text-white font-bold text-lg">
+                        {formatBrandName(ski)} {formatModelName(ski)}
+                      </div>
+                      {/* Długość - pomiędzy nazwą a kodem */}
+                      <div className="text-white font-bold text-base mt-1">
+                        {typeof ski.DLUGOSC === 'number' && ski.DLUGOSC % 1 !== 0 
+                          ? ski.DLUGOSC.toFixed(1).replace('.', ',') + ' cm'
+                          : ski.DLUGOSC + ' cm'}
+                      </div>
+                      <div className="text-white/60 text-xs mt-1">
+                        KOD: {ski.KOD}
+                      </div>
+                    </div>
+                    {/* Przycisk rozwijania/zwijania szczegółów */}
+                    <button
+                      onClick={() => toggleCardExpanded(ski.ID)}
+                      className="flex-shrink-0 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                      title={expandedCards.has(ski.ID) ? "Zwiń szczegóły" : "Rozwiń szczegóły"}
+                    >
+                      <span className="text-white text-lg">
+                        {expandedCards.has(ski.ID) ? '▲' : '▼'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Grid ze szczegółami - widoczny tylko gdy rozwinięty */}
+                {expandedCards.has(ski.ID) && (
+                <div className="grid grid-cols-2 gap-3 mb-3">
+
+                  {/* Flex (tylko dla butów dorosłych) */}
+                  {hasAdultBoots && ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE' && (
+                    <div>
+                      <div className="text-white/60 text-xs uppercase">Flex</div>
+                      <div className="text-white font-medium">
+                        {extractFlexFromModel(ski.MODEL) || '-'}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Wzrost, Waga, Poziom - jeśli nie ukryte */}
+                  {!shouldHideColumns && (
+                    <>
+                      <div>
+                        <div className="text-white/60 text-xs uppercase">Wzrost</div>
+                        <div className={`font-medium ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                          {ski.WZROST_MIN}-{ski.WZROST_MAX} cm
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-xs uppercase">Waga</div>
+                        <div className={`font-medium ${getCellColorClass(ski.ID, 'waga')}`}>
+                          {ski.WAGA_MIN}-{ski.WAGA_MAX} kg
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-xs uppercase">Poziom</div>
+                        <div className={`font-medium ${getCellColorClass(ski.ID, 'poziom')}`}>
+                          {formatLevel(ski.POZIOM)}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Płeć, Przeznaczenie, Atuty - jeśli nie ukryte */}
+                  {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                    <>
+                      <div>
+                        <div className="text-white/60 text-xs uppercase">Płeć</div>
+                        <div className={`font-medium ${getCellColorClass(ski.ID, 'plec')}`}>
+                          {formatGender(ski.PLEC)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-xs uppercase">Przeznaczenie</div>
+                        <div className="text-white font-medium">
+                          {formatPurpose(ski.PRZEZNACZENIE)}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-white/60 text-xs uppercase">Atuty</div>
+                        <div className="text-white font-medium">
+                          {ski.ATUTY || '-'}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+                )}
+
+                {/* SEKCJA DOSTĘPNOŚCI - wyróżniona, zawsze widoczna */}
+                <div className="mt-3 pt-3 border-t border-white/10">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="text-white/80 text-sm font-bold uppercase">
+                      Dostępność
+                    </div>
+                  </div>
+                  <div className="bg-black/30 rounded-lg p-3">
+                    {generateAvailabilitySquares(ski)}
+                  </div>
+                </div>
+
+                {/* Przycisk Edytuj - tylko dla pracowników */}
+                {isEmployeeMode && (
+                  <div className="mt-3 pt-3 border-t border-white/10">
+                    <button
+                      onClick={() => handleEdit(ski)}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 flex items-center justify-center gap-1"
+                    >
+                      ✏️ Edytuj
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+
+            {/* Paginacja - mobile */}
+            {totalPages > 1 && (
+              <div className="bg-[#0f2744]/50 rounded-xl border border-white/10 px-4 py-3 flex items-center justify-between">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1}
+                  className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Poprzednia
+                </button>
+                <div className="text-sm text-white/90">
+                  <span className="font-bold">{currentPage}</span> / <span className="font-bold">{totalPages}</span>
+                </div>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                  disabled={currentPage === totalPages}
+                  className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                >
+                  Następna
+                </button>
               </div>
             )}
           </div>

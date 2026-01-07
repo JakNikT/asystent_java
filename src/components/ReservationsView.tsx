@@ -3,6 +3,7 @@ import { ReservationApiClient } from '../services/reservationApiClient';
 import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
 import { EquipmentHandoutView } from './EquipmentHandoutView';
+import { DatePickerButton } from './DatePickerButton';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
 const logger = createLogger('ReservationsView');
@@ -804,17 +805,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
               </h2>
               
               <div className="space-y-6">
-                <div>
-                  <label className="block text-white font-bold text-lg mb-3 uppercase tracking-wider">
-                    Wybierz datę zwrotów:
-                  </label>
-                  <input
-                    type="date"
-                    value={returnDate}
-                    onChange={(e) => setReturnDate(e.target.value)}
-                    className="w-full px-6 py-4 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm text-lg"
-                  />
-                </div>
+                <DatePickerButton
+                  label="Wybierz datę zwrotów"
+                  icon="🔄"
+                  value={returnDate}
+                  onChange={setReturnDate}
+                />
 
                 <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-4">
                   <p className="text-blue-200 text-sm font-medium">
@@ -1012,37 +1008,37 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
               {/* Pola do wpisywania daty od i do - ukryj dla widoku "Wydania" */}
               {viewType !== 'handout' && (
                 <>
-                  <div className="flex flex-wrap items-center gap-4 mb-4 bg-[#0f2744]/30 px-4 py-3 rounded-lg border border-white/5">
-                    <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 whitespace-nowrap">
-                      📅 Data od:
-                    </label>
-                    <input
-                      type="date"
-                      value={dateFrom}
-                      onChange={(e) => setDateFrom(e.target.value)}
-                      className="px-4 py-2 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
-                    />
-                    <label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 whitespace-nowrap">
-                      📅 Data do:
-                    </label>
-                    <input
-                      type="date"
-                      value={dateTo}
-                      onChange={(e) => setDateTo(e.target.value)}
-                      className="px-4 py-2 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
-                    />
-                    {(dateFrom || dateTo) && (
-                      <button
-                        onClick={() => {
-                          setDateFrom('');
-                          setDateTo('');
-                        }}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 whitespace-nowrap"
-                      >
-                        Wyczyść daty
-                      </button>
-                    )}
+                  <div className="flex flex-col lg:flex-row gap-4 mb-4">
+                    <div className="flex-1">
+                      <DatePickerButton
+                        label="Data od"
+                        icon="📅"
+                        value={dateFrom}
+                        onChange={setDateFrom}
+                        maxDate={dateTo || undefined}
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <DatePickerButton
+                        label="Data do"
+                        icon="📅"
+                        value={dateTo}
+                        onChange={setDateTo}
+                        minDate={dateFrom || undefined}
+                      />
+                    </div>
                   </div>
+                  {(dateFrom || dateTo) && (
+                    <button
+                      onClick={() => {
+                        setDateFrom('');
+                        setDateTo('');
+                      }}
+                      className="w-full lg:w-auto px-6 py-3 mb-4 bg-red-600 hover:bg-red-700 text-white rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10"
+                    >
+                      🗑️ Wyczyść daty
+                    </button>
+                  )}
                   
                   {/* Komunikat informujący o konieczności wpisania daty */}
                   {!dateFromFilter && (

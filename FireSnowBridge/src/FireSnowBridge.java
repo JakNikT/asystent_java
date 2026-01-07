@@ -192,6 +192,7 @@ public class FireSnowBridge {
                 // 1. Pozycja o nazwie "PROMOTOR"
                 // 2. Literka "p" w uwagach pozycji (DESCRIPTION)
                 // 3. Numer dokumentu zaczyna się od "P"
+                // DODANO: Filtrowanie wykonanych rezerwacji - wykluczamy rezerwacje które mają już aktywne wypożyczenia
                 String sql = 
                     "SELECT " +
                     "  rp.ID as rezerwacja_id, " +
@@ -227,6 +228,14 @@ public class FireSnowBridge {
                     "JOIN ABSTRACTDOCUMENT doc ON doc.ID = acd.ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
                     "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
+                    "  AND NOT EXISTS ( " +  // Wykluczamy rezerwacje które zostały już wykonane (mają aktywne wypożyczenie)
+                    "    SELECT 1 FROM SESSIONINFOFGHJ si " +
+                    "    WHERE si.CUSTOMER_ID = rp.CUSTOMER_ID " +
+                    "      AND si.RENTOBJECT_ID = rp.RENTOBJECT_ID " +
+                    "      AND si.STOPTIME = 0 " +  // Tylko aktywne wypożyczenia
+                    "      AND si.STARTTIME >= rp.BEGINDATE " +
+                    "      AND si.STARTTIME <= rp.BEGINDATE + 86400000 " +  // +1 dzień tolerancji (86400000ms = 24h)
+                    "  ) " +
                     "ORDER BY rp.ID";
                 
                 Statement stmt = conn.createStatement();

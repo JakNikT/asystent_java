@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
+import { DatePickerButton } from './DatePickerButton';
 
 // src/components/EquipmentHandoutView.tsx: Logger dla EquipmentHandoutView
 const logger = createLogger('EquipmentHandoutView');
@@ -187,17 +188,12 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
             </h2>
             
             <div className="space-y-6">
-              <div>
-                <label className="block text-white font-bold text-lg mb-3 uppercase tracking-wider">
-                  Wybierz datę wydania:
-                </label>
-                <input
-                  type="date"
-                  value={selectedDate}
-                  onChange={(e) => setSelectedDate(e.target.value)}
-                  className="w-full px-6 py-4 bg-primary text-white rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm text-lg"
-                />
-              </div>
+              <DatePickerButton
+                label="Wybierz datę wydania"
+                icon="📦"
+                value={selectedDate}
+                onChange={setSelectedDate}
+              />
 
               <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-4">
                 <p className="text-blue-200 text-sm font-medium">

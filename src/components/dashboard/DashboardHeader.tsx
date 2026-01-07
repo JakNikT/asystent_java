@@ -45,8 +45,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       />
       
       {/* Main Content Container - bez zewnętrznego layoutu */}
-      <div className="w-full max-w-[1100px] mx-auto my-4 lg:my-6 flex flex-col gap-4">
-        <div className="w-full bg-brand-dark/50 backdrop-blur-sm rounded-[20px] flex flex-col lg:flex-row items-center justify-center gap-3 p-4 lg:p-6 border border-white/10 shadow-xl shadow-black/30">
+      <div className="w-full max-w-[1100px] mx-auto my-4 lg:my-6 flex flex-col gap-4 px-3 lg:px-0">
+        <div className="w-full bg-brand-dark/50 backdrop-blur-sm rounded-[20px] flex flex-col lg:flex-row items-center justify-center gap-3 p-3 lg:p-6 border border-white/10 shadow-xl shadow-black/30">
           {children}
         </div>
 

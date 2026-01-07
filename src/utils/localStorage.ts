@@ -5,16 +5,8 @@
 
 export interface UserSessionData {
   formData: {
-    dateFrom: {
-      day: string;
-      month: string;
-      year: string;
-    };
-    dateTo: {
-      day: string;
-      month: string;
-      year: string;
-    };
+    dateFrom: string;
+    dateTo: string;
     height: {
       value: string;
       unit: string;
@@ -44,16 +36,8 @@ export function saveUserSession(formData: any): void {
   try {
     const sessionData: UserSessionData = {
       formData: {
-        dateFrom: {
-          day: formData.dateFrom.day || '',
-          month: formData.dateFrom.month || '',
-          year: formData.dateFrom.year || ''
-        },
-        dateTo: {
-          day: formData.dateTo.day || '',
-          month: formData.dateTo.month || '',
-          year: formData.dateTo.year || ''
-        },
+        dateFrom: formData.dateFrom || '',
+        dateTo: formData.dateTo || '',
         height: {
           value: formData.height.value || '',
           unit: formData.height.unit || 'cm'

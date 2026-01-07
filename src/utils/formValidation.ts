@@ -7,16 +7,8 @@ export interface ValidationResult {
 }
 
 export interface FormErrors {
-  dateFrom: {
-    day: string;
-    month: string;
-    year: string;
-  };
-  dateTo: {
-    day: string;
-    month: string;
-    year: string;
-  };
+  dateFrom: string;
+  dateTo: string;
   height: string;
   weight: string;
   level: string;
@@ -25,8 +17,8 @@ export interface FormErrors {
 }
 
 export const initialFormErrors: FormErrors = {
-  dateFrom: { day: '', month: '', year: '' },
-  dateTo: { day: '', month: '', year: '' },
+  dateFrom: '',
+  dateTo: '',
   height: '',
   weight: '',
   level: '',
@@ -548,6 +540,35 @@ export function validateGender(gender: string): ValidationResult {
 }
 
 /**
+ * Waliduje datę w formacie YYYY-MM-DD (opcjonalna)
+ * console.log(src/utils/formValidation.ts: Walidacja daty w formacie YYYY-MM-DD)
+ */
+export function validateDateString(dateStr: string): ValidationResult {
+  console.log(`src/utils/formValidation.ts: Walidacja daty string - wartość: "${dateStr}"`);
+  
+  // Pusta data jest OK (opcjonalna)
+  if (!dateStr || dateStr.trim() === '') {
+    console.log(`src/utils/formValidation.ts: Data opcjonalna - pusta`);
+    return { isValid: true, message: '' };
+  }
+  
+  // Sprawdź format YYYY-MM-DD
+  const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
+  if (!dateRegex.test(dateStr)) {
+    return { isValid: false, message: 'Data musi być w formacie YYYY-MM-DD' };
+  }
+  
+  // Sprawdź czy data jest prawidłowa
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) {
+    return { isValid: false, message: 'Nieprawidłowa data' };
+  }
+  
+  console.log(`src/utils/formValidation.ts: Data string poprawna - ${dateStr}`);
+  return { isValid: true, message: '' };
+}
+
+/**
  * Waliduje cały formularz
  * console.log(src/utils/formValidation.ts: Walidacja całego formularza)
  */
@@ -557,25 +578,21 @@ export function validateForm(formData: any): { isValid: boolean; errors: FormErr
   const errors: FormErrors = { ...initialFormErrors };
   let isValid = true;
 
-  // Waliduj datę od
-  console.log(`src/utils/formValidation.ts: Walidacja daty od - day: "${formData.dateFrom.day}", month: "${formData.dateFrom.month}", year: "${formData.dateFrom.year}"`);
-  const dateFromResult = validateDate(formData.dateFrom.day, formData.dateFrom.month, formData.dateFrom.year);
+  // Waliduj datę od (teraz string w formacie YYYY-MM-DD)
+  console.log(`src/utils/formValidation.ts: Walidacja daty od - wartość: "${formData.dateFrom}"`);
+  const dateFromResult = validateDateString(formData.dateFrom);
   console.log(`src/utils/formValidation.ts: Wynik walidacji daty od - isValid: ${dateFromResult.isValid}, message: "${dateFromResult.message}"`);
   if (!dateFromResult.isValid) {
-    errors.dateFrom.day = dateFromResult.message;
-    errors.dateFrom.month = dateFromResult.message;
-    errors.dateFrom.year = dateFromResult.message;
+    errors.dateFrom = dateFromResult.message;
     isValid = false;
   }
 
-  // Waliduj datę do
-  console.log(`src/utils/formValidation.ts: Walidacja daty do - day: "${formData.dateTo.day}", month: "${formData.dateTo.month}", year: "${formData.dateTo.year}"`);
-  const dateToResult = validateDate(formData.dateTo.day, formData.dateTo.month, formData.dateTo.year);
+  // Waliduj datę do (teraz string w formacie YYYY-MM-DD)
+  console.log(`src/utils/formValidation.ts: Walidacja daty do - wartość: "${formData.dateTo}"`);
+  const dateToResult = validateDateString(formData.dateTo);
   console.log(`src/utils/formValidation.ts: Wynik walidacji daty do - isValid: ${dateToResult.isValid}, message: "${dateToResult.message}"`);
   if (!dateToResult.isValid) {
-    errors.dateTo.day = dateToResult.message;
-    errors.dateTo.month = dateToResult.message;
-    errors.dateTo.year = dateToResult.message;
+    errors.dateTo = dateToResult.message;
     isValid = false;
   }
 

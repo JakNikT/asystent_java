@@ -3,17 +3,14 @@ import type { FormData } from '../../types/dashboard.types';
 import type { FormErrors } from '../../utils/formValidation';
 import { Input } from '../ui/Input';
 import { Label } from '../ui/Label';
+import { DatePickerButton } from '../DatePickerButton';
 
 interface SkierFormProps {
   formData: FormData;
   formErrors: FormErrors;
   onFieldChange: (section: keyof FormData | string, field: string, value: string, el?: HTMLInputElement) => void;
-  handleDateFieldClick: (e: React.MouseEvent<HTMLInputElement>) => void;
+  onDateChange: (section: 'dateFrom' | 'dateTo', value: string) => void;
   // Refs dla automatycznego przechodzenia między polami
-  dayFromRef: React.RefObject<HTMLInputElement | null>;
-  monthFromRef: React.RefObject<HTMLInputElement | null>;
-  dayToRef: React.RefObject<HTMLInputElement | null>;
-  monthToRef: React.RefObject<HTMLInputElement | null>;
   heightRef: React.RefObject<HTMLInputElement | null>;
   weightRef: React.RefObject<HTMLInputElement | null>;
   levelRef: React.RefObject<HTMLInputElement | null>;
@@ -25,11 +22,7 @@ const SkierForm: React.FC<SkierFormProps> = ({
   formData,
   formErrors,
   onFieldChange,
-  handleDateFieldClick,
-  dayFromRef,
-  monthFromRef,
-  dayToRef,
-  monthToRef,
+  onDateChange,
   heightRef,
   weightRef,
   levelRef,
@@ -37,64 +30,30 @@ const SkierForm: React.FC<SkierFormProps> = ({
   shoeSizeRef
 }) => {
 
-  // Pomocnicza funkcja do renderowania grupy inputów daty
-  const renderDateInputs = (
-    label: string,
-    section: 'dateFrom' | 'dateTo',
-    dayRef: React.RefObject<HTMLInputElement | null>,
-    monthRef: React.RefObject<HTMLInputElement | null>
-  ) => (
-    <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">
-      <Label className="text-white font-bold text-sm uppercase tracking-wider opacity-90 flex items-center gap-2 min-w-[100px]">
-        📅 {label}
-      </Label>
-      <div className="flex items-center gap-1">
-        <Input
-          ref={dayRef}
-          type="text"
-          placeholder="DD"
-          value={formData[section].day}
-          onClick={handleDateFieldClick}
-          onChange={(e) => onFieldChange(section, 'day', e.target.value, e.target)}
-          className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors[section].day ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-          maxLength={2}
-        />
-        <span className="text-white/50 font-bold text-xl">/</span>
-        <Input
-          ref={monthRef}
-          type="text"
-          placeholder="MM"
-          value={formData[section].month}
-          onClick={handleDateFieldClick}
-          onChange={(e) => onFieldChange(section, 'month', e.target.value, e.target)}
-          className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors[section].month ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-          maxLength={2}
-        />
-        <span className="text-white/50 font-bold text-xl">/</span>
-        <Input
-          type="text"
-          placeholder="YY"
-          value={formData[section].year}
-          onClick={handleDateFieldClick}
-          onChange={(e) => onFieldChange(section, 'year', e.target.value, e.target)}
-          className={`w-24 h-10 text-center font-bold text-xl bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-shadow ${formErrors[section].year ? 'border-red-500 ring-2 ring-red-500' : ''}`}
-          maxLength={2}
-        />
-      </div>
-    </div>
-  );
-
   return (
     <>
       {/* Left Section - Personal Data */}
-      <div className="w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
+      <div className="w-full lg:w-auto flex-1 p-3 lg:p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-3 lg:gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
 
         <div className="flex flex-col gap-3">
-          {renderDateInputs('Data od:', 'dateFrom', dayFromRef, monthFromRef)}
-          {renderDateInputs('Data do:', 'dateTo', dayToRef, monthToRef)}
+          <DatePickerButton
+            label="Data od"
+            icon="📅"
+            value={formData.dateFrom}
+            onChange={(date) => onDateChange('dateFrom', date)}
+            maxDate={formData.dateTo || undefined}
+          />
+          <DatePickerButton
+            label="Data do"
+            icon="📅"
+            value={formData.dateTo}
+            onChange={(date) => onDateChange('dateTo', date)}
+            minDate={formData.dateFrom || undefined}
+          />
         </div>
 
-        <div className="flex flex-row gap-3">
+        {/* Ukryte na mobile - widoczne tylko na lg+ */}
+        <div className="hidden lg:flex flex-row gap-3">
           {/* Height */}
           <div className="flex flex-row items-center justify-between gap-2 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20 flex-1">
             <Label className="text-white font-bold text-xs uppercase tracking-wider opacity-90 flex items-center gap-1 min-w-[60px]">
@@ -135,8 +94,8 @@ const SkierForm: React.FC<SkierFormProps> = ({
         </div>
       </div>
 
-      {/* Center Section - Level, Gender and Shoe Size */}
-      <div className="w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
+      {/* Center Section - Level, Gender and Shoe Size - Ukryte na mobile */}
+      <div className="hidden lg:flex w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
 
         {/* Level */}
         <div className="flex flex-row items-center justify-between gap-3 bg-[#0f2744]/50 p-2 rounded-lg border border-white/5 shadow-md shadow-black/20">

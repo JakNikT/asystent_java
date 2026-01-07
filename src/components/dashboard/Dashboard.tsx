@@ -66,7 +66,6 @@ const Dashboard: React.FC = () => {
     setIsPasswordModalOpen,
     setPasswordError,
     parseDate,
-    handleDateFieldClick,
     handleDateChange,
     handleBrowseCriteriaChange,
     handleFilterSearchChange,
@@ -77,10 +76,6 @@ const Dashboard: React.FC = () => {
     loadDatabase,
     computedInitialFilter,
     groupedResults,
-    dayFromRef,
-    monthFromRef,
-    dayToRef,
-    monthToRef,
     heightRef,
     weightRef,
     levelRef,
@@ -118,11 +113,7 @@ const Dashboard: React.FC = () => {
             formData={formData}
             formErrors={formErrors}
             onFieldChange={handleInputChange as (section: keyof FormData | string, field: string, value: string, el?: HTMLInputElement) => void}
-            handleDateFieldClick={handleDateFieldClick}
-            dayFromRef={dayFromRef}
-            monthFromRef={monthFromRef}
-            dayToRef={dayToRef}
-            monthToRef={monthToRef}
+            onDateChange={handleDateChange}
             heightRef={heightRef}
             weightRef={weightRef}
             levelRef={levelRef}

@@ -50,3 +50,20 @@ ENV/
 # Excel temporary files
 ~$*.xlsx
 ~$*.xls
+
+# Portable Java 
+FireSnowBridge/jdk/
+
+# Skompilowane pliki Java
+FireSnowBridge/bin/
+FireSnowBridge/*.jar
+FireSnowBridge/*.class
+
+# Bazy danych testowe HSQLDB
+FireSnowBridge/lib/*.log
+FireSnowBridge/lib/*.properties
+FireSnowBridge/lib/*.script
+FireSnowBridge/lib/*.tmp/
+
+hsqldb.jar - jest potrzebny!
+!FireSnowBridge/lib/hsqldb.jar

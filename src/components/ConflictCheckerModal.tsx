@@ -11,6 +11,7 @@ import { ReservationApiClient } from '../services/reservationApiClient';
 import { detectConflicts } from '../utils/conflictDetector';
 import type { ConflictAnalysisResult } from '../types/conflict.types';
 import type { ReservationData } from '../services/reservationService';
+import { DatePickerButton } from './DatePickerButton';
 
 interface ConflictCheckerModalProps {
   isOpen: boolean;
@@ -297,33 +298,29 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
       <div className="space-y-6">
         {/* Formularz wyboru dat */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="dateFrom">Data od</Label>
-            <Input
-              id="dateFrom"
-              type="date"
-              value={dateFrom}
-              onChange={(e) => {
-                setDateFrom(e.target.value);
-                handleReset();
-              }}
-              disabled={isLoading}
-            />
-          </div>
+          <DatePickerButton
+            label="Data od"
+            icon="📅"
+            value={dateFrom}
+            onChange={(date) => {
+              setDateFrom(date);
+              handleReset();
+            }}
+            disabled={isLoading}
+            maxDate={dateTo || undefined}
+          />
           
-          <div className="space-y-2">
-            <Label htmlFor="dateTo">Data do</Label>
-            <Input
-              id="dateTo"
-              type="date"
-              value={dateTo}
-              onChange={(e) => {
-                setDateTo(e.target.value);
-                handleReset();
-              }}
-              disabled={isLoading}
-            />
-          </div>
+          <DatePickerButton
+            label="Data do"
+            icon="📅"
+            value={dateTo}
+            onChange={(date) => {
+              setDateTo(date);
+              handleReset();
+            }}
+            disabled={isLoading}
+            minDate={dateFrom || undefined}
+          />
         </div>
         
         {/* Przyciski sprawdzania */}

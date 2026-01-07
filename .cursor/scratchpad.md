@@ -118,6 +118,40 @@ Użytkownik poprosił o dwa główne ulepszenia:
 
 ## Executor's Feedback or Assistance Requests
 
+**Data**: 2026-01-06
+
+**Zadanie**: Implementacja MUI DatePicker dla lepszej responsywności na mobile
+- ✅ Zainstalowano zależności: @mui/x-date-pickers, @mui/material, @emotion/react, @emotion/styled, dayjs
+- ✅ Utworzono komponent DatePickerButton.tsx z ciemnym motywem dopasowanym do aplikacji (#386BB2)
+- ✅ Zaktualizowano wszystkie pola dat w aplikacji:
+  - ReservationsView.tsx: 3 pola (dateFrom, dateTo w filtrach + returnDate w widoku zwrotów)
+  - EquipmentHandoutView.tsx: 1 pole (selectedDate w widoku wydań)
+  - ConflictCheckerModal.tsx: 2 pola (dateFrom, dateTo w modale konfliktów)
+  - **SkierForm.tsx (główny formularz)**: 2 pola (dateFrom, dateTo) - REFAKTORYZACJA KOMPLETNA! ✅
+- ✅ Przetestowano na różnych rozdzielczościach:
+  - Mobile (375px iPhone SE): pełna szerokość pól, kalendarz w modalu, polska lokalizacja działa ✅
+  - Tablet (768px iPad): layout pionowy, pola elastyczne ✅
+  - Desktop (1280px): profesjonalny wygląd, kalendarz w popoverze ✅
+- ✅ Walidacja działa poprawnie: minDate i maxDate blokują nieprawidłowe wybory
+- ✅ Polska lokalizacja: miesiące (styczeń, luty...), dni (poniedziałek, wtorek...)
+- ✅ Format wyświetlania: DD MMMM YYYY (np. "12 stycznia 2025")
+- ✅ Przyciski akcji: "Clear" (wyczyść datę), "Today" (dzisiaj)
+- **Status**: Gotowe do użycia w produkcji! 🎉
+
+**Refaktoryzacja głównego formularza wyszukiwania** (dodatkowe zadanie):
+- ✅ Zmieniono strukturę danych FormData.dateFrom/dateTo z obiektu {day, month, year} na string (YYYY-MM-DD)
+- ✅ Zaktualizowano wszystkie typy TypeScript: dashboard.types.ts, formValidation.ts, localStorage.ts
+- ✅ Zaktualizowano useDashboardState.ts: uproszczono handleInputChange, parseDate, handleDateChange
+- ✅ Zaktualizowano SkierForm.tsx, BrowseSkisComponent.tsx, Dashboard.tsx
+- ✅ Usunięto niepotrzebne refs (dayFromRef, monthFromRef, dayToRef, monthToRef) i funkcje (handleDateFieldClick)
+- ✅ Przetestowano: kalendarz otwiera się, wybór daty działa, wyświetla "15 styczeń 2026" ✅
+
+**Screenshoty**:
+- Mobile (375px): `file:///c%3A/Users/narty/AppData/Local/Temp/cursor/screenshots/mui-datepicker-mobile-375px.png`
+- Desktop (1280px): `file:///c%3A/Users/narty/AppData/Local/Temp/cursor/screenshots/mui-datepicker-desktop-1280px.png`
+
+---
+
 **Data**: 2025-11-27
 
 **Zadanie**: Przycisk "ZWROTY" w widoku rezerwacji
@@ -4491,7 +4525,43 @@ Frontend (React) → HTTP API → Backend Server (Express/Node.js) → CSV Files
 
 ## Executor's Feedback or Assistance Requests
 
-### ✅ IMPLEMENTACJA ZAKOŃCZONA - PODSUMOWANIE
+### ✅ ZAIMPLEMENTOWANO (07.01.2026)
+
+**Zadanie**: Filtrowanie wykonanych rezerwacji w funkcji "Wydanie sprzętu"
+
+**Status**: ✅ Zaimplementowano i wdrożono - gotowe do testów użytkownika
+
+**Co zostało zrobione**:
+1. ✅ Zmodyfikowano zapytanie SQL w `FireSnowBridge.java` (endpoint `/api/rezerwacje/aktywne`)
+2. ✅ Dodano klauzulę `NOT EXISTS` która wyklucza rezerwacje mające już aktywne wypożyczenia
+3. ✅ Przekompilowano FireSnowBridge.java
+4. ✅ Zrestartowano serwer Java - działa poprawnie na porcie 8080
+5. ✅ Przetestowano endpoint - API zwraca dane
+
+**Logika filtrowania**:
+Rezerwacja jest ukryta w widoku "Wydanie sprzętu" jeśli istnieje wypożyczenie dla:
+- Tego samego klienta (`CUSTOMER_ID`)
+- Tego samego sprzętu (`RENTOBJECT_ID`)
+- Które jest aktywne (`STOPTIME = 0`)
+- Które rozpoczęło się w okolicach daty rozpoczęcia rezerwacji (±1 dzień tolerancji: 86400000ms)
+
+**Zmieniony plik**:
+- `FireSnowBridge/src/FireSnowBridge.java` - linie 188-237 (handler AktywnRezerwacjeHandler)
+
+**Następne kroki dla użytkownika**:
+1. Otwórz aplikację: http://localhost:5002
+2. Przejdź do widoku "Wydanie sprzętu"
+3. Wybierz datę i sprawdź listę klientów
+4. Wykonaj rezerwację w systemie FireSnow (wydaj sprzęt)
+5. Odśwież aplikację i sprawdź czy wykonana rezerwacja zniknęła z listy
+
+**Uwaga**: Jeśli rezerwacja nadal się pokazuje po wydaniu sprzętu, może to oznaczać że:
+- System FireSnow nie utworzył jeszcze wypożyczenia w tabeli SESSIONINFOFGHJ
+- Data rozpoczęcia wypożyczenia różni się o więcej niż 1 dzień od daty rezerwacji
+
+---
+
+### ✅ IMPLEMENTACJA ZAKOŃCZONA - PODSUMOWANIE (poprzednie zadania)
 
 **Wszystkie 10 etapów wykonane pomyślnie!**
 
@@ -4565,6 +4635,13 @@ Dzień od → Miesiąc od → Rok od → Dzień do → Miesiąc do → Rok do �
 
 ## Lessons
 
+- **MUI DatePicker znacznie poprawia UX na mobile** - Natywne pola `<input type="date">` są trudne w obsłudze na telefonach (małe touch targets), MUI DatePicker z kalendarzem jest znacznie bardziej przyjazny
+- **Polska lokalizacja wymaga dayjs/locale/pl** - Bez importu polskiej lokalizacji miesiące i dni byłyby w języku angielskim
+- **Responsywność wymaga testów na różnych rozdzielczościach** - iPhone SE (375px), tablet (768px), desktop (1024px+) - każda rozdzielczość ma inne wymagania
+- **Ciemny motyw MUI wymaga dostosowania kolorów** - Domyślny ciemny motyw MUI nie pasuje do brandingu aplikacji (#386BB2), trzeba go customizować
+- **MUI DatePicker automatycznie obsługuje walidację** - minDate i maxDate automatycznie blokują niepoprawne wybory
+- **Refaktoryzacja struktury danych wymaga aktualizacji wielu plików** - Zmiana FormData.dateFrom z obiektu na string wymagała aktualizacji: types, validation, localStorage, 3 komponentów, hook useDashboardState (10+ plików!)
+- **Usunięcie nieużywanego kodu poprawia czytelność** - Po refaktoryzacji usunięto 150+ linii kodu (refs, handleDateFieldClick, logika day/month/year) - kod jest prostszy i łatwiejszy w utrzymaniu
 - **Automatyczne wyszukiwanie wymaga debounce** - bez debounce (500ms) każda zmiana litery uruchamia wyszukiwanie, co przeciąża system
 - **useEffect z formData wymaga flagi pierwszego renderowania** - bez `isFirstRenderRef` wyszukiwanie uruchamia się przy starcie aplikacji z pustym formularzem
 - **Stara logika automatycznego wyszukiwania musi być usunięta** - jeśli mamy globalny useEffect do automatycznego wyszukiwania, lokalne wywołania handleSubmit powodują konflikty
@@ -4590,3 +4667,5 @@ Dzień od → Miesiąc od → Rok od → Dzień do → Miesiąc do → Rok do �
 - **Wykorzystanie istniejących struktur danych upraszcza implementację nowych funkcji** - wyszukiwanie butów wykorzystało istniejący SearchResults zamiast tworzyć nową strukturę
 - **Walidacja pól formularza przed operacjami oszczędza czas** - sprawdzenie czy pole shoeSize jest wypełnione przed wyszukiwaniem butów zapobiega błędom
 - **Tolerancja w porównaniach numerycznych zwiększa elastyczność** - ±0.5 cm dla rozmiaru buta uwzględnia różnice w zaokrągleniach
+- **Filtrowanie wykonanych rezerwacji wymaga łączenia tabel rezerwacji i wypożyczeń** - klauzula NOT EXISTS z warunkami na CUSTOMER_ID, RENTOBJECT_ID i STOPTIME=0 pozwala wykryć które rezerwacje zostały już zrealizowane
+- **Tolerancja czasowa w porównaniach dat jest konieczna** - ±1 dzień (86400000ms) uwzględnia różnice w dokładnym czasie rozpoczęcia wypożyczenia vs rezerwacji
