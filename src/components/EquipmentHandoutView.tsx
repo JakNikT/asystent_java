@@ -33,6 +33,11 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
   const [selectedClient, setSelectedClient] = useState<ClientWithReservation | null>(null);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const [searchText, setSearchText] = useState<string>(''); // src/components/EquipmentHandoutView.tsx: Pole wyszukiwania klienta
+  
+  // src/components/EquipmentHandoutView.tsx: Stany dla trybu sprawdzania kodu
+  const [checkMode, setCheckMode] = useState<boolean>(false);
+  const [codeSearch, setCodeSearch] = useState<string>('');
+  const [foundReservation, setFoundReservation] = useState<ReservationData | null>(null);
 
   // src/components/EquipmentHandoutView.tsx: Funkcja formatowania daty do wyświetlenia
   const formatDate = (dateString: string): string => {
@@ -159,6 +164,38 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
     setSearchText(''); // Reset wyszukiwania przy powrocie
   };
 
+  // src/components/EquipmentHandoutView.tsx: Powrót z trybu sprawdzania kodu
+  const handleBackFromCheckMode = () => {
+    setCheckMode(false);
+    setCodeSearch('');
+    setFoundReservation(null);
+  };
+
+  // src/components/EquipmentHandoutView.tsx: Wyszukiwanie rezerwacji po kodzie sprzętu
+  const handleCodeSearch = () => {
+    if (!codeSearch.trim()) {
+      logger.debug('EquipmentHandoutView: Pusta wartość kodu');
+      return;
+    }
+    
+    logger.debug('EquipmentHandoutView: Wyszukiwanie kodu', codeSearch);
+    
+    const now = new Date();
+    // Znajdź wszystkie rezerwacje z tym kodem (przyszłe i aktualne)
+    const matchingReservations = reservations
+      .filter(res => res.kod?.toLowerCase() === codeSearch.toLowerCase().trim())
+      .filter(res => new Date(res.do) >= now) // Tylko aktywne lub przyszłe (data do >= teraz)
+      .sort((a, b) => new Date(a.od).getTime() - new Date(b.od).getTime());
+    
+    if (matchingReservations.length > 0) {
+      logger.debug('EquipmentHandoutView: Znaleziono rezerwację', matchingReservations[0]);
+      setFoundReservation(matchingReservations[0]); // Najbliższa rezerwacja
+    } else {
+      logger.debug('EquipmentHandoutView: Nie znaleziono rezerwacji dla kodu', codeSearch);
+      setFoundReservation(null);
+    }
+  };
+
   // src/components/EquipmentHandoutView.tsx: Filtrowanie klientów po nazwie
   const filteredClients = useMemo(() => {
     if (!searchText) return clientsForDate;
@@ -168,6 +205,119 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
       client.klient.toLowerCase().includes(searchLower)
     );
   }, [clientsForDate, searchText]);
+
+  // WIDOK 0: Sprawdzenie kodu sprzętu
+  if (checkMode) {
+    return (
+      <div 
+        className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
+        style={{
+          backgroundImage: "url('/images/background.png')",
+        }}
+      >
+        {/* Overlay dla lepszej czytelności */}
+        <div className="absolute inset-0 bg-black/20 pointer-events-none z-0"></div>
+
+        <div className="relative z-10 max-w-2xl mx-auto">
+          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-6 lg:p-8">
+            <h2 className="text-2xl lg:text-3xl font-bold text-white mb-6 text-center">
+              🔍 Sprawdź Kod Sprzętu
+            </h2>
+            
+            <div className="space-y-6">
+              {/* Pole wpisywania kodu */}
+              <div className="space-y-3">
+                <label className="block text-white font-bold text-sm uppercase tracking-wider opacity-90">
+                  Wpisz kod sprzętu:
+                </label>
+                <input
+                  type="text"
+                  value={codeSearch}
+                  onChange={(e) => {
+                    setCodeSearch(e.target.value.toUpperCase());
+                    setFoundReservation(null); // Reset wyników przy zmianie
+                  }}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleCodeSearch();
+                    }
+                  }}
+                  placeholder="np. N001"
+                  className="w-full px-4 py-4 bg-primary text-white text-xl font-mono placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm text-center uppercase"
+                  autoFocus
+                />
+              </div>
+
+              {/* Przycisk szukaj */}
+              <button
+                onClick={handleCodeSearch}
+                disabled={!codeSearch.trim()}
+                className={`w-full py-4 px-6 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-lg ${
+                  codeSearch.trim()
+                    ? 'bg-green-600 hover:bg-green-700 text-white border border-white/10'
+                    : 'bg-gray-600/50 text-white/50 border border-white/5 cursor-not-allowed'
+                }`}
+              >
+                🔍 Szukaj
+              </button>
+
+              {/* Wyniki wyszukiwania */}
+              {foundReservation !== null && foundReservation ? (
+                <div className="bg-green-600/30 border-2 border-green-500 rounded-lg p-6 space-y-3">
+                  <div className="text-center text-green-200 font-bold text-lg mb-4">
+                    ✓ Znaleziono rezerwację
+                  </div>
+                  
+                  <div className="bg-black/20 rounded-lg p-4 space-y-2">
+                    <div className="text-white/70 text-sm">Sprzęt:</div>
+                    <div className="text-white font-bold text-xl">{foundReservation.sprzet}</div>
+                  </div>
+                  
+                  <div className="bg-black/20 rounded-lg p-4 space-y-2">
+                    <div className="text-white/70 text-sm">Klient:</div>
+                    <div className="text-white font-bold text-xl">{foundReservation.klient}</div>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-black/20 rounded-lg p-4 space-y-2">
+                      <div className="text-white/70 text-sm">Data od:</div>
+                      <div className="text-white font-bold">{formatDate(foundReservation.od)}</div>
+                    </div>
+                    <div className="bg-black/20 rounded-lg p-4 space-y-2">
+                      <div className="text-white/70 text-sm">Data do:</div>
+                      <div className="text-white font-bold">{formatDate(foundReservation.do)}</div>
+                    </div>
+                  </div>
+                </div>
+              ) : foundReservation === null && codeSearch.trim() !== '' ? (
+                <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-6">
+                  <p className="text-yellow-200 text-center font-medium">
+                    ⚠️ Nie znaleziono aktywnej rezerwacji dla kodu: <strong>{codeSearch}</strong>
+                  </p>
+                  <p className="text-yellow-200/70 text-sm text-center mt-2">
+                    (Sprawdzane są tylko aktualne i przyszłe rezerwacje)
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="bg-blue-600/30 border border-blue-500 rounded-lg p-4">
+                <p className="text-blue-200 text-sm font-medium">
+                  ℹ️ Wpisz kod sprzętu, aby zobaczyć informacje o najbliższej rezerwacji.
+                </p>
+              </div>
+
+              <button
+                onClick={handleBackFromCheckMode}
+                className="w-full py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+              >
+                ← Powrót
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // WIDOK 1: Wybór daty wydania
   if (!selectedDate) {
@@ -201,12 +351,21 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
                 </p>
               </div>
 
-              <button
-                onClick={onBack}
-                className="w-full py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
-              >
-                ← Powrót do rezerwacji
-              </button>
+              {/* Przyciski akcji */}
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setCheckMode(true)}
+                  className="py-4 px-6 bg-green-600 hover:bg-green-700 text-white rounded-lg border border-white/10 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+                >
+                  🔍 Sprawdź
+                </button>
+                <button
+                  onClick={onBack}
+                  className="py-4 px-6 bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white rounded-lg border border-white/5 hover:border-white/20 font-bold uppercase tracking-wider transition-all shadow-sm text-lg"
+                >
+                  ← Powrót
+                </button>
+              </div>
             </div>
           </div>
         </div>
