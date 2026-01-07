@@ -101,9 +101,8 @@ export interface DashboardStateReturn {
   setPasswordError: (error: string) => void;
   
   // Funkcje pomocnicze
-  parseDate: (dateObj: { day: string; month: string; year: string }) => Date | undefined;
-  handleDateFieldClick: (e: React.MouseEvent<HTMLInputElement>) => void;
-  handleDateChange: (section: 'dateFrom' | 'dateTo', field: 'day' | 'month' | 'year', value: string, inputRef?: HTMLInputElement) => void;
+  parseDate: (dateStr: string) => Date | undefined;
+  handleDateChange: (section: 'dateFrom' | 'dateTo', value: string) => void;
   handleBrowseCriteriaChange: (criteria: Partial<SearchCriteria>) => void;
   handleFilterSearchChange: (filterKey: FilterKey, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => void;
   
@@ -121,10 +120,6 @@ export interface DashboardStateReturn {
   groupedResults: SearchResults | null;
   
   // Refs
-  dayFromRef: React.RefObject<HTMLInputElement | null>;
-  monthFromRef: React.RefObject<HTMLInputElement | null>;
-  dayToRef: React.RefObject<HTMLInputElement | null>;
-  monthToRef: React.RefObject<HTMLInputElement | null>;
   heightRef: React.RefObject<HTMLInputElement | null>;
   weightRef: React.RefObject<HTMLInputElement | null>;
   levelRef: React.RefObject<HTMLInputElement | null>;
@@ -139,8 +134,8 @@ export const useDashboardState = (): DashboardStateReturn => {
       id: '1',
       label: 'Osoba 1',
       formData: {
-        dateFrom: { day: '', month: '', year: '' },
-        dateTo: { day: '', month: '', year: '' },
+        dateFrom: '',
+        dateTo: '',
         height: { value: '', unit: 'cm' },
         weight: { value: '', unit: 'kg' },
         level: '',
@@ -252,10 +247,6 @@ export const useDashboardState = (): DashboardStateReturn => {
   };
 
   // Refs dla automatycznego przechodzenia między polami
-  const dayFromRef = React.useRef<HTMLInputElement | null>(null);
-  const monthFromRef = React.useRef<HTMLInputElement | null>(null);
-  const dayToRef = React.useRef<HTMLInputElement | null>(null);
-  const monthToRef = React.useRef<HTMLInputElement | null>(null);
   const heightRef = React.useRef<HTMLInputElement | null>(null);
   const weightRef = React.useRef<HTMLInputElement | null>(null);
   const levelRef = React.useRef<HTMLInputElement | null>(null);
@@ -269,8 +260,8 @@ export const useDashboardState = (): DashboardStateReturn => {
       id: newId,
       label: `Osoba ${newId}`,
       formData: {
-        dateFrom: { day: '', month: '', year: '' },
-        dateTo: { day: '', month: '', year: '' },
+        dateFrom: '',
+        dateTo: '',
         height: { value: '', unit: 'cm' },
         weight: { value: '', unit: 'kg' },
         level: '',
@@ -462,27 +453,18 @@ export const useDashboardState = (): DashboardStateReturn => {
     logger.info('src/components/dashboard/useDashboardState.ts: Nie znaleziono żadnej kategorii z wynikami');
   };
 
-  // Funkcja do parsowania daty
-  const parseDate = (dateObj: { day: string; month: string; year: string }): Date | undefined => {
-    if (!dateObj.day || !dateObj.month || !dateObj.year) {
+  // Funkcja do parsowania daty w formacie YYYY-MM-DD
+  const parseDate = (dateStr: string): Date | undefined => {
+    if (!dateStr || dateStr.trim() === '') {
       return undefined;
     }
     
-    const day = parseInt(dateObj.day);
-    const month = parseInt(dateObj.month);
-    let year = parseInt(dateObj.year);
-    
-    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+    const date = new Date(dateStr);
+    if (isNaN(date.getTime())) {
       return undefined;
     }
     
-    if (year >= 24 && year <= 30) {
-      year = 2000 + year;
-    } else if (year < 24 || year > 2030) {
-      return undefined;
-    }
-    
-    return new Date(year, month - 1, day);
+    return date;
   };
 
   // Funkcja pomocnicza do focusowania i zaznaczania tekstu
@@ -519,14 +501,24 @@ export const useDashboardState = (): DashboardStateReturn => {
   };
 
   // Funkcja obsługi zmian daty z BrowseSkisComponent
+  // Funkcja obsługi zmian dat (teraz w formacie YYYY-MM-DD z MUI DatePicker)
   const handleDateChange = (
     section: 'dateFrom' | 'dateTo',
-    field: 'day' | 'month' | 'year',
-    value: string,
-    inputRef?: HTMLInputElement
+    value: string
   ) => {
-    logger.info(`Zmiana daty z BrowseSkisComponent - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
-    handleInputChange(section, field, value, inputRef);
+    logger.info(`Zmiana daty - sekcja: ${section}, wartość: "${value}"`);
+    
+    // Aktualizuj dane formularza
+    setFormData(prev => ({
+      ...prev,
+      [section]: value
+    }));
+    
+    // Wyczyść błędy dla tego pola
+    setFormErrors(prev => ({
+      ...prev,
+      [section]: ''
+    }));
   };
 
   // Funkcja obsługi zmian w polach formularza
@@ -537,21 +529,7 @@ export const useDashboardState = (): DashboardStateReturn => {
     let isValid = true;
     let errorMessage = '';
 
-    if (section === 'dateFrom' || section === 'dateTo') {
-      if (field === 'day') {
-        const validation = validateDay(value);
-        isValid = validation.isValid;
-        errorMessage = validation.message;
-      } else if (field === 'month') {
-        const validation = validateMonth(value);
-        isValid = validation.isValid;
-        errorMessage = validation.message;
-      } else if (field === 'year') {
-        const validation = validateYear(value);
-        isValid = validation.isValid;
-        errorMessage = validation.message;
-      }
-    } else if (section === 'height' && field === 'value') {
+    if (section === 'height' && field === 'value') {
       const validation = validateHeightRealtime(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
@@ -579,15 +557,7 @@ export const useDashboardState = (): DashboardStateReturn => {
     }
 
     // Aktualizuj dane formularza
-    if (section === 'dateFrom' || section === 'dateTo') {
-      setFormData(prev => ({
-        ...prev,
-        [section]: {
-          ...prev[section],
-          [field]: value
-        }
-      }));
-    } else if (section === 'height' || section === 'weight') {
+    if (section === 'height' || section === 'weight') {
       setFormData(prev => ({
         ...prev,
         [section]: {
@@ -605,9 +575,7 @@ export const useDashboardState = (): DashboardStateReturn => {
     // Wyczyść błędy dla tego pola
     setFormErrors(prev => {
       const newErrors = { ...prev };
-      if (section === 'dateFrom' || section === 'dateTo') {
-        newErrors[section] = { ...newErrors[section], [field]: '' };
-      } else if (section === 'height' || section === 'weight' || section === 'level' || section === 'gender' || section === 'shoeSize') {
+      if (section === 'height' || section === 'weight' || section === 'level' || section === 'gender' || section === 'shoeSize' || section === 'dateFrom' || section === 'dateTo') {
         newErrors[section] = '';
       }
       return newErrors;
@@ -615,23 +583,7 @@ export const useDashboardState = (): DashboardStateReturn => {
 
     // Automatyczne przechodzenie do następnego pola
     if (inputRef) {
-      if (section === 'dateFrom' && field === 'day' && value.length === 2) {
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      } else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      } else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
-        focusAndSelectIfValue(dayToRef.current);
-      } else if (section === 'dateTo' && field === 'day' && value.length === 2) {
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      } else if (section === 'dateTo' && field === 'month' && value.length === 2) {
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      } else if (section === 'dateTo' && field === 'year' && value.length === 2) {
-        focusAndSelectIfValue(heightRef.current);
-      } else if (section === 'height' && field === 'value') {
+      if (section === 'height' && field === 'value') {
         const heightNum = parseInt(value);
         if (value.length >= 3 || (value.length >= 2 && heightNum >= 100)) {
           focusAndSelectIfValue(weightRef.current);
@@ -789,8 +741,8 @@ export const useDashboardState = (): DashboardStateReturn => {
   const handleClear = () => {
     logger.info('src/components/dashboard/useDashboardState.ts: Czyszczenie formularza aktywnej karty');
     const defaultData = {
-      dateFrom: { day: '', month: '', year: '' },
-      dateTo: { day: '', month: '', year: '' },
+      dateFrom: '',
+      dateTo: '',
       height: { value: '', unit: 'cm' },
       weight: { value: '', unit: 'kg' },
       level: '',
@@ -884,13 +836,6 @@ export const useDashboardState = (): DashboardStateReturn => {
     });
   };
 
-  // Funkcja pomocnicza do zaznaczania całego tekstu przy kliknięciu
-  const handleDateFieldClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    const input = e.currentTarget;
-    if (input.value) {
-      input.select();
-    }
-  };
 
   // Funkcja ładowania bazy danych
   const loadDatabase = async () => {
@@ -1036,12 +981,8 @@ export const useDashboardState = (): DashboardStateReturn => {
     logger.info('src/components/dashboard/useDashboardState.ts: Zmiana w formData - sprawdzam czy uruchomić automatyczne wyszukiwanie');
 
     const isFormComplete = 
-      formData.dateFrom.day !== '' &&
-      formData.dateFrom.month !== '' &&
-      formData.dateFrom.year !== '' &&
-      formData.dateTo.day !== '' &&
-      formData.dateTo.month !== '' &&
-      formData.dateTo.year !== '' &&
+      formData.dateFrom !== '' &&
+      formData.dateTo !== '' &&
       formData.height.value !== '' &&
       formData.weight.value !== '' &&
       formData.level !== '' &&
@@ -1145,7 +1086,6 @@ export const useDashboardState = (): DashboardStateReturn => {
     
     // Funkcje pomocnicze
     parseDate,
-    handleDateFieldClick,
     handleDateChange,
     handleBrowseCriteriaChange,
     handleFilterSearchChange,
@@ -1164,10 +1104,6 @@ export const useDashboardState = (): DashboardStateReturn => {
     groupedResults,
     
     // Refs
-    dayFromRef,
-    monthFromRef,
-    dayToRef,
-    monthToRef,
     heightRef,
     weightRef,
     levelRef,

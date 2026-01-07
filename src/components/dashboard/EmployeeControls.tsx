@@ -23,7 +23,7 @@ const EmployeeControls: React.FC<EmployeeControlsProps> = ({
   console.log('src/components/dashboard/EmployeeControls.tsx: Renderowanie kontrolek pracownika, tryb:', _appMode, 'isEmployeeMode:', isEmployeeMode);
 
   return (
-    <div className="w-full lg:w-auto flex-1 p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
+    <div className="w-full lg:w-auto flex-1 p-3 lg:p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-3 lg:gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
       {/* Action Buttons - bezpośrednio w kontenerze */}
       <button
         onClick={onClear}

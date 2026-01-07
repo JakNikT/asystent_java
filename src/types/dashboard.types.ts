@@ -21,16 +21,8 @@ export type FilterKey = 'all' | 'TOP' | 'VIP' | 'JUNIOR' | 'BUTY_JUNIOR' | 'DORO
  * Dane formularza użytkownika (wzrost, waga, poziom, płeć, daty, rozmiar buta)
  */
 export interface FormData {
-  dateFrom: {
-    day: string;
-    month: string;
-    year: string;
-  };
-  dateTo: {
-    day: string;
-    month: string;
-    year: string;
-  };
+  dateFrom: string; // Format YYYY-MM-DD
+  dateTo: string;   // Format YYYY-MM-DD
   height: {
     value: string;
     unit: string;

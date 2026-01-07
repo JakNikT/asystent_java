@@ -21,8 +21,13 @@
     "dev:all": "concurrently \"cd FireSnowBridge && start-headless.bat\" \"npm run server\" \"npm run dev\" --names \"JAVA,API,WEB\" --prefix-colors \"yellow,blue,green\""
   },
   "dependencies": {
+    "@emotion/react": "^11.11.0",
+    "@emotion/styled": "^11.11.0",
+    "@mui/material": "^7.3.6",
+    "@mui/x-date-pickers": "^8.21.0",
     "clsx": "^2.1.1",
     "cors": "^2.8.5",
+    "dayjs": "^1.11.13",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
     "framer-motion": "^12.23.22",

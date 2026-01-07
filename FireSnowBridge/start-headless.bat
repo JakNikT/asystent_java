@@ -6,14 +6,22 @@ REM Sprawdź czy pliki wymagane istnieją
 if not exist "FireSnowBridge.jar" exit /b 1
 if not exist "lib\hsqldb.jar" exit /b 1
 
-REM Szukanie Java - NAJPIERW Java 21 (wymagana dla FireSnowBridge)
+REM Szukanie Java - NAJPIERW portable Java z folderu jdk/
 set JAVA_CMD=
 
-REM Sprawdź Java 21 (najnowsza wersja - wymagana)
+REM 1. Sprawdź portable Java (najwyższy priorytet)
+set "PORTABLE_JDK=%~dp0jdk"
+if exist "%PORTABLE_JDK%\bin\java.exe" (
+    set "JAVA_CMD=%PORTABLE_JDK%\bin\java.exe"
+    goto :java_found
+)
+
+REM 2. Sprawdź Java 21 w systemie (wymagana wersja)
 if exist "C:\Program Files\Java\jdk-21.0.9+10\bin\java.exe" (
     set "JAVA_CMD=C:\Program Files\Java\jdk-21.0.9+10\bin\java.exe"
     goto :java_found
 )
+
 
 REM Sprawdź inne możliwe lokalizacje Java 21
 if exist "C:\Program Files\Java\jdk-21\bin\java.exe" (
