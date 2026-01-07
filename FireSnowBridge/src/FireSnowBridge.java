@@ -642,117 +642,138 @@ static class DostepnoscOkresHandler implements HttpHandler {
             long dateTo = params.containsKey("to") ? 
                 Long.parseLong(params.get("to")) : Long.MAX_VALUE;
             
-            // Calculate buffer dates (±2 days for yellow warnings)
-            long bufferBefore = dateFrom - (2L * 24 * 60 * 60 * 1000); // -2 days
-            long bufferAfter = dateTo + (2L * 24 * 60 * 60 * 1000);   // +2 days
-            
-            // Convert timestamps to Date objects for SQL
-            java.util.Date bufferBeforeDate = new java.util.Date(bufferBefore);
-            java.util.Date bufferAfterDate = new java.util.Date(bufferAfter);
-            
-            // SQL dla rezerwacji - tylko te które mogą kolidować
-            String sqlReservations = 
-                "SELECT " +
-                "  rp.ID as rezerwacja_id, " +
-                "  p.NAME as nazwa_sprzetu, " +
-                "  ae.CODE as kod_sprzetu, " +
-                "  rp.BEGINDATE as data_od, " +
-                "  rp.ENDDATE as data_do, " +
-                "  rp.CUSTOMER_ID as klient_id, " +
-                "  ae_customer.NAME as klient_nazwa, " +
-                "  rc.FORENAME as imie, " +
-                "  rc.SURNAME as nazwisko, " +
-                "  rg_parent.ID as parent_group_id " +
-                "FROM RESERVATIONPOSITION rp " +
-                "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
-                "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
-                "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
-                "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
-                "LEFT JOIN RENTOBJECTS ro ON ro.ID = rp.RENTOBJECT_ID " +
-                "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
-                "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
-                "WHERE rp.ENDDATE >= ? " +  // Koniec rezerwacji >= początek bufora
-                "  AND rp.BEGINDATE <= ? " +  // Początek rezerwacji <= koniec bufora
-                "  AND rp.BEGINDATE >= TIMESTAMP '2025-01-01 00:00:00' " +
-                "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
-                "ORDER BY rp.BEGINDATE";
-            
-            // SQL dla wypożyczeń aktywnych
-            String sqlRentals = 
-                "SELECT " +
-                "  si.ID as session_id, " +
-                "  si.STARTTIME as data_od, " +
-                "  si.STOPTIME as data_do, " +
-                "  si.REMAININGTIME as pozostaly_czas, " +
-                "  si.RENTOBJECT_ID as obiekt_id, " +
-                "  si.CUSTOMER_ID as klient_id, " +
-                "  ae_customer.NAME as klient_nazwa, " +
-                "  ae_equipment.NAME as nazwa_sprzetu, " +
-                "  ae_equipment.CODE as kod_sprzetu, " +
-                "  rg_parent.ID as parent_group_id " +
-                "FROM SESSIONINFOFGHJ si " +
-                "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
-                "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
-                "LEFT JOIN RENTOBJECTS ro ON ro.ID = si.RENTOBJECT_ID " +
-                "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
-                "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
-                "WHERE si.STOPTIME = 0 " +
-                "  AND si.STARTTIME >= 1735689600000 " +  // 2025-01-01
-                "  AND (si.STARTTIME + COALESCE(si.REMAININGTIME, 0)) >= ? " +  // Koniec wypożyczenia >= początek bufora
-                "  AND si.STARTTIME <= ? " +  // Początek wypożyczenia <= koniec bufora
-                "ORDER BY si.STARTTIME DESC";
-            
-            // Execute queries
-            PreparedStatement stmtRes = conn.prepareStatement(sqlReservations);
-            stmtRes.setTimestamp(1, new Timestamp(bufferBeforeDate.getTime()));
-            stmtRes.setTimestamp(2, new Timestamp(bufferAfterDate.getTime()));
-            
+// Calculate buffer dates (±2 days for yellow warnings)
+long bufferBefore = dateFrom - (2L * 24 * 60 * 60 * 1000); // -2 days
+long bufferAfter = dateTo + (2L * 24 * 60 * 60 * 1000);   // +2 days
+
+// Convert timestamps directly to SQL Timestamp (NOT through Date!)
+java.sql.Timestamp bufferBeforeTs = new java.sql.Timestamp(bufferBefore);
+java.sql.Timestamp bufferAfterTs = new java.sql.Timestamp(bufferAfter);
+
+// SQL dla rezerwacji - tylko te które mogą kolidować
+String sqlReservations = 
+    "SELECT " +
+    "  rp.ID as rezerwacja_id, " +
+    "  p.NAME as nazwa_sprzetu, " +
+    "  ae.CODE as kod_sprzetu, " +
+    "  rp.BEGINDATE as data_od, " +
+    "  rp.ENDDATE as data_do, " +
+    "  rp.CUSTOMER_ID as klient_id, " +
+    "  ae_customer.NAME as klient_nazwa, " +
+    "  rc.FORENAME as imie, " +
+    "  rc.SURNAME as nazwisko, " +
+    "  rg_parent.ID as parent_group_id " +
+    "FROM RESERVATIONPOSITION rp " +
+    "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
+    "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
+    "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
+    "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
+    "LEFT JOIN RENTOBJECTS ro ON ro.ID = rp.RENTOBJECT_ID " +
+    "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+    "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
+    "WHERE rp.ENDDATE >= ? " +  // Koniec rezerwacji >= początek bufora
+    "  AND rp.BEGINDATE <= ? " +  // Początek rezerwacji <= koniec bufora
+    "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
+    "ORDER BY rp.BEGINDATE";
+
+// SQL dla wypożyczeń aktywnych
+String sqlRentals = 
+    "SELECT " +
+    "  si.ID as session_id, " +
+    "  si.STARTTIME as data_od, " +
+    "  si.STOPTIME as data_do, " +
+    "  si.REMAININGTIME as pozostaly_czas, " +
+    "  si.RENTOBJECT_ID as obiekt_id, " +
+    "  si.CUSTOMER_ID as klient_id, " +
+    "  ae_customer.NAME as klient_nazwa, " +
+    "  ae_equipment.NAME as nazwa_sprzetu, " +
+    "  ae_equipment.CODE as kod_sprzetu, " +
+    "  rg_parent.ID as parent_group_id " +
+    "FROM SESSIONINFOFGHJ si " +
+    "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = si.CUSTOMER_ID " +
+    "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
+    "LEFT JOIN RENTOBJECTS ro ON ro.ID = si.RENTOBJECT_ID " +
+    "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+    "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
+    "WHERE si.STOPTIME = 0 " +
+    "  AND (si.STARTTIME + COALESCE(si.REMAININGTIME, 0)) >= ? " +  // Koniec wypożyczenia >= początek bufora
+    "  AND si.STARTTIME <= ? " +  // Początek wypożyczenia <= koniec bufora
+    "ORDER BY si.STARTTIME DESC";
+
+// Execute queries
+
+// Execute queries
+PreparedStatement stmtRes = conn.prepareStatement(sqlReservations);
+stmtRes.setTimestamp(1, bufferBeforeTs);
+stmtRes.setTimestamp(2, bufferAfterTs);            
             PreparedStatement stmtRent = conn.prepareStatement(sqlRentals);
             stmtRent.setLong(1, bufferBefore);
             stmtRent.setLong(2, bufferAfter);
             
-            ResultSet rsRes = stmtRes.executeQuery();
-            ResultSet rsRent = stmtRent.executeQuery();
+
+ResultSet rsRes = stmtRes.executeQuery();
+ResultSet rsRent = stmtRent.executeQuery();
             
             // Build JSON response
             StringBuilder json = new StringBuilder("{\"reservations\":[");
             boolean firstRes = true;
             
+            System.out.println("FireSnowBridge: Starting to map reservations...");
+            
+            int mappedCount = 0;
             while (rsRes.next()) {
-                if (!firstRes) json.append(",");
-                firstRes = false;
-                
-                String klientNazwa = rsRes.getString("klient_nazwa");
-                if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
-                    String imie = rsRes.getString("imie");
-                    String nazwisko = rsRes.getString("nazwisko");
-                    if (imie != null || nazwisko != null) {
-                        klientNazwa = ((imie != null ? imie : "") + " " + (nazwisko != null ? nazwisko : "")).trim();
+                try {
+                    mappedCount++;
+                    
+                    // Dodaj przecinek PRZED obiektem (nie na początku, żeby uniknąć problemów z wyjątkami)
+                    if (!firstRes) json.append(",");
+                    firstRes = false;
+                    
+                    String klientNazwa = rsRes.getString("klient_nazwa");
+                    if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
+                        String imie = rsRes.getString("imie");
+                        String nazwisko = rsRes.getString("nazwisko");
+                        if (imie != null || nazwisko != null) {
+                            klientNazwa = ((imie != null ? imie : "") + " " + (nazwisko != null ? nazwisko : "")).trim();
+                        }
                     }
+                    if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
+                        klientNazwa = "Klient #" + rsRes.getLong("klient_id");
+                    }
+                    
+                    json.append("{");
+                    String kod = rsRes.getString("kod_sprzetu");
+                    json.append("\"kod\":\"").append(escapeJson(kod != null ? kod : "")).append("\",");
+                    json.append("\"od\":\"").append(rsRes.getTimestamp("data_od")).append("\",");
+                    json.append("\"do\":\"").append(rsRes.getTimestamp("data_do")).append("\",");
+                    json.append("\"klient\":\"").append(escapeJson(klientNazwa)).append("\",");
+                    String nazwaSprzetu = rsRes.getString("nazwa_sprzetu");
+                    json.append("\"sprzet\":\"").append(escapeJson(nazwaSprzetu != null ? nazwaSprzetu : "")).append("\",");
+                    Long parentGroupIdRes = rsRes.getLong("parent_group_id");
+                    if (rsRes.wasNull()) {
+                        json.append("\"parent_group_id\":null");
+                    } else {
+                        json.append("\"parent_group_id\":").append(parentGroupIdRes);
+                    }
+                    json.append("}");
+                } catch (Exception e) {
+                    System.err.println("FireSnowBridge: Error mapping reservation #" + mappedCount + ": " + e.getMessage());
+                    e.printStackTrace();
+                    // Pomijamy ten rekord i kontynuujemy
                 }
-                if (klientNazwa == null || klientNazwa.trim().isEmpty()) {
-                    klientNazwa = "Klient #" + rsRes.getLong("klient_id");
-                }
-                
-                json.append("{");
-                json.append("\"kod\":\"").append(escapeJson(rsRes.getString("kod_sprzetu"))).append("\",");
-                json.append("\"od\":\"").append(rsRes.getTimestamp("data_od")).append("\",");
-                json.append("\"do\":\"").append(rsRes.getTimestamp("data_do")).append("\",");
-                json.append("\"klient\":\"").append(escapeJson(klientNazwa)).append("\",");
-                json.append("\"sprzet\":\"").append(escapeJson(rsRes.getString("nazwa_sprzetu"))).append("\",");
-                Long parentGroupIdRes = rsRes.getLong("parent_group_id");
-                if (rsRes.wasNull()) {
-                    json.append("\"parent_group_id\":null");
-                } else {
-                    json.append("\"parent_group_id\":").append(parentGroupIdRes);
-                }
-                json.append("}");
             }
+            
+            System.out.println("FireSnowBridge: Mapped " + mappedCount + " reservations to JSON");
             
             json.append("],\"rentals\":[");
             boolean firstRent = true;
             
+            System.out.println("FireSnowBridge: Starting to map rentals...");
+            
+            int mappedRentalsCount = 0;
             while (rsRent.next()) {
+                mappedRentalsCount++;
+                
                 if (!firstRent) json.append(",");
                 firstRent = false;
                 
@@ -783,6 +804,8 @@ static class DostepnoscOkresHandler implements HttpHandler {
                 }
                 json.append("}");
             }
+            
+            System.out.println("FireSnowBridge: Mapped " + mappedRentalsCount + " rentals to JSON");
             
             json.append("]}");
             
