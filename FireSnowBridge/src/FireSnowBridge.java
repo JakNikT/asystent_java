@@ -228,14 +228,15 @@ public class FireSnowBridge {
                     "JOIN ABSTRACTDOCUMENT doc ON doc.ID = acd.ID " +
                     "WHERE rp.ENDDATE > CURRENT_TIMESTAMP " +
                     "  AND (rp.STATUS = 0 OR rp.STATUS IS NULL) " +  // Tylko aktywne rezerwacje (0 = aktywna, 1+ = anulowana)
-                    "  AND NOT EXISTS ( " +  // Wykluczamy rezerwacje które zostały już wykonane (mają aktywne wypożyczenie)
-                    "    SELECT 1 FROM SESSIONINFOFGHJ si " +
-                    "    WHERE si.CUSTOMER_ID = rp.CUSTOMER_ID " +
-                    "      AND si.RENTOBJECT_ID = rp.RENTOBJECT_ID " +
-                    "      AND si.STOPTIME = 0 " +  // Tylko aktywne wypożyczenia
-                    "      AND si.STARTTIME >= rp.BEGINDATE " +
-                    "      AND si.STARTTIME <= rp.BEGINDATE + 86400000 " +  // +1 dzień tolerancji (86400000ms = 24h)
-                    "  ) " +
+                    // COMMENTED OUT: Problematic type comparison between TIMESTAMP and BIGINT
+                    // "  AND NOT EXISTS ( " +  // Wykluczamy rezerwacje które zostały już wykonane (mają aktywne wypożyczenie)
+                    // "    SELECT 1 FROM SESSIONINFOFGHJ si " +
+                    // "    WHERE si.CUSTOMER_ID = rp.CUSTOMER_ID " +
+                    // "      AND si.RENTOBJECT_ID = rp.RENTOBJECT_ID " +
+                    // "      AND si.STOPTIME = 0 " +  // Tylko aktywne wypożyczenia
+                    // "      AND si.STARTTIME >= rp.BEGINDATE " +  // ERROR: incompatible data types (BIGINT vs TIMESTAMP)
+                    // "      AND si.STARTTIME <= rp.BEGINDATE + 86400000 " +  // +1 dzień tolerancji (86400000ms = 24h)
+                    // "  ) " +
                     "ORDER BY rp.ID";
                 
                 Statement stmt = conn.createStatement();
