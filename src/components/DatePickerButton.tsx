@@ -71,36 +71,6 @@ const darkTheme = createTheme({
         },
       },
     },
-    MuiPickersDay: {
-      styleOverrides: {
-        root: {
-          fontSize: '1rem',
-          minWidth: '40px',
-          minHeight: '40px', // Większe touch targets
-          '&:hover': {
-            backgroundColor: 'rgba(56, 107, 178, 0.2)',
-          },
-          '&.Mui-selected': {
-            backgroundColor: '#386BB2',
-            '&:hover': {
-              backgroundColor: '#2C5A99',
-            },
-          },
-        },
-      },
-    },
-    MuiPickersCalendarHeader: {
-      styleOverrides: {
-        root: {
-          paddingTop: '16px',
-          paddingBottom: '8px',
-        },
-        label: {
-          fontSize: '1.125rem',
-          fontWeight: 600,
-        },
-      },
-    },
   },
 });
 

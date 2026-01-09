@@ -10,9 +10,6 @@ import { SkiMatchingServiceV2 } from '../../services/skiMatchingServiceV2';
 import { 
   validateForm, 
   initialFormErrors, 
-  validateDay, 
-  validateMonth, 
-  validateYear, 
   validateHeightRealtime, 
   validateWeightRealtime, 
   validateLevelRealtime, 
