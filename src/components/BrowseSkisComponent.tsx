@@ -972,7 +972,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     // Wywołaj callback do aktualizacji w komponencie nadrzędnym
     if (onDateChange) {
       logger.info(`🔴 BrowseSkisComponent.tsx: Wywołuję onDateChange z wartością: "${value}"`);
-      onDateChange(section, field, value, inputRef);
+      // TODO: handleDateFieldChange nie jest używane - użyj DatePickerButton zamiast tego
+      // onDateChange(section, field, value, inputRef);
     } else {
       logger.info(`🔴 BrowseSkisComponent.tsx: onDateChange NIE ISTNIEJE!`);
     }
@@ -994,7 +995,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       // Rok "od" → Dzień "do"
       else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
         logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do dnia "do"`);
-        focusAndSelectIfValue(dayToRef.current);
+        // TODO: dayToRef nie istnieje - funkcja handleDateFieldChange nie jest używana
+        // focusAndSelectIfValue(dayToRef.current);
       }
       // Dzień "do" → Miesiąc "do"
       else if (section === 'dateTo' && field === 'day' && value.length === 2) {
