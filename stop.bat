@@ -96,3 +96,5 @@ echo   - Backend Express (Node.js API na porcie 5001)
 echo   - Vite Dev Server (Frontend na porcie 5002)
 echo.
 pause
+
+

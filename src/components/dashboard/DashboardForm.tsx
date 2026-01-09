@@ -12,12 +12,8 @@ interface DashboardFormProps {
   formData: FormData;
   formErrors: FormErrors;
   onFieldChange: (section: keyof FormData | string, field: string, value: string, el?: HTMLInputElement) => void;
-  handleDateFieldClick: (e: React.MouseEvent<HTMLInputElement>) => void;
+  onDateChange: (section: 'dateFrom' | 'dateTo', value: string) => void;
   // Refs dla automatycznego przechodzenia między polami
-  dayFromRef: React.RefObject<HTMLInputElement | null>;
-  monthFromRef: React.RefObject<HTMLInputElement | null>;
-  dayToRef: React.RefObject<HTMLInputElement | null>;
-  monthToRef: React.RefObject<HTMLInputElement | null>;
   heightRef: React.RefObject<HTMLInputElement | null>;
   weightRef: React.RefObject<HTMLInputElement | null>;
   levelRef: React.RefObject<HTMLInputElement | null>;

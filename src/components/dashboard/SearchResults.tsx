@@ -115,14 +115,14 @@ export const SearchResults: React.FC<SearchResultsProps> = ({
               
               {/* Wyświetl szczegółowe błędy walidacji */}
               {(formErrors.height || formErrors.weight || formErrors.level || formErrors.gender || 
-                formErrors.dateFrom.day || formErrors.dateTo.day) && (
+                formErrors.dateFrom || formErrors.dateTo) && (
                 <div className="text-red-400 text-sm font-bold space-y-1">
                   {formErrors.height && <div>• Wzrost: {formErrors.height}</div>}
                   {formErrors.weight && <div>• Waga: {formErrors.weight}</div>}
                   {formErrors.level && <div>• Poziom: {formErrors.level}</div>}
                   {formErrors.gender && <div>• Płeć: {formErrors.gender}</div>}
-                  {formErrors.dateFrom.day && <div>• Data od: {formErrors.dateFrom.day}</div>}
-                  {formErrors.dateTo.day && <div>• Data do: {formErrors.dateTo.day}</div>}
+                  {formErrors.dateFrom && <div>• Data od: {formErrors.dateFrom}</div>}
+                  {formErrors.dateTo && <div>• Data do: {formErrors.dateTo}</div>}
                 </div>
               )}
             </div>
