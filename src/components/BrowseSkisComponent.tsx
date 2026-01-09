@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
 import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.types';
 import type { FormErrors } from '../utils/formValidation';
@@ -9,17 +9,13 @@ import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { SkiDataService } from '../services/skiDataService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
 import { Input } from './ui/Input';
-import { Label } from './ui/Label';
 import { DatePickerButton } from './DatePickerButton';
 import { createLogger } from '../utils/logger';
 import { 
   validateHeightRealtime, 
   validateWeightRealtime, 
   validateLevelRealtime, 
-  validateGenderRealtime,
-  validateDay,
-  validateMonth,
-  validateYear
+  validateGenderRealtime
 } from '../utils/formValidation';
 
 interface TabInfo {
@@ -89,7 +85,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   hasSelectedGroup = true, // Domyślnie true dla kompatybilności wstecznej
   onGroupSelected,
   formData,
-  formErrors,
   onDateChange
 }) => {
   // src/components/BrowseSkisComponent.tsx: Logger dla BrowseSkisComponent
@@ -917,107 +912,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       case 'SLG': return 'Pomiędzy';
       case 'OFF': return 'Poza trasę';
       default: return purpose;
-    }
-  };
-
-  // src/components/BrowseSkisComponent.tsx: Funkcja pomocnicza do automatycznego przechodzenia między polami
-  const focusAndSelectIfValue = (input: HTMLInputElement | null) => {
-    if (input) {
-      input.focus();
-      if (input.value) {
-        input.select();
-      }
-    }
-  };
-
-  // src/components/BrowseSkisComponent.tsx: Obsługa zmiany daty
-  const handleDateFieldChange = (
-    section: 'dateFrom' | 'dateTo',
-    field: 'day' | 'month' | 'year',
-    value: string,
-    inputRef?: HTMLInputElement
-  ) => {
-    logger.info(`🔴 BrowseSkisComponent.tsx: handleDateFieldChange WYWOŁANY - sekcja: ${section}, pole: ${field}, wartość: "${value}"`);
-    logger.info(`🔴 BrowseSkisComponent.tsx: onDateChange exists: ${!!onDateChange}`);
-
-    // Walidacja w czasie rzeczywistym
-    let isValid = true;
-    let errorMessage = '';
-
-    if (field === 'day') {
-      const validation = validateDay(value);
-      isValid = validation.isValid;
-      errorMessage = validation.message;
-      logger.info(`🔴 Walidacja dnia - isValid: ${isValid}, message: ${errorMessage}`);
-    } else if (field === 'month') {
-      const validation = validateMonth(value);
-      isValid = validation.isValid;
-      errorMessage = validation.message;
-      logger.info(`�� Walidacja miesiąca - isValid: ${isValid}, message: ${errorMessage}`);
-    } else if (field === 'year') {
-      const validation = validateYear(value);
-      isValid = validation.isValid;
-      errorMessage = validation.message;
-      logger.info(`🔴 Walidacja roku - isValid: ${isValid}, message: ${errorMessage}`);
-    }
-
-    // Jeśli walidacja nie przeszła, nie aktualizuj wartości
-    if (!isValid) {
-      logger.info(`🔴 BrowseSkisComponent.tsx: Walidacja nie przeszła - ${errorMessage}`);
-      return;
-    }
-
-    logger.info(`🔴 BrowseSkisComponent.tsx: Walidacja przeszła, wywołuję onDateChange`);
-
-    // Wywołaj callback do aktualizacji w komponencie nadrzędnym
-    if (onDateChange) {
-      logger.info(`🔴 BrowseSkisComponent.tsx: Wywołuję onDateChange z wartością: "${value}"`);
-      // TODO: handleDateFieldChange nie jest używane - użyj DatePickerButton zamiast tego
-      // onDateChange(section, field, value, inputRef);
-    } else {
-      logger.info(`🔴 BrowseSkisComponent.tsx: onDateChange NIE ISTNIEJE!`);
-    }
-
-    // Automatyczne przechodzenie do następnego pola
-    if (inputRef) {
-      // Dzień "od" → Miesiąc "od"
-      if (section === 'dateFrom' && field === 'day' && value.length === 2) {
-        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "od"`);
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      }
-      // Miesiąc "od" → Rok "od"
-      else if (section === 'dateFrom' && field === 'month' && value.length === 2) {
-        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "od"`);
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      }
-      // Rok "od" → Dzień "do"
-      else if (section === 'dateFrom' && field === 'year' && value.length === 2) {
-        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do dnia "do"`);
-        // TODO: dayToRef nie istnieje - funkcja handleDateFieldChange nie jest używana
-        // focusAndSelectIfValue(dayToRef.current);
-      }
-      // Dzień "do" → Miesiąc "do"
-      else if (section === 'dateTo' && field === 'day' && value.length === 2) {
-        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do miesiąca "do"`);
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="MM"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      }
-      // Miesiąc "do" → Rok "do"
-      else if (section === 'dateTo' && field === 'month' && value.length === 2) {
-        logger.info(`src/components/BrowseSkisComponent.tsx: Przechodzenie do roku "do"`);
-        const nextInput = inputRef.parentElement?.querySelector('input[placeholder="YY"]') as HTMLInputElement;
-        focusAndSelectIfValue(nextInput);
-      }
-    }
-  };
-
-  // src/components/BrowseSkisComponent.tsx: Obsługa kliknięcia w pole daty
-  const handleDateFieldClick = (e: React.MouseEvent<HTMLInputElement>) => {
-    const input = e.currentTarget;
-    if (input.value) {
-      input.select();
     }
   };
 
