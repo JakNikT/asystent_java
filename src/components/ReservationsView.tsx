@@ -101,7 +101,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const savedReservationsState = savedAppState?.reservationsState;
   // src/components/ReservationsView.tsx: Wczytaj showPromotorOnly z localStorage przy inicjalizacji
   const [showPromotorOnly, setShowPromotorOnly] = useState<boolean>(savedReservationsState?.showPromotorOnly || false);
-  
+
   // src/components/ReservationsView.tsx: Inicjalizacja viewType z localStorage, żeby przywrócić ostatnio otwarty widok (np. "wydania")
   const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns'>(() => {
     return savedAppState?.reservationsViewType || 'handout';
@@ -131,107 +131,107 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
   // src/components/ReservationsView.tsx: Nie akceptuje typu 'handout' - ten widok ma własne ładowanie
   const loadReservations = async (type: 'all' | 'reservations' | 'rentals' | 'past') => {
-      // Dla widoku "przeszłe" - wczytuj tylko jeśli jest co najmniej 3 znaki w wyszukiwarce
-      if (type === 'past' && filterText.trim().length < 3) {
-        logger.debug('ReservationsView: Widok "przeszłe" wymaga co najmniej 3 znaków w wyszukiwarce');
-        setReservations([]);
-        setIsLoading(false);
-        return;
-      }
+    // Dla widoku "przeszłe" - wczytuj tylko jeśli jest co najmniej 3 znaki w wyszukiwarce
+    if (type === 'past' && filterText.trim().length < 3) {
+      logger.debug('ReservationsView: Widok "przeszłe" wymaga co najmniej 3 znaków w wyszukiwarce');
+      setReservations([]);
+      setIsLoading(false);
+      return;
+    }
 
-      setIsLoading(true);
-      try {
-        // src/components/ReservationsView.tsx: ReservationApiClient metody nie rzucają błędów
-        // Wszystkie metody (loadAll, loadReservations, loadRentals, loadPastReservations, loadPastRentals)
-        // mają wewnętrzne try/catch które obsługują błędy, wyświetlają toasty i zwracają puste tablice lub cache
-        // Dlatego nie potrzebujemy tutaj bloku catch - błędy są już obsłużone w API client
-        let data: ReservationData[];
-        
-        if (type === 'all') {
-          // Pobierz wszystko (rezerwacje + wypożyczenia)
-          data = await ReservationApiClient.loadAll();
-        } else if (type === 'rentals') {
-          // Pobierz tylko wypożyczenia
-          data = await ReservationApiClient.loadRentals();
-        } else if (type === 'past') {
-          // Pobierz przeszłe rezerwacje + zwrócone wypożyczenia
-          const [pastReservations, pastRentals] = await Promise.all([
-            ReservationApiClient.loadPastReservations(),
-            ReservationApiClient.loadPastRentals()
-          ]);
-          
-          // Połącz rezerwacje z wypożyczeniami (merge logic)
-          // Szukamy par: ta sama osoba + ten sam sprzęt/kod + daty blisko siebie (±3 dni)
-          const merged: ReservationData[] = [];
-          const usedRentalIndices = new Set<number>();
-          
-          pastReservations.forEach(reservation => {
-            let matchedRental: ReservationData | null = null;
-            let matchedIndex = -1;
-            
-            // Szukaj pasującego wypożyczenia
-            for (let i = 0; i < pastRentals.length; i++) {
-              if (usedRentalIndices.has(i)) continue; // Już użyte
-              
-              const rental = pastRentals[i];
-              
-              // Sprawdź czy pasują: ten sam klient i kod
-              const sameClient = reservation.klient.trim().toLowerCase() === rental.klient.trim().toLowerCase();
-              const sameEquipment = reservation.kod && rental.kod && reservation.kod === rental.kod;
-              
-              if (sameClient && sameEquipment) {
-                // Sprawdź czy daty są blisko (±3 dni)
-                const resStart = new Date(reservation.od);
-                const rentStart = new Date(rental.od);
-                const daysDiff = Math.abs((resStart.getTime() - rentStart.getTime()) / (1000 * 60 * 60 * 24));
-                
-                if (daysDiff <= 3) {
-                  matchedRental = rental;
-                  matchedIndex = i;
-                  break;
-                }
+    setIsLoading(true);
+    try {
+      // src/components/ReservationsView.tsx: ReservationApiClient metody nie rzucają błędów
+      // Wszystkie metody (loadAll, loadReservations, loadRentals, loadPastReservations, loadPastRentals)
+      // mają wewnętrzne try/catch które obsługują błędy, wyświetlają toasty i zwracają puste tablice lub cache
+      // Dlatego nie potrzebujemy tutaj bloku catch - błędy są już obsłużone w API client
+      let data: ReservationData[];
+
+      if (type === 'all') {
+        // Pobierz wszystko (rezerwacje + wypożyczenia)
+        data = await ReservationApiClient.loadAll();
+      } else if (type === 'rentals') {
+        // Pobierz tylko wypożyczenia
+        data = await ReservationApiClient.loadRentals();
+      } else if (type === 'past') {
+        // Pobierz przeszłe rezerwacje + zwrócone wypożyczenia
+        const [pastReservations, pastRentals] = await Promise.all([
+          ReservationApiClient.loadPastReservations(),
+          ReservationApiClient.loadPastRentals()
+        ]);
+
+        // Połącz rezerwacje z wypożyczeniami (merge logic)
+        // Szukamy par: ta sama osoba + ten sam sprzęt/kod + daty blisko siebie (±3 dni)
+        const merged: ReservationData[] = [];
+        const usedRentalIndices = new Set<number>();
+
+        pastReservations.forEach(reservation => {
+          let matchedRental: ReservationData | null = null;
+          let matchedIndex = -1;
+
+          // Szukaj pasującego wypożyczenia
+          for (let i = 0; i < pastRentals.length; i++) {
+            if (usedRentalIndices.has(i)) continue; // Już użyte
+
+            const rental = pastRentals[i];
+
+            // Sprawdź czy pasują: ten sam klient i kod
+            const sameClient = reservation.klient.trim().toLowerCase() === rental.klient.trim().toLowerCase();
+            const sameEquipment = reservation.kod && rental.kod && reservation.kod === rental.kod;
+
+            if (sameClient && sameEquipment) {
+              // Sprawdź czy daty są blisko (±3 dni)
+              const resStart = new Date(reservation.od);
+              const rentStart = new Date(rental.od);
+              const daysDiff = Math.abs((resStart.getTime() - rentStart.getTime()) / (1000 * 60 * 60 * 24));
+
+              if (daysDiff <= 3) {
+                matchedRental = rental;
+                matchedIndex = i;
+                break;
               }
             }
-            
-            if (matchedRental) {
-              // Połącz rezerwację z wypożyczeniem - oznacz wizualnie
-              merged.push({
-                ...reservation,
-                sprzet: `🔄 ${reservation.sprzet}`, // Dodaj ikonę cyklu (rezerwacja→wypożyczenie→zwrot)
-                uwagi: (reservation.uwagi || '') + ` [Zwrócono: ${matchedRental.do}]`
-              });
-              usedRentalIndices.add(matchedIndex);
-            } else {
-              // Rezerwacja bez wypożyczenia
-              merged.push(reservation);
-            }
-          });
-          
-          // Dodaj wypożyczenia które nie zostały połączone z rezerwacjami
-          pastRentals.forEach((rental, index) => {
-            if (!usedRentalIndices.has(index)) {
-              merged.push(rental);
-            }
-          });
-          
-          data = merged;
-          
-          logger.info(`Znaleziono ${pastReservations.length} przeszłych rezerwacji + ${pastRentals.length} zwróconych wypożyczeń`);
-          logger.info(`Połączono ${usedRentalIndices.size} par rezerwacja+wypożyczenie`);
-        } else {
-          // Pobierz tylko rezerwacje
-          data = await ReservationApiClient.loadReservations();
-        }
-        
-        logger.info(`Wczytano ${data.length} pozycji (typ: ${type})`);
-        logger.debug('Przykładowe dane:', data.slice(0, 3));
-        setReservations(data);
-      } finally {
-        // Zawsze wyłącz loading, nawet jeśli wystąpił nieoczekiwany błąd
-        // (choć API client metody nie rzucają błędów, try/finally zapewnia bezpieczeństwo)
-        setIsLoading(false);
+          }
+
+          if (matchedRental) {
+            // Połącz rezerwację z wypożyczeniem - oznacz wizualnie
+            merged.push({
+              ...reservation,
+              sprzet: `🔄 ${reservation.sprzet}`, // Dodaj ikonę cyklu (rezerwacja→wypożyczenie→zwrot)
+              uwagi: (reservation.uwagi || '') + ` [Zwrócono: ${matchedRental.do}]`
+            });
+            usedRentalIndices.add(matchedIndex);
+          } else {
+            // Rezerwacja bez wypożyczenia
+            merged.push(reservation);
+          }
+        });
+
+        // Dodaj wypożyczenia które nie zostały połączone z rezerwacjami
+        pastRentals.forEach((rental, index) => {
+          if (!usedRentalIndices.has(index)) {
+            merged.push(rental);
+          }
+        });
+
+        data = merged;
+
+        logger.info(`Znaleziono ${pastReservations.length} przeszłych rezerwacji + ${pastRentals.length} zwróconych wypożyczeń`);
+        logger.info(`Połączono ${usedRentalIndices.size} par rezerwacja+wypożyczenie`);
+      } else {
+        // Pobierz tylko rezerwacje
+        data = await ReservationApiClient.loadReservations();
       }
-    };
+
+      logger.info(`Wczytano ${data.length} pozycji (typ: ${type})`);
+      logger.debug('Przykładowe dane:', data.slice(0, 3));
+      setReservations(data);
+    } finally {
+      // Zawsze wyłącz loading, nawet jeśli wystąpił nieoczekiwany błąd
+      // (choć API client metody nie rzucają błędów, try/finally zapewnia bezpieczeństwo)
+      setIsLoading(false);
+    }
+  };
 
   // USUNIĘTO: Callbacki konwersji - ReservationApiClient obsługuje to po stronie serwera
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
@@ -255,21 +255,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
     try {
       logger.debug('ReservationsView: Liczenie zwrotów dla daty', selectedDate);
-      
+
       // Pobierz wszystkie dane (rezerwacje + wypożyczenia)
       const allData = await ReservationApiClient.loadAll();
-      
+
       const selectedDateObj = new Date(selectedDate);
       selectedDateObj.setHours(0, 0, 0, 0); // Początek wybranego dnia
-      
+
       // Grupowanie po kliencie + data od + data do (podobnie jak w groupReservations)
       const grouped = new Map<string, { klient: string; od: string; do: string }>();
-      
+
       allData.forEach(res => {
         // Normalizuj nazwę klienta (usuń dodatkowe spacje, trim)
         const normalizedKlient = res.klient.trim().replace(/\s+/g, ' ').toUpperCase();
         const key = `${normalizedKlient}_${res.od}_${res.do}`;
-        
+
         if (!grouped.has(key)) {
           grouped.set(key, {
             klient: res.klient.trim(),
@@ -278,41 +278,41 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           });
         }
       });
-      
+
       // LICZNIK 1: Zwroty z wybranego dnia (data do == wybrana data)
       const returnsOnDate = Array.from(grouped.values()).filter(group => {
         const endDate = new Date(group.do);
         endDate.setHours(0, 0, 0, 0);
         return endDate.getTime() === selectedDateObj.getTime();
       });
-      
+
       // LICZNIK 2: Zaległe zwroty (data do < wybrana data)
       const overdueReturns = Array.from(grouped.values()).filter(group => {
         const endDate = new Date(group.do);
         endDate.setHours(23, 59, 59, 999);
         return endDate < selectedDateObj;
       });
-      
+
       // Inicjalizacja statystyk kategorii
       const onDateStats: EquipmentCategoryStats = { ...emptyStats };
       const overdueStats: EquipmentCategoryStats = { ...emptyStats };
-      
+
       // Zlicz pozycje sprzętu według parent_group_id dla każdej rezerwacji
       allData.forEach(res => {
         // Ignoruj pozycje PROMOTOR i inne nietypowe
         if (!res.sprzet || res.sprzet.toLowerCase().includes('promotor')) {
           return;
         }
-        
+
         const endDate = new Date(res.do);
         endDate.setHours(0, 0, 0, 0);
         const endDateWithTime = new Date(res.do);
         endDateWithTime.setHours(23, 59, 59, 999);
-        
+
         // Sprawdź parent_group_id i przypisz do kategorii
         if (res.parent_group_id && EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id]) {
           const category = EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id] as keyof EquipmentCategoryStats;
-          
+
           // Sprawdź czy kategoria jest w naszym interface (pomijamy 'narty_inne', 'buty_inne')
           if (category in onDateStats) {
             if (endDate.getTime() === selectedDateObj.getTime()) {
@@ -325,14 +325,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           }
         }
       });
-      
+
       const result = {
         onDate: returnsOnDate.length,
         overdue: overdueReturns.length,
         onDateStats,
         overdueStats
       };
-      
+
       logger.info('ReservationsView: Liczniki zwrotów', result);
       return result;
     } catch (error) {
@@ -344,21 +344,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // src/components/ReservationsView.tsx: Funkcja odświeżania liczników zwrotów
   const refreshReturnsCount = async () => {
     if (!returnDate) return;
-    
+
     setIsRefreshing(true);
     try {
       // Wymuś pobranie świeżych danych (wyczyść cache)
       // Uwaga: cache jest prywatny w ReservationApiClient, więc musimy po prostu wywołać loadAll ponownie
       // Cache zostanie automatycznie odświeżony jeśli minie CACHE_DURATION (30s)
       // Dla pewności możemy ustawić nową datę, która wymusi ponowne pobranie
-      
+
       // Przelicz liczniki i statystyki
       const result = await countReturnsForDate(returnDate);
       setReturnsOnDate(result.onDate);
       setReturnsOverdue(result.overdue);
       setOnDateStats(result.onDateStats);
       setOverdueStats(result.overdueStats);
-      
+
       logger.info('ReservationsView: Odświeżono liczniki zwrotów', result);
     } catch (error) {
       logger.error('ReservationsView: Błąd odświeżania liczników zwrotów', error);
@@ -379,7 +379,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       const returnsState = {
         returnDate
       };
-      
+
       logger.info('ReservationsView: Auto-zapisywanie stanu widoku zwroty do LocalStorage');
       saveAppState('reservations', 'returns', undefined, returnsState);
     }
@@ -393,7 +393,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         dateTo,
         showPromotorOnly
       };
-      
+
       logger.info('ReservationsView: Auto-zapisywanie stanu widoku rezerwacje do LocalStorage');
       saveAppState('reservations', 'reservations', undefined, undefined, reservationsState);
     }
@@ -430,14 +430,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     if (dateDebounceRef.current) {
       clearTimeout(dateDebounceRef.current);
     }
-    
+
     // Ustaw nowy timer - wyszukiwanie rozpocznie się po 500ms od ostatniej zmiany
     dateDebounceRef.current = setTimeout(() => {
       setDateFromFilter(dateFrom);
       setDateToFilter(dateTo);
       logger.debug('ReservationsView: Zastosowano filtry daty (debounce)', { dateFrom, dateTo });
     }, 500);
-    
+
     // Cleanup - wyczyść timer przy unmount lub zmianie wartości
     return () => {
       if (dateDebounceRef.current) {
@@ -471,7 +471,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       const category = EQUIPMENT_CATEGORIES[parentGroupId];
       if (category) return category;
     }
-    
+
     // Fallback: użyj nazwy sprzętu jeśli parent_group_id nie jest dostępne
     if (sprzet) {
       const lower = sprzet.toLowerCase();
@@ -484,14 +484,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       if (lower.includes('wiązania') || lower.includes('wiazania')) return 'wiazania';
       if (lower.includes('mojo')) return 'ski_mojo';
     }
-    
+
     return 'inne';
   };
 
   // src/components/ReservationsView.tsx: Funkcja usuwająca prefiks typu sprzętu z nazwy (np. "BUTY " z "BUTY HEAD EDGE...")
   const removeCategoryPrefix = (equipmentName: string, category: string): string => {
     if (!equipmentName) return equipmentName;
-    
+
     const prefixes: Record<string, string[]> = {
       'narty': ['NARTY', 'NARTY ', 'NARTY  '],
       'buty': ['BUTY', 'BUTY ', 'BUTY  '],
@@ -502,16 +502,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       'wiazania': ['WIĄZANIA', 'WIĄZANIA ', 'WIAZANIA', 'WIAZANIA ', 'WIĄZANIE', 'WIĄZANIE '],
       'ski_mojo': ['SKI MOJO', 'SKI MOJO ', 'SKI_MOJO', 'SKI_MOJO ']
     };
-    
+
     const categoryPrefixes = prefixes[category] || [];
     let cleanedName = equipmentName.trim();
-    
+
     // Usuń prefiksy (case-insensitive)
     for (const prefix of categoryPrefixes) {
       const regex = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i');
       cleanedName = cleanedName.replace(regex, '').trim();
     }
-    
+
     return cleanedName || equipmentName; // Jeśli wszystko zostało usunięte, zwróć oryginalną nazwę
   };
 
@@ -520,7 +520,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     if (items.length === 0) {
       return <span className="text-white/50">-</span>;
     }
-    
+
     return (
       <div className="flex flex-col gap-2 h-full justify-center">
         {items.map((item, idx) => {
@@ -543,7 +543,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const getSetIcon = (items: EquipmentItem[]): string => {
     const hasNarty = items.some(item => item.equipment.toLowerCase().includes('narty'));
     const hasDeska = items.some(item => item.equipment.toLowerCase().includes('deska'));
-    
+
     if (hasNarty) return '🎿';
     if (hasDeska) return '🏂';
     return '📦'; // Dla niekompletnych zestawów
@@ -555,28 +555,28 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     const colors = ['bg-blue-50', 'bg-gray-50', 'bg-green-50'];
     let currentSet: EquipmentItem[] = [];
     let setIndex = 0;
-    
+
     // Filtruj elementy - usuń pozycje które nie są prawdziwym sprzętem
     const validItems = items.filter(item => {
       if (!item.equipment) return false;
       const equipmentLower = item.equipment.toLowerCase();
-      
+
       // ZAWSZE ignoruj "PROMOTOR" - to tylko znacznik, nie sprzęt
       if (equipmentLower.includes('promotor')) return false;
-      
+
       // Ignoruj także inne pozycje nietypowe
       if (equipmentLower.includes('suma:')) return false;
       if (equipmentLower.trim() === '') return false;
-      
+
       return true;
     });
-    
+
     validItems.forEach((item) => {
       const equipmentLower = item.equipment.toLowerCase();
-      const isStartOfSet = 
+      const isStartOfSet =
         equipmentLower.includes('narty') ||
         equipmentLower.includes('deska');
-      
+
       if (isStartOfSet && currentSet.length > 0) {
         // Zapisz poprzedni komplet
         const setIcon = getSetIcon(currentSet);
@@ -592,7 +592,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         currentSet.push(item);
       }
     });
-    
+
     // Dodaj ostatni komplet (tylko jeśli ma elementy)
     if (currentSet.length > 0) {
       const setIcon = getSetIcon(currentSet);
@@ -603,14 +603,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         icon: setIcon
       });
     }
-    
+
     return sets;
   };
 
   // Group reservations by client + date range
   // src/components/ReservationsView.tsx: Funkcja wykrywania czy umowa jest PROMOTOR
   // Sprawdza 3 miejsca: numer umowy, pozycja sprzętu "PROMOTOR", dokładnie literka "p" w uwagach
-  const isPromotorContract = (group: GroupedReservation, allReservationsForGroup: ReservationData[]): boolean => {
+  const isPromotorContract = (_group: GroupedReservation, allReservationsForGroup: ReservationData[]): boolean => {
     // 1. Sprawdź numer umowy - PROMOTOR ma "P" zamiast "RE"
     // Pobierz numer z pierwszej rezerwacji w grupie (wszystkie mają ten sam numer)
     if (allReservationsForGroup.length > 0) {
@@ -623,7 +623,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     }
 
     // 2. Sprawdź czy w umowie jest pozycja sprzętu o nazwie "PROMOTOR"
-    const hasPromotorEquipment = allReservationsForGroup.some(res => 
+    const hasPromotorEquipment = allReservationsForGroup.some(res =>
       res.sprzet && res.sprzet.trim().toUpperCase() === 'PROMOTOR'
     );
     if (hasPromotorEquipment) {
@@ -655,14 +655,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         category: getEquipmentCategory(r.parent_group_id, r.sprzet)
       })));
     }
-    
+
     const grouped = new Map<string, GroupedReservation>();
 
     reservations.forEach(res => {
       // Normalizuj nazwę klienta (usuń dodatkowe spacje, trim)
       const normalizedKlient = res.klient.trim().replace(/\s+/g, ' ').toUpperCase();
       const key = `${normalizedKlient}_${res.od}_${res.do}`;
-      
+
       if (!grouped.has(key)) {
         grouped.set(key, {
           klient: res.klient.trim(), // Zachowaj oryginalną wielkość liter, ale trim
@@ -686,7 +686,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
       const group = grouped.get(key)!;
       const category = getEquipmentCategory(res.parent_group_id, res.sprzet);
-      
+
       // Dodaj sprzęt do odpowiedniej kategorii (zachowując kolejność z umowy)
       if (category !== 'inne' && res.sprzet && !res.sprzet.toLowerCase().includes('promotor')) {
         const categoryKey = category as keyof typeof group.sprzet_w_kategoriach;
@@ -708,11 +708,11 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           return resKey === key;
         }
       );
-      
+
       // Sprawdź czy umowa jest PROMOTOR używając wszystkich 3 miejsc
       const isPromotor = isPromotorContract(group, groupReservations);
       group.typumowy = isPromotor ? 'PROMOTOR' : 'STANDARD';
-      
+
       const items = groupReservations
         .filter(r => r.sprzet && !r.sprzet.toLowerCase().includes('promotor'))
         .map(r => ({
@@ -720,7 +720,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           equipment: r.sprzet,
           kod: r.kod || '-'
         }));
-      
+
       group.komplety = detectEquipmentSets(items);
     });
 
@@ -734,7 +734,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     if (!dateFromFilter) {
       return false;
     }
-    
+
     // src/components/ReservationsView.tsx: Filtrowanie po dacie od - jeśli tylko data od, pokaż tylko umowy z tego dnia
     // Jeśli jest data do, pokaż umowy z zakresu [dateFrom, dateTo]
     const reservationDate = new Date(group.od);
@@ -742,12 +742,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     fromDate.setHours(0, 0, 0, 0); // Ustaw na początek dnia
     const fromDateEnd = new Date(dateFromFilter);
     fromDateEnd.setHours(23, 59, 59, 999); // Ustaw na koniec dnia
-    
+
     // Jeśli podano datę do, sprawdź zakres dat
     if (dateToFilter) {
       const toDate = new Date(dateToFilter);
       toDate.setHours(23, 59, 59, 999); // Ustaw na koniec dnia
-      
+
       // Data od rezerwacji musi być w zakresie [dateFrom, dateTo]
       if (reservationDate < fromDate || reservationDate > toDate) {
         return false;
@@ -759,18 +759,18 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         return false;
       }
     }
-    
+
     // Filtruj według checkbox PROMOTOR
     if (showPromotorOnly && group.typumowy !== 'PROMOTOR') {
       return false;
     }
-    
+
     // Filtruj według tekstu wyszukiwania
     if (!filterText) return true;
     const searchTerm = filterText.toLowerCase();
-    
+
     // Sprawdź wszystkie kategorie sprzętu
-      const allEquipment = [
+    const allEquipment = [
       ...group.sprzet_w_kategoriach.narty.map(e => e.sprzet),
       ...group.sprzet_w_kategoriach.buty.map(e => e.sprzet),
       ...group.sprzet_w_kategoriach.kije.map(e => e.sprzet),
@@ -779,11 +779,11 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       ...group.sprzet_w_kategoriach.wiazania.map(e => e.sprzet),
       ...group.sprzet_w_kategoriach.buty_sb.map(e => e.sprzet),
       ...group.sprzet_w_kategoriach.ski_mojo.map(e => e.sprzet)
-      ];
-    
+    ];
+
     return (
       group.klient?.toLowerCase().includes(searchTerm) ||
-      allEquipment.some(equipment => 
+      allEquipment.some(equipment =>
         equipment?.toLowerCase().includes(searchTerm)
       )
     );
@@ -813,16 +813,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // Liczniki
   const allGroups = groupReservations();
   const totalReservations = allGroups.length; // Liczba wszystkich rezerwacji (90)
-  
+
   // Liczba unikalnych klientów (jak w FireFnow)
   const clientNames = allGroups.map(g => g.klient);
   const uniqueClients = new Set(clientNames).size;
-  
+
   // Debug: Sprawdź czy są duplikaty z różnymi spacjami/wielkością liter
   logger.debug('📊 Debug liczników:');
   logger.debug('   Liczba rezerwacji:', totalReservations);
   logger.debug('   Liczba unikalnych klientów (raw):', uniqueClients);
-  
+
   // Znajdź klientów z wieloma rezerwacjami
   const clientCounts = new Map<string, number>();
   clientNames.forEach(name => {
@@ -831,7 +831,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const multipleReservations = Array.from(clientCounts.entries())
     .filter(([, count]) => count > 1)
     .sort((a, b) => b[1] - a[1]);
-    
+
   logger.debug('   Klienci z wieloma rezerwacjami:', multipleReservations.length);
   logger.debug('   Szczegóły:', multipleReservations.slice(0, 10));
 
@@ -863,8 +863,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // Ikona sortowania
   const renderSortIcon = (field: 'od' | 'klient') => {
     if (sortField !== field) return <span className="text-gray-400">↕</span>;
-    return sortDirection === 'asc' ? 
-      <span className="text-blue-600">↑</span> : 
+    return sortDirection === 'asc' ?
+      <span className="text-blue-600">↑</span> :
       <span className="text-blue-600">↓</span>;
   };
 
@@ -879,13 +879,13 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       { key: 'deski', label: 'Deski SB', emoji: '🏂', color: 'bg-cyan-600/80' },
       { key: 'buty_sb', label: 'Buty SB', emoji: '🥾', color: 'bg-teal-600/80' }
     ];
-    
+
     return (
       <div className="flex flex-wrap gap-2 justify-center mt-4">
         {categories.map(cat => {
           const count = stats[cat.key as keyof EquipmentCategoryStats];
           if (count === 0) return null; // Ukryj kategorie z zerowymi wartościami
-          
+
           return (
             <div
               key={cat.key}
@@ -904,7 +904,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // src/components/ReservationsView.tsx: Renderowanie widoku zwrotów (przed header'em, podobnie jak "handout")
   if (viewType === 'returns') {
     return (
-      <div 
+      <div
         className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
         style={{
           backgroundImage: "url('/images/background.png')",
@@ -920,7 +920,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
               <h2 className="text-2xl lg:text-3xl font-bold text-white mb-6 text-center">
                 🔄 Zwroty Sprzętu
               </h2>
-              
+
               <div className="space-y-6">
                 <DatePickerButton
                   label="Wybierz datę zwrotów"
@@ -973,38 +973,34 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   <div className="text-white/80 text-base lg:text-lg">
                     umów kończy się {formatDate(returnDate)}
                   </div>
-                  
+
                   {/* Statystyki kategorii sprzętu */}
                   {renderCategoryStats(onDateStats)}
                 </div>
               </div>
 
               {/* Sekcja 2: Zaległe zwroty */}
-              <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${
-                returnsOverdue > 0
+              <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${returnsOverdue > 0
                   ? 'bg-orange-500/30 border-orange-400/50'
                   : 'bg-green-500/30 border-green-400/50'
-              }`}>
+                }`}>
                 <div className="text-center">
-                  <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${
-                    returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
-                  }`}>
+                  <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
+                    }`}>
                     {returnsOverdue > 0 ? '🟠 ZALEGŁE ZWROTY' : '✅ BRAK ZALEGŁOŚCI'}
                   </div>
-                  <div className={`text-6xl lg:text-8xl font-bold mb-3 ${
-                    returnsOverdue > 0 ? 'text-white' : 'text-white'
-                  }`}>
+                  <div className={`text-6xl lg:text-8xl font-bold mb-3 ${returnsOverdue > 0 ? 'text-white' : 'text-white'
+                    }`}>
                     {returnsOverdue}
                   </div>
-                  <div className={`text-base lg:text-lg ${
-                    returnsOverdue > 0 ? 'text-white/80' : 'text-white/80'
-                  }`}>
-                    {returnsOverdue > 0 
+                  <div className={`text-base lg:text-lg ${returnsOverdue > 0 ? 'text-white/80' : 'text-white/80'
+                    }`}>
+                    {returnsOverdue > 0
                       ? `umów powinno było być zwróconych wcześniej niż ${formatDate(returnDate)}`
                       : 'Wszystkie zwroty są na czas ✓'
                     }
                   </div>
-                  
+
                   {/* Statystyki kategorii sprzętu */}
                   {renderCategoryStats(overdueStats)}
                 </div>
@@ -1043,7 +1039,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   }
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-3 lg:p-6"
       style={{
         backgroundImage: "url('/images/background.png')",
@@ -1072,56 +1068,51 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 </button> */}
                 <button
                   onClick={() => setViewType('handout')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
-                    viewType === 'handout'
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'handout'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
-                  }`}
+                    }`}
                 >
                   📦 Wydaj
                 </button>
                 <button
                   onClick={() => setViewType('returns')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
-                    (viewType as string) === 'returns'
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${(viewType as string) === 'returns'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
-                  }`}
+                    }`}
                 >
                   🔄 Zwroty
                 </button>
                 <button
                   onClick={() => setViewType('reservations')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
-                    viewType === 'reservations'
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'reservations'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
-                  }`}
+                    }`}
                 >
                   📅 Rezerwacje
                 </button>
                 <button
                   onClick={() => setViewType('rentals')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
-                    viewType === 'rentals'
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'rentals'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
-                  }`}
+                    }`}
                 >
                   🎿 Wypożyczenia
                 </button>
                 <button
                   onClick={() => setViewType('past')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
-                    viewType === 'past'
+                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'past'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
-                  }`}
+                    }`}
                 >
                   🕒 Przeszłe
                 </button>
               </div>
-              
+
               {/* Pola do wpisywania daty od i do - ukryj dla widoku "Wydania" */}
               {viewType !== 'handout' && (
                 <>
@@ -1156,7 +1147,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                       🗑️ Wyczyść daty
                     </button>
                   )}
-                  
+
                   {/* Komunikat informujący o konieczności wpisania daty */}
                   {!dateFromFilter && (
                     <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-3 mb-4">
@@ -1183,14 +1174,14 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                       </p>
                     </div>
                   )}
-                  
+
                   <div className="space-y-1">
                     <p className="text-white/70 text-sm lg:text-base">
                       📋 Liczba pozycji: <strong className="text-white">{totalReservations}</strong>
                       {filterText && ` (wyświetlono: ${sortedGroupedReservations.length})`}
                     </p>
                     <p className="text-white/70 text-sm lg:text-base">
-                      👥 Liczba unikalnych klientów: <strong className="text-white">{uniqueClients}</strong> 
+                      👥 Liczba unikalnych klientów: <strong className="text-white">{uniqueClients}</strong>
                       <span className="text-xs ml-2">(porównaj z FireFnow)</span>
                     </p>
                     <p className="text-white/60 text-xs lg:text-sm mt-1">
@@ -1222,8 +1213,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   type="text"
                   value={filterText}
                   onChange={(e) => setFilterText(e.target.value)}
-                  placeholder={viewType === 'past' 
-                    ? "Wpisz co najmniej 3 znaki aby wyszukać przeszłe rezerwacje..." 
+                  placeholder={viewType === 'past'
+                    ? "Wpisz co najmniej 3 znaki aby wyszukać przeszłe rezerwacje..."
                     : "Wpisz klienta, sprzęt lub kod..."}
                   className="flex-1 px-4 py-2 bg-primary text-white placeholder-white/30 rounded-lg border border-white/10 focus:outline-none focus:border-blue-400 shadow-sm"
                 />
@@ -1236,7 +1227,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   </button>
                 )}
               </div>
-              
+
               {/* Komunikat dla widoku "przeszłe" */}
               {viewType === 'past' && filterText.trim().length < 3 && (
                 <div className="bg-yellow-600/30 border border-yellow-500 rounded-lg p-4">
@@ -1249,7 +1240,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                   </p>
                 </div>
               )}
-              
+
               {/* Checkbox PROMOTOR */}
               <div className="flex items-center gap-3 bg-[#0f2744]/50 px-4 py-2 rounded-lg border border-white/5 w-fit shadow-sm">
                 <label className="flex items-center gap-2 cursor-pointer text-white text-sm font-bold uppercase tracking-wider">
@@ -1268,7 +1259,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
         {/* Warunkowe renderowanie: Widok wydania lub tabela rezerwacji */}
         {viewType === 'handout' ? (
-          <EquipmentHandoutView 
+          <EquipmentHandoutView
             reservations={reservations}
             onBack={() => setViewType('reservations')}
           />
@@ -1276,176 +1267,175 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           <>
             {/* Tabela rezerwacji */}
             {isLoading ? (
-          <div className="text-center text-white text-xl py-20">
-            Ładowanie rezerwacji...
-          </div>
-        ) : !dateFromFilter ? (
-          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
-            <span className="text-white text-xl font-medium">
-              📅 Wpisz <strong>datę od</strong>, aby zobaczyć wyniki. Filtrowanie odbywa się po kolumnie "Data od".
-            </span>
-          </div>
-        ) : viewType === 'past' && filterText.trim().length < 3 ? (
-          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
-            <span className="text-white text-xl font-medium">
-              🔍 Wpisz co najmniej 3 znaki w wyszukiwarce, aby wczytać przeszłe rezerwacje
-            </span>
-          </div>
-        ) : sortedGroupedReservations.length === 0 ? (
-          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
-            <span className="text-white text-xl font-medium">
-              {filterText ? '😔 Nie znaleziono rezerwacji pasujących do wyszukiwania' : '📋 Brak rezerwacji w wybranym zakresie dat'}
-            </span>
-          </div>
-        ) : (
-          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
-            <div className="overflow-y-auto max-h-[calc(100vh-400px)] overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#0f2744]/90 border-b border-white/10 sticky top-0 z-10">
-                  <tr>
-                    <th 
-                      className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-20 transition-colors"
-                      onClick={() => handleSort('od')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Data od {renderSortIcon('od')}
-                      </div>
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider w-20">
-                      Data do
-                    </th>
-                    <th 
-                      className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-32 transition-colors"
-                      onClick={() => handleSort('klient')}
-                    >
-                      <div className="flex items-center gap-1">
-                        Klient {renderSortIcon('klient')}
-                      </div>
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
-                      Narty
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
-                      Buty
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
-                      Kije
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
-                      Kask
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
-                      Deska
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
-                      Wiązania
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
-                      Buty SB
-                    </th>
-                    <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
-                      SKI mojo
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white/5 divide-y divide-white/10">
-                  {sortedGroupedReservations.map((group, idx) => {
-                    const rowKey = `${group.klient}_${group.od}_${group.do}_${idx}`;
-                    const equipmentSets = group.komplety;
-                    
-                    // Funkcja do określenia koloru tła komórki na podstawie kompletu
-                    const getCellBackgroundColor = (category: string): string => {
-                      // Znajdź do którego kompletu należy sprzęt z tej kategorii
-                      const categoryItems = group.sprzet_w_kategoriach[category as keyof typeof group.sprzet_w_kategoriach] || [];
-                      if (categoryItems.length === 0) return '';
-                      
-                      // Znajdź pierwszy komplet zawierający sprzęt z tej kategorii
-                      for (let i = 0; i < equipmentSets.length; i++) {
-                        const set = equipmentSets[i];
-                        const hasCategoryItem = set.items.some(item => {
-                          const reservation = reservations.find(r => 
-                            r.klient.trim() === group.klient && 
-                            r.od === group.od && 
-                            r.do === group.do &&
-                            r.sprzet === item.equipment
-                          );
-                          const itemCategory = getEquipmentCategory(reservation?.parent_group_id, reservation?.sprzet);
-                          return itemCategory === category;
-                        });
-                        if (hasCategoryItem) {
-                          // Użyj koloru kompletu, ale z większą przezroczystością dla lepszej czytelności
-                          const colorMap: Record<string, string> = {
-                            'bg-blue-50': 'bg-blue-100/30',
-                            'bg-gray-50': 'bg-gray-100/30',
-                            'bg-green-50': 'bg-green-100/30'
-                          };
-                          return colorMap[set.color] || '';
-                        }
-                      }
-                      return '';
-                    };
-
-                    return (
-                      <tr 
-                        key={rowKey} 
-                        className={`transition-colors ${
-                          group.source === 'rental'
-                            ? 'bg-[#3A7BAF] hover:bg-[#2E6A9A]'  // Wypożyczenia - jaśniejszy niebieski
-                            : 'bg-[#2C5F8D] hover:bg-[#1A4A6F]'  // Rezerwacje - ciemniejszy niebieski
-                        }`}
-                      >
-                        <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">
-                          {formatDate(group.od)}
-                        </td>
-                        <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">
-                          {formatDate(group.do)}
-                        </td>
-                        <td className="px-2 py-4 text-sm text-white font-medium w-32 align-top">
-                          <div>
-                            <div className="mb-2 flex items-center gap-2">
-                              <span>{group.klient || '-'}</span>
-                              {group.source === 'rental' && (
-                                <span className="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded font-bold whitespace-nowrap">
-                                  WYPOŻYCZENIE
-                                </span>
-                              )}
-                            </div>
+              <div className="text-center text-white text-xl py-20">
+                Ładowanie rezerwacji...
+              </div>
+            ) : !dateFromFilter ? (
+              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
+                <span className="text-white text-xl font-medium">
+                  📅 Wpisz <strong>datę od</strong>, aby zobaczyć wyniki. Filtrowanie odbywa się po kolumnie "Data od".
+                </span>
+              </div>
+            ) : viewType === 'past' && filterText.trim().length < 3 ? (
+              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
+                <span className="text-white text-xl font-medium">
+                  🔍 Wpisz co najmniej 3 znaki w wyszukiwarce, aby wczytać przeszłe rezerwacje
+                </span>
+              </div>
+            ) : sortedGroupedReservations.length === 0 ? (
+              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
+                <span className="text-white text-xl font-medium">
+                  {filterText ? '😔 Nie znaleziono rezerwacji pasujących do wyszukiwania' : '📋 Brak rezerwacji w wybranym zakresie dat'}
+                </span>
+              </div>
+            ) : (
+              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
+                <div className="overflow-y-auto max-h-[calc(100vh-400px)] overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-[#0f2744]/90 border-b border-white/10 sticky top-0 z-10">
+                      <tr>
+                        <th
+                          className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-20 transition-colors"
+                          onClick={() => handleSort('od')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Data od {renderSortIcon('od')}
                           </div>
-                        </td>
-                        
-                        {/* Kolumny sprzętu */}
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('narty')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.narty, 'narty')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('buty')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.buty, 'buty')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('kije')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.kije, 'kije')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('kask')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.kask, 'kask')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('deska')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.deska, 'deska')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('wiazania')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.wiazania, 'wiazania')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('buty_sb')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.buty_sb, 'buty_sb')}
-                        </td>
-                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('ski_mojo')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.ski_mojo, 'ski_mojo')}
-                        </td>
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider w-20">
+                          Data do
+                        </th>
+                        <th
+                          className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-32 transition-colors"
+                          onClick={() => handleSort('klient')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Klient {renderSortIcon('klient')}
+                          </div>
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
+                          Narty
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
+                          Buty
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                          Kije
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                          Kask
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[120px]">
+                          Deska
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                          Wiązania
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                          Buty SB
+                        </th>
+                        <th className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider min-w-[100px]">
+                          SKI mojo
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+                    </thead>
+                    <tbody className="bg-white/5 divide-y divide-white/10">
+                      {sortedGroupedReservations.map((group, idx) => {
+                        const rowKey = `${group.klient}_${group.od}_${group.do}_${idx}`;
+                        const equipmentSets = group.komplety;
+
+                        // Funkcja do określenia koloru tła komórki na podstawie kompletu
+                        const getCellBackgroundColor = (category: string): string => {
+                          // Znajdź do którego kompletu należy sprzęt z tej kategorii
+                          const categoryItems = group.sprzet_w_kategoriach[category as keyof typeof group.sprzet_w_kategoriach] || [];
+                          if (categoryItems.length === 0) return '';
+
+                          // Znajdź pierwszy komplet zawierający sprzęt z tej kategorii
+                          for (let i = 0; i < equipmentSets.length; i++) {
+                            const set = equipmentSets[i];
+                            const hasCategoryItem = set.items.some(item => {
+                              const reservation = reservations.find(r =>
+                                r.klient.trim() === group.klient &&
+                                r.od === group.od &&
+                                r.do === group.do &&
+                                r.sprzet === item.equipment
+                              );
+                              const itemCategory = getEquipmentCategory(reservation?.parent_group_id, reservation?.sprzet);
+                              return itemCategory === category;
+                            });
+                            if (hasCategoryItem) {
+                              // Użyj koloru kompletu, ale z większą przezroczystością dla lepszej czytelności
+                              const colorMap: Record<string, string> = {
+                                'bg-blue-50': 'bg-blue-100/30',
+                                'bg-gray-50': 'bg-gray-100/30',
+                                'bg-green-50': 'bg-green-100/30'
+                              };
+                              return colorMap[set.color] || '';
+                            }
+                          }
+                          return '';
+                        };
+
+                        return (
+                          <tr
+                            key={rowKey}
+                            className={`transition-colors ${group.source === 'rental'
+                                ? 'bg-[#3A7BAF] hover:bg-[#2E6A9A]'  // Wypożyczenia - jaśniejszy niebieski
+                                : 'bg-[#2C5F8D] hover:bg-[#1A4A6F]'  // Rezerwacje - ciemniejszy niebieski
+                              }`}
+                          >
+                            <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">
+                              {formatDate(group.od)}
+                            </td>
+                            <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">
+                              {formatDate(group.do)}
+                            </td>
+                            <td className="px-2 py-4 text-sm text-white font-medium w-32 align-top">
+                              <div>
+                                <div className="mb-2 flex items-center gap-2">
+                                  <span>{group.klient || '-'}</span>
+                                  {group.source === 'rental' && (
+                                    <span className="px-2 py-0.5 text-[10px] bg-yellow-500 text-white rounded font-bold whitespace-nowrap">
+                                      WYPOŻYCZENIE
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+
+                            {/* Kolumny sprzętu */}
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('narty')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.narty, 'narty')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('buty')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.buty, 'buty')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('kije')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.kije, 'kije')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('kask')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.kask, 'kask')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('deska')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.deska, 'deska')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('wiazania')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.wiazania, 'wiazania')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('buty_sb')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.buty_sb, 'buty_sb')}
+                            </td>
+                            <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('ski_mojo')}`}>
+                              {renderEquipmentList(group.sprzet_w_kategoriach.ski_mojo, 'ski_mojo')}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Statystyki - Podsumowanie */}
             {!isLoading && totalReservations > 0 && (
@@ -1472,7 +1462,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           </>
         )}
       </div>
-      
+
       {/* Toast notifications są teraz obsługiwane przez ToastProvider w App.tsx */}
     </div>
   );
