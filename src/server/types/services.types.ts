@@ -17,6 +17,7 @@ export interface FireSnowReservation {
   data_do?: string;
   cena?: number;
   typumowy?: string;
+  uwagi?: string;
   obiekt_id?: number;
   parent_group_id?: number | null;
 }
@@ -34,6 +35,7 @@ export interface Reservation {
   zaplacono: string;
   numer: string;
   typumowy: string;
+  uwagi?: string;
   obiekt_id?: number;
   klient_id?: number;
   parent_group_id?: number | null;

@@ -17,7 +17,7 @@ import {
   validateShoeSizeRealtime,
   type FormErrors 
 } from '../../utils/formValidation';
-import { saveSearchHistory, saveAllTabs, loadAllTabs } from '../../utils/localStorage';
+import { saveSearchHistory, saveAllTabs, loadAllTabs, loadAppState, saveAppState } from '../../utils/localStorage';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../../types/ski.types';
 import type { FormData, TabData, AppMode, FilterKey } from '../../types/dashboard.types';
 import { createLogger } from '../../utils/logger';
@@ -174,7 +174,11 @@ export const useDashboardState = (): DashboardStateReturn => {
   const [activeTabId, setActiveTabId] = useState<string>('1');
   const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
   const [suggestions, setSuggestions] = useState<string[]>([]);
-  const [appMode, setAppMode] = useState<AppMode>('search');
+  // src/components/dashboard/useDashboardState.ts: Inicjalizacja appMode z localStorage, żeby uniknąć "migania" strony głównej
+  const [appMode, setAppMode] = useState<AppMode>(() => {
+    const savedAppState = loadAppState();
+    return savedAppState?.appMode || 'search';
+  });
   const [hasSelectedGroup, setHasSelectedGroup] = useState<boolean>(false);
   const [equipmentTypeFilter, setEquipmentTypeFilter] = useState<string>('');
   const [categoryFilter, setCategoryFilter] = useState<string>('');
@@ -947,6 +951,20 @@ export const useDashboardState = (): DashboardStateReturn => {
     }
   }, []);
 
+  // Wczytaj stan aplikacji z LocalStorage przy starcie (dodatkowe sprawdzenie, jeśli useState nie wczytało)
+  useEffect(() => {
+    logger.info('src/components/dashboard/useDashboardState.ts: Wczytuję stan aplikacji z LocalStorage przy starcie');
+    const savedAppState = loadAppState();
+    
+    if (savedAppState && savedAppState.appMode) {
+      logger.info('src/components/dashboard/useDashboardState.ts: Znaleziono zapisany stan aplikacji:', savedAppState);
+      setAppMode(savedAppState.appMode);
+      logger.info('src/components/dashboard/useDashboardState.ts: Stan aplikacji przywrócony z LocalStorage');
+    } else {
+      logger.info('src/components/dashboard/useDashboardState.ts: Brak zapisanego stanu aplikacji, używam domyślnego (search)');
+    }
+  }, []);
+
   // Automatycznie zapisuj karty do LocalStorage
   useEffect(() => {
     if (tabs.length > 0) {
@@ -954,6 +972,12 @@ export const useDashboardState = (): DashboardStateReturn => {
       saveAllTabs(tabs, activeTabId);
     }
   }, [tabs, activeTabId]);
+
+  // Automatycznie zapisuj appMode do LocalStorage przy każdej zmianie
+  useEffect(() => {
+    logger.info(`src/components/dashboard/useDashboardState.ts: Auto-zapisywanie appMode do LocalStorage: ${appMode}`);
+    saveAppState(appMode);
+  }, [appMode]);
 
   // Ładowanie bazy danych przy starcie
   useEffect(() => {

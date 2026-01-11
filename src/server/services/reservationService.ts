@@ -43,6 +43,7 @@ function mapFireSnowReservation(item: FireSnowReservation): Reservation {
         zaplacono: '',
         numer: item.rezerwacja_id ? item.rezerwacja_id.toString() : '',
         typumowy: item.typumowy || 'STANDARD',
+        uwagi: item.uwagi || '',
         obiekt_id: item.obiekt_id,
         klient_id: item.klient_id,
         parent_group_id: item.parent_group_id !== undefined ? item.parent_group_id : null

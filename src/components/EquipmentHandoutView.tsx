@@ -1,7 +1,8 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
 import { DatePickerButton } from './DatePickerButton';
+import { loadAppState, saveAppState } from '../utils/localStorage';
 
 // src/components/EquipmentHandoutView.tsx: Logger dla EquipmentHandoutView
 const logger = createLogger('EquipmentHandoutView');
@@ -29,9 +30,16 @@ interface ClientWithReservation {
 
 // src/components/EquipmentHandoutView.tsx: Komponent do wydawania sprzętu klientom - zoptymalizowany pod mobile
 export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ reservations, onBack }) => {
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedClient, setSelectedClient] = useState<ClientWithReservation | null>(null);
-  const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  // src/components/EquipmentHandoutView.tsx: Wczytaj stan z localStorage przy inicjalizacji
+  const savedState = loadAppState()?.handoutState;
+  
+  const [selectedDate, setSelectedDate] = useState<string>(savedState?.selectedDate || '');
+  const [selectedClient, setSelectedClient] = useState<ClientWithReservation | null>(
+    savedState?.selectedClient || null
+  );
+  const [checkedItems, setCheckedItems] = useState<Set<string>>(
+    new Set(savedState?.checkedItems || [])
+  );
   const [searchText, setSearchText] = useState<string>(''); // src/components/EquipmentHandoutView.tsx: Pole wyszukiwania klienta
   
   // src/components/EquipmentHandoutView.tsx: Stany dla trybu sprawdzania kodu
@@ -205,6 +213,18 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
       client.klient.toLowerCase().includes(searchLower)
     );
   }, [clientsForDate, searchText]);
+
+  // src/components/EquipmentHandoutView.tsx: Automatycznie zapisuj stan do localStorage przy każdej zmianie
+  useEffect(() => {
+    const handoutState = {
+      selectedDate,
+      selectedClient,
+      checkedItems: Array.from(checkedItems) // Konwertuj Set na Array dla JSON
+    };
+    
+    logger.info('EquipmentHandoutView: Auto-zapisywanie stanu widoku wydaj do LocalStorage');
+    saveAppState('reservations', 'handout', handoutState);
+  }, [selectedDate, selectedClient, checkedItems]);
 
   // WIDOK 0: Sprawdzenie kodu sprzętu
   if (checkMode) {
