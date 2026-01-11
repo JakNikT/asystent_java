@@ -4,6 +4,7 @@ import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
 import { EquipmentHandoutView } from './EquipmentHandoutView';
 import { DatePickerButton } from './DatePickerButton';
+import { loadAppState, saveAppState } from '../utils/localStorage';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
 const logger = createLogger('ReservationsView');
@@ -62,14 +63,14 @@ interface GroupedReservation {
   source?: 'reservation' | 'rental'; // Źródło danych: rezerwacja lub wypożyczenie
   komplety: EquipmentSet[]; // Zachować komplety dla kolorowania
   sprzet_w_kategoriach: {
-    narty: string[];
-    buty: string[];
-    kije: string[];
-    kask: string[];
-    deska: string[];
-    wiazania: string[];
-    buty_sb: string[];
-    ski_mojo: string[];
+    narty: Array<{ sprzet: string; kod: string }>;
+    buty: Array<{ sprzet: string; kod: string }>;
+    kije: Array<{ sprzet: string; kod: string }>;
+    kask: Array<{ sprzet: string; kod: string }>;
+    deska: Array<{ sprzet: string; kod: string }>;
+    wiazania: Array<{ sprzet: string; kod: string }>;
+    buty_sb: Array<{ sprzet: string; kod: string }>;
+    ski_mojo: Array<{ sprzet: string; kod: string }>;
   };
 }
 
@@ -94,18 +95,26 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [sortField, setSortField] = useState<'od' | 'klient'>('od');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [filterText, setFilterText] = useState('');
-  const [showPromotorOnly, setShowPromotorOnly] = useState(false);
-  // src/components/ReservationsView.tsx: Domyślny widok ustawiony na 'handout' (Wydania) - najpopularniejsza funkcja
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns'>('handout');
+  // src/components/ReservationsView.tsx: Wczytaj stan z localStorage przy inicjalizacji
+  const savedAppState = loadAppState();
+  const savedReturnsState = savedAppState?.returnsState;
+  const savedReservationsState = savedAppState?.reservationsState;
+  // src/components/ReservationsView.tsx: Wczytaj showPromotorOnly z localStorage przy inicjalizacji
+  const [showPromotorOnly, setShowPromotorOnly] = useState<boolean>(savedReservationsState?.showPromotorOnly || false);
+  
+  // src/components/ReservationsView.tsx: Inicjalizacja viewType z localStorage, żeby przywrócić ostatnio otwarty widok (np. "wydania")
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns'>(() => {
+    return savedAppState?.reservationsViewType || 'handout';
+  });
   // src/components/ReservationsView.tsx: Stany dla filtrowania po dacie - wyniki pokazują się dopiero po wpisaniu daty od
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>(savedReservationsState?.dateFrom || '');
+  const [dateTo, setDateTo] = useState<string>(savedReservationsState?.dateTo || '');
   // src/components/ReservationsView.tsx: Stany dla debounce - wyszukiwanie rozpocznie się po zakończeniu wpisywania daty
   const [dateFromFilter, setDateFromFilter] = useState<string>('');
   const [dateToFilter, setDateToFilter] = useState<string>('');
   const dateDebounceRef = useRef<NodeJS.Timeout | null>(null);
   // src/components/ReservationsView.tsx: Stany dla widoku zwrotów
-  const [returnDate, setReturnDate] = useState<string>('');
+  const [returnDate, setReturnDate] = useState<string>(savedReturnsState?.returnDate || '');
   const [returnsOnDate, setReturnsOnDate] = useState<number>(0);
   const [returnsOverdue, setReturnsOverdue] = useState<number>(0);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
@@ -358,6 +367,38 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     }
   };
 
+  // Automatycznie zapisuj viewType do LocalStorage przy każdej zmianie
+  useEffect(() => {
+    logger.info(`src/components/ReservationsView.tsx: Auto-zapisywanie viewType do LocalStorage: ${viewType}`);
+    saveAppState('reservations', viewType);
+  }, [viewType]);
+
+  // Automatycznie zapisuj returnDate do LocalStorage przy każdej zmianie (tylko dla widoku zwrotów)
+  useEffect(() => {
+    if (viewType === 'returns') {
+      const returnsState = {
+        returnDate
+      };
+      
+      logger.info('ReservationsView: Auto-zapisywanie stanu widoku zwroty do LocalStorage');
+      saveAppState('reservations', 'returns', undefined, returnsState);
+    }
+  }, [returnDate, viewType]);
+
+  // Automatycznie zapisuj stan widoku rezerwacje do localStorage przy każdej zmianie (tylko dla widoku rezerwacje)
+  useEffect(() => {
+    if (viewType === 'reservations') {
+      const reservationsState = {
+        dateFrom,
+        dateTo,
+        showPromotorOnly
+      };
+      
+      logger.info('ReservationsView: Auto-zapisywanie stanu widoku rezerwacje do LocalStorage');
+      saveAppState('reservations', 'reservations', undefined, undefined, reservationsState);
+    }
+  }, [dateFrom, dateTo, showPromotorOnly, viewType]);
+
   // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout" i "returns" - te widoki mają własne ładowanie)
   useEffect(() => {
     if (viewType === 'handout') {
@@ -447,22 +488,53 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     return 'inne';
   };
 
+  // src/components/ReservationsView.tsx: Funkcja usuwająca prefiks typu sprzętu z nazwy (np. "BUTY " z "BUTY HEAD EDGE...")
+  const removeCategoryPrefix = (equipmentName: string, category: string): string => {
+    if (!equipmentName) return equipmentName;
+    
+    const prefixes: Record<string, string[]> = {
+      'narty': ['NARTY', 'NARTY ', 'NARTY  '],
+      'buty': ['BUTY', 'BUTY ', 'BUTY  '],
+      'buty_sb': ['BUTY SB', 'BUTY SB ', 'BUTY_SB', 'BUTY_SB '],
+      'kije': ['KIJKI', 'KIJKI ', 'KIJKI  ', 'KIJ', 'KIJ '],
+      'kask': ['KASK', 'KASK ', 'KASKI', 'KASKI '],
+      'deska': ['DESKA', 'DESKA ', 'DESKI', 'DESKI ', 'SNOWBOARD', 'SNOWBOARD '],
+      'wiazania': ['WIĄZANIA', 'WIĄZANIA ', 'WIAZANIA', 'WIAZANIA ', 'WIĄZANIE', 'WIĄZANIE '],
+      'ski_mojo': ['SKI MOJO', 'SKI MOJO ', 'SKI_MOJO', 'SKI_MOJO ']
+    };
+    
+    const categoryPrefixes = prefixes[category] || [];
+    let cleanedName = equipmentName.trim();
+    
+    // Usuń prefiksy (case-insensitive)
+    for (const prefix of categoryPrefixes) {
+      const regex = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*`, 'i');
+      cleanedName = cleanedName.replace(regex, '').trim();
+    }
+    
+    return cleanedName || equipmentName; // Jeśli wszystko zostało usunięte, zwróć oryginalną nazwę
+  };
+
   // Helper function to render equipment list as separate cells
-  const renderEquipmentList = (items: string[]): React.ReactElement => {
+  const renderEquipmentList = (items: Array<{ sprzet: string; kod: string }>, category: string): React.ReactElement => {
     if (items.length === 0) {
       return <span className="text-white/50">-</span>;
     }
     
     return (
-      <div className="flex flex-col gap-2">
-        {items.map((item, idx) => (
-          <div
-            key={idx}
-            className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white h-[48px] flex items-center"
-          >
-            {item}
-          </div>
-        ))}
+      <div className="flex flex-col gap-2 h-full justify-center">
+        {items.map((item, idx) => {
+          const cleanedName = removeCategoryPrefix(item.sprzet, category);
+          return (
+            <div
+              key={idx}
+              className="bg-white/5 border border-white/10 rounded px-2 py-1 text-xs text-white min-h-[48px] flex flex-col items-center justify-center break-words overflow-hidden"
+            >
+              <span className="text-[10px] text-white/70 font-semibold mb-0.5">{item.kod}</span>
+              <span className="break-words text-center">{cleanedName}</span>
+            </div>
+          );
+        })}
       </div>
     );
   };
@@ -536,6 +608,44 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   };
 
   // Group reservations by client + date range
+  // src/components/ReservationsView.tsx: Funkcja wykrywania czy umowa jest PROMOTOR
+  // Sprawdza 3 miejsca: numer umowy, pozycja sprzętu "PROMOTOR", dokładnie literka "p" w uwagach
+  const isPromotorContract = (group: GroupedReservation, allReservationsForGroup: ReservationData[]): boolean => {
+    // 1. Sprawdź numer umowy - PROMOTOR ma "P" zamiast "RE"
+    // Pobierz numer z pierwszej rezerwacji w grupie (wszystkie mają ten sam numer)
+    if (allReservationsForGroup.length > 0) {
+      const numer = allReservationsForGroup[0].numer || '';
+      // Sprawdź czy numer zaczyna się od "P" (nie "RE")
+      if (numer.trim().toUpperCase().startsWith('P') && !numer.trim().toUpperCase().startsWith('RE')) {
+        logger.debug('ReservationsView: Wykryto PROMOTOR po numerze umowy:', numer);
+        return true;
+      }
+    }
+
+    // 2. Sprawdź czy w umowie jest pozycja sprzętu o nazwie "PROMOTOR"
+    const hasPromotorEquipment = allReservationsForGroup.some(res => 
+      res.sprzet && res.sprzet.trim().toUpperCase() === 'PROMOTOR'
+    );
+    if (hasPromotorEquipment) {
+      logger.debug('ReservationsView: Wykryto PROMOTOR po pozycji sprzętu "PROMOTOR"');
+      return true;
+    }
+
+    // 3. Sprawdź czy w kolumnie "uwagi" jest dokładnie literka "p" (case-insensitive, po trim)
+    const hasPromotorInUwagi = allReservationsForGroup.some(res => {
+      if (!res.uwagi) return false;
+      // Sprawdź czy uwagi to dokładnie "p" lub "P" (po trim)
+      const uwagiTrimmed = res.uwagi.trim().toUpperCase();
+      return uwagiTrimmed === 'P';
+    });
+    if (hasPromotorInUwagi) {
+      logger.debug('ReservationsView: Wykryto PROMOTOR po dokładnej literce "p" w uwagach');
+      return true;
+    }
+
+    return false;
+  };
+
   const groupReservations = (): GroupedReservation[] => {
     // Debug: sprawdź pierwsze 3 rezerwacje
     if (reservations.length > 0) {
@@ -558,7 +668,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           klient: res.klient.trim(), // Zachowaj oryginalną wielkość liter, ale trim
           od: res.od,
           do: res.do,
-          typumowy: res.typumowy || 'STANDARD',
+          typumowy: res.typumowy || 'STANDARD', // Tymczasowo, będzie nadpisane przez isPromotorContract
           source: res.source, // Zachowaj źródło danych (rezerwacja lub wypożyczenie)
           komplety: [],
           sprzet_w_kategoriach: {
@@ -570,7 +680,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             wiazania: [],
             buty_sb: [],
             ski_mojo: []
-          }
+          } as GroupedReservation['sprzet_w_kategoriach']
         });
       }
 
@@ -581,12 +691,15 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       if (category !== 'inne' && res.sprzet && !res.sprzet.toLowerCase().includes('promotor')) {
         const categoryKey = category as keyof typeof group.sprzet_w_kategoriach;
         if (group.sprzet_w_kategoriach[categoryKey]) {
-          group.sprzet_w_kategoriach[categoryKey].push(res.sprzet);
+          group.sprzet_w_kategoriach[categoryKey].push({
+            sprzet: res.sprzet,
+            kod: res.kod || '-'
+          });
         }
       }
     });
 
-    // Po zgrupowaniu wszystkich rezerwacji, wykryj komplety dla każdej grupy
+    // Po zgrupowaniu wszystkich rezerwacji, sprawdź każdą grupę czy jest PROMOTOR i wykryj komplety
     grouped.forEach((group, key) => {
       const groupReservations = reservations.filter(
         r => {
@@ -595,6 +708,10 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           return resKey === key;
         }
       );
+      
+      // Sprawdź czy umowa jest PROMOTOR używając wszystkich 3 miejsc
+      const isPromotor = isPromotorContract(group, groupReservations);
+      group.typumowy = isPromotor ? 'PROMOTOR' : 'STANDARD';
       
       const items = groupReservations
         .filter(r => r.sprzet && !r.sprzet.toLowerCase().includes('promotor'))
@@ -653,16 +770,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     const searchTerm = filterText.toLowerCase();
     
     // Sprawdź wszystkie kategorie sprzętu
-    const allEquipment = [
-      ...group.sprzet_w_kategoriach.narty,
-      ...group.sprzet_w_kategoriach.buty,
-      ...group.sprzet_w_kategoriach.kije,
-      ...group.sprzet_w_kategoriach.kask,
-      ...group.sprzet_w_kategoriach.deska,
-      ...group.sprzet_w_kategoriach.wiazania,
-      ...group.sprzet_w_kategoriach.buty_sb,
-      ...group.sprzet_w_kategoriach.ski_mojo
-    ];
+      const allEquipment = [
+      ...group.sprzet_w_kategoriach.narty.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.buty.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.kije.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.kask.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.deska.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.wiazania.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.buty_sb.map(e => e.sprzet),
+      ...group.sprzet_w_kategoriach.ski_mojo.map(e => e.sprzet)
+      ];
     
     return (
       group.klient?.toLowerCase().includes(searchTerm) ||
@@ -1182,9 +1299,9 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           </div>
         ) : (
           <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-y-auto max-h-[calc(100vh-400px)] overflow-x-auto">
               <table className="w-full">
-                <thead className="bg-[#0f2744]/50 border-b border-white/10">
+                <thead className="bg-[#0f2744]/90 border-b border-white/10 sticky top-0 z-10">
                   <tr>
                     <th 
                       className="px-2 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 w-20 transition-colors"
@@ -1297,29 +1414,29 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                         </td>
                         
                         {/* Kolumny sprzętu */}
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('narty')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.narty)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('narty')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.narty, 'narty')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('buty')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.buty)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('buty')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.buty, 'buty')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('kije')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.kije)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('kije')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.kije, 'kije')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('kask')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.kask)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('kask')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.kask, 'kask')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('deska')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.deska)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('deska')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.deska, 'deska')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('wiazania')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.wiazania)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('wiazania')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.wiazania, 'wiazania')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('buty_sb')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.buty_sb)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('buty_sb')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.buty_sb, 'buty_sb')}
                         </td>
-                        <td className={`px-2 py-4 text-sm text-white align-top ${getCellBackgroundColor('ski_mojo')}`}>
-                          {renderEquipmentList(group.sprzet_w_kategoriach.ski_mojo)}
+                        <td className={`px-2 py-4 text-sm text-white align-middle ${getCellBackgroundColor('ski_mojo')}`}>
+                          {renderEquipmentList(group.sprzet_w_kategoriach.ski_mojo, 'ski_mojo')}
                         </td>
                       </tr>
                     );

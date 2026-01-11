@@ -197,6 +197,7 @@ public class FireSnowBridge {
                     "SELECT " +
                     "  rp.ID as rezerwacja_id, " +
                     "  p.NAME as nazwa_sprzetu, " +
+                    "  p.DESCRIPTION as uwagi, " +
                     "  ae.CODE as kod_sprzetu, " +
                     "  rp.BEGINDATE as data_od, " +
                     "  rp.ENDDATE as data_do, " +
@@ -210,7 +211,7 @@ public class FireSnowBridge {
                     "  rg_parent.ID as parent_group_id, " +
                     "  CASE " +
                     "    WHEN UPPER(TRIM(p.NAME)) = 'PROMOTOR' THEN 'PROMOTOR' " +
-                    "    WHEN UPPER(TRIM(p.DESCRIPTION)) LIKE '%P%' THEN 'PROMOTOR' " +
+                    "    WHEN UPPER(TRIM(p.DESCRIPTION)) = 'P' THEN 'PROMOTOR' " +
                     "    WHEN UPPER(SUBSTRING(TRIM(doc.NUMBER), 1, 1)) = 'P' THEN 'PROMOTOR' " +
                     "    ELSE 'STANDARD' " +
                     "  END as typumowy " +
@@ -252,6 +253,12 @@ public class FireSnowBridge {
                     json.append("{");
                     json.append("\"rezerwacja_id\":").append(rs.getLong("rezerwacja_id")).append(",");
                     json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
+                    String uwagi = rs.getString("uwagi");
+                    if (uwagi != null) {
+                        json.append("\"uwagi\":\"").append(escapeJson(uwagi)).append("\",");
+                    } else {
+                        json.append("\"uwagi\":\"\",");
+                    }
                     json.append("\"kod_sprzetu\":\"").append(escapeJson(rs.getString("kod_sprzetu"))).append("\",");
                     json.append("\"data_od\":\"").append(rs.getTimestamp("data_od")).append("\",");
                     json.append("\"data_do\":\"").append(rs.getTimestamp("data_do")).append("\",");
