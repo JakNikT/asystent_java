@@ -21,6 +21,7 @@ export interface SkiData {
   PRZEZNACZENIE: string;               // SL, G, SLG, OFF (opcjonalnie puste)
   ATUTY: string;                       // np. "C", "C,premium" lub ""
   KOD: string;                         // kod sprzętu
+  ROK?: number;                        // opcjonalnie rok produkcji
 }
 
 export interface SearchCriteria {

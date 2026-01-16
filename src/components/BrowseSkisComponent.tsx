@@ -11,10 +11,10 @@ import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils
 import { Input } from './ui/Input';
 import { DatePickerButton } from './DatePickerButton';
 import { createLogger } from '../utils/logger';
-import { 
-  validateHeightRealtime, 
-  validateWeightRealtime, 
-  validateLevelRealtime, 
+import {
+  validateHeightRealtime,
+  validateWeightRealtime,
+  validateLevelRealtime,
   validateGenderRealtime
 } from '../utils/formValidation';
 
@@ -152,7 +152,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   const updateSearchState = (field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => {
     const filterKey = activeFilter as FilterKey;
-    
+
     // Aktualizuj lokalny stan natychmiast
     setLocalSearchStates(prev => ({
       ...prev,
@@ -161,7 +161,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         [field]: value
       }
     }));
-    
+
     // Wywołaj callback do Dashboard
     if (onFilterSearchChange) {
       onFilterSearchChange(filterKey, field, value);
@@ -224,91 +224,91 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const loadAvailabilityStatuses = useCallback(async () => {
     setIsRefreshingAvailability(true);
     const startTime = Date.now();
-    
+
     const statusMap = new Map<string, AvailabilityStatus>();
 
-      try {
-        // Sprawdź czy użytkownik wpisał daty
-        const hasUserDates = browseCriteria?.dateFrom && browseCriteria?.dateTo;
+    try {
+      // Sprawdź czy użytkownik wpisał daty
+      const hasUserDates = browseCriteria?.dateFrom && browseCriteria?.dateTo;
 
-        if (!hasUserDates) {
-          logger.info('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
-          setAvailabilityStatuses(new Map());
-          return;
-        }
-
-        // Użyj dat z formularza użytkownika
-        const startDate = browseCriteria.dateFrom;
-        const endDate = browseCriteria.dateTo;
-
-        if (!startDate || !endDate) {
-          logger.info('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
-          return;
-        }
-
-        // Policz ile nart ma kod
-        const skisWithCode = allSkis.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
-        const totalSkis = skisWithCode.length;
-
-        logger.info('═══════════════════════════════════════════════════════');
-        logger.info('BrowseSkisComponent: 📋 PRZEGLĄDAJ - Rozpoczęcie sprawdzania dostępności');
-        logger.info('BrowseSkisComponent:   Okres:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
-        logger.info('BrowseSkisComponent:   Nart do sprawdzenia:', totalSkis);
-
-        // OPTYMALIZACJA: Pobierz dane dostępności RAZ dla całego okresu
-        logger.info('BrowseSkisComponent:   Pobieram dane dostępności z API (jedno zapytanie)...');
-        const allAvailabilityData = await ReservationApiClient.loadAvailabilityForPeriod(startDate, endDate);
-        logger.info(`BrowseSkisComponent:   ✅ Pobrano ${allAvailabilityData.length} pozycji (dostępne dla wszystkich nart)`);
-        logger.info('BrowseSkisComponent:   Rozpoczynam sprawdzanie dostępności...');
-
-        let checkedCount = 0;
-        let availableCount = 0;
-        let warningCount = 0;
-        let reservedCount = 0;
-
-        // Sprawdź status dla każdej narty z kodem (NOWY SYSTEM 3-KOLOROWY)
-        // Używamy już pobranych danych zamiast pobierać dla każdej narty osobno
-        for (const ski of skisWithCode) {
-          try {
-            checkedCount++;
-            // OPTYMALIZACJA: Przekaż już pobrane dane zamiast pobierać ponownie
-            const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
-              ski.KOD,
-              startDate,
-              endDate,
-              allAvailabilityData  // Użyj już pobranych danych
-            );
-            statusMap.set(ski.KOD, availabilityInfo);
-
-            if (availabilityInfo.status === 'available') availableCount++;
-            else if (availabilityInfo.status === 'warning') warningCount++;
-            else if (availabilityInfo.status === 'reserved') reservedCount++;
-
-            // Loguj co 100 nart (żeby nie spamować konsoli)
-            if (checkedCount % 100 === 0 || checkedCount === totalSkis) {
-              logger.info(`BrowseSkisComponent:   Postęp: ${checkedCount}/${totalSkis} nart sprawdzonych`);
-            }
-          } catch (error) {
-            logger.error(`BrowseSkisComponent:   ❌ Błąd dla kodu ${ski.KOD}:`, error);
-          }
-        }
-
-        const duration = Date.now() - startTime;
-        logger.info('BrowseSkisComponent:   ✅ Zakończono sprawdzanie dostępności:');
-        logger.info('BrowseSkisComponent:      - Sprawdzonych nart:', checkedCount);
-        logger.info('BrowseSkisComponent:      - 🟢 Dostępne:', availableCount);
-        logger.info('BrowseSkisComponent:      - 🟡 Ostrzeżenie:', warningCount);
-        logger.info('BrowseSkisComponent:      - 🔴 Zarezerwowane:', reservedCount);
-        logger.info('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
-        logger.info('═══════════════════════════════════════════════════════');
-
-        setAvailabilityStatuses(statusMap);
-        setLastRefreshTime(new Date());
-      } catch (error) {
-        logger.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
-      } finally {
-        setIsRefreshingAvailability(false);
+      if (!hasUserDates) {
+        logger.info('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
+        setAvailabilityStatuses(new Map());
+        return;
       }
+
+      // Użyj dat z formularza użytkownika
+      const startDate = browseCriteria.dateFrom;
+      const endDate = browseCriteria.dateTo;
+
+      if (!startDate || !endDate) {
+        logger.info('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
+        return;
+      }
+
+      // Policz ile nart ma kod
+      const skisWithCode = allSkis.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
+      const totalSkis = skisWithCode.length;
+
+      logger.info('═══════════════════════════════════════════════════════');
+      logger.info('BrowseSkisComponent: 📋 PRZEGLĄDAJ - Rozpoczęcie sprawdzania dostępności');
+      logger.info('BrowseSkisComponent:   Okres:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
+      logger.info('BrowseSkisComponent:   Nart do sprawdzenia:', totalSkis);
+
+      // OPTYMALIZACJA: Pobierz dane dostępności RAZ dla całego okresu
+      logger.info('BrowseSkisComponent:   Pobieram dane dostępności z API (jedno zapytanie)...');
+      const allAvailabilityData = await ReservationApiClient.loadAvailabilityForPeriod(startDate, endDate);
+      logger.info(`BrowseSkisComponent:   ✅ Pobrano ${allAvailabilityData.length} pozycji (dostępne dla wszystkich nart)`);
+      logger.info('BrowseSkisComponent:   Rozpoczynam sprawdzanie dostępności...');
+
+      let checkedCount = 0;
+      let availableCount = 0;
+      let warningCount = 0;
+      let reservedCount = 0;
+
+      // Sprawdź status dla każdej narty z kodem (NOWY SYSTEM 3-KOLOROWY)
+      // Używamy już pobranych danych zamiast pobierać dla każdej narty osobno
+      for (const ski of skisWithCode) {
+        try {
+          checkedCount++;
+          // OPTYMALIZACJA: Przekaż już pobrane dane zamiast pobierać ponownie
+          const availabilityInfo = await ReservationApiClient.getSkiAvailabilityStatus(
+            ski.KOD,
+            startDate,
+            endDate,
+            allAvailabilityData  // Użyj już pobranych danych
+          );
+          statusMap.set(ski.KOD, availabilityInfo);
+
+          if (availabilityInfo.status === 'available') availableCount++;
+          else if (availabilityInfo.status === 'warning') warningCount++;
+          else if (availabilityInfo.status === 'reserved') reservedCount++;
+
+          // Loguj co 100 nart (żeby nie spamować konsoli)
+          if (checkedCount % 100 === 0 || checkedCount === totalSkis) {
+            logger.info(`BrowseSkisComponent:   Postęp: ${checkedCount}/${totalSkis} nart sprawdzonych`);
+          }
+        } catch (error) {
+          logger.error(`BrowseSkisComponent:   ❌ Błąd dla kodu ${ski.KOD}:`, error);
+        }
+      }
+
+      const duration = Date.now() - startTime;
+      logger.info('BrowseSkisComponent:   ✅ Zakończono sprawdzanie dostępności:');
+      logger.info('BrowseSkisComponent:      - Sprawdzonych nart:', checkedCount);
+      logger.info('BrowseSkisComponent:      - 🟢 Dostępne:', availableCount);
+      logger.info('BrowseSkisComponent:      - 🟡 Ostrzeżenie:', warningCount);
+      logger.info('BrowseSkisComponent:      - 🔴 Zarezerwowane:', reservedCount);
+      logger.info('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
+      logger.info('═══════════════════════════════════════════════════════');
+
+      setAvailabilityStatuses(statusMap);
+      setLastRefreshTime(new Date());
+    } catch (error) {
+      logger.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
+    } finally {
+      setIsRefreshingAvailability(false);
+    }
   }, [allSkis, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
 
   // src/components/BrowseSkisComponent.tsx: Początkowe załadowanie statusów dostępności
@@ -321,12 +321,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     if (!autoRefreshEnabled || !browseCriteria?.dateFrom || !browseCriteria?.dateTo) {
       return;
     }
-    
+
     const interval = setInterval(() => {
       logger.info('BrowseSkisComponent: 🔄 Automatyczne odświeżanie dostępności...');
       loadAvailabilityStatuses();
     }, 30000); // 30 sekund
-    
+
     return () => clearInterval(interval);
   }, [autoRefreshEnabled, loadAvailabilityStatuses, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
 
@@ -705,7 +705,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         if (!ski.DLUGOSC) return false;
         const lengthStr = ski.DLUGOSC.toString();
         // Sprawdź czy długość zaczyna się którymś z wybranych prefiksów
-        return Array.from(selectedLengthFilters).some(prefix => 
+        return Array.from(selectedLengthFilters).some(prefix =>
           lengthStr.startsWith(prefix)
         );
       });
@@ -791,8 +791,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         bValue = bFlex ? Number(bFlex) : 0;
       } else {
         // Dla pozostałych pól odczytaj wartość z obiektu
-        aValue = a[config.field as keyof SkiData];
-        bValue = b[config.field as keyof SkiData];
+        const aRaw = a[config.field as keyof SkiData];
+        const bRaw = b[config.field as keyof SkiData];
+        aValue = aRaw !== undefined ? aRaw : '';
+        bValue = bRaw !== undefined ? bRaw : '';
 
         // Konwersja dla pól numerycznych
         if (config.field === 'DLUGOSC') {
@@ -920,7 +922,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     logger.info(`BrowseSkisComponent: Szybki filtr - ${filter}`);
     setActiveFilter(filter);
     setCurrentPage(1); // Reset do pierwszej strony
-    
+
     // Jeśli użytkownik jeszcze nie wybrał grupy, wywołaj callback
     if (!hasSelectedGroup && onGroupSelected) {
       onGroupSelected();
@@ -945,7 +947,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative"
       style={{
         backgroundImage: "url('/images/background.png')",
@@ -957,746 +959,780 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       <div className="relative z-10">
         {/* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile */}
         {tabs.length > 0 && (
-        <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
-          <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
-            {/* Renderuj karty */}
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange?.(tab.id)}
-                className={`group relative px-4 py-2 rounded-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
-                  ? 'bg-[#386BB2] text-white'
-                  : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
-                  }`}
-              >
-                {tab.label}
-                {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
-                {tabs.length > 1 && (
-                  <span
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onRemoveTab?.(tab.id);
-                    }}
-                    className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
-                  >
-                    ✕
-                  </span>
-                )}
-              </button>
-            ))}
+          <div className="relative w-full bg-[#194576] border-b-2 border-[#2C699F] py-2 px-4">
+            <div className="max-w-[1100px] mx-auto flex items-center gap-2 overflow-x-auto scrollbar-thin scrollbar-thumb-[#2C699F] scrollbar-track-[#194576]">
+              {/* Renderuj karty */}
+              {tabs.map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => onTabChange?.(tab.id)}
+                  className={`group relative px-4 py-2 rounded-lg font-['Inter'] font-bold text-sm transition-all whitespace-nowrap min-w-[100px] ${activeTabId === tab.id
+                    ? 'bg-[#386BB2] text-white'
+                    : 'bg-[#2C699F] text-[#A6C2EF] hover:bg-[#194576] hover:text-white'
+                    }`}
+                >
+                  {tab.label}
+                  {/* Przycisk usuwania karty (tylko jeśli jest więcej niż 1 karta) */}
+                  {tabs.length > 1 && (
+                    <span
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRemoveTab?.(tab.id);
+                      }}
+                      className="ml-2 text-red-400 hover:text-red-600 cursor-pointer"
+                    >
+                      ✕
+                    </span>
+                  )}
+                </button>
+              ))}
 
-            {/* Przycisk dodawania nowej karty - sticky na mobile */}
-            {onAddTab && (
-              <button
-                onClick={onAddTab}
-                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
-                title="Dodaj nową osobę"
-              >
-                +
-              </button>
-            )}
+              {/* Przycisk dodawania nowej karty - sticky na mobile */}
+              {onAddTab && (
+                <button
+                  onClick={onAddTab}
+                  className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-['Inter'] font-bold text-sm transition-all flex items-center gap-1 whitespace-nowrap sticky right-0 shadow-lg"
+                  title="Dodaj nową osobę"
+                >
+                  +
+                </button>
+              )}
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="p-3 lg:p-6">
-        <div className="max-w-8xl mx-auto">
-          {/* Header z wyszukiwaniem - responsywny */}
-          <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
-            {/* Wszystkie elementy w jednym wierszu poziomo */}
-            <div className="flex flex-wrap items-center gap-6">
-              {/* 1. Napis "Przeglądaj sprzęt" */}
-              <div className="flex-shrink-0">
-                <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
-                  Przeglądaj sprzęt
-                </h1>
-                <div className="flex items-center gap-3">
-                  <p className="text-white/70 text-sm">
-                    Znaleziono {sortedSkis.length} nart
-                  </p>
-                  {lastRefreshTime && browseCriteria?.dateFrom && browseCriteria?.dateTo && (
-                    <p className="text-white/50 text-xs flex items-center gap-1">
-                      {isRefreshingAvailability ? (
-                        <>
-                          <span className="animate-pulse">⟳</span>
-                          <span>Odświeżanie...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Ostatnie odświeżenie:</span>
-                          <span>{Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu</span>
-                        </>
-                      )}
+        <div className="p-3 lg:p-6">
+          <div className="max-w-8xl mx-auto">
+            {/* Header z wyszukiwaniem - responsywny */}
+            <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
+              {/* Wszystkie elementy w jednym wierszu poziomo */}
+              <div className="flex flex-wrap items-center gap-6">
+                {/* 1. Napis "Przeglądaj sprzęt" */}
+                <div className="flex-shrink-0">
+                  <h1 className="text-2xl lg:text-3xl font-bold text-white mb-1">
+                    Przeglądaj sprzęt
+                  </h1>
+                  <div className="flex items-center gap-3">
+                    <p className="text-white/70 text-sm">
+                      Znaleziono {sortedSkis.length} nart
                     </p>
+                    {lastRefreshTime && browseCriteria?.dateFrom && browseCriteria?.dateTo && (
+                      <p className="text-white/50 text-xs flex items-center gap-1">
+                        {isRefreshingAvailability ? (
+                          <>
+                            <span className="animate-pulse">⟳</span>
+                            <span>Odświeżanie...</span>
+                          </>
+                        ) : (
+                          <>
+                            <span>Ostatnie odświeżenie:</span>
+                            <span>{Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu</span>
+                          </>
+                        )}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Pola daty w dwóch wierszach */}
+                {formData && onDateChange && (
+                  <div className="flex flex-col gap-2 mr-24">
+                    <DatePickerButton
+                      label="Data od"
+                      icon="📅"
+                      value={formData.dateFrom || ''}
+                      onChange={(date) => onDateChange('dateFrom', date)}
+                      maxDate={formData.dateTo || undefined}
+                    />
+                    <DatePickerButton
+                      label="Data do"
+                      icon="📅"
+                      value={formData.dateTo || ''}
+                      onChange={(date) => onDateChange('dateTo', date)}
+                      minDate={formData.dateFrom || undefined}
+                    />
+                  </div>
+                )}
+
+                {/* 3. Przyciski filtrów w dwóch wierszach */}
+                <div className="flex flex-col gap-2 mr-2">
+                  {/* Pierwszy wiersz - pierwsze 4 przyciski */}
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 NARTY TOP</button>
+                    <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-700 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 NARTY VIP</button>
+                    <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 NARTY JUNIOR</button>
+                    <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 BUTY JUNIOR</button>
+                  </div>
+                  {/* Drugi wiersz - pozostałe 4 przyciski */}
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🥾 BUTY DOROSŁE</button>
+                    <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🏂 DESKI</button>
+                    <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👢 BUTY SB</button>
+                    <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 CAŁY SPRZĘT</button>
+                  </div>
+                </div>
+
+                {/* 4. Przycisk powrotu */}
+                <div className="flex-shrink-0 ml-auto">
+                  <button
+                    onClick={onBack}
+                    className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-6 py-2 rounded-lg border border-white/5 hover:border-white/20 text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
+                  >
+                    ← Wróć
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Wyświetl napis "Wybierz grupę" jeśli użytkownik jeszcze nie wybrał grupy */}
+            {!hasSelectedGroup ? (
+              <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-8 text-center">
+                <p className="text-white text-xl font-bold">Wybierz grupę</p>
+              </div>
+            ) : (
+              <>
+                {/* Tabela sprzętu - widoczna tylko na desktop */}
+                <div className="hidden lg:block bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead className="bg-[#0f2744]/50 border-b border-white/10">
+                        {/* Wiersz z polami edycji nad nagłówkami kolumn */}
+                        <tr className="bg-[#0f2744]/70 border-b border-white/10">
+                          {/* Pole wyszukiwania rozciągnięte na kolumny Marka i Model */}
+                          <th colSpan={2} className="px-4 py-2">
+                            <Input
+                              type="text"
+                              placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
+                              value={currentSearchState.searchTerm}
+                              onChange={(e) => {
+                                updateSearchState('searchTerm', e.target.value);
+                                setCurrentPage(1);
+                              }}
+                              className="w-full h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                            />
+                          </th>
+                          {/* Pole wyszukiwania Flex - opcjonalnie */}
+                          {hasAdultBoots && (
+                            <th className="px-4 py-2">
+                              <Input
+                                type="text"
+                                placeholder="Flex"
+                                value={currentSearchState.searchFlex}
+                                onChange={(e) => {
+                                  updateSearchState('searchFlex', e.target.value);
+                                  setCurrentPage(1);
+                                }}
+                                className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                              />
+                            </th>
+                          )}
+                          {/* Pole wyszukiwania Długość */}
+                          <th className="px-4 py-2">
+                            <Input
+                              type="text"
+                              placeholder="Długość"
+                              value={currentSearchState.searchDlugosc}
+                              onChange={(e) => {
+                                updateSearchState('searchDlugosc', e.target.value);
+                                setCurrentPage(1);
+                              }}
+                              className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                            />
+                          </th>
+                          {/* Pole Wzrost - tylko gdy !shouldHideColumns */}
+                          {!shouldHideColumns && (
+                            <th className="px-4 py-2">
+                              <Input
+                                type="text"
+                                placeholder="180"
+                                value={editWzrost}
+                                onChange={(e) => handleFieldChange('wzrost', e.target.value)}
+                                className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                                maxLength={3}
+                              />
+                            </th>
+                          )}
+                          {/* Pole Waga - tylko gdy !shouldHideColumns */}
+                          {!shouldHideColumns && (
+                            <th className="px-4 py-2">
+                              <Input
+                                type="text"
+                                placeholder="70"
+                                value={editWaga}
+                                onChange={(e) => handleFieldChange('waga', e.target.value)}
+                                className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                                maxLength={3}
+                              />
+                            </th>
+                          )}
+                          {/* Pole Poziom - tylko gdy !shouldHideColumns */}
+                          {!shouldHideColumns && (
+                            <th className="px-4 py-2">
+                              <Input
+                                type="text"
+                                placeholder="1-6"
+                                value={editPoziom}
+                                onChange={(e) => handleFieldChange('poziom', e.target.value)}
+                                className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                                maxLength={1}
+                              />
+                            </th>
+                          )}
+                          {/* Pole Płeć - tylko gdy !shouldHideColumns && !shouldHideJuniorSkiColumns */}
+                          {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                            <th className="px-4 py-2">
+                              <Input
+                                type="text"
+                                placeholder="M/K"
+                                value={editPlec}
+                                onChange={(e) => handleFieldChange('plec', e.target.value)}
+                                className="w-20 h-8 text-center font-bold text-sm uppercase bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
+                                maxLength={1}
+                              />
+                            </th>
+                          )}
+                          {/* Puste komórki dla pozostałych kolumn: Przeznaczenie, Atuty (gdy widoczne) */}
+                          {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                            <>
+                              <th className="px-4 py-2"></th>
+                              <th className="px-4 py-2"></th>
+                            </>
+                          )}
+                          {/* Dostępność */}
+                          <th className="px-4 py-2"></th>
+                          {/* Akcja - opcjonalnie */}
+                          {isEmployeeMode && <th className="px-4 py-2"></th>}
+                        </tr>
+                        {/* NOWA ZMIANA: Nowy układ kolumn */}
+                        <tr>
+                          <th
+                            className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                            onClick={() => handleSort('MARKA')}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              Marka {renderSortIcon('MARKA')}
+                            </div>
+                          </th>
+                          <th
+                            className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                            onClick={() => handleSort('MODEL')}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              Model {renderSortIcon('MODEL')}
+                            </div>
+                          </th>
+                          {hasAdultBoots && (
+                            <th
+                              className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                              onClick={() => handleSort('FLEX')}
+                            >
+                              <div className="flex items-center gap-2">
+                                Flex {renderSortIcon('FLEX')}
+                              </div>
+                            </th>
+                          )}
+                          <th
+                            className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                            onClick={() => handleSort('DLUGOSC')}
+                          >
+                            <div className="flex items-center justify-center gap-2">
+                              Długość {renderSortIcon('DLUGOSC')}
+                            </div>
+                          </th>
+                          {!shouldHideColumns && (
+                            <>
+                              <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">Wzrost (cm)</th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Waga (kg)</th>
+                              <th
+                                className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                                onClick={() => handleSort('POZIOM')}
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  Poziom {renderSortIcon('POZIOM')}
+                                </div>
+                              </th>
+                            </>
+                          )}
+                          {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                            <>
+                              <th
+                                className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                                onClick={() => handleSort('PLEC')}
+                              >
+                                <div className="flex items-center justify-center gap-2">
+                                  Płeć {renderSortIcon('PLEC')}
+                                </div>
+                              </th>
+                              <th
+                                className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                                onClick={() => handleSort('PRZEZNACZENIE')}
+                              >
+                                <div className="flex items-center gap-2">
+                                  Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
+                                </div>
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                                Atuty
+                              </th>
+                            </>
+                          )}
+                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                            <div className="flex items-center gap-2">
+                              <span>Dostępność</span>
+                              <button
+                                onClick={handleManualRefresh}
+                                disabled={isRefreshingAvailability}
+                                className="p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                title={lastRefreshTime
+                                  ? `Odśwież dostępność (ostatnie: ${Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu)`
+                                  : 'Odśwież dostępność'}
+                              >
+                                {isRefreshingAvailability ? (
+                                  <span className="animate-spin">⟳</span>
+                                ) : (
+                                  <span>🔄</span>
+                                )}
+                              </button>
+                              <button
+                                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                                className={`p-1 rounded transition-colors ${autoRefreshEnabled
+                                  ? 'bg-green-500/20 hover:bg-green-500/30'
+                                  : 'bg-gray-500/20 hover:bg-gray-500/30'
+                                  }`}
+                                title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
+                              >
+                                {autoRefreshEnabled ? (
+                                  <span className="text-green-400">⏱️</span>
+                                ) : (
+                                  <span className="text-gray-400">⏸️</span>
+                                )}
+                              </button>
+                            </div>
+                          </th>
+                          {isEmployeeMode && (
+                            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Akcja</th>
+                          )}
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white/5 divide-y divide-white/10">
+                        {currentSkis.map((ski) => (
+                          <tr key={ski.ID} className="hover:bg-white/10 transition-colors">
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                              {formatBrandName(ski)}
+                            </td>
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                              {formatModelName(ski)}
+                            </td>
+                            {hasAdultBoots && (
+                              <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                                {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE')
+                                  ? (extractFlexFromModel(ski.MODEL) || '-')
+                                  : '-'
+                                }
+                              </td>
+                            )}
+                            <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                              {/* src/components/BrowseSkisComponent.tsx: Wyświetlanie rozmiarów z połówkami (24.5 → "24,5 cm") */}
+                              {typeof ski.DLUGOSC === 'number' && ski.DLUGOSC % 1 !== 0
+                                ? ski.DLUGOSC.toFixed(1).replace('.', ',') + ' cm'  // 24.5 → "24,5 cm"
+                                : ski.DLUGOSC + ' cm'}  {/* 24 → "24 cm" */}
+                            </td>
+                            {!shouldHideColumns && (
+                              <>
+                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                                  {ski.WZROST_MIN}-{ski.WZROST_MAX}
+                                </td>
+                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
+                                  {ski.WAGA_MIN}-{ski.WAGA_MAX}
+                                </td>
+                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
+                                  {formatLevel(ski.POZIOM)}
+                                </td>
+                              </>
+                            )}
+                            {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                              <>
+                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
+                                  {formatGender(ski.PLEC)}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                                  {formatPurpose(ski.PRZEZNACZENIE)}
+                                </td>
+                                <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                                  {ski.ATUTY || '-'}
+                                </td>
+                              </>
+                            )}
+                            <td className="px-4 py-4 whitespace-nowrap text-sm">
+                              {generateAvailabilitySquares(ski)}
+                            </td>
+                            {isEmployeeMode && (
+                              <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                <button
+                                  onClick={() => handleEdit(ski)}
+                                  className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 flex items-center gap-1"
+                                  title="Edytuj sprzęt"
+                                >
+                                  ✏️ Edytuj
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Paginacja */}
+                  {totalPages > 1 && (
+                    <div className="bg-[#0f2744]/50 px-4 py-3 flex items-center justify-between border-t border-white/10 sm:px-6">
+                      <div className="flex-1 flex justify-between sm:hidden">
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                          disabled={currentPage === 1}
+                          className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          Poprzednia
+                        </button>
+                        <button
+                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                          disabled={currentPage === totalPages}
+                          className="ml-3 relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        >
+                          Następna
+                        </button>
+                      </div>
+                      <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                        <div>
+                          <p className="text-sm text-white/90">
+                            Pokazuję <span className="font-bold">{startIndex + 1}</span> do{' '}
+                            <span className="font-bold">{Math.min(endIndex, sortedSkis.length)}</span> z{' '}
+                            <span className="font-bold">{sortedSkis.length}</span> wyników
+                          </p>
+                        </div>
+                        <div>
+                          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                              disabled={currentPage === 1}
+                              className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-white/10 bg-[#0f2744]/50 text-sm font-bold text-white hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                              ←
+                            </button>
+
+                            {/* Numery stron */}
+                            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                              const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
+                              if (pageNum > totalPages) return null;
+
+                              return (
+                                <button
+                                  key={pageNum}
+                                  onClick={() => setCurrentPage(pageNum)}
+                                  className={`relative inline-flex items-center px-4 py-2 border text-sm font-bold transition-all ${currentPage === pageNum
+                                    ? 'z-10 bg-[#0f2744]/70 border-white/20 text-white'
+                                    : 'bg-[#0f2744]/50 border-white/10 text-white hover:bg-[#0f2744]/70'
+                                    }`}
+                                >
+                                  {pageNum}
+                                </button>
+                              );
+                            })}
+
+                            <button
+                              onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                              disabled={currentPage === totalPages}
+                              className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-white/10 bg-[#0f2744]/50 text-sm font-bold text-white hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                            >
+                              →
+                            </button>
+                          </nav>
+                        </div>
+                      </div>
+                    </div>
                   )}
                 </div>
-              </div>
 
-              {/* 2. Pola daty w dwóch wierszach */}
-              {formData && onDateChange && (
-                <div className="flex flex-col gap-2 mr-24">
-                  <DatePickerButton
-                    label="Data od"
-                    icon="📅"
-                    value={formData.dateFrom || ''}
-                    onChange={(date) => onDateChange('dateFrom', date)}
-                    maxDate={formData.dateTo || undefined}
-                  />
-                  <DatePickerButton
-                    label="Data do"
-                    icon="📅"
-                    value={formData.dateTo || ''}
-                    onChange={(date) => onDateChange('dateTo', date)}
-                    minDate={formData.dateFrom || undefined}
-                  />
-                </div>
-              )}
-
-              {/* 3. Przyciski filtrów w dwóch wierszach */}
-              <div className="flex flex-col gap-2 mr-2">
-                {/* Pierwszy wiersz - pierwsze 4 przyciski */}
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => handleQuickFilter('TOP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'TOP' ? 'bg-blue-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 NARTY TOP</button>
-                  <button onClick={() => handleQuickFilter('VIP')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'VIP' ? 'bg-blue-700 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🎿 NARTY VIP</button>
-                  <button onClick={() => handleQuickFilter('JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 NARTY JUNIOR</button>
-                  <button onClick={() => handleQuickFilter('BUTY_JUNIOR')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_JUNIOR' ? 'bg-green-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👶 BUTY JUNIOR</button>
-                </div>
-                {/* Drugi wiersz - pozostałe 4 przyciski */}
-                <div className="flex flex-wrap gap-2">
-                  <button onClick={() => handleQuickFilter('DOROSLE')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DOROSLE' ? 'bg-purple-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🥾 BUTY DOROSŁE</button>
-                  <button onClick={() => handleQuickFilter('DESKI')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'DESKI' ? 'bg-orange-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>🏂 DESKI</button>
-                  <button onClick={() => handleQuickFilter('BUTY_SNOWBOARD')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'BUTY_SNOWBOARD' ? 'bg-red-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>👢 BUTY SB</button>
-                  <button onClick={() => handleQuickFilter('all')} className={`px-4 py-2 text-sm rounded-lg font-bold uppercase tracking-wider transition-all duration-200 whitespace-nowrap ${activeFilter === 'all' ? 'bg-gray-600 text-white border border-white/20 shadow-lg' : 'bg-[#0f2744]/50 text-white border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 shadow-sm'}`}>📦 CAŁY SPRZĘT</button>
-                </div>
-              </div>
-
-              {/* 4. Przycisk powrotu */}
-              <div className="flex-shrink-0 ml-auto">
-                <button
-                  onClick={onBack}
-                  className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-6 py-2 rounded-lg border border-white/5 hover:border-white/20 text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
-                >
-                  ← Wróć
-                </button>
-              </div>
-            </div>
-
-          </div>
-
-          {/* Wyświetl napis "Wybierz grupę" jeśli użytkownik jeszcze nie wybrał grupy */}
-          {!hasSelectedGroup ? (
-            <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-8 text-center">
-              <p className="text-white text-xl font-bold">Wybierz grupę</p>
-            </div>
-          ) : (
-            <>
-              {/* Tabela sprzętu - widoczna tylko na desktop */}
-              <div className="hidden lg:block bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead className="bg-[#0f2744]/50 border-b border-white/10">
-                  {/* Wiersz z polami edycji nad nagłówkami kolumn */}
-                  <tr className="bg-[#0f2744]/70 border-b border-white/10">
-                    {/* Pole wyszukiwania rozciągnięte na kolumny Marka i Model */}
-                    <th colSpan={2} className="px-4 py-2">
-                      <Input
-                        type="text"
-                        placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
-                        value={currentSearchState.searchTerm}
-                        onChange={(e) => {
-                          updateSearchState('searchTerm', e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-full h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                      />
-                    </th>
-                    {/* Pole wyszukiwania Flex - opcjonalnie */}
-                    {hasAdultBoots && (
-                      <th className="px-4 py-2">
-                        <Input
-                          type="text"
-                          placeholder="Flex"
-                          value={currentSearchState.searchFlex}
-                          onChange={(e) => {
-                            updateSearchState('searchFlex', e.target.value);
-                            setCurrentPage(1);
-                          }}
-                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                        />
-                      </th>
-                    )}
-                    {/* Pole wyszukiwania Długość */}
-                    <th className="px-4 py-2">
-                      <Input
-                        type="text"
-                        placeholder="Długość"
-                        value={currentSearchState.searchDlugosc}
-                        onChange={(e) => {
-                          updateSearchState('searchDlugosc', e.target.value);
-                          setCurrentPage(1);
-                        }}
-                        className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                      />
-                    </th>
-                    {/* Pole Wzrost - tylko gdy !shouldHideColumns */}
-                    {!shouldHideColumns && (
-                      <th className="px-4 py-2">
-                        <Input
-                          type="text"
-                          placeholder="180"
-                          value={editWzrost}
-                          onChange={(e) => handleFieldChange('wzrost', e.target.value)}
-                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                          maxLength={3}
-                        />
-                      </th>
-                    )}
-                    {/* Pole Waga - tylko gdy !shouldHideColumns */}
-                    {!shouldHideColumns && (
-                      <th className="px-4 py-2">
-                        <Input
-                          type="text"
-                          placeholder="70"
-                          value={editWaga}
-                          onChange={(e) => handleFieldChange('waga', e.target.value)}
-                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                          maxLength={3}
-                        />
-                      </th>
-                    )}
-                    {/* Pole Poziom - tylko gdy !shouldHideColumns */}
-                    {!shouldHideColumns && (
-                      <th className="px-4 py-2">
-                        <Input
-                          type="text"
-                          placeholder="1-6"
-                          value={editPoziom}
-                          onChange={(e) => handleFieldChange('poziom', e.target.value)}
-                          className="w-20 h-8 text-center font-bold text-sm bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                          maxLength={1}
-                        />
-                      </th>
-                    )}
-                    {/* Pole Płeć - tylko gdy !shouldHideColumns && !shouldHideJuniorSkiColumns */}
-                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
-                      <th className="px-4 py-2">
-                        <Input
-                          type="text"
-                          placeholder="M/K"
-                          value={editPlec}
-                          onChange={(e) => handleFieldChange('plec', e.target.value)}
-                          className="w-20 h-8 text-center font-bold text-sm uppercase bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                          maxLength={1}
-                        />
-                      </th>
-                    )}
-                    {/* Puste komórki dla pozostałych kolumn: Przeznaczenie, Atuty (gdy widoczne) */}
-                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
-                      <>
-                        <th className="px-4 py-2"></th>
-                        <th className="px-4 py-2"></th>
-                      </>
-                    )}
-                    {/* Dostępność */}
-                    <th className="px-4 py-2"></th>
-                    {/* Akcja - opcjonalnie */}
-                    {isEmployeeMode && <th className="px-4 py-2"></th>}
-                  </tr>
-                  {/* NOWA ZMIANA: Nowy układ kolumn */}
-                  <tr>
-                    <th
-                      className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                      onClick={() => handleSort('MARKA')}
+                {/* Nagłówek dostępności - mobile */}
+                <div className="block lg:hidden mb-4 flex items-center justify-between bg-black/20 rounded-xl border border-white/10 p-3">
+                  <span className="text-white font-bold text-sm">Dostępność:</span>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleManualRefresh}
+                      disabled={isRefreshingAvailability}
+                      className="p-2 rounded bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
+                      title="Odśwież dostępność"
                     >
-                      <div className="flex items-center justify-center gap-2">
-                        Marka {renderSortIcon('MARKA')}
-                      </div>
-                    </th>
-                    <th
-                      className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                      onClick={() => handleSort('MODEL')}
+                      {isRefreshingAvailability ? (
+                        <span className="animate-spin">⟳</span>
+                      ) : (
+                        <span>🔄</span>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+                      className={`p-2 rounded transition-colors ${autoRefreshEnabled
+                        ? 'bg-green-500/20'
+                        : 'bg-gray-500/20'
+                        }`}
+                      title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
                     >
-                      <div className="flex items-center justify-center gap-2">
-                        Model {renderSortIcon('MODEL')}
-                      </div>
-                    </th>
-                    {hasAdultBoots && (
-                      <th
-                        className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                        onClick={() => handleSort('FLEX')}
+                      {autoRefreshEnabled ? (
+                        <span className="text-green-400">⏱️</span>
+                      ) : (
+                        <span className="text-gray-400">⏸️</span>
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Przyciski filtrowania długości - tylko dla VIP/TOP w mobile */}
+                {(activeFilter === 'VIP' || activeFilter === 'TOP') && (
+                  <div className="block lg:hidden mb-4 bg-black/20 rounded-xl border border-white/10 p-3">
+                    <div className="text-white/80 text-sm font-bold uppercase mb-2">
+                      Filtruj długość (cm):
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {['14', '15', '16', '17', '18'].map(prefix => (
+                        <button
+                          key={prefix}
+                          onClick={() => toggleLengthFilter(prefix)}
+                          className={`px-4 py-2 rounded-lg font-bold transition-all ${selectedLengthFilters.has(prefix)
+                            ? 'bg-blue-600 text-white border-2 border-white/30 shadow-lg'
+                            : 'bg-white/10 text-white border-2 border-white/20 hover:bg-white/20'
+                            }`}
+                        >
+                          {prefix}0-{prefix}9
+                        </button>
+                      ))}
+                    </div>
+                    {selectedLengthFilters.size > 0 && (
+                      <button
+                        onClick={() => setSelectedLengthFilters(new Set())}
+                        className="mt-2 w-full px-3 py-1.5 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-xs font-bold uppercase transition-all"
                       >
-                        <div className="flex items-center gap-2">
-                          Flex {renderSortIcon('FLEX')}
-                        </div>
-                      </th>
+                        🗑️ Wyczyść filtry długości
+                      </button>
                     )}
-                    <th
-                      className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                      onClick={() => handleSort('DLUGOSC')}
-                    >
-                      <div className="flex items-center justify-center gap-2">
-                        Długość {renderSortIcon('DLUGOSC')}
-                      </div>
-                    </th>
-                    {!shouldHideColumns && (
-                      <>
-                        <th className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider">Wzrost (cm)</th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Waga (kg)</th>
-                        <th
-                          className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                          onClick={() => handleSort('POZIOM')}
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            Poziom {renderSortIcon('POZIOM')}
-                          </div>
-                        </th>
-                      </>
-                    )}
-                    {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
-                      <>
-                        <th
-                          className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                          onClick={() => handleSort('PLEC')}
-                        >
-                          <div className="flex items-center justify-center gap-2">
-                            Płeć {renderSortIcon('PLEC')}
-                          </div>
-                        </th>
-                        <th
-                          className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                          onClick={() => handleSort('PRZEZNACZENIE')}
-                        >
-                          <div className="flex items-center gap-2">
-                            Przeznaczenie {renderSortIcon('PRZEZNACZENIE')}
-                          </div>
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                          Atuty
-                        </th>
-                      </>
-                    )}
-                    <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
-                        <span>Dostępność</span>
-                        <button
-                          onClick={handleManualRefresh}
-                          disabled={isRefreshingAvailability}
-                          className="p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          title={lastRefreshTime 
-                            ? `Odśwież dostępność (ostatnie: ${Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu)`
-                            : 'Odśwież dostępność'}
-                        >
-                          {isRefreshingAvailability ? (
-                            <span className="animate-spin">⟳</span>
-                          ) : (
-                            <span>🔄</span>
-                          )}
-                        </button>
-                        <button
-                          onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                          className={`p-1 rounded transition-colors ${
-                            autoRefreshEnabled 
-                              ? 'bg-green-500/20 hover:bg-green-500/30' 
-                              : 'bg-gray-500/20 hover:bg-gray-500/30'
-                          }`}
-                          title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
-                        >
-                          {autoRefreshEnabled ? (
-                            <span className="text-green-400">⏱️</span>
-                          ) : (
-                            <span className="text-gray-400">⏸️</span>
-                          )}
-                        </button>
-                      </div>
-                    </th>
-                    {isEmployeeMode && (
-                      <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Akcja</th>
-                    )}
-                  </tr>
-                </thead>
-                <tbody className="bg-white/5 divide-y divide-white/10">
+                  </div>
+                )}
+
+                {/* Karty - widoczne tylko na mobile */}
+                <div className="block lg:hidden space-y-3">
                   {currentSkis.map((ski) => (
-                    <tr key={ski.ID} className="hover:bg-white/10 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                        {formatBrandName(ski)}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                        {formatModelName(ski)}
-                      </td>
-                      {hasAdultBoots && (
-                        <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                          {(ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE')
-                            ? (extractFlexFromModel(ski.MODEL) || '-')
-                            : '-'
-                          }
-                        </td>
+                    <div
+                      key={ski.ID}
+                      className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4"
+                    >
+                      {/* Nagłówek karty - Marka, Model */}
+                      <div className="mb-3 border-b border-white/10 pb-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1">
+                            <div className="text-white font-bold text-lg">
+                              {formatBrandName(ski)} {formatModelName(ski)}
+                            </div>
+                            {/* Długość - pomiędzy nazwą a kodem */}
+                            <div className="text-white font-bold text-base mt-1">
+                              {typeof ski.DLUGOSC === 'number' && ski.DLUGOSC % 1 !== 0
+                                ? ski.DLUGOSC.toFixed(1).replace('.', ',') + ' cm'
+                                : ski.DLUGOSC + ' cm'}
+                            </div>
+                            <div className="text-white/60 text-xs mt-1">
+                              KOD: {ski.KOD}
+                            </div>
+                          </div>
+                          {/* Przycisk rozwijania/zwijania szczegółów */}
+                          <button
+                            onClick={() => toggleCardExpanded(ski.ID)}
+                            className="flex-shrink-0 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
+                            title={expandedCards.has(ski.ID) ? "Zwiń szczegóły" : "Rozwiń szczegóły"}
+                          >
+                            <span className="text-white text-lg">
+                              {expandedCards.has(ski.ID) ? '▲' : '▼'}
+                            </span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Grid ze szczegółami - widoczny tylko gdy rozwinięty */}
+                      {expandedCards.has(ski.ID) && (
+                        <div className="grid grid-cols-2 gap-3 mb-3">
+
+                          {/* Flex (tylko dla butów dorosłych) */}
+                          {hasAdultBoots && ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE' && (
+                            <div>
+                              <div className="text-white/60 text-xs uppercase">Flex</div>
+                              <div className="text-white font-medium">
+                                {extractFlexFromModel(ski.MODEL) || '-'}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Wzrost, Waga, Poziom - jeśli nie ukryte */}
+                          {!shouldHideColumns && (
+                            <>
+                              <div>
+                                <div className="text-white/60 text-xs uppercase">Wzrost</div>
+                                <div className={`font-medium ${getCellColorClass(ski.ID, 'wzrost')}`}>
+                                  {ski.WZROST_MIN}-{ski.WZROST_MAX} cm
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-white/60 text-xs uppercase">Waga</div>
+                                <div className={`font-medium ${getCellColorClass(ski.ID, 'waga')}`}>
+                                  {ski.WAGA_MIN}-{ski.WAGA_MAX} kg
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-white/60 text-xs uppercase">Poziom</div>
+                                <div className={`font-medium ${getCellColorClass(ski.ID, 'poziom')}`}>
+                                  {formatLevel(ski.POZIOM)}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          {/* Płeć, Przeznaczenie, Atuty - jeśli nie ukryte */}
+                          {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                            <>
+                              <div>
+                                <div className="text-white/60 text-xs uppercase">Płeć</div>
+                                <div className={`font-medium ${getCellColorClass(ski.ID, 'plec')}`}>
+                                  {formatGender(ski.PLEC)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-white/60 text-xs uppercase">Przeznaczenie</div>
+                                <div className="text-white font-medium">
+                                  {formatPurpose(ski.PRZEZNACZENIE)}
+                                </div>
+                              </div>
+                              <div>
+                                <div className="text-white/60 text-xs uppercase">Atuty</div>
+                                <div className="text-white font-medium">
+                                  {ski.ATUTY || '-'}
+                                </div>
+                              </div>
+                            </>
+                          )}
+                        </div>
                       )}
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                        {/* src/components/BrowseSkisComponent.tsx: Wyświetlanie rozmiarów z połówkami (24.5 → "24,5 cm") */}
-                        {typeof ski.DLUGOSC === 'number' && ski.DLUGOSC % 1 !== 0 
-                          ? ski.DLUGOSC.toFixed(1).replace('.', ',') + ' cm'  // 24.5 → "24,5 cm"
-                          : ski.DLUGOSC + ' cm'}  {/* 24 → "24 cm" */}
-                      </td>
-                      {!shouldHideColumns && (
-                        <>
-                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'wzrost')}`}>
-                            {ski.WZROST_MIN}-{ski.WZROST_MAX}
-                          </td>
-                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'waga')}`}>
-                            {ski.WAGA_MIN}-{ski.WAGA_MAX}
-                          </td>
-                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'poziom')}`}>
-                            {formatLevel(ski.POZIOM)}
-                          </td>
-                        </>
-                      )}
-                      {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
-                        <>
-                          <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
-                            {formatGender(ski.PLEC)}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                            {formatPurpose(ski.PRZEZNACZENIE)}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
-                            {ski.ATUTY || '-'}
-                          </td>
-                        </>
-                      )}
-                      <td className="px-4 py-4 whitespace-nowrap text-sm">
-                        {generateAvailabilitySquares(ski)}
-                      </td>
+
+                      {/* SEKCJA DOSTĘPNOŚCI - wyróżniona, zawsze widoczna */}
+                      <div className="mt-3 pt-3 border-t border-white/10">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="text-white/80 text-sm font-bold uppercase">
+                            Dostępność
+                          </div>
+                        </div>
+                        <div className="bg-black/30 rounded-lg p-3">
+                          {/* Widok zwinięty: tylko kwadraty */}
+                          {!expandedCards.has(ski.ID) && generateAvailabilitySquares(ski)}
+                          {/* Widok rozwinięty: kwadraty z kodami w 3 kolumnach */}
+                          {expandedCards.has(ski.ID) && (() => {
+                            const sameModelSkis = allSkis.filter(s =>
+                              s && ski &&
+                              (s.MARKA || '') === (ski.MARKA || '') &&
+                              (s.MODEL || '') === (ski.MODEL || '') &&
+                              s.DLUGOSC === ski.DLUGOSC &&
+                              (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
+                              (s.KATEGORIA || '') === (ski.KATEGORIA || '')
+                            );
+                            return (
+                              <div className="grid grid-cols-3 gap-2">
+                                {sameModelSkis.map((s, index) => {
+                                  const availabilityInfo = s.KOD ? availabilityStatuses.get(s.KOD) : null;
+                                  let bgColor = 'bg-green-500';
+                                  if (availabilityInfo) {
+                                    if (availabilityInfo.color === 'red') {
+                                      bgColor = 'bg-red-500';
+                                    } else if (availabilityInfo.color === 'yellow') {
+                                      bgColor = 'bg-yellow-500';
+                                    }
+                                  }
+                                  return (
+                                    <div key={s.KOD || `no-code-${index}`} className="flex items-center gap-1 text-xs">
+                                      <span className={`inline-block w-5 h-5 text-white text-xs font-bold rounded flex items-center justify-center ${bgColor}`}>
+                                        {index + 1}
+                                      </span>
+                                      <span className="text-white/80 truncate" title={s.KOD || 'Brak kodu'}>
+                                        {s.KOD || '-'}
+                                      </span>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {/* Przycisk Edytuj - tylko dla pracowników */}
                       {isEmployeeMode && (
-                        <td className="px-4 py-4 whitespace-nowrap text-sm">
+                        <div className="mt-3 pt-3 border-t border-white/10">
                           <button
                             onClick={() => handleEdit(ski)}
-                            className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 flex items-center gap-1"
-                            title="Edytuj sprzęt"
+                            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 flex items-center justify-center gap-1"
                           >
                             ✏️ Edytuj
                           </button>
-                        </td>
+                        </div>
                       )}
-                    </tr>
+                    </div>
                   ))}
-                </tbody>
-              </table>
-            </div>
 
-            {/* Paginacja */}
-            {totalPages > 1 && (
-              <div className="bg-[#0f2744]/50 px-4 py-3 flex items-center justify-between border-t border-white/10 sm:px-6">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Poprzednia
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    disabled={currentPage === totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    Następna
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-white/90">
-                      Pokazuję <span className="font-bold">{startIndex + 1}</span> do{' '}
-                      <span className="font-bold">{Math.min(endIndex, sortedSkis.length)}</span> z{' '}
-                      <span className="font-bold">{sortedSkis.length}</span> wyników
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  {/* Paginacja - mobile */}
+                  {totalPages > 1 && (
+                    <div className="bg-[#0f2744]/50 rounded-xl border border-white/10 px-4 py-3 flex items-center justify-between">
                       <button
                         onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                         disabled={currentPage === 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-white/10 bg-[#0f2744]/50 text-sm font-bold text-white hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        ←
+                        Poprzednia
                       </button>
-
-                      {/* Numery stron */}
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        const pageNum = Math.max(1, Math.min(totalPages - 4, currentPage - 2)) + i;
-                        if (pageNum > totalPages) return null;
-
-                        return (
-                          <button
-                            key={pageNum}
-                            onClick={() => setCurrentPage(pageNum)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-bold transition-all ${currentPage === pageNum
-                              ? 'z-10 bg-[#0f2744]/70 border-white/20 text-white'
-                              : 'bg-[#0f2744]/50 border-white/10 text-white hover:bg-[#0f2744]/70'
-                              }`}
-                          >
-                            {pageNum}
-                          </button>
-                        );
-                      })}
-
+                      <div className="text-sm text-white/90">
+                        <span className="font-bold">{currentPage}</span> / <span className="font-bold">{totalPages}</span>
+                      </div>
                       <button
                         onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
                         disabled={currentPage === totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-white/10 bg-[#0f2744]/50 text-sm font-bold text-white hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                        className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
                       >
-                        →
+                        Następna
                       </button>
-                    </nav>
-                  </div>
+                    </div>
+                  )}
                 </div>
-              </div>
+
+                {/* Informacje o sortowaniu */}
+                {hasSelectedGroup && (
+                  <div className="mt-4 text-sm text-white/80">
+                    <p>
+                      Sortowanie: <span className="font-bold">{sortConfig.field}</span> (
+                      {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
-
-          {/* Nagłówek dostępności - mobile */}
-          <div className="block lg:hidden mb-4 flex items-center justify-between bg-black/20 rounded-xl border border-white/10 p-3">
-            <span className="text-white font-bold text-sm">Dostępność:</span>
-            <div className="flex gap-2">
-              <button
-                onClick={handleManualRefresh}
-                disabled={isRefreshingAvailability}
-                className="p-2 rounded bg-white/10 hover:bg-white/20 transition-colors disabled:opacity-50"
-                title="Odśwież dostępność"
-              >
-                {isRefreshingAvailability ? (
-                  <span className="animate-spin">⟳</span>
-                ) : (
-                  <span>🔄</span>
-                )}
-              </button>
-              <button
-                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                className={`p-2 rounded transition-colors ${
-                  autoRefreshEnabled 
-                    ? 'bg-green-500/20' 
-                    : 'bg-gray-500/20'
-                }`}
-                title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
-              >
-                {autoRefreshEnabled ? (
-                  <span className="text-green-400">⏱️</span>
-                ) : (
-                  <span className="text-gray-400">⏸️</span>
-                )}
-              </button>
-            </div>
-          </div>
-
-          {/* Przyciski filtrowania długości - tylko dla VIP/TOP w mobile */}
-          {(activeFilter === 'VIP' || activeFilter === 'TOP') && (
-            <div className="block lg:hidden mb-4 bg-black/20 rounded-xl border border-white/10 p-3">
-              <div className="text-white/80 text-sm font-bold uppercase mb-2">
-                Filtruj długość (cm):
-              </div>
-              <div className="flex flex-wrap gap-2">
-                {['14', '15', '16', '17', '18'].map(prefix => (
-                  <button
-                    key={prefix}
-                    onClick={() => toggleLengthFilter(prefix)}
-                    className={`px-4 py-2 rounded-lg font-bold transition-all ${
-                      selectedLengthFilters.has(prefix)
-                        ? 'bg-blue-600 text-white border-2 border-white/30 shadow-lg'
-                        : 'bg-white/10 text-white border-2 border-white/20 hover:bg-white/20'
-                    }`}
-                  >
-                    {prefix}0-{prefix}9
-                  </button>
-                ))}
-              </div>
-              {selectedLengthFilters.size > 0 && (
-                <button
-                  onClick={() => setSelectedLengthFilters(new Set())}
-                  className="mt-2 w-full px-3 py-1.5 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-xs font-bold uppercase transition-all"
-                >
-                  🗑️ Wyczyść filtry długości
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Karty - widoczne tylko na mobile */}
-          <div className="block lg:hidden space-y-3">
-            {currentSkis.map((ski) => (
-              <div 
-                key={ski.ID} 
-                className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4"
-              >
-                {/* Nagłówek karty - Marka, Model */}
-                <div className="mb-3 border-b border-white/10 pb-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1">
-                      <div className="text-white font-bold text-lg">
-                        {formatBrandName(ski)} {formatModelName(ski)}
-                      </div>
-                      {/* Długość - pomiędzy nazwą a kodem */}
-                      <div className="text-white font-bold text-base mt-1">
-                        {typeof ski.DLUGOSC === 'number' && ski.DLUGOSC % 1 !== 0 
-                          ? ski.DLUGOSC.toFixed(1).replace('.', ',') + ' cm'
-                          : ski.DLUGOSC + ' cm'}
-                      </div>
-                      <div className="text-white/60 text-xs mt-1">
-                        KOD: {ski.KOD}
-                      </div>
-                    </div>
-                    {/* Przycisk rozwijania/zwijania szczegółów */}
-                    <button
-                      onClick={() => toggleCardExpanded(ski.ID)}
-                      className="flex-shrink-0 p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors"
-                      title={expandedCards.has(ski.ID) ? "Zwiń szczegóły" : "Rozwiń szczegóły"}
-                    >
-                      <span className="text-white text-lg">
-                        {expandedCards.has(ski.ID) ? '▲' : '▼'}
-                      </span>
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grid ze szczegółami - widoczny tylko gdy rozwinięty */}
-                {expandedCards.has(ski.ID) && (
-                <div className="grid grid-cols-2 gap-3 mb-3">
-
-                  {/* Flex (tylko dla butów dorosłych) */}
-                  {hasAdultBoots && ski.TYP_SPRZETU === 'BUTY' && ski.KATEGORIA === 'DOROSLE' && (
-                    <div>
-                      <div className="text-white/60 text-xs uppercase">Flex</div>
-                      <div className="text-white font-medium">
-                        {extractFlexFromModel(ski.MODEL) || '-'}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Wzrost, Waga, Poziom - jeśli nie ukryte */}
-                  {!shouldHideColumns && (
-                    <>
-                      <div>
-                        <div className="text-white/60 text-xs uppercase">Wzrost</div>
-                        <div className={`font-medium ${getCellColorClass(ski.ID, 'wzrost')}`}>
-                          {ski.WZROST_MIN}-{ski.WZROST_MAX} cm
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-white/60 text-xs uppercase">Waga</div>
-                        <div className={`font-medium ${getCellColorClass(ski.ID, 'waga')}`}>
-                          {ski.WAGA_MIN}-{ski.WAGA_MAX} kg
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-white/60 text-xs uppercase">Poziom</div>
-                        <div className={`font-medium ${getCellColorClass(ski.ID, 'poziom')}`}>
-                          {formatLevel(ski.POZIOM)}
-                        </div>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Płeć, Przeznaczenie, Atuty - jeśli nie ukryte */}
-                  {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
-                    <>
-                      <div>
-                        <div className="text-white/60 text-xs uppercase">Płeć</div>
-                        <div className={`font-medium ${getCellColorClass(ski.ID, 'plec')}`}>
-                          {formatGender(ski.PLEC)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-white/60 text-xs uppercase">Przeznaczenie</div>
-                        <div className="text-white font-medium">
-                          {formatPurpose(ski.PRZEZNACZENIE)}
-                        </div>
-                      </div>
-                      <div>
-                        <div className="text-white/60 text-xs uppercase">Atuty</div>
-                        <div className="text-white font-medium">
-                          {ski.ATUTY || '-'}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-                )}
-
-                {/* SEKCJA DOSTĘPNOŚCI - wyróżniona, zawsze widoczna */}
-                <div className="mt-3 pt-3 border-t border-white/10">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="text-white/80 text-sm font-bold uppercase">
-                      Dostępność
-                    </div>
-                  </div>
-                  <div className="bg-black/30 rounded-lg p-3">
-                    {generateAvailabilitySquares(ski)}
-                  </div>
-                </div>
-
-                {/* Przycisk Edytuj - tylko dla pracowników */}
-                {isEmployeeMode && (
-                  <div className="mt-3 pt-3 border-t border-white/10">
-                    <button
-                      onClick={() => handleEdit(ski)}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm border border-white/10 flex items-center justify-center gap-1"
-                    >
-                      ✏️ Edytuj
-                    </button>
-                  </div>
-                )}
-              </div>
-            ))}
-
-            {/* Paginacja - mobile */}
-            {totalPages > 1 && (
-              <div className="bg-[#0f2744]/50 rounded-xl border border-white/10 px-4 py-3 flex items-center justify-between">
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                  disabled={currentPage === 1}
-                  className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  Poprzednia
-                </button>
-                <div className="text-sm text-white/90">
-                  <span className="font-bold">{currentPage}</span> / <span className="font-bold">{totalPages}</span>
-                </div>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                  disabled={currentPage === totalPages}
-                  className="relative inline-flex items-center px-4 py-2 border border-white/10 text-sm font-bold rounded-md text-white bg-[#0f2744]/50 hover:bg-[#0f2744]/70 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                >
-                  Następna
-                </button>
-              </div>
-            )}
-          </div>
-
-          {/* Informacje o sortowaniu */}
-          {hasSelectedGroup && (
-            <div className="mt-4 text-sm text-white/80">
-              <p>
-                Sortowanie: <span className="font-bold">{sortConfig.field}</span> (
-                {sortConfig.direction === 'asc' ? 'rosnąco' : 'malejąco'})
-              </p>
-            </div>
-          )}
-            </>
-          )}
         </div>
-      </div>
 
-      {/* Modal edycji/dodawania - tylko w trybie pracownika */}
-      {isEmployeeMode && (
-        <SkiEditModal
-          isOpen={isModalOpen}
-          mode={modalMode}
-          ski={selectedSki}
-          allSkisInGroup={selectedSki ? getSkisInGroup(selectedSki) : undefined}
-          onClose={handleCloseModal}
-          onSave={handleSave}
-        />
-      )}
+        {/* Modal edycji/dodawania - tylko w trybie pracownika */}
+        {isEmployeeMode && (
+          <SkiEditModal
+            isOpen={isModalOpen}
+            mode={modalMode}
+            ski={selectedSki}
+            allSkisInGroup={selectedSki ? getSkisInGroup(selectedSki) : undefined}
+            onClose={handleCloseModal}
+            onSave={handleSave}
+          />
+        )}
 
-      {/* Toast notifications są teraz obsługiwane przez ToastProvider w App.tsx */}
+        {/* Toast notifications są teraz obsługiwane przez ToastProvider w App.tsx */}
       </div>
     </div>
   );

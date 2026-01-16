@@ -3,11 +3,11 @@
  * REFACTORED: Podział na mniejsze hooki dla lepszej czytelności i utrzymania
  */
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../../types/ski.types';
 import type { FormData, TabData, AppMode, FilterKey } from '../../types/dashboard.types';
 import type { FormErrors } from '../../utils/formValidation';
-import { loadAppState } from '../../utils/localStorage';
+import { loadAppState, saveAppState } from '../../utils/localStorage';
 
 // Hooks
 import { useSkiData } from './hooks/useSkiData';
@@ -140,10 +140,31 @@ export const useDashboardState = (): DashboardStateReturn => {
 
   // 4. App Mode & Other Global State
   const [appMode, setAppMode] = useState<AppMode>(() => {
-    const savedAppState = loadAppState();
-    return savedAppState?.appMode || 'search';
+    // src/components/dashboard/useDashboardState.ts: Wykrywanie pierwszego uruchomienia vs odświeżenia
+    // Używamy sessionStorage do wykrycia czy to pierwsza wizyta w tej sesji przeglądarki
+    const isFirstLaunch = !sessionStorage.getItem('app-initialized');
+
+    if (isFirstLaunch) {
+      // Pierwsze uruchomienie w tej sesji - zawsze startuj od strony głównej
+      sessionStorage.setItem('app-initialized', 'true');
+      return 'search';
+    } else {
+      // Odświeżenie strony - przywróć zapisany stan
+      const savedAppState = loadAppState();
+      return savedAppState?.appMode || 'search';
+    }
   });
   const [hasSelectedGroup, setHasSelectedGroup] = useState<boolean>(false);
+
+  // src/components/dashboard/useDashboardState.ts: Automatyczne zapisywanie stanu aplikacji
+  // Zapisuje appMode do localStorage przy każdej zmianie (poza pierwszym renderem)
+  useEffect(() => {
+    const isInitialRender = !sessionStorage.getItem('app-initialized');
+    if (!isInitialRender) {
+      saveAppState(appMode);
+      console.log(`[useDashboardState] Zapisano appMode do localStorage: ${appMode}`);
+    }
+  }, [appMode]);
 
   // 5. Form Logic
   const {
