@@ -5,9 +5,19 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
+import { plPL } from '@mui/x-date-pickers/locales';
 
 // src/components/DatePickerButton.tsx: Ustawienie polskiej lokalizacji
 dayjs.locale('pl');
+
+// src/components/DatePickerButton.tsx: Własne tłumaczenia polskie (poprawione)
+const polishLocale = {
+  ...plPL.components.MuiLocalizationProvider.defaultProps.localeText,
+  clearButtonLabel: 'Wyczyść',
+  todayButtonLabel: 'Dzisiaj',
+  cancelButtonLabel: 'Anuluj',
+  okButtonLabel: 'OK',
+};
 
 interface DatePickerButtonProps {
   label: string;
@@ -99,7 +109,11 @@ export const DatePickerButton: React.FC<DatePickerButtonProps> = ({
 
   return (
     <ThemeProvider theme={darkTheme}>
-      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pl">
+      <LocalizationProvider
+        dateAdapter={AdapterDayjs}
+        adapterLocale="pl"
+        localeText={polishLocale}
+      >
         <div className="flex flex-col gap-2 w-full">
           <DatePicker
             label={`${icon} ${label}`}

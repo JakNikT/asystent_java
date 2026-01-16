@@ -11,14 +11,14 @@ export class CSVParser {
    */
   static async parseCSV(csvContent: string): Promise<SkiData[]> {
     const lines = csvContent.split('\n').filter(line => line.trim());
-    
+
     if (lines.length < 2) {
       throw new Error('Plik CSV jest pusty lub nieprawidłowy');
     }
 
     // Pomijamy nagłówek (pierwsza linia)
     const dataLines = lines.slice(1);
-    
+
     const skis: SkiData[] = [];
 
     for (const line of dataLines) {
@@ -45,22 +45,47 @@ export class CSVParser {
   private static parseLine(line: string): SkiData | null {
     // src/utils/csvParser.ts: Dzieli linię zachowując przecinki w cudzysłowach
     const fields = this.splitCSVLine(line);
-    
+
     this.logger.debug(`Parsowanie linii z ${fields.length} polami`);
-    
+
     if (fields.length < 14) {
       this.logger.warn('Zbyt mało pól w linii CSV:', fields.length);
       return null;
     }
 
     try {
-      // NOWY FORMAT z TYP_SPRZETU i KATEGORIA (16 pól - bez ROK)
-      if (fields.length >= 16) {
-        this.logger.debug('Wykryto nowy format (16 pól) z TYP_SPRZETU i KATEGORIA');
+      // NOWY FORMAT: 17 pól z ROK (ID,TYP,KAT,MARKA,MODEL,DLUGOSC,ILOSC,POZIOM,PLEC,WAG,WAG,WZR,WZR,PRZEZN,ATUTY,ROK,KOD)
+      if (fields.length >= 17) {
+        this.logger.debug('Wykryto najnowszy format (17 pól) z ROK');
         return {
           ID: fields[0].trim(),
           TYP_SPRZETU: fields[1].trim() as 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD',
           KATEGORIA: fields[2].trim() as 'VIP' | 'TOP' | 'JUNIOR' | 'DOROSLE' | '',
+          MARKA: fields[3].trim(),
+          MODEL: fields[4].trim(), // Model może zawierać rok w nazwie, ale mamy też osobną kolumnę
+          DLUGOSC: parseFloat(fields[5]) || 0,
+          ILOSC: parseInt(fields[6]) || 1,
+          POZIOM: fields[7].trim(),
+          PLEC: fields[8].trim(),
+          WAGA_MIN: parseInt(fields[9]) || 0,
+          WAGA_MAX: parseInt(fields[10]) || 0,
+          WZROST_MIN: parseInt(fields[11]) || 0,
+          WZROST_MAX: parseInt(fields[12]) || 0,
+          PRZEZNACZENIE: fields[13].trim(),
+          ATUTY: fields[14] ? fields[14].trim() : '',
+          ROK: parseInt(fields[15]) || undefined, // Nowe pole ROK (undefined zamiast null)
+          KOD: fields[16] ? fields[16].trim() : '' // KOD przesunięty na 17. miejsce
+        };
+      }
+      // FORMAT PRZEJŚCIOWY: 16 pól (bez ROK lub bez KOD - analiza)
+      // W poprzedniej wersji 16 pól oznaczało brak ROK. Sprawdźmy czy ostatnie pole to KOD czy ROK?
+      else if (fields.length === 16) {
+        // Zakładamy stary format z TYP i KAT ale bez ROK na osobnej kolumnie
+        this.logger.debug('Wykryto format 16 pól (bez ROK)');
+        return {
+          ID: fields[0].trim(),
+          TYP_SPRZETU: fields[1].trim() as any,
+          KATEGORIA: fields[2].trim() as any,
           MARKA: fields[3].trim(),
           MODEL: fields[4].trim(),
           DLUGOSC: parseFloat(fields[5]) || 0,
@@ -76,7 +101,7 @@ export class CSVParser {
           KOD: fields[15] ? fields[15].trim() : ''
         };
       }
-      // Format z kodem (14 pól) - stara baza NOWABAZA_final.csv (bez ROK)
+      // Format starej bazy (14 pól)
       else if (fields.length >= 14) {
         this.logger.debug('Wykryto format z kodem (14 pól)');
         return {
@@ -103,7 +128,7 @@ export class CSVParser {
         const przeznaczenie = fields[11].trim();
         let newPrzeznaczenie = przeznaczenie;
         let atuty = '';
-        
+
         if (przeznaczenie.includes(',')) {
           const parts = przeznaczenie.split(',').map(p => p.trim());
           if (parts.length === 2) {
@@ -111,7 +136,7 @@ export class CSVParser {
             atuty = parts[1];
           }
         }
-        
+
         return {
           ID: fields[0].trim(),
           TYP_SPRZETU: 'NARTY', // Domyślnie narty
@@ -169,7 +194,7 @@ export class CSVParser {
   static async loadFromPublic(filename: string = 'NOWA_BAZA_KOMPLETNA.csv'): Promise<SkiData[]> {
     try {
       const response = await fetch(`/data/${filename}`);
-      
+
       if (!response.ok) {
         throw new Error(`Nie można załadować pliku: ${response.statusText}`);
       }

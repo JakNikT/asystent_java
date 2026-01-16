@@ -103,8 +103,16 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [showPromotorOnly, setShowPromotorOnly] = useState<boolean>(savedReservationsState?.showPromotorOnly || false);
 
   // src/components/ReservationsView.tsx: Inicjalizacja viewType z localStorage, żeby przywrócić ostatnio otwarty widok (np. "wydania")
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns'>(() => {
-    return savedAppState?.reservationsViewType || 'handout';
+  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns' | 'service' | 'check'>(() => {
+    // Tylko przy odświeżeniu (nie przy pierwszym uruchomieniu) używaj zapisanego stanu
+    const isFirstLaunch = !sessionStorage.getItem('app-initialized');
+    if (isFirstLaunch) {
+      // Pierwsze uruchomienie - użyj domyślnego widoku 'all'
+      return 'all';
+    } else {
+      // Odświeżenie - przywróć zapisany stan
+      return savedAppState?.reservationsViewType || 'handout';
+    }
   });
   // src/components/ReservationsView.tsx: Stany dla filtrowania po dacie - wyniki pokazują się dopiero po wpisaniu daty od
   const [dateFrom, setDateFrom] = useState<string>(savedReservationsState?.dateFrom || '');
@@ -399,10 +407,10 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     }
   }, [dateFrom, dateTo, showPromotorOnly, viewType]);
 
-  // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout" i "returns" - te widoki mają własne ładowanie)
+  // Wczytaj dane gdy zmienia się typ widoku (nie dla "handout", "service", "check" i "returns" - te widoki mają własne ładowanie)
   useEffect(() => {
-    if (viewType === 'handout') {
-      // Dla widoku wydania - wczytaj wszystkie aktywne rezerwacje
+    if (viewType === 'handout' || viewType === 'service' || viewType === 'check') {
+      // Dla widoku wydania, serwis i sprawdź - wczytaj wszystkie aktywne rezerwacje
       loadReservations('reservations');
     } else if (viewType === 'returns') {
       // Dla widoku zwrotów - nie ładuj danych tutaj, countReturnsForDate robi to samodzielnie
@@ -981,8 +989,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
               {/* Sekcja 2: Zaległe zwroty */}
               <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${returnsOverdue > 0
-                  ? 'bg-orange-500/30 border-orange-400/50'
-                  : 'bg-green-500/30 border-green-400/50'
+                ? 'bg-orange-500/30 border-orange-400/50'
+                : 'bg-green-500/30 border-green-400/50'
                 }`}>
                 <div className="text-center">
                   <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
@@ -1054,11 +1062,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-4 gap-4">
             <div className="w-full lg:w-auto">
               {/* Przyciski filtrowania - zastępują napis "Rezerwacje" */}
-              <div className="flex flex-wrap gap-3 mb-4">
+              {/* Przyciski nawigacji - responsywny grid dla mobile */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-wrap gap-2 lg:gap-3 mb-4">
                 {/* Przycisk "Wszystko" wyłączony na żądanie użytkownika */}
                 {/* <button
                   onClick={() => setViewType('all')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${
                     viewType === 'all'
                       ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                       : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
@@ -1068,53 +1077,71 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 </button> */}
                 <button
                   onClick={() => setViewType('handout')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'handout'
-                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
-                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'handout'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                     }`}
                 >
                   📦 Wydaj
                 </button>
                 <button
+                  onClick={() => setViewType('check')}
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'check'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                    }`}
+                >
+                  🔍 Sprawdź
+                </button>
+                <button
+                  onClick={() => setViewType('service')}
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'service'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                    }`}
+                >
+                  🔧 Serwis
+                </button>
+                <button
                   onClick={() => setViewType('returns')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${(viewType as string) === 'returns'
-                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
-                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${(viewType as string) === 'returns'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                     }`}
                 >
                   🔄 Zwroty
                 </button>
                 <button
                   onClick={() => setViewType('reservations')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'reservations'
-                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
-                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'reservations'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                     }`}
                 >
                   📅 Rezerwacje
                 </button>
                 <button
                   onClick={() => setViewType('rentals')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'rentals'
-                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
-                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'rentals'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                     }`}
                 >
                   🎿 Wypożyczenia
                 </button>
                 <button
                   onClick={() => setViewType('past')}
-                  className={`px-6 py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm ${viewType === 'past'
-                      ? 'bg-white/90 text-primary shadow-lg border border-white/20'
-                      : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'past'
+                    ? 'bg-white/90 text-primary shadow-lg border border-white/20'
+                    : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                     }`}
                 >
                   🕒 Przeszłe
                 </button>
               </div>
 
-              {/* Pola do wpisywania daty od i do - ukryj dla widoku "Wydania" */}
-              {viewType !== 'handout' && (
+              {/* Pola do wpisywania daty od i do - ukryj dla widoków specjalnych: wydania, serwis, sprawdź */}
+              {!['handout', 'service', 'check'].includes(viewType) && (
                 <>
                   <div className="flex flex-col lg:flex-row gap-4 mb-4">
                     <div className="flex-1">
@@ -1202,7 +1229,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           </div>
 
           {/* Wyszukiwanie - responsywne - ukryj dla widoku "Wydania" */}
-          {viewType !== 'handout' && (
+          {!['handout', 'service', 'check'].includes(viewType) && (
             <div className="space-y-3">
               {/* Wyszukiwarka - responsywna */}
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
@@ -1257,11 +1284,13 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           )}
         </div>
 
-        {/* Warunkowe renderowanie: Widok wydania lub tabela rezerwacji */}
-        {viewType === 'handout' ? (
+        {/* Warunkowe renderowanie: Widok wydania/serwis/sprawdź lub tabela rezerwacji */}
+        {viewType === 'handout' || viewType === 'service' || viewType === 'check' ? (
           <EquipmentHandoutView
             reservations={reservations}
             onBack={() => setViewType('reservations')}
+            startInServiceMode={viewType === 'service'}
+            startInCheckMode={viewType === 'check'}
           />
         ) : (
           <>
@@ -1380,8 +1409,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                           <tr
                             key={rowKey}
                             className={`transition-colors ${group.source === 'rental'
-                                ? 'bg-[#3A7BAF] hover:bg-[#2E6A9A]'  // Wypożyczenia - jaśniejszy niebieski
-                                : 'bg-[#2C5F8D] hover:bg-[#1A4A6F]'  // Rezerwacje - ciemniejszy niebieski
+                              ? 'bg-[#3A7BAF] hover:bg-[#2E6A9A]'  // Wypożyczenia - jaśniejszy niebieski
+                              : 'bg-[#2C5F8D] hover:bg-[#1A4A6F]'  // Rezerwacje - ciemniejszy niebieski
                               }`}
                           >
                             <td className="px-2 py-4 whitespace-nowrap text-sm text-white font-bold w-20 align-top">

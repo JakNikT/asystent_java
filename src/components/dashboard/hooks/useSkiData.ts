@@ -1,4 +1,5 @@
-import { useState } from 'react';
+
+import React, { useState, useEffect, useRef } from 'react';
 import { SkiDataService } from '../../../services/skiDataService';
 import type { SkiData } from '../../../types/ski.types';
 import { createLogger } from '../../../utils/logger';
@@ -14,6 +15,9 @@ export interface UseSkiDataReturn {
 export const useSkiData = (): UseSkiDataReturn => {
     const [skisDatabase, setSkisDatabase] = useState<SkiData[]>([]);
 
+    // Dodajemy useRef żeby uniknąć podwójnego ładowania w React 18 Strict Mode
+    const loadedRef = useRef(false);
+
     const loadDatabase = async () => {
         logger.info('useSkiData: Rozpoczynanie ładowania bazy danych nart...');
         try {
@@ -24,10 +28,17 @@ export const useSkiData = (): UseSkiDataReturn => {
             logger.info(`useSkiData: Załadowano ${data.length} nart do stanu`);
         } catch (error) {
             logger.error('useSkiData: Błąd podczas ładowania bazy nart:', error);
-            // W przypadku błędu, SkiDataService powinien obsłużyć fallback do CSV,
-            // ale tutaj możemy dodać dodatkową obsługę błędów UI jeśli potrzebna
+            // W przypadku błędu, SkiDataService powinien obsłużyć fallback do CSV
         }
     };
+
+    // Automatyczne ładowanie przy starcie
+    useEffect(() => {
+        if (!loadedRef.current) {
+            loadedRef.current = true;
+            loadDatabase();
+        }
+    }, []);
 
     return {
         skisDatabase,
