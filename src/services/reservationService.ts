@@ -20,6 +20,7 @@ export interface ReservationData {
   uwagi?: string;       // Uwagi (opcjonalne)
   source?: 'reservation' | 'rental'; // Źródło danych: rezerwacja lub wypożyczenie
   parent_group_id?: number | null; // ID grupy głównej sprzętu (dla kategoryzacji)
+  status?: number;      // 0 = aktywna rezerwacja, != 0 = wydana/nieaktywna (z FireSnow)
 }
 
 export interface ReservationInfo {

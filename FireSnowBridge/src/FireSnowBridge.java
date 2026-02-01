@@ -787,9 +787,12 @@ ResultSet rsRent = stmtRent.executeQuery();
                 long dataOd = rsRent.getLong("data_od");
                 long dataDo = rsRent.getLong("data_do");
                 long pozostalyCzas = rsRent.getLong("pozostaly_czas");
-                
+
                 if (dataDo == 0 && pozostalyCzas > 0) {
                     dataDo = dataOd + pozostalyCzas;
+                } else if (dataDo == 0) {
+                    // Aktywne wypożyczenie bez określonego czasu - ustaw domyślną datę końcową na 30 dni od teraz
+                    dataDo = System.currentTimeMillis() + (30L * 24 * 60 * 60 * 1000);
                 }
                 
                 String klientNazwa = rsRent.getString("klient_nazwa");
@@ -941,6 +944,192 @@ ResultSet rsRent = stmtRent.executeQuery();
         }
     }
     
+    /**
+     * Handler for endpoint /api/rezerwacje/dla-daty
+     * Returns all reservations for a specific date (both active and issued)
+     * Parameter: date (format: YYYY-MM-DD)
+     * Includes status field to distinguish active (0) from issued (!=0) reservations
+     */
+    static class RezerwacjeDlaDatyHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            System.out.println("FireSnowBridge: Reservations for date requested");
+
+            setCorsHeaders(exchange);
+
+            if ("OPTIONS".equals(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
+            try (Connection conn = getConnection()) {
+                // Get query parameters
+                String query = exchange.getRequestURI().getQuery();
+                Map<String, String> params = parseQueryParams(query);
+
+                String dateParam = params.get("date");
+                if (dateParam == null || dateParam.isEmpty()) {
+                    String response = "{\"error\":\"Missing required parameter: date (format: YYYY-MM-DD)\"}";
+                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                    exchange.sendResponseHeaders(400, response.getBytes(StandardCharsets.UTF_8).length);
+                    OutputStream os = exchange.getResponseBody();
+                    os.write(response.getBytes(StandardCharsets.UTF_8));
+                    os.close();
+                    return;
+                }
+
+                System.out.println("FireSnowBridge: Fetching reservations for date: " + dateParam);
+
+                // SQL query - similar to AktywnRezerwacjeHandler but:
+                // - Filters by BEGINDATE matching the requested date
+                // - Returns ALL reservations (active and issued) - no STATUS filter
+                // - Includes status field in response
+                // - Orders by status (active first) then by ID
+                String sql =
+                    "SELECT " +
+                    "  rp.ID as rezerwacja_id, " +
+                    "  p.NAME as nazwa_sprzetu, " +
+                    "  p.DESCRIPTION as uwagi, " +
+                    "  ae.CODE as kod_sprzetu, " +
+                    "  rp.BEGINDATE as data_od, " +
+                    "  rp.ENDDATE as data_do, " +
+                    "  rp.PRICE as cena, " +
+                    "  rp.RENTOBJECT_ID as obiekt_id, " +
+                    "  rp.CUSTOMER_ID as klient_id, " +
+                    "  rp.STATUS as status, " +
+                    "  ae_customer.NAME as klient_nazwa, " +
+                    "  rc.FORENAME as imie, " +
+                    "  rc.SURNAME as nazwisko, " +
+                    "  rc.PHONE1 as telefon, " +
+                    "  rg_parent.ID as parent_group_id, " +
+                    "  CASE " +
+                    "    WHEN UPPER(TRIM(p.NAME)) = 'PROMOTOR' THEN 'PROMOTOR' " +
+                    "    WHEN UPPER(TRIM(p.DESCRIPTION)) = 'P' THEN 'PROMOTOR' " +
+                    "    WHEN UPPER(SUBSTRING(TRIM(doc.NUMBER), 1, 1)) = 'P' THEN 'PROMOTOR' " +
+                    "    ELSE 'STANDARD' " +
+                    "  END as typumowy " +
+                    "FROM RESERVATIONPOSITION rp " +
+                    "JOIN ABSTRACTPOSITION p ON p.ID = rp.ID " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rp.RENTOBJECT_ID " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae_customer ON ae_customer.ID = rp.CUSTOMER_ID " +
+                    "LEFT JOIN RENT_CUSTOMERS rc ON rc.ID = rp.CUSTOMER_ID " +
+                    "LEFT JOIN RENTOBJECTS ro ON ro.ID = rp.RENTOBJECT_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
+                    "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
+                    "JOIN RESERVATION_DOCUMENTS rd ON rd.ID = rp.RESERVATIONDOCUMENT_ID " +
+                    "JOIN ABSTRACTFACTURABLEDOCUMENT afd ON afd.ID = rd.ID " +
+                    "JOIN ABSTRACTCASHABLEDOCUMENT acd ON acd.ID = afd.ID " +
+                    "JOIN ABSTRACTDOCUMENT doc ON doc.ID = acd.ID " +
+                    "WHERE CAST(rp.BEGINDATE AS DATE) = ? " +
+                    "ORDER BY COALESCE(rp.STATUS, 0), rp.ID";
+
+                PreparedStatement stmt = conn.prepareStatement(sql);
+                stmt.setDate(1, java.sql.Date.valueOf(dateParam));
+                ResultSet rs = stmt.executeQuery();
+
+                StringBuilder json = new StringBuilder("[");
+                boolean first = true;
+                int count = 0;
+
+                while (rs.next()) {
+                    if (!first) json.append(",");
+                    first = false;
+                    count++;
+
+                    json.append("{");
+                    json.append("\"rezerwacja_id\":").append(rs.getLong("rezerwacja_id")).append(",");
+                    json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
+                    String uwagi = rs.getString("uwagi");
+                    if (uwagi != null) {
+                        json.append("\"uwagi\":\"").append(escapeJson(uwagi)).append("\",");
+                    } else {
+                        json.append("\"uwagi\":\"\",");
+                    }
+                    json.append("\"kod_sprzetu\":\"").append(escapeJson(rs.getString("kod_sprzetu"))).append("\",");
+                    json.append("\"data_od\":\"").append(rs.getTimestamp("data_od")).append("\",");
+                    json.append("\"data_do\":\"").append(rs.getTimestamp("data_do")).append("\",");
+                    json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
+                    json.append("\"obiekt_id\":").append(rs.getLong("obiekt_id")).append(",");
+                    json.append("\"klient_id\":").append(rs.getLong("klient_id")).append(",");
+
+                    // Status field - NULL or 0 = active, other = issued
+                    int status = rs.getInt("status");
+                    if (rs.wasNull()) {
+                        json.append("\"status\":0,");
+                    } else {
+                        json.append("\"status\":").append(status).append(",");
+                    }
+
+                    json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\",");
+                    json.append("\"imie\":\"").append(escapeJson(rs.getString("imie"))).append("\",");
+                    json.append("\"nazwisko\":\"").append(escapeJson(rs.getString("nazwisko"))).append("\",");
+                    json.append("\"telefon\":\"").append(escapeJson(rs.getString("telefon"))).append("\",");
+                    json.append("\"typumowy\":\"").append(escapeJson(rs.getString("typumowy"))).append("\",");
+                    Long parentGroupId = rs.getLong("parent_group_id");
+                    if (rs.wasNull()) {
+                        json.append("\"parent_group_id\":null");
+                    } else {
+                        json.append("\"parent_group_id\":").append(parentGroupId);
+                    }
+                    json.append("}");
+                }
+
+                json.append("]");
+
+                rs.close();
+                stmt.close();
+
+                String response = json.toString();
+
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
+
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+
+                System.out.println("FireSnowBridge: Returned " + count + " reservations for date " + dateParam);
+
+            } catch (IllegalArgumentException e) {
+                System.err.println("FireSnowBridge: Invalid date format: " + e.getMessage());
+
+                String response = "{\"error\":\"Invalid date format. Use YYYY-MM-DD\"}";
+
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(400, response.getBytes(StandardCharsets.UTF_8).length);
+
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+
+            } catch (SQLException e) {
+                System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+                e.printStackTrace();
+
+                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
+
+                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
+
+                OutputStream os = exchange.getResponseBody();
+                os.write(response.getBytes(StandardCharsets.UTF_8));
+                os.close();
+            }
+        }
+
+        private static Map<String, String> parseQueryParams(String query) {
+            Map<String, String> params = new HashMap<>();
+            if (query == null) return params;
+            for (String param : query.split("&")) {
+                String[] pair = param.split("=");
+                if (pair.length == 2) {
+                    params.put(pair[0], pair[1]);
+                }
+            }
+            return params;
+        }
+    }
+
     /**
      * Handler for endpoint /api/sprzet/wszystkie
      * Returns all equipment from FireSnow database with full parameters
@@ -1131,6 +1320,7 @@ ResultSet rsRent = stmtRent.executeQuery();
             server.createContext("/api/narty/zarezerwowane", new ZarezerwowaneNartyHandler());
             server.createContext("/api/dostepnosc/okres", new DostepnoscOkresHandler());
             server.createContext("/api/sprzet/wszystkie", new WszystkieSprzetHandler());
+            server.createContext("/api/rezerwacje/dla-daty", new RezerwacjeDlaDatyHandler());
             // Start server
             server.setExecutor(null); // Default executor
             server.start();
@@ -1151,6 +1341,7 @@ ResultSet rsRent = stmtRent.executeQuery();
             System.out.println("  GET /api/narty/zarezerwowane      - Get reserved skis");
             System.out.println("  GET /api/dostepnosc/okres         - Get availability for date range");
             System.out.println("  GET /api/sprzet/wszystkie          - Get all equipment with full parameters");
+            System.out.println("  GET /api/rezerwacje/dla-daty       - Get reservations for specific date");
             System.out.println();
             System.out.println("Press Ctrl+C to stop the server");
             System.out.println("===========================================");

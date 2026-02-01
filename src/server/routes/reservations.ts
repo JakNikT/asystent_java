@@ -7,6 +7,7 @@ import { reservationController } from '../controllers/reservationController.js';
 
 const router = express.Router();
 
+router.get('/date', reservationController.getForDate);
 router.get('/', reservationController.getAll);
 router.post('/', reservationController.create);
 router.put('/:id', reservationController.update);

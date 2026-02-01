@@ -46,7 +46,8 @@ function mapFireSnowReservation(item: FireSnowReservation): Reservation {
         uwagi: item.uwagi || '',
         obiekt_id: item.obiekt_id,
         klient_id: item.klient_id,
-        parent_group_id: item.parent_group_id !== undefined ? item.parent_group_id : null
+        parent_group_id: item.parent_group_id !== undefined ? item.parent_group_id : null,
+        status: item.status !== undefined ? item.status : 0
     };
 }
 
@@ -66,6 +67,41 @@ function filterCsvReservations(reservations: Record<string, unknown>[]): Reserva
 }
 
 export const reservationService = {
+    /**
+     * Pobiera rezerwacje dla konkretnej daty (aktywne i wydane)
+     * @param date - Data w formacie YYYY-MM-DD
+     */
+    async getForDate(date: string): Promise<Reservation[]> {
+        if (config.useFireSnowApi) {
+            try {
+                const data = await fireSnowService.getReservationsForDate(date);
+                logger.info(`src/server/services/reservationService.ts: Pobrano ${data.length} rezerwacji dla daty ${date} z FireSnow API`);
+                return data.map(mapFireSnowReservation);
+            } catch (error) {
+                const err = error as Error;
+                logger.warn(`src/server/services/reservationService.ts: FireSnow API unavailable for date ${date}, fallback to CSV`, {
+                    error: err.message,
+                    code: (err as { code?: string }).code || 'UNKNOWN'
+                });
+            }
+        }
+
+        // Fallback: filter CSV by date
+        const data = await csvService.getReservations();
+        const filtered = filterCsvReservations(data);
+
+        // Filter by date (match start date)
+        const forDate = filtered.filter(r => {
+            if (!r.od) return false;
+            // Normalize date format for comparison
+            const resDate = r.od.split(' ')[0]; // Remove time part if present
+            return resDate === date;
+        });
+
+        logger.info(`src/server/services/reservationService.ts: Pobrano ${forDate.length} rezerwacji dla daty ${date} z CSV`);
+        return forDate as unknown as Reservation[];
+    },
+
     /**
      * Pobiera wszystkie rezerwacje
      */
