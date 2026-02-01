@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
 import { DatePickerButton } from './DatePickerButton';
@@ -6,6 +6,9 @@ import { loadAppState, saveAppState } from '../utils/localStorage';
 
 // src/components/EquipmentHandoutView.tsx: Logger dla EquipmentHandoutView
 const logger = createLogger('EquipmentHandoutView');
+
+// API URL dla pobierania rezerwacji
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 
 interface EquipmentHandoutViewProps {
   reservations: ReservationData[];
@@ -86,6 +89,10 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
   const [checkedServiceItems, setCheckedServiceItems] = useState<Set<string>>(new Set());
   const [showServiceResults, setShowServiceResults] = useState<boolean>(false);
 
+  // src/components/EquipmentHandoutView.tsx: Stany dla pobierania rezerwacji z API (dla sekcji wydane)
+  const [reservationsForDate, setReservationsForDate] = useState<ReservationData[]>([]);
+  const [isLoadingReservations, setIsLoadingReservations] = useState<boolean>(false);
+
   // src/components/EquipmentHandoutView.tsx: Funkcja pomocnicza do kategoryzacji sprzętu
   const getEquipmentCategory = (parentGroupId: number | null | undefined, sprzet?: string): string => {
     if (parentGroupId) {
@@ -145,7 +152,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
   };
 
   // src/components/EquipmentHandoutView.tsx: Funkcja do normalizacji daty (YYYY-MM-DD) z obsługą timezone
-  const normalizeDate = (dateString: string): string => {
+  const normalizeDate = useCallback((dateString: string): string => {
     try {
       // Pobierz tylko część YYYY-MM-DD z różnych formatów
       const dateOnly = dateString.split('T')[0].split(' ')[0];
@@ -161,65 +168,114 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
       logger.debug('EquipmentHandoutView: Błąd normalizacji daty', dateString, error);
       return '';
     }
-  };
+  }, []);
+
+  // src/components/EquipmentHandoutView.tsx: Pobieranie rezerwacji dla wybranej daty z API
+  useEffect(() => {
+    if (!selectedDate || serviceMode || checkMode) {
+      setReservationsForDate([]);
+      return;
+    }
+
+    const fetchReservationsForDate = async () => {
+      setIsLoadingReservations(true);
+      try {
+        logger.info('EquipmentHandoutView: Pobieranie rezerwacji dla daty z API', selectedDate);
+        const response = await fetch(`${API_BASE_URL}/reservations/date?date=${selectedDate}`);
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        logger.info('EquipmentHandoutView: Pobrano rezerwacji z API', data.length);
+        setReservationsForDate(data);
+      } catch (error) {
+        logger.warn('EquipmentHandoutView: Błąd pobierania z API, fallback do lokalnych danych', error);
+        // Fallback: użyj lokalnego filtrowania z przekazanych rezerwacji
+        const filtered = reservations.filter(res => {
+          const resDate = normalizeDate(res.od);
+          return resDate === selectedDate;
+        });
+        setReservationsForDate(filtered);
+      } finally {
+        setIsLoadingReservations(false);
+      }
+    };
+
+    fetchReservationsForDate();
+  }, [selectedDate, serviceMode, checkMode, reservations, normalizeDate]);
 
   // src/components/EquipmentHandoutView.tsx: Wczytaj klientów z rezerwacjami na wybrany dzień
+  // Dzieli na aktywne (status=0) i wydane (status!=0)
   const clientsForDate = useMemo(() => {
-    if (!selectedDate) return [];
+    if (!selectedDate) return { active: [], issued: [] };
 
-    logger.debug('EquipmentHandoutView: Filtrowanie rezerwacji dla daty', selectedDate);
-
-    // Filtruj rezerwacje gdzie data od = wybrana data
-    const filteredReservations = reservations.filter(res => {
+    // Użyj danych z API (reservationsForDate) jeśli dostępne, inaczej filtruj lokalnie
+    const dataToUse = reservationsForDate.length > 0 ? reservationsForDate : reservations.filter(res => {
       const resDate = normalizeDate(res.od);
       return resDate === selectedDate;
     });
 
-    logger.debug('EquipmentHandoutView: Znaleziono rezerwacji', filteredReservations.length);
+    logger.debug('EquipmentHandoutView: Filtrowanie rezerwacji dla daty', selectedDate, 'count:', dataToUse.length);
 
-    // Grupuj po kliencie (klient + data od + data do)
-    const grouped = new Map<string, ClientWithReservation>();
+    // Podziel rezerwacje na aktywne i wydane
+    const activeReservations = dataToUse.filter(res =>
+      res.status === undefined || res.status === null || res.status === 0
+    );
+    const issuedReservations = dataToUse.filter(res =>
+      res.status !== undefined && res.status !== null && res.status !== 0
+    );
 
-    // Zachowaj oryginalną kolejność sprzętu z umowy
-    filteredReservations.forEach(res => {
-      // Ignoruj pozycje PROMOTOR i inne nietypowe
-      if (!res.sprzet || res.sprzet.toLowerCase().includes('promotor')) {
-        return;
-      }
+    logger.debug('EquipmentHandoutView: Aktywne:', activeReservations.length, 'Wydane:', issuedReservations.length);
 
-      const key = `${res.klient.trim()}_${res.od}_${res.do}`;
+    // Funkcja pomocnicza do grupowania rezerwacji po kliencie
+    const groupByClient = (resList: ReservationData[]): ClientWithReservation[] => {
+      const grouped = new Map<string, ClientWithReservation>();
 
-      if (!grouped.has(key)) {
-        grouped.set(key, {
-          klient: res.klient.trim(),
-          od: res.od,
-          do: res.do,
-          equipment: [],
-          totalItems: 0
+      resList.forEach(res => {
+        // Ignoruj pozycje PROMOTOR i inne nietypowe
+        if (!res.sprzet || res.sprzet.toLowerCase().includes('promotor')) {
+          return;
+        }
+
+        const key = `${res.klient.trim()}_${res.od}_${res.do}`;
+
+        if (!grouped.has(key)) {
+          grouped.set(key, {
+            klient: res.klient.trim(),
+            od: res.od,
+            do: res.do,
+            equipment: [],
+            totalItems: 0
+          });
+        }
+
+        const client = grouped.get(key)!;
+
+        // Dodaj sprzęt w kolejności z umowy (nie sortuj)
+        client.equipment.push({
+          equipment: res.sprzet,
+          kod: res.kod || '-',
+          category: 'inne'
         });
-      }
-
-      const client = grouped.get(key)!;
-
-      // Dodaj sprzęt w kolejności z umowy (nie sortuj)
-      client.equipment.push({
-        equipment: res.sprzet,
-        kod: res.kod || '-',
-        category: 'inne' // Kategoria nie jest potrzebna w widoku wydania
+        client.totalItems++;
       });
-      client.totalItems++;
-    });
 
-    // Konwertuj do tablicy i sortuj klientów alfabetycznie
-    const clients = Array.from(grouped.values()).sort((a, b) => {
-      const nameA = a.klient.toUpperCase();
-      const nameB = b.klient.toUpperCase();
-      return nameA.localeCompare(nameB);
-    });
+      // Konwertuj do tablicy i sortuj klientów alfabetycznie
+      return Array.from(grouped.values()).sort((a, b) => {
+        const nameA = a.klient.toUpperCase();
+        const nameB = b.klient.toUpperCase();
+        return nameA.localeCompare(nameB);
+      });
+    };
 
-    logger.debug('EquipmentHandoutView: Znaleziono klientów', clients.length);
-    return clients;
-  }, [reservations, selectedDate]);
+    const active = groupByClient(activeReservations);
+    const issued = groupByClient(issuedReservations);
+
+    logger.debug('EquipmentHandoutView: Klienci aktywni:', active.length, 'wydani:', issued.length);
+    return { active, issued };
+  }, [reservations, reservationsForDate, selectedDate, normalizeDate]);
 
   // src/components/EquipmentHandoutView.tsx: Obsługa kliknięcia w klienta
   const handleClientClick = (client: ClientWithReservation) => {
@@ -287,14 +343,21 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
     }
   };
 
-  // src/components/EquipmentHandoutView.tsx: Filtrowanie klientów po nazwie
+  // src/components/EquipmentHandoutView.tsx: Filtrowanie klientów po nazwie (aktywni i wydani osobno)
   const filteredClients = useMemo(() => {
-    if (!searchText) return clientsForDate;
-
     const searchLower = searchText.toLowerCase();
-    return clientsForDate.filter(client =>
-      client.klient.toLowerCase().includes(searchLower)
-    );
+
+    const filterBySearch = (clients: ClientWithReservation[]) => {
+      if (!searchText) return clients;
+      return clients.filter(client =>
+        client.klient.toLowerCase().includes(searchLower)
+      );
+    };
+
+    return {
+      active: filterBySearch(clientsForDate.active),
+      issued: filterBySearch(clientsForDate.issued)
+    };
   }, [clientsForDate, searchText]);
 
   // src/components/EquipmentHandoutView.tsx: Filtrowanie sprzętu dla widoku serwis
@@ -801,6 +864,9 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
 
   // WIDOK 2: Lista klientów (tylko dla normalnego trybu wydawania, nie dla serwis/sprawdź)
   if (!selectedClient && !serviceMode && !checkMode) {
+    const totalClients = clientsForDate.active.length + clientsForDate.issued.length;
+    const totalFilteredClients = filteredClients.active.length + filteredClients.issued.length;
+
     return (
       <div
         className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
@@ -826,9 +892,17 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
               </button>
             </div>
             <p className="text-white/70 text-sm">
-              Klienci z rezerwacjami: <strong className="text-white">{clientsForDate.length}</strong>
-              {searchText && ` (wyświetlono: ${filteredClients.length})`}
+              Klienci z rezerwacjami: <strong className="text-white">{totalClients}</strong>
+              {clientsForDate.issued.length > 0 && (
+                <span className="ml-2 text-green-400">
+                  (wydane: {clientsForDate.issued.length})
+                </span>
+              )}
+              {searchText && ` (wyświetlono: ${totalFilteredClients})`}
             </p>
+            {isLoadingReservations && (
+              <p className="text-blue-300 text-xs mt-1">⏳ Ładowanie rezerwacji...</p>
+            )}
           </div>
 
           {/* Pole wyszukiwania klienta */}
@@ -854,7 +928,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
               )}
             </div>
 
-            {searchText && filteredClients.length === 0 && (
+            {searchText && totalFilteredClients === 0 && (
               <div className="mt-3 bg-yellow-600/30 border border-yellow-500 rounded-lg p-3">
                 <p className="text-yellow-200 text-sm font-medium">
                   ⚠️ Nie znaleziono klienta o nazwisku zawierającym "<strong>{searchText}</strong>"
@@ -864,13 +938,13 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
           </div>
 
           {/* Lista klientów */}
-          {clientsForDate.length === 0 ? (
+          {totalClients === 0 ? (
             <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
               <span className="text-white text-xl font-medium">
                 📋 Brak klientów z rezerwacjami na wybrany dzień
               </span>
             </div>
-          ) : filteredClients.length === 0 ? (
+          ) : totalFilteredClients === 0 ? (
             <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
               <span className="text-white text-xl font-medium">
                 🔍 Nie znaleziono klienta
@@ -878,9 +952,10 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredClients.map((client, index) => (
+              {/* Sekcja: Aktywne rezerwacje (do wydania) */}
+              {filteredClients.active.map((client, index) => (
                 <div
-                  key={`${client.klient}_${client.od}_${client.do}_${index}`}
+                  key={`active_${client.klient}_${client.od}_${client.do}_${index}`}
                   onClick={() => handleClientClick(client)}
                   className="bg-white/10 backdrop-blur-md rounded-xl p-6 border border-white/20 shadow-lg active:scale-95 transition-transform touch-manipulation cursor-pointer"
                 >
@@ -902,6 +977,47 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
                   </div>
                 </div>
               ))}
+
+              {/* Sekcja: Wydane rezerwacje */}
+              {filteredClients.issued.length > 0 && (
+                <>
+                  <div className="mt-8 pt-6 border-t border-white/20">
+                    <h3 className="text-xl lg:text-2xl font-bold text-white mb-4 flex items-center gap-2">
+                      <span>📦</span> Wydane
+                    </h3>
+                  </div>
+
+                  {filteredClients.issued.map((client, index) => (
+                    <div
+                      key={`issued_${client.klient}_${client.od}_${client.do}_${index}`}
+                      onClick={() => handleClientClick(client)}
+                      className="bg-green-900/30 backdrop-blur-md rounded-xl p-6 border border-green-500/30 shadow-lg active:scale-95 transition-transform touch-manipulation cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="text-xl lg:text-2xl font-bold text-white">
+                              {client.klient}
+                            </h3>
+                            <span className="px-2 py-0.5 bg-green-500/30 border border-green-500/50 rounded text-xs text-green-300 font-bold">
+                              WYDANE
+                            </span>
+                          </div>
+                          <div className="text-white/70 text-sm mb-1">
+                            📅 {formatDate(client.od)} → {formatDate(client.do)}
+                          </div>
+                          <div className="text-white/60 text-xs">
+                            🎿 {client.totalItems} {client.totalItems === 1 ? 'pozycja' : 'pozycji'} sprzętu
+                          </div>
+                        </div>
+                        <div className="text-green-400 text-3xl ml-4">
+                          ✓
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
           )}
 

@@ -90,6 +90,14 @@ export const fireSnowService = {
     },
 
     /**
+     * Pobiera rezerwacje dla konkretnej daty (aktywne i wydane)
+     * @param date - Data w formacie YYYY-MM-DD
+     */
+    async getReservationsForDate(date: string): Promise<FireSnowReservation[]> {
+        return fetchFireSnow<FireSnowReservation[]>(`/api/rezerwacje/dla-daty?date=${date}`);
+    },
+
+    /**
      * Pobiera dostępność sprzętu w danym okresie
      */
     async getAvailability(from?: string, to?: string): Promise<unknown> {

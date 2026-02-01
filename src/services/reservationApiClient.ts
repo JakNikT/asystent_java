@@ -11,6 +11,12 @@ import type { ReservationData, ReservationInfo, AvailabilityInfo } from './reser
 const API_BASE_URL = '/api';
 const logger = createLogger('ReservationApiClient');
 
+// Stałe dla logiki dostępności
+/** Domyślna data końcowa dla aktywnych wypożyczeń bez określonego terminu (30 dni) */
+const DEFAULT_RENTAL_DAYS = 30;
+/** Minimalny bufor serwisowy w dniach - poniżej tej wartości pokazuje żółte ostrzeżenie */
+const SERVICE_BUFFER_DAYS = 2;
+
 /**
  * Klient API dla rezerwacji
  */
@@ -181,7 +187,11 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
       sprzet: r.sprzet || '',
       klient: r.klient || '',
       od: typeof r.od === 'number' ? new Date(r.od).toISOString().split('T')[0] : r.od || '',
-      do: typeof r.do === 'number' && r.do > 0 ? new Date(r.do).toISOString().split('T')[0] : '',
+      // Jeśli wypożyczenie jest aktywne (do = 0), ustaw domyślną datę końcową
+      // Zapobiega to tworzeniu Invalid Date i błędnym kolorom dostępności
+      do: typeof r.do === 'number' && r.do > 0
+        ? new Date(r.do).toISOString().split('T')[0]
+        : new Date(Date.now() + DEFAULT_RENTAL_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
       cena: '0',
       zaplacono: '0',
       numer: '',
@@ -303,7 +313,13 @@ static async getSkiAvailabilityStatus(
     if (reservation.kod === kod) {
       const resStart = new Date(reservation.od);
       const resEnd = new Date(reservation.do);
-      
+
+      // Walidacja dat - pomiń rezerwacje z niepoprawnymi datami
+      if (isNaN(resStart.getTime()) || isNaN(resEnd.getTime())) {
+        logger.warn(`Niepoprawne daty dla rezerwacji ${reservation.kod}: od="${reservation.od}", do="${reservation.do}"`);
+        continue;
+      }
+
       const reservationInfo: ReservationInfo = {
         id: reservation.kod,
         clientName: reservation.klient,
@@ -323,13 +339,13 @@ static async getSkiAvailabilityStatus(
         hasDirectConflict = true;
         allReservations.push(reservationInfo);
       }
-      // Sprawdź ŻÓŁTY (bufor 1-2 dni)
+      // Sprawdź ŻÓŁTY (bufor serwisowy - za mało dni na przygotowanie sprzętu)
       else {
         const daysBefore = this.differenceInDays(userDateFrom, resEnd);
         const daysAfter = this.differenceInDays(resStart, userDateTo);
-        
-        const isBeforeWarning = daysBefore >= 1 && daysBefore <= 2;
-        const isAfterWarning = daysAfter >= 1 && daysAfter <= 2;
+
+        const isBeforeWarning = daysBefore >= 1 && daysBefore <= SERVICE_BUFFER_DAYS;
+        const isAfterWarning = daysAfter >= 1 && daysAfter <= SERVICE_BUFFER_DAYS;
         
         if (isBeforeWarning || isAfterWarning) {
           hasWarningConflict = true;

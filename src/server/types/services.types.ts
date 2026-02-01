@@ -20,6 +20,7 @@ export interface FireSnowReservation {
   uwagi?: string;
   obiekt_id?: number;
   parent_group_id?: number | null;
+  status?: number; // 0 = aktywna, != 0 = wydana/nieaktywna
 }
 
 /**
@@ -39,6 +40,7 @@ export interface Reservation {
   obiekt_id?: number;
   klient_id?: number;
   parent_group_id?: number | null;
+  status?: number; // 0 = aktywna, != 0 = wydana/nieaktywna
 }
 
 /**
