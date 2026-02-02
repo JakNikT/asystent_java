@@ -43,15 +43,20 @@ const EQUIPMENT_DETAILED_CATEGORIES: Record<number, string> = {
   82737: 'buty_inne',     // Buty (bez kategorii)
 };
 
-// src/components/ReservationsView.tsx: Interface dla statystyk kategorii sprzętu w zwrotach
+// src/components/ReservationsView.tsx: Interface dla statystyk kategorii sprzętu w zwrotach (zwrócone/wszystkie)
+interface CategoryReturnCount {
+  returned: number;
+  total: number;
+}
+
 interface EquipmentCategoryStats {
-  narty_top: number;
-  narty_vip: number;
-  narty_junior: number;
-  buty_dorosle: number;
-  buty_junior: number;
-  deski: number;
-  buty_sb: number;
+  narty_top: CategoryReturnCount;
+  narty_vip: CategoryReturnCount;
+  narty_junior: CategoryReturnCount;
+  buty_dorosle: CategoryReturnCount;
+  buty_junior: CategoryReturnCount;
+  deski: CategoryReturnCount;
+  buty_sb: CategoryReturnCount;
 }
 
 // Interface dla pogrupowanej rezerwacji
@@ -123,18 +128,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const dateDebounceRef = useRef<NodeJS.Timeout | null>(null);
   // src/components/ReservationsView.tsx: Stany dla widoku zwrotów
   const [returnDate, setReturnDate] = useState<string>(savedReturnsState?.returnDate || '');
-  const [returnsOnDate, setReturnsOnDate] = useState<number>(0);
-  const [returnsOverdue, setReturnsOverdue] = useState<number>(0);
+  const [returnsOnDate, setReturnsOnDate] = useState<CategoryReturnCount>({ returned: 0, total: 0 });
+  const [returnsOverdue, setReturnsOverdue] = useState<CategoryReturnCount>({ returned: 0, total: 0 });
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   // src/components/ReservationsView.tsx: Stany dla statystyk kategorii sprzętu w zwrotach
-  const [onDateStats, setOnDateStats] = useState<EquipmentCategoryStats>({
-    narty_top: 0, narty_vip: 0, narty_junior: 0,
-    buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0
-  });
-  const [overdueStats, setOverdueStats] = useState<EquipmentCategoryStats>({
-    narty_top: 0, narty_vip: 0, narty_junior: 0,
-    buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0
-  });
+  const emptyStatsInit: EquipmentCategoryStats = {
+    narty_top: { returned: 0, total: 0 },
+    narty_vip: { returned: 0, total: 0 },
+    narty_junior: { returned: 0, total: 0 },
+    buty_dorosle: { returned: 0, total: 0 },
+    buty_junior: { returned: 0, total: 0 },
+    deski: { returned: 0, total: 0 },
+    buty_sb: { returned: 0, total: 0 }
+  };
+  const [onDateStats, setOnDateStats] = useState<EquipmentCategoryStats>(emptyStatsInit);
+  const [overdueStats, setOverdueStats] = useState<EquipmentCategoryStats>(emptyStatsInit);
 
   // Funkcja do wczytywania/odświeżania danych (rezerwacje i/lub wypożyczenia)
   // src/components/ReservationsView.tsx: Nie akceptuje typu 'handout' - ten widok ma własne ładowanie
@@ -245,98 +253,124 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   // Konwersja z FireSnow jest teraz obsługiwana przez API serwera, nie po stronie klienta
 
   // src/components/ReservationsView.tsx: Funkcja do liczenia zwrotów dla wybranej daty
+  // Zwraca liczbę zwróconych/wszystkich umów oraz statystyki sprzętu w formacie X/Y
   const countReturnsForDate = async (selectedDate: string): Promise<{
-    onDate: number;
-    overdue: number;
+    onDate: CategoryReturnCount;
+    overdue: CategoryReturnCount;
     onDateStats: EquipmentCategoryStats;
     overdueStats: EquipmentCategoryStats;
   }> => {
-    // Inicjalizacja statystyk
+    // Inicjalizacja pustych statystyk z formatem returned/total
+    const emptyCount: CategoryReturnCount = { returned: 0, total: 0 };
     const emptyStats: EquipmentCategoryStats = {
-      narty_top: 0, narty_vip: 0, narty_junior: 0,
-      buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0
+      narty_top: { returned: 0, total: 0 },
+      narty_vip: { returned: 0, total: 0 },
+      narty_junior: { returned: 0, total: 0 },
+      buty_dorosle: { returned: 0, total: 0 },
+      buty_junior: { returned: 0, total: 0 },
+      deski: { returned: 0, total: 0 },
+      buty_sb: { returned: 0, total: 0 }
     };
 
     if (!selectedDate) {
-      return { onDate: 0, overdue: 0, onDateStats: emptyStats, overdueStats: emptyStats };
+      return { onDate: emptyCount, overdue: emptyCount, onDateStats: emptyStats, overdueStats: emptyStats };
     }
 
     try {
       logger.debug('ReservationsView: Liczenie zwrotów dla daty', selectedDate);
 
-      // Pobierz wszystkie dane (rezerwacje + wypożyczenia)
-      const allData = await ReservationApiClient.loadAll();
+      // Pobierz aktywne wypożyczenia (jeszcze nie zwrócone) i przeszłe (już zwrócone)
+      const [activeData, pastData] = await Promise.all([
+        ReservationApiClient.loadAll(),
+        ReservationApiClient.loadPastRentals()
+      ]);
 
       const selectedDateObj = new Date(selectedDate);
-      selectedDateObj.setHours(0, 0, 0, 0); // Początek wybranego dnia
+      selectedDateObj.setHours(0, 0, 0, 0);
 
-      // Grupowanie po kliencie + data od + data do (podobnie jak w groupReservations)
-      const grouped = new Map<string, { klient: string; od: string; do: string }>();
+      // Helper do grupowania umów po kliencie + dacie
+      const groupByContract = (data: ReservationData[]) => {
+        const grouped = new Map<string, { klient: string; od: string; do: string }>();
+        data.forEach(res => {
+          const normalizedKlient = res.klient.trim().replace(/\s+/g, ' ').toUpperCase();
+          const key = `${normalizedKlient}_${res.od}_${res.do}`;
+          if (!grouped.has(key)) {
+            grouped.set(key, { klient: res.klient.trim(), od: res.od, do: res.do });
+          }
+        });
+        return grouped;
+      };
 
-      allData.forEach(res => {
-        // Normalizuj nazwę klienta (usuń dodatkowe spacje, trim)
-        const normalizedKlient = res.klient.trim().replace(/\s+/g, ' ').toUpperCase();
-        const key = `${normalizedKlient}_${res.od}_${res.do}`;
+      const activeGrouped = groupByContract(activeData);
+      const pastGrouped = groupByContract(pastData);
 
-        if (!grouped.has(key)) {
-          grouped.set(key, {
-            klient: res.klient.trim(),
-            od: res.od,
-            do: res.do
-          });
-        }
-      });
-
-      // LICZNIK 1: Zwroty z wybranego dnia (data do == wybrana data)
-      const returnsOnDate = Array.from(grouped.values()).filter(group => {
+      // Filtr: umowy kończące się danego dnia
+      const filterOnDate = (group: { do: string }) => {
         const endDate = new Date(group.do);
         endDate.setHours(0, 0, 0, 0);
         return endDate.getTime() === selectedDateObj.getTime();
-      });
+      };
 
-      // LICZNIK 2: Zaległe zwroty (data do < wybrana data)
-      const overdueReturns = Array.from(grouped.values()).filter(group => {
+      // Filtr: umowy zaległe (data do < wybrana data)
+      const filterOverdue = (group: { do: string }) => {
         const endDate = new Date(group.do);
         endDate.setHours(23, 59, 59, 999);
         return endDate < selectedDateObj;
-      });
+      };
 
-      // Inicjalizacja statystyk kategorii
-      const onDateStats: EquipmentCategoryStats = { ...emptyStats };
-      const overdueStats: EquipmentCategoryStats = { ...emptyStats };
+      // LICZNIK UMÓW NA DZIEŃ: aktywne (nie zwrócone) + przeszłe (zwrócone)
+      const activeOnDate = Array.from(activeGrouped.values()).filter(filterOnDate).length;
+      const pastOnDate = Array.from(pastGrouped.values()).filter(filterOnDate).length;
+      const onDateCount: CategoryReturnCount = {
+        returned: pastOnDate,
+        total: activeOnDate + pastOnDate
+      };
 
-      // Zlicz pozycje sprzętu według parent_group_id dla każdej rezerwacji
-      allData.forEach(res => {
-        // Ignoruj pozycje PROMOTOR i inne nietypowe
-        if (!res.sprzet || res.sprzet.toLowerCase().includes('promotor')) {
-          return;
-        }
+      // LICZNIK UMÓW ZALEGŁYCH: aktywne (nie zwrócone) + przeszłe (zwrócone)
+      const activeOverdue = Array.from(activeGrouped.values()).filter(filterOverdue).length;
+      const pastOverdue = Array.from(pastGrouped.values()).filter(filterOverdue).length;
+      const overdueCount: CategoryReturnCount = {
+        returned: pastOverdue,
+        total: activeOverdue + pastOverdue
+      };
 
-        const endDate = new Date(res.do);
-        endDate.setHours(0, 0, 0, 0);
-        const endDateWithTime = new Date(res.do);
-        endDateWithTime.setHours(23, 59, 59, 999);
+      // Inicjalizacja statystyk kategorii sprzętu
+      const onDateStats: EquipmentCategoryStats = JSON.parse(JSON.stringify(emptyStats));
+      const overdueStats: EquipmentCategoryStats = JSON.parse(JSON.stringify(emptyStats));
 
-        // Sprawdź parent_group_id i przypisz do kategorii
-        if (res.parent_group_id && EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id]) {
-          const category = EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id] as keyof EquipmentCategoryStats;
+      // Helper do zliczania sprzętu
+      const countEquipment = (data: ReservationData[], isReturned: boolean) => {
+        data.forEach(res => {
+          if (!res.sprzet || res.sprzet.toLowerCase().includes('promotor')) return;
 
-          // Sprawdź czy kategoria jest w naszym interface (pomijamy 'narty_inne', 'buty_inne')
-          if (category in onDateStats) {
-            if (endDate.getTime() === selectedDateObj.getTime()) {
-              // Zwroty na dzień
-              onDateStats[category]++;
-            } else if (endDateWithTime < selectedDateObj) {
-              // Zaległe zwroty
-              overdueStats[category]++;
+          const endDate = new Date(res.do);
+          endDate.setHours(0, 0, 0, 0);
+          const endDateWithTime = new Date(res.do);
+          endDateWithTime.setHours(23, 59, 59, 999);
+
+          if (res.parent_group_id && EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id]) {
+            const category = EQUIPMENT_DETAILED_CATEGORIES[res.parent_group_id] as keyof EquipmentCategoryStats;
+
+            if (category in onDateStats && !['narty_inne', 'buty_inne'].includes(category)) {
+              if (endDate.getTime() === selectedDateObj.getTime()) {
+                onDateStats[category].total++;
+                if (isReturned) onDateStats[category].returned++;
+              } else if (endDateWithTime < selectedDateObj) {
+                overdueStats[category].total++;
+                if (isReturned) overdueStats[category].returned++;
+              }
             }
           }
-        }
-      });
+        });
+      };
+
+      // Zlicz sprzęt z aktywnych (nie zwrócone) i przeszłych (zwrócone)
+      countEquipment(activeData, false);
+      countEquipment(pastData, true);
 
       const result = {
-        onDate: returnsOnDate.length,
-        overdue: overdueReturns.length,
+        onDate: onDateCount,
+        overdue: overdueCount,
         onDateStats,
         overdueStats
       };
@@ -345,7 +379,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       return result;
     } catch (error) {
       logger.error('ReservationsView: Błąd liczenia zwrotów', error);
-      return { onDate: 0, overdue: 0, onDateStats: emptyStats, overdueStats: emptyStats };
+      const emptyCount: CategoryReturnCount = { returned: 0, total: 0 };
+      return { onDate: emptyCount, overdue: emptyCount, onDateStats: emptyStats, overdueStats: emptyStats };
     }
   };
 
@@ -355,10 +390,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
     setIsRefreshing(true);
     try {
-      // Wymuś pobranie świeżych danych (wyczyść cache)
-      // Uwaga: cache jest prywatny w ReservationApiClient, więc musimy po prostu wywołać loadAll ponownie
-      // Cache zostanie automatycznie odświeżony jeśli minie CACHE_DURATION (30s)
-      // Dla pewności możemy ustawić nową datę, która wymusi ponowne pobranie
+      // Wyczyść cache aby pobrać świeże dane
+      ReservationApiClient.clearCache();
 
       // Przelicz liczniki i statystyki
       const result = await countReturnsForDate(returnDate);
@@ -465,10 +498,20 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       });
     } else if (viewType === 'returns' && !returnDate) {
       // Wyczyść liczniki i statystyki gdy nie ma daty
-      setReturnsOnDate(0);
-      setReturnsOverdue(0);
-      setOnDateStats({ narty_top: 0, narty_vip: 0, narty_junior: 0, buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0 });
-      setOverdueStats({ narty_top: 0, narty_vip: 0, narty_junior: 0, buty_dorosle: 0, buty_junior: 0, deski: 0, buty_sb: 0 });
+      const emptyCount: CategoryReturnCount = { returned: 0, total: 0 };
+      const emptyStats: EquipmentCategoryStats = {
+        narty_top: { returned: 0, total: 0 },
+        narty_vip: { returned: 0, total: 0 },
+        narty_junior: { returned: 0, total: 0 },
+        buty_dorosle: { returned: 0, total: 0 },
+        buty_junior: { returned: 0, total: 0 },
+        deski: { returned: 0, total: 0 },
+        buty_sb: { returned: 0, total: 0 }
+      };
+      setReturnsOnDate(emptyCount);
+      setReturnsOverdue(emptyCount);
+      setOnDateStats(emptyStats);
+      setOverdueStats(emptyStats);
     }
   }, [returnDate, viewType]);
 
@@ -876,7 +919,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       <span className="text-blue-600">↓</span>;
   };
 
-  // src/components/ReservationsView.tsx: Funkcja renderowania statystyk kategorii sprzętu
+  // src/components/ReservationsView.tsx: Funkcja renderowania statystyk kategorii sprzętu (format X/Y)
   const renderCategoryStats = (stats: EquipmentCategoryStats) => {
     const categories = [
       { key: 'narty_top', label: 'Narty TOP', emoji: '🎿', color: 'bg-blue-600/80' },
@@ -891,17 +934,20 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     return (
       <div className="flex flex-wrap gap-2 justify-center mt-4">
         {categories.map(cat => {
-          const count = stats[cat.key as keyof EquipmentCategoryStats];
-          if (count === 0) return null; // Ukryj kategorie z zerowymi wartościami
+          const countData = stats[cat.key as keyof EquipmentCategoryStats];
+          if (countData.total === 0) return null; // Ukryj kategorie z zerowymi wartościami
+
+          const isComplete = countData.returned === countData.total;
 
           return (
             <div
               key={cat.key}
-              className={`${cat.color} text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 border border-white/20 shadow-sm`}
+              className={`${isComplete ? 'bg-green-600/80' : cat.color} text-white px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-1.5 border border-white/20 shadow-sm`}
             >
               <span>{cat.emoji}</span>
               <span>{cat.label}:</span>
-              <span className="text-lg">{count}</span>
+              <span className="text-lg">{countData.returned}/{countData.total}</span>
+              {isComplete && <span>✓</span>}
             </div>
           );
         })}
@@ -970,16 +1016,24 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
               </div>
 
               {/* Sekcja 1: Zwroty z wybranego dnia */}
-              <div className="bg-blue-500/30 rounded-xl border border-blue-400/50 shadow-lg backdrop-blur-md p-6 lg:p-8">
+              <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${
+                returnsOnDate.returned === returnsOnDate.total && returnsOnDate.total > 0
+                  ? 'bg-green-500/30 border-green-400/50'
+                  : 'bg-blue-500/30 border-blue-400/50'
+              }`}>
                 <div className="text-center">
                   <div className="text-white/70 text-sm lg:text-base font-bold uppercase tracking-wider mb-3">
-                    🔵 ZWROTY Z TEGO DNIA
+                    {returnsOnDate.returned === returnsOnDate.total && returnsOnDate.total > 0
+                      ? '✅ ZWROTY ZAKOŃCZONE'
+                      : '🔵 ZWROTY Z TEGO DNIA'}
                   </div>
                   <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
-                    {returnsOnDate}
+                    {returnsOnDate.returned}/{returnsOnDate.total}
                   </div>
                   <div className="text-white/80 text-base lg:text-lg">
-                    umów kończy się {formatDate(returnDate)}
+                    {returnsOnDate.returned === returnsOnDate.total && returnsOnDate.total > 0
+                      ? `wszystkie umowy z ${formatDate(returnDate)} zwrócone ✓`
+                      : `umów kończy się ${formatDate(returnDate)}`}
                   </div>
 
                   {/* Statystyki kategorii sprzętu */}
@@ -988,24 +1042,24 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
               </div>
 
               {/* Sekcja 2: Zaległe zwroty */}
-              <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${returnsOverdue > 0
-                ? 'bg-orange-500/30 border-orange-400/50'
-                : 'bg-green-500/30 border-green-400/50'
-                }`}>
+              <div className={`rounded-xl border shadow-lg backdrop-blur-md p-6 lg:p-8 ${
+                returnsOverdue.total - returnsOverdue.returned > 0
+                  ? 'bg-orange-500/30 border-orange-400/50'
+                  : 'bg-green-500/30 border-green-400/50'
+              }`}>
                 <div className="text-center">
-                  <div className={`text-sm lg:text-base font-bold uppercase tracking-wider mb-3 ${returnsOverdue > 0 ? 'text-white/70' : 'text-white/70'
-                    }`}>
-                    {returnsOverdue > 0 ? '🟠 ZALEGŁE ZWROTY' : '✅ BRAK ZALEGŁOŚCI'}
+                  <div className="text-white/70 text-sm lg:text-base font-bold uppercase tracking-wider mb-3">
+                    {returnsOverdue.total - returnsOverdue.returned > 0
+                      ? '🟠 ZALEGŁE ZWROTY'
+                      : '✅ BRAK ZALEGŁOŚCI'}
                   </div>
-                  <div className={`text-6xl lg:text-8xl font-bold mb-3 ${returnsOverdue > 0 ? 'text-white' : 'text-white'
-                    }`}>
-                    {returnsOverdue}
+                  <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
+                    {returnsOverdue.returned}/{returnsOverdue.total}
                   </div>
-                  <div className={`text-base lg:text-lg ${returnsOverdue > 0 ? 'text-white/80' : 'text-white/80'
-                    }`}>
-                    {returnsOverdue > 0
-                      ? `umów powinno było być zwróconych wcześniej niż ${formatDate(returnDate)}`
-                      : 'Wszystkie zwroty są na czas ✓'
+                  <div className="text-white/80 text-base lg:text-lg">
+                    {returnsOverdue.total - returnsOverdue.returned > 0
+                      ? `${returnsOverdue.total - returnsOverdue.returned} umów powinno było być zwróconych wcześniej`
+                      : 'Wszystkie zaległe zwroty wykonane ✓'
                     }
                   </div>
 
@@ -1104,7 +1158,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                 </button>
                 <button
                   onClick={() => setViewType('returns')}
-                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${(viewType as string) === 'returns'
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base ${viewType === 'returns'
                     ? 'bg-white/90 text-primary shadow-lg border border-white/20'
                     : 'bg-[#0f2744]/50 text-white hover:bg-[#0f2744]/70 border border-white/5'
                     }`}
