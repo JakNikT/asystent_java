@@ -28,6 +28,17 @@ export class ReservationApiClient {
   private static readonly CACHE_DURATION = 30000; // 30 sekund
 
   /**
+   * Czyści cache, wymuszając pobranie świeżych danych przy następnym zapytaniu
+   */
+  static clearCache(): void {
+    this.cache = [];
+    this.cacheRentals = [];
+    this.lastFetch = 0;
+    this.lastFetchRentals = 0;
+    logger.info('Cache wyczyszczony');
+  }
+
+  /**
    * Pobiera wszystkie rezerwacje z serwera (z cache)
    */
   static async loadReservations(): Promise<ReservationData[]> {
