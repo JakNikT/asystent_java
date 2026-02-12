@@ -1064,7 +1064,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
         </div>
 
         {/* Lista sprzętu */}
-        <div className="flex-1 p-4 lg:p-6 pb-24">
+        <div className="flex-1 p-2 lg:p-6 pb-24">
           {selectedClient.equipment.length === 0 ? (
             <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-12 text-center">
               <span className="text-white text-xl font-medium">
@@ -1072,7 +1072,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
               </span>
             </div>
           ) : (
-            <div className="space-y-3 max-w-2xl mx-auto">
+            <div className="space-y-2 max-w-2xl mx-auto">
               {selectedClient.equipment.map((item, index) => {
                 const equipmentKey = `${item.equipment}-${item.kod}-${index}`;
                 const isChecked = checkedItems.has(equipmentKey);
@@ -1080,7 +1080,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
                 return (
                   <label
                     key={equipmentKey}
-                    className={`flex items-center gap-4 p-4 lg:p-6 rounded-xl border-2 transition-all cursor-pointer touch-manipulation active:scale-95 ${isChecked
+                    className={`flex items-center gap-3 p-3 lg:p-6 rounded-lg border-2 transition-all cursor-pointer touch-manipulation active:scale-95 ${isChecked
                       ? 'bg-green-500/30 border-green-500/50 shadow-lg'
                       : 'bg-white/5 border-white/20 hover:bg-white/10'
                       }`}
@@ -1089,18 +1089,18 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
                       type="checkbox"
                       checked={isChecked}
                       onChange={() => handleCheckboxToggle(equipmentKey)}
-                      className="w-6 h-6 lg:w-7 lg:h-7 cursor-pointer accent-green-500"
+                      className="w-5 h-5 lg:w-7 lg:h-7 cursor-pointer accent-green-500 flex-shrink-0"
                     />
-                    <div className="flex-1">
-                      <div className="text-lg lg:text-xl font-bold text-white mb-1">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-base lg:text-xl font-bold text-white mb-0.5 leading-tight">
                         {item.equipment}
                       </div>
-                      <div className="text-sm lg:text-base text-white/70">
+                      <div className="text-xs lg:text-base text-white/70">
                         Kod: <strong className="text-white">{item.kod}</strong>
                       </div>
                     </div>
                     {isChecked && (
-                      <div className="text-2xl">✓</div>
+                      <div className="text-xl lg:text-2xl flex-shrink-0">✓</div>
                     )}
                   </label>
                 );
