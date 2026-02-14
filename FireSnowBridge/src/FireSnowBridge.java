@@ -996,7 +996,7 @@ ResultSet rsRent = stmtRent.executeQuery();
                     "  rp.PRICE as cena, " +
                     "  rp.RENTOBJECT_ID as obiekt_id, " +
                     "  rp.CUSTOMER_ID as klient_id, " +
-                    "  rp.STATUS as status, " +
+                    "  CASE WHEN rental.ID IS NOT NULL THEN 1 ELSE COALESCE(rp.STATUS, 0) END as status, " +
                     "  ae_customer.NAME as klient_nazwa, " +
                     "  rc.FORENAME as imie, " +
                     "  rc.SURNAME as nazwisko, " +
@@ -1016,6 +1016,7 @@ ResultSet rsRent = stmtRent.executeQuery();
                     "LEFT JOIN RENTOBJECTS ro ON ro.ID = rp.RENTOBJECT_ID " +
                     "LEFT JOIN RENT_GROUPS rg_sub ON rg_sub.ID = ro.RENTGROUP_ID " +
                     "LEFT JOIN RENT_GROUPS rg_parent ON rg_parent.ID = rg_sub.RENTGROUP_ID " +
+                    "LEFT JOIN RENTALPOSITION rental ON rental.RENTOBJECT_ID = rp.RENTOBJECT_ID AND rental.CUSTOMER_ID = rp.CUSTOMER_ID AND CAST(rental.BEGINDATE AS DATE) = CAST(rp.BEGINDATE AS DATE) " +
                     "JOIN RESERVATION_DOCUMENTS rd ON rd.ID = rp.RESERVATIONDOCUMENT_ID " +
                     "JOIN ABSTRACTFACTURABLEDOCUMENT afd ON afd.ID = rd.ID " +
                     "JOIN ABSTRACTCASHABLEDOCUMENT acd ON acd.ID = afd.ID " +

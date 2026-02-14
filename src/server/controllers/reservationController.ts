@@ -7,14 +7,18 @@ import logger from '../config/logger.js';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 import type { CreateReservationData, UpdateReservationData } from '../types/services.types.js';
 
+interface DateQueryParams {
+    date?: string;
+}
+
 export const reservationController = {
     /**
      * Pobiera rezerwacje dla konkretnej daty
      * GET /api/reservations/date?date=YYYY-MM-DD
      */
-    async getForDate(req: AppRequest, res: AppResponse): Promise<void> {
+    async getForDate(req: AppRequest<unknown, unknown, unknown, DateQueryParams>, res: AppResponse): Promise<void> {
         try {
-            const date = req.query.date as string;
+            const date = req.query.date;
 
             if (!date) {
                 res.status(400).json({ error: 'Brak wymaganego parametru: date (format: YYYY-MM-DD)' });

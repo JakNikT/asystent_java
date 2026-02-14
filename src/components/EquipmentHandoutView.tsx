@@ -1034,6 +1034,11 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
   }
 
   // WIDOK 3: Pełnoekranowy widok sprzętu klienta
+  // Guard clause - sprawdzenie czy selectedClient istnieje
+  if (!selectedClient) {
+    return null;
+  }
+
   return (
     <div
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative"
