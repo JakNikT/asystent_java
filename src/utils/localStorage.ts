@@ -3,6 +3,8 @@
  * console.log(src/utils/localStorage.ts: Zarządzanie LocalStorage)
  */
 
+import type { ViewType } from '../types/viewTypes.js';
+
 export interface UserSessionData {
   formData: {
     dateFrom: string;
@@ -267,7 +269,7 @@ export interface ReservationsState {
 
 export interface AppStateData {
   appMode: 'search' | 'browse' | 'reservations' | 'history';
-  reservationsViewType?: 'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns';
+  reservationsViewType?: ViewType;
   handoutState?: HandoutState; // NOWY: stan widoku "wydaj"
   returnsState?: ReturnsState; // NOWY: stan widoku "zwroty"
   reservationsState?: ReservationsState; // NOWY: stan widoku "rezerwacje"

@@ -5,6 +5,7 @@ import { createLogger } from '../utils/logger';
 import { EquipmentHandoutView } from './EquipmentHandoutView';
 import { DatePickerButton } from './DatePickerButton';
 import { loadAppState, saveAppState } from '../utils/localStorage';
+import type { ViewType } from '../types/viewTypes';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
 const logger = createLogger('ReservationsView');
@@ -108,15 +109,21 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   const [showPromotorOnly, setShowPromotorOnly] = useState<boolean>(savedReservationsState?.showPromotorOnly || false);
 
   // src/components/ReservationsView.tsx: Inicjalizacja viewType z localStorage, żeby przywrócić ostatnio otwarty widok (np. "wydania")
-  const [viewType, setViewType] = useState<'all' | 'reservations' | 'rentals' | 'past' | 'handout' | 'returns' | 'service' | 'check'>(() => {
+  const [viewType, setViewType] = useState<ViewType>(() => {
     // Tylko przy odświeżeniu (nie przy pierwszym uruchomieniu) używaj zapisanego stanu
     const isFirstLaunch = !sessionStorage.getItem('app-initialized');
     if (isFirstLaunch) {
       // Pierwsze uruchomienie - użyj domyślnego widoku 'all'
-      return 'all';
+      return 'all' as ViewType;
     } else {
       // Odświeżenie - przywróć zapisany stan
-      return savedAppState?.reservationsViewType || 'handout';
+      const saved = savedAppState?.reservationsViewType;
+      // Explicit type guard
+      if (saved === 'all' || saved === 'reservations' || saved === 'rentals' || saved === 'past' ||
+          saved === 'handout' || saved === 'returns' || saved === 'service' || saved === 'check') {
+        return saved;
+      }
+      return 'handout' as ViewType;
     }
   });
   // src/components/ReservationsView.tsx: Stany dla filtrowania po dacie - wyniki pokazują się dopiero po wpisaniu daty od
@@ -254,6 +261,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
 
   // src/components/ReservationsView.tsx: Funkcja do liczenia zwrotów dla wybranej daty
   // Zwraca liczbę zwróconych/wszystkich umów oraz statystyki sprzętu w formacie X/Y
+  // LOGIKA: total = suma wszystkich umów (aktywne + zwrócone), returned = tylko zwrócone
+  // Dzięki temu postęp zmienia się z 70/70 → 69/70 → 68/70 (nie 70/70 → 69/69)
   const countReturnsForDate = async (selectedDate: string): Promise<{
     onDate: CategoryReturnCount;
     overdue: CategoryReturnCount;
@@ -318,20 +327,25 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         return endDate < selectedDateObj;
       };
 
-      // LICZNIK UMÓW NA DZIEŃ: aktywne (nie zwrócone) + przeszłe (zwrócone)
+      // LICZNIK UMÓW NA DZIEŃ
+      // total = suma WSZYSTKICH umów (aktywne + zwrócone) - liczba się NIE zmienia
+      // returned = liczba JUŻ zwróconych - rośnie gdy ktoś zwróci sprzęt
+      // Wyświetlenie: (total - returned)/total czyli np. 69/70, 68/70, ..., 0/70
       const activeOnDate = Array.from(activeGrouped.values()).filter(filterOnDate).length;
       const pastOnDate = Array.from(pastGrouped.values()).filter(filterOnDate).length;
       const onDateCount: CategoryReturnCount = {
-        returned: pastOnDate,
-        total: activeOnDate + pastOnDate
+        returned: pastOnDate,  // JUŻ zwrócone
+        total: activeOnDate + pastOnDate  // WSZYSTKIE umowy kończące się tego dnia (stała liczba)
       };
 
-      // LICZNIK UMÓW ZALEGŁYCH: aktywne (nie zwrócone) + przeszłe (zwrócone)
+      // LICZNIK UMÓW ZALEGŁYCH
+      // total = suma WSZYSTKICH zaległych umów (aktywne + zwrócone) - liczba się NIE zmienia
+      // returned = liczba JUŻ zwróconych - rośnie gdy ktoś zwróci zaległe
       const activeOverdue = Array.from(activeGrouped.values()).filter(filterOverdue).length;
       const pastOverdue = Array.from(pastGrouped.values()).filter(filterOverdue).length;
       const overdueCount: CategoryReturnCount = {
-        returned: pastOverdue,
-        total: activeOverdue + pastOverdue
+        returned: pastOverdue,  // JUŻ zwrócone (z zaległych)
+        total: activeOverdue + pastOverdue  // WSZYSTKIE zaległe umowy (stała liczba)
       };
 
       // Inicjalizacja statystyk kategorii sprzętu
@@ -920,6 +934,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
   };
 
   // src/components/ReservationsView.tsx: Funkcja renderowania statystyk kategorii sprzętu (format X/Y)
+  // Wyświetla: (total - returned)/total, czyli pozostałe do zwrotu / wszystkie
   const renderCategoryStats = (stats: EquipmentCategoryStats) => {
     const categories = [
       { key: 'narty_top', label: 'Narty TOP', emoji: '🎿', color: 'bg-blue-600/80' },
@@ -938,6 +953,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
           if (countData.total === 0) return null; // Ukryj kategorie z zerowymi wartościami
 
           const isComplete = countData.returned === countData.total;
+          const remaining = countData.total - countData.returned;
 
           return (
             <div
@@ -946,7 +962,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
             >
               <span>{cat.emoji}</span>
               <span>{cat.label}:</span>
-              <span className="text-lg">{countData.returned}/{countData.total}</span>
+              <span className="text-lg">{remaining}/{countData.total}</span>
               {isComplete && <span>✓</span>}
             </div>
           );
@@ -955,9 +971,8 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     );
   };
 
-  // src/components/ReservationsView.tsx: Renderowanie widoku zwrotów (przed header'em, podobnie jak "handout")
-  if (viewType === 'returns') {
-    return (
+  // src/components/ReservationsView.tsx: Funkcja pomocnicza do renderowania widoku zwrotów
+  const renderReturnsView = () => (
       <div
         className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-4 lg:p-6"
         style={{
@@ -1028,12 +1043,12 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                       : '🔵 ZWROTY Z TEGO DNIA'}
                   </div>
                   <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
-                    {returnsOnDate.returned}/{returnsOnDate.total}
+                    {returnsOnDate.total - returnsOnDate.returned}/{returnsOnDate.total}
                   </div>
                   <div className="text-white/80 text-base lg:text-lg">
                     {returnsOnDate.returned === returnsOnDate.total && returnsOnDate.total > 0
                       ? `wszystkie umowy z ${formatDate(returnDate)} zwrócone ✓`
-                      : `umów kończy się ${formatDate(returnDate)}`}
+                      : `pozostało do zwrotu z ${formatDate(returnDate)}`}
                   </div>
 
                   {/* Statystyki kategorii sprzętu */}
@@ -1054,11 +1069,11 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                       : '✅ BRAK ZALEGŁOŚCI'}
                   </div>
                   <div className="text-white text-6xl lg:text-8xl font-bold mb-3">
-                    {returnsOverdue.returned}/{returnsOverdue.total}
+                    {returnsOverdue.total - returnsOverdue.returned}/{returnsOverdue.total}
                   </div>
                   <div className="text-white/80 text-base lg:text-lg">
                     {returnsOverdue.total - returnsOverdue.returned > 0
-                      ? `${returnsOverdue.total - returnsOverdue.returned} umów powinno było być zwróconych wcześniej`
+                      ? `${returnsOverdue.total - returnsOverdue.returned} zaległych umów czeka na zwrot`
                       : 'Wszystkie zaległe zwroty wykonane ✓'
                     }
                   </div>
@@ -1098,7 +1113,6 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         </div>
       </div>
     );
-  }
 
   return (
     <div
@@ -1339,7 +1353,9 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
         </div>
 
         {/* Warunkowe renderowanie: Widok wydania/serwis/sprawdź lub tabela rezerwacji */}
-        {viewType === 'handout' || viewType === 'service' || viewType === 'check' ? (
+        {viewType === 'returns' ? (
+          renderReturnsView()
+        ) : viewType === 'handout' || viewType === 'service' || viewType === 'check' ? (
           <EquipmentHandoutView
             reservations={reservations}
             onBack={() => setViewType('reservations')}
