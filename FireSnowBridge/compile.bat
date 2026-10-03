@@ -88,10 +88,10 @@ REM Usun stare pliki .class
 if exist "bin\*.class" del /Q bin\*.class >nul 2>&1
 if exist "src\*.class" del /Q src\*.class >nul 2>&1
 
-REM Kompiluj
+REM Kompiluj z zachowaniem kompatybilnosci wstecznej Java 8+
 echo.
 echo [5/6] Kompilowanie FireSnowBridge.java...
-"%JAVAC_CMD%" -cp "lib\hsqldb.jar" -d bin src\FireSnowBridge.java
+"%JAVAC_CMD%" --release 8 -cp "lib\hsqldb.jar" -d bin src\FireSnowBridge.java
 
 if %ERRORLEVEL% NEQ 0 (
     echo.

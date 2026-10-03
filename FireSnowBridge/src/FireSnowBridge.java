@@ -22,6 +22,11 @@ public class FireSnowBridge {
     private static String DB_USER;
     private static String DB_PASSWORD;
     private static int API_PORT;
+    private static String EQUIPMENT_GROUPS;
+    
+    // Domyślne grupy sprzętowe: Sezon 27
+    private static final String DEFAULT_EQUIPMENT_GROUPS = 
+        "130615,130679,131174,131361,131364,131534,131533";
     
     // Connection pooling with TTL (Time To Live)
     private static Connection connection = null;
@@ -42,10 +47,12 @@ public class FireSnowBridge {
             DB_USER = props.getProperty("db.user", "SA");
             DB_PASSWORD = props.getProperty("db.password", "");
             API_PORT = Integer.parseInt(props.getProperty("api.port", "8081"));
+            EQUIPMENT_GROUPS = props.getProperty("equipment.groups", DEFAULT_EQUIPMENT_GROUPS);
             
             System.out.println("FireSnowBridge: Configuration loaded successfully");
             System.out.println("FireSnowBridge: Database URL: " + DB_URL);
             System.out.println("FireSnowBridge: API Port: " + API_PORT);
+            System.out.println("FireSnowBridge: Equipment Groups: " + EQUIPMENT_GROUPS);
             
         } catch (IOException e) {
             System.err.println("FireSnowBridge: Error loading config.properties, using defaults");
@@ -53,6 +60,7 @@ public class FireSnowBridge {
             DB_USER = "SA";
             DB_PASSWORD = "";
             API_PORT = 8081;
+            EQUIPMENT_GROUPS = DEFAULT_EQUIPMENT_GROUPS;
         }
     }
     
@@ -1163,6 +1171,7 @@ ResultSet rsRent = stmtRent.executeQuery();
                     "  e.CODE as kod, " +
                     "  rg_sub.ID as sub_group_id, " +
                     "  rg_parent.ID as parent_group_id, " +
+                    "  ae_parent.NAME as parent_group_name, " +
                     "  e.PARAM1 as wzrost_min, " +
                     "  e.PARAM2 as wzrost_max, " +
                     "  e.PARAM3 as waga_min, " +
@@ -1174,15 +1183,8 @@ ResultSet rsRent = stmtRent.executeQuery();
                     "INNER JOIN ABSTRACTENTITYCM e ON ro.ID = e.ID " +
                     "INNER JOIN RENT_GROUPS rg_sub ON ro.RENTGROUP_ID = rg_sub.ID " +
                     "INNER JOIN RENT_GROUPS rg_parent ON rg_sub.RENTGROUP_ID = rg_parent.ID " +
-                    "WHERE rg_parent.ID IN (" +
-                    "  82293,  " + // NARTY TOP
-                    "  82412,  " + // NARTY VIP
-                    "  82758,  " + // NARTY JUNIOR
-                    "  82738,  " + // BUTY DOROSLE
-                    "  82827,  " + // BUTY JUNIOR
-                    "  83762,  " + // SNOWBOARD DESKI
-                    "  83760   " + // SNOWBOARD BUTY S
-                    ") " +
+                    "LEFT JOIN ABSTRACTENTITYCM ae_parent ON rg_parent.ID = ae_parent.ID " +
+                    "WHERE rg_parent.ID IN (" + EQUIPMENT_GROUPS + ") " +
                     "  AND (e.REMOVED = '0' OR e.REMOVED IS NULL) " +
                     "ORDER BY rg_parent.ID, rg_sub.ID, e.NAME";
                 
@@ -1202,6 +1204,8 @@ ResultSet rsRent = stmtRent.executeQuery();
                     json.append("\"kod\":\"").append(escapeJson(rs.getString("kod"))).append("\",");
                     json.append("\"sub_group_id\":").append(rs.getLong("sub_group_id")).append(",");
                     json.append("\"parent_group_id\":").append(rs.getLong("parent_group_id")).append(",");
+                    String parentGroupName = rs.getString("parent_group_name");
+                    json.append("\"parent_group_name\":\"").append(escapeJson(parentGroupName != null ? parentGroupName : "")).append("\",");
                     
                     // PARAM1-4 (wzrost_min, wzrost_max, waga_min, waga_max) - mogą być tekstem lub liczbą
                     String wzrostMinStr = rs.getString("wzrost_min");
