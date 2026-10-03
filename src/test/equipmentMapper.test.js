@@ -33,7 +33,52 @@ describe('equipmentMapper', () => {
             expect(result).toEqual({ TYP_SPRZETU: 'DESKI', KATEGORIA: '' });
         });
 
-        it('should return default for unknown group', () => {
+        it('should map season 27 TOP skis correctly', () => {
+            const result = mapGroupToEquipmentType(123, 130615);
+            expect(result).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: 'TOP' });
+        });
+
+        it('should map season 27 VIP skis correctly', () => {
+            const result = mapGroupToEquipmentType(456, 130679);
+            expect(result).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: 'VIP' });
+        });
+
+        it('should map season 27 NJR skis correctly', () => {
+            const result = mapGroupToEquipmentType(789, 131174);
+            expect(result).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: 'JUNIOR' });
+        });
+
+        it('should map season 27 adult boots correctly', () => {
+            const result = mapGroupToEquipmentType(111, 131361);
+            expect(result).toEqual({ TYP_SPRZETU: 'BUTY', KATEGORIA: 'DOROSLE' });
+        });
+
+        it('should map season 27 junior boots correctly', () => {
+            const result = mapGroupToEquipmentType(112, 131364);
+            expect(result).toEqual({ TYP_SPRZETU: 'BUTY', KATEGORIA: 'JUNIOR' });
+        });
+
+        it('should map season 27 snowboards correctly', () => {
+            const result = mapGroupToEquipmentType(222, 131534);
+            expect(result).toEqual({ TYP_SPRZETU: 'DESKI', KATEGORIA: '' });
+        });
+
+        it('should map season 27 snowboard boots correctly', () => {
+            const result = mapGroupToEquipmentType(333, 131533);
+            expect(result).toEqual({ TYP_SPRZETU: 'BUTY_SNOWBOARD', KATEGORIA: '' });
+        });
+
+        it('should fallback to parentGroupName when ID is unknown', () => {
+            expect(mapGroupToEquipmentType(999, 99999, 'TOP28')).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: 'TOP' });
+            expect(mapGroupToEquipmentType(999, 99999, 'VIP28')).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: 'VIP' });
+            expect(mapGroupToEquipmentType(999, 99999, 'NJR28')).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: 'JUNIOR' });
+            expect(mapGroupToEquipmentType(999, 99999, 'DR28')).toEqual({ TYP_SPRZETU: 'BUTY', KATEGORIA: 'DOROSLE' });
+            expect(mapGroupToEquipmentType(999, 99999, 'JR28')).toEqual({ TYP_SPRZETU: 'BUTY', KATEGORIA: 'JUNIOR' });
+            expect(mapGroupToEquipmentType(999, 99999, 'DESKI28')).toEqual({ TYP_SPRZETU: 'DESKI', KATEGORIA: '' });
+            expect(mapGroupToEquipmentType(999, 99999, 'BUTY S28')).toEqual({ TYP_SPRZETU: 'BUTY_SNOWBOARD', KATEGORIA: '' });
+        });
+
+        it('should return default for unknown group without matching name', () => {
             const result = mapGroupToEquipmentType(999, 99999);
             expect(result).toEqual({ TYP_SPRZETU: 'NARTY', KATEGORIA: '' });
         });

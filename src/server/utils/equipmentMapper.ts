@@ -20,43 +20,76 @@ interface EquipmentTypeMapping {
  */
 export function mapGroupToEquipmentType(
     subGroupId: number | undefined,
-    parentGroupId: number | undefined
+    parentGroupId: number | undefined,
+    parentGroupName?: string
 ): EquipmentTypeMapping {
-    // Mapuj bezpośrednio po parentGroupId (parent grup podrzędnych)
+    // 1. Sprawdź bezpośrednio po parentGroupId (Sezon 27 + Sezon 26 wsteczna kompatybilność)
     switch (parentGroupId) {
-        // NARTY - TOP (parent grup TOP)
-        case 82293:
+        // NARTY - TOP
+        case 130615: // TOP27
+        case 82293:  // TOP (26)
             return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'TOP' };
 
-        // NARTY - VIP (parent grup VIP)
-        case 82412:
+        // NARTY - VIP
+        case 130679: // VIP27
+        case 82412:  // VIP (26)
             return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'VIP' };
 
-        // NARTY - JUNIOR (parent grup JUNIOR)
-        case 82758:
+        // NARTY - JUNIOR
+        case 131174: // NJR27
+        case 82758:  // JUNIOR (26)
             return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'JUNIOR' };
 
-        // BUTY - DOROSLE (parent grup BUTY DOROSLE)
-        case 82738:
+        // BUTY - DOROSLE
+        case 131361: // DR27
+        case 82738:  // BUTY DOROSLE (26)
             return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'DOROSLE' };
 
-        // BUTY - JUNIOR (parent grup BUTY JUNIOR)
-        case 82827:
+        // BUTY - JUNIOR
+        case 131364: // JR27
+        case 82827:  // BUTY JUNIOR (26)
             return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'JUNIOR' };
 
-        // SNOWBOARD - DESKI (parent grup DESKI)
-        case 83762:
+        // SNOWBOARD - DESKI
+        case 131534: // DESKI27
+        case 83762:  // DESKI (26)
             return { TYP_SPRZETU: 'DESKI', KATEGORIA: '' };
 
-        // SNOWBOARD - BUTY S (parent grup BUTY SNOWBOARD)
-        case 83760:
+        // SNOWBOARD - BUTY S
+        case 131533: // BUTY S27
+        case 83760:  // BUTY S (26)
             return { TYP_SPRZETU: 'BUTY_SNOWBOARD', KATEGORIA: '' };
-
-        // Domyślnie (nie powinno się zdarzyć, ale na wszelki wypadek)
-        default:
-            logger.warn('src/server/utils/equipmentMapper.ts: Nieznany parentGroupId:', { parentGroupId, subGroupId });
-            return { TYP_SPRZETU: 'NARTY', KATEGORIA: '' };
     }
+
+    // 2. Fallback po nazwie grupy (zabezpieczenie na kolejne sezony)
+    if (parentGroupName) {
+        const nameUpper = parentGroupName.toUpperCase().trim();
+        if (nameUpper.includes('TOP')) {
+            return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'TOP' };
+        }
+        if (nameUpper.includes('VIP')) {
+            return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'VIP' };
+        }
+        if (nameUpper.includes('NJR') || nameUpper.includes('NARTY J')) {
+            return { TYP_SPRZETU: 'NARTY', KATEGORIA: 'JUNIOR' };
+        }
+        if (nameUpper.includes('DR') || nameUpper.includes('DOROSL') || nameUpper.includes('DOROSŁ')) {
+            return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'DOROSLE' };
+        }
+        if (nameUpper.includes('JR') || nameUpper.includes('JUNIOR')) {
+            return { TYP_SPRZETU: 'BUTY', KATEGORIA: 'JUNIOR' };
+        }
+        if (nameUpper.includes('DESKI') || nameUpper.includes('SNOWBOARD DESKI')) {
+            return { TYP_SPRZETU: 'DESKI', KATEGORIA: '' };
+        }
+        if (nameUpper.includes('BUTY S') || nameUpper.includes('SNOWBOARD BUTY')) {
+            return { TYP_SPRZETU: 'BUTY_SNOWBOARD', KATEGORIA: '' };
+        }
+    }
+
+    // Domyślnie (nie powinno się zdarzyć, ale na wszelki wypadek)
+    logger.warn('src/server/utils/equipmentMapper.ts: Nieznany parentGroupId/parentGroupName:', { parentGroupId, subGroupId, parentGroupName });
+    return { TYP_SPRZETU: 'NARTY', KATEGORIA: '' };
 }
 
 /**
@@ -167,7 +200,8 @@ export function mapFireSnowToSkiData(fireSnowItem: FireSnowEquipment): Equipment
     // Mapuj grupę na TYP_SPRZETU i KATEGORIA
     const typeMapping = mapGroupToEquipmentType(
         fireSnowItem.sub_group_id as number | undefined,
-        fireSnowItem.parent_group_id as number | undefined
+        fireSnowItem.parent_group_id as number | undefined,
+        fireSnowItem.parent_group_name as string | undefined
     );
 
     // Wyciągnij płeć z poziomu (sprawdź obie wersje: poziom i POZIOM)

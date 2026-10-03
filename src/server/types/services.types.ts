@@ -100,6 +100,7 @@ export interface FireSnowEquipment {
   kod?: string;
   obiekt_id?: number;
   parent_group_id?: number;
+  parent_group_name?: string;
   sub_group_id?: number;
   nazwa_sprzetu?: string;
 }

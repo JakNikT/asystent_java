@@ -30,15 +30,15 @@ export const equipmentService = {
                 const fireSnowData = await fireSnowService.getAllEquipment();
                 logger.info(`Received ${fireSnowData.length} equipment records from API`);
 
-                // Definition of groups (same as original)
+                // Definicja grup aktualnego sezonu (SPRZĘT27)
                 const groups: EquipmentGroup[] = [
-                    { id: 82293, name: 'NARTY TOP', type: 'NARTY', category: 'TOP' },
-                    { id: 82412, name: 'NARTY VIP', type: 'NARTY', category: 'VIP' },
-                    { id: 82758, name: 'NARTY JUNIOR', type: 'NARTY', category: 'JUNIOR' },
-                    { id: 82738, name: 'BUTY DOROSLE', type: 'BUTY', category: 'DOROSLE' },
-                    { id: 82827, name: 'BUTY JUNIOR', type: 'BUTY', category: 'JUNIOR' },
-                    { id: 83762, name: 'SNOWBOARD DESKI', type: 'DESKI', category: '' },
-                    { id: 83760, name: 'SNOWBOARD BUTY S', type: 'BUTY_SNOWBOARD', category: '' }
+                    { id: 130615, name: 'NARTY TOP', type: 'NARTY', category: 'TOP' },
+                    { id: 130679, name: 'NARTY VIP', type: 'NARTY', category: 'VIP' },
+                    { id: 131174, name: 'NARTY JUNIOR', type: 'NARTY', category: 'JUNIOR' },
+                    { id: 131361, name: 'BUTY DOROSLE', type: 'BUTY', category: 'DOROSLE' },
+                    { id: 131364, name: 'BUTY JUNIOR', type: 'BUTY', category: 'JUNIOR' },
+                    { id: 131534, name: 'SNOWBOARD DESKI', type: 'DESKI', category: '' },
+                    { id: 131533, name: 'SNOWBOARD BUTY S', type: 'BUTY_SNOWBOARD', category: '' }
                 ];
 
                 const allEquipment: Equipment[] = [];
@@ -46,18 +46,11 @@ export const equipmentService = {
                 for (const group of groups) {
                     const groupData = fireSnowData.filter(item => (item.parent_group_id as number) === group.id);
 
-                    // Preserve detailed logging for HEAD SHAPE in TOP group
-                    if (group.id === 82293) {
-                        const headShapeItems = groupData.filter(item =>
-                            item.nazwa_sprzetu && String(item.nazwa_sprzetu).toUpperCase().includes('HEAD SHAPE')
-                        );
-                        if (headShapeItems.length > 0) {
-                            logger.info(`Found ${headShapeItems.length} HEAD SHAPE items in ${group.name}`);
-                        }
+                    if (groupData.length > 0) {
+                        logger.info(`Found ${groupData.length} items in ${group.name} (ID: ${group.id})`);
+                        const mappedGroupData = groupData.map(item => mapFireSnowToSkiData(item));
+                        allEquipment.push(...mappedGroupData);
                     }
-
-                    const mappedGroupData = groupData.map(item => mapFireSnowToSkiData(item));
-                    allEquipment.push(...mappedGroupData);
                 }
 
                 logger.info(`Total mapped equipment: ${allEquipment.length}`);
