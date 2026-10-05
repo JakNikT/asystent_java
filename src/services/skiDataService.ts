@@ -43,18 +43,18 @@ export class SkiDataService {
         throw new Error(errorMessage);
       }
       
-      const skis = await response.json();
+      const skis = await response.json() as Array<Record<string, unknown>>;
       
       // Przekonwertuj pola numeryczne
       // src/services/skiDataService.ts: Używamy parseFloat dla DLUGOSC aby zachować połówki butów (24.5)
-      const processedSkis = skis.map((ski: any) => ({
-        ...ski,
-        DLUGOSC: parseFloat(ski.DLUGOSC) || 0,  // parseFloat zamiast parseInt dla połówki butów (24.5)
-        ILOSC: parseInt(ski.ILOSC) || 0,
-        WAGA_MIN: parseInt(ski.WAGA_MIN) || 0,
-        WAGA_MAX: parseInt(ski.WAGA_MAX) || 0,
-        WZROST_MIN: parseInt(ski.WZROST_MIN) || 0,
-        WZROST_MAX: parseInt(ski.WZROST_MAX) || 0
+      const processedSkis: SkiData[] = skis.map((ski) => ({
+        ...(ski as unknown as SkiData),
+        DLUGOSC: parseFloat(String(ski.DLUGOSC || '0')) || 0,
+        ILOSC: parseInt(String(ski.ILOSC || '0'), 10) || 0,
+        WAGA_MIN: parseInt(String(ski.WAGA_MIN || '0'), 10) || 0,
+        WAGA_MAX: parseInt(String(ski.WAGA_MAX || '0'), 10) || 0,
+        WZROST_MIN: parseInt(String(ski.WZROST_MIN || '0'), 10) || 0,
+        WZROST_MAX: parseInt(String(ski.WZROST_MAX || '0'), 10) || 0
       }));
       
       this.cache = processedSkis;

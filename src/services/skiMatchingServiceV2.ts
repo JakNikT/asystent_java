@@ -1,6 +1,6 @@
 // Serwis dopasowywania nart - UPROSZCZONA WERSJA
 import type { SkiData, SearchCriteria, SkiMatch, SearchResults, AvailabilityInfo, DetailedCompatibilityInfo, CriteriaDetails, MatchDetails } from '../types/ski.types';
-import { ReservationApiClient } from './reservationApiClient'; // eslint-disable-line @typescript-eslint/no-unused-vars
+import { ReservationApiClient } from './reservationApiClient';
 import { createLogger } from '../utils/logger';
 
 // Konfiguracja tolerancji - uproszczona logika
