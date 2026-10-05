@@ -14,10 +14,9 @@ interface HistoryViewProps {
 
 type HistoryStep = 'search' | 'dates' | 'equipment';
 
-export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
-  // src/components/HistoryView.tsx: Logger dla HistoryView
-  const logger = createLogger('HistoryView');
+const logger = createLogger('HistoryView');
 
+export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   const [step, setStep] = useState<HistoryStep>('search');
   const [searchTerm, setSearchTerm] = useState('');
   const [clients, setClients] = useState<ClientData[]>([]);

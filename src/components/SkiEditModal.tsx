@@ -15,6 +15,8 @@ interface SkiEditModalProps {
   onSave: (skiData: Partial<SkiData>, selectedSkiId?: string, updateAll?: boolean) => Promise<void>;
 }
 
+const logger = createLogger('SkiEditModal');
+
 export const SkiEditModal: React.FC<SkiEditModalProps> = ({
   isOpen,
   mode,
@@ -23,9 +25,6 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
   onClose,
   onSave
 }) => {
-  // src/components/SkiEditModal.tsx: Logger dla SkiEditModal
-  const logger = createLogger('SkiEditModal');
-
   const [formData, setFormData] = useState<Partial<SkiData>>({
     TYP_SPRZETU: 'NARTY',
     KATEGORIA: '',
