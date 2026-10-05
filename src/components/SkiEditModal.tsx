@@ -159,7 +159,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
   };
 
   // Obsługa zmiany pól
-  const handleChange = (field: keyof SkiData, value: any) => {
+  const handleChange = (field: keyof SkiData, value: SkiData[keyof SkiData]) => {
     setFormData(prev => ({
       ...prev,
       [field]: value

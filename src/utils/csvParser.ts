@@ -84,8 +84,8 @@ export class CSVParser {
         this.logger.debug('Wykryto format 16 pól (bez ROK)');
         return {
           ID: fields[0].trim(),
-          TYP_SPRZETU: fields[1].trim() as any,
-          KATEGORIA: fields[2].trim() as any,
+          TYP_SPRZETU: fields[1].trim() as 'NARTY' | 'BUTY' | 'DESKI' | 'BUTY_SNOWBOARD',
+          KATEGORIA: fields[2].trim() as 'VIP' | 'TOP' | 'JUNIOR' | 'DOROSLE' | '',
           MARKA: fields[3].trim(),
           MODEL: fields[4].trim(),
           DLUGOSC: parseFloat(fields[5]) || 0,

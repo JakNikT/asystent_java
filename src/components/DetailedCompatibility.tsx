@@ -5,6 +5,7 @@
 
 import React, { useState, useEffect } from 'react';
 import type { SkiMatch, SearchCriteria, SkiData } from '../types/ski.types';
+import type { AvailabilityInfo, ReservationInfo } from '../services/reservationService';
 import { ReservationApiClient } from '../services/reservationApiClient';
 
 interface DetailedCompatibilityProps {
@@ -19,7 +20,7 @@ interface DetailedCompatibilityProps {
 export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({ 
   match, 
   userCriteria, 
-  skisDatabase,
+  skisDatabase, 
   isRowExpanded = false, 
   onRowToggle,
   isEmployeeMode = false // Domyślnie tryb klienta
@@ -41,7 +42,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
   };
 
   // Stan dla statusów dostępności nart (NOWY SYSTEM 3-KOLOROWY)
-  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, any>>(new Map());
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, AvailabilityInfo>>(new Map());
 
   // Ładowanie statusów dostępności dla wszystkich nart tego samego modelu (NOWY SYSTEM)
   useEffect(() => {
@@ -66,12 +67,12 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
         }
         
         // Użyj dat z formularza użytkownika
-        const startDate = userCriteria!.dateFrom!;
-        const endDate = userCriteria!.dateTo!;
+        const startDate = userCriteria.dateFrom!;
+        const endDate = userCriteria.dateTo!;
         
         console.log('DetailedCompatibility: Sprawdzam dostępność w okresie:', startDate.toLocaleDateString(), '-', endDate.toLocaleDateString());
         
-        const statusMap = new Map<string, any>();
+        const statusMap = new Map<string, AvailabilityInfo>();
         
         // Sprawdź status dla każdej narty tego modelu (NOWY SYSTEM 3-KOLOROWY)
         for (const ski of sameModelSkis) {
@@ -98,7 +99,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
     };
 
     loadAvailabilityStatuses();
-  }, [match.ski.MARKA, match.ski.MODEL, match.ski.DLUGOSC, skisDatabase, userCriteria?.dateFrom, userCriteria?.dateTo]);
+  }, [match.ski.MARKA, match.ski.MODEL, match.ski.DLUGOSC, skisDatabase, userCriteria]);
 
   // Licznik dostępnych nart (zamiast kwadracików)
   const generateAvailabilityCounter = () => {
@@ -143,7 +144,7 @@ export const DetailedCompatibility: React.FC<DetailedCompatibilityProps> = ({
       
       // Dodaj szczegóły rezerwacji - tylko w trybie pracownika
       if (isEmployeeMode && availabilityInfo?.reservations && availabilityInfo.reservations.length > 0) {
-        availabilityInfo.reservations.forEach((res: any) => {
+        availabilityInfo.reservations.forEach((res: ReservationInfo) => {
           detailsForTooltip.push(`  → ${res.clientName}: ${res.startDate.toLocaleDateString()} - ${res.endDate.toLocaleDateString()}`);
         });
       } else if (!isEmployeeMode && availabilityInfo?.reservations && availabilityInfo.reservations.length > 0) {

@@ -4,6 +4,7 @@
  */
 
 import type { ViewType } from '../types/viewTypes.js';
+import type { FormData, TabData } from '../types/dashboard.types.js';
 
 export interface UserSessionData {
   formData: {
@@ -29,11 +30,15 @@ const HISTORY_KEY = 'ski-assistant-history';
 const TABS_STORAGE_KEY = 'ski-assistant-tabs'; // NOWY: dla systemu kart
 const APP_STATE_KEY = 'ski-assistant-app-state'; // NOWY: dla stanu aplikacji (appMode, viewType)
 
+export interface UserSessionFormData extends Partial<FormData> {
+  preferences?: string[];
+}
+
 /**
  * Zapisuje dane sesji użytkownika do LocalStorage
  * console.log(src/utils/localStorage.ts: Zapisuję dane sesji)
  */
-export function saveUserSession(formData: any): void {
+export function saveUserSession(formData: UserSessionFormData): void {
   console.log(`src/utils/localStorage.ts: Zapisuję dane sesji użytkownika`);
   
   try {
@@ -42,12 +47,12 @@ export function saveUserSession(formData: any): void {
         dateFrom: formData.dateFrom || '',
         dateTo: formData.dateTo || '',
         height: {
-          value: formData.height.value || '',
-          unit: formData.height.unit || 'cm'
+          value: formData.height?.value || '',
+          unit: formData.height?.unit || 'cm'
         },
         weight: {
-          value: formData.weight.value || '',
-          unit: formData.weight.unit || 'kg'
+          value: formData.weight?.value || '',
+          unit: formData.weight?.unit || 'kg'
         },
         level: formData.level || '',
         gender: formData.gender || '',
@@ -105,7 +110,7 @@ export function clearUserSession(): void {
  * Zapisuje historię wyszukiwania do LocalStorage
  * console.log(src/utils/localStorage.ts: Zapisuję historię wyszukiwania)
  */
-export function saveSearchHistory(searchData: any): void {
+export function saveSearchHistory(searchData: Record<string, unknown>): void {
   console.log(`src/utils/localStorage.ts: Zapisuję historię wyszukiwania`);
   
   try {
@@ -129,7 +134,7 @@ export function saveSearchHistory(searchData: any): void {
  * Wczytuje historię wyszukiwania z LocalStorage
  * console.log(src/utils/localStorage.ts: Wczytuję historię wyszukiwania)
  */
-export function loadSearchHistory(): any[] {
+export function loadSearchHistory(): Record<string, unknown>[] {
   console.log(`src/utils/localStorage.ts: Wczytuję historię wyszukiwania`);
   
   try {
@@ -139,7 +144,7 @@ export function loadSearchHistory(): any[] {
       return [];
     }
 
-    const history = JSON.parse(storedHistory);
+    const history = JSON.parse(storedHistory) as Record<string, unknown>[];
     console.log(`src/utils/localStorage.ts: Historia wyszukiwania wczytana pomyślnie`);
     return history;
   } catch (error) {
@@ -167,8 +172,15 @@ export function clearSearchHistory(): void {
  * NOWE FUNKCJE DLA SYSTEMU KART (wiele osób)
  */
 
+export interface StoredTabData {
+  id: string;
+  label: string;
+  formData: FormData;
+  selectedStyles: string[];
+}
+
 export interface TabStorageData {
-  tabs: any[];
+  tabs: StoredTabData[];
   activeTabId: string;
   lastUpdate: string;
 }
@@ -176,7 +188,7 @@ export interface TabStorageData {
 /**
  * Zapisuje wszystkie karty do LocalStorage
  */
-export function saveAllTabs(tabs: any[], activeTabId: string): void {
+export function saveAllTabs(tabs: TabData[], activeTabId: string): void {
   console.log(`src/utils/localStorage.ts: Zapisuję ${tabs.length} kart do LocalStorage`);
   
   try {

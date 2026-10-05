@@ -1,6 +1,8 @@
 // System walidacji formularza dla Asystenta Doboru Nart
 // console.log(src/utils/formValidation.ts: System walidacji załadowany)
 
+import type { FormData } from '../types/dashboard.types';
+
 export interface ValidationResult {
   isValid: boolean;
   message: string;
@@ -572,7 +574,7 @@ export function validateDateString(dateStr: string): ValidationResult {
  * Waliduje cały formularz
  * console.log(src/utils/formValidation.ts: Walidacja całego formularza)
  */
-export function validateForm(formData: any): { isValid: boolean; errors: FormErrors } {
+export function validateForm(formData: FormData): { isValid: boolean; errors: FormErrors } {
   console.log('src/utils/formValidation.ts: Rozpoczęcie walidacji całego formularza');
   
   const errors: FormErrors = { ...initialFormErrors };

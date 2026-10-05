@@ -176,7 +176,18 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
       throw new Error(errorMessage);
     }
     
-    const data = await response.json() as { reservations?: Array<{ kod?: string; sprzet?: string; klient?: string; od?: string; do?: string }>; rentals?: Array<{ kod?: string; sprzet?: string; klient?: string; od?: number; do?: number }> };
+    interface PeriodResponseItem {
+      kod?: string;
+      sprzet?: string;
+      klient?: string;
+      typumowy?: string;
+      parent_group_id?: number | null;
+    }
+
+    const data = await response.json() as {
+      reservations?: Array<PeriodResponseItem & { od?: string; do?: string }>;
+      rentals?: Array<PeriodResponseItem & { od?: number | string; do?: number | string }>;
+    };
     
     // Mapuj dane do formatu ReservationData
     const reservations = (data.reservations || []).map((r) => ({
@@ -188,8 +199,8 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
       cena: '0',
       zaplacono: '0',
       numer: '',
-      typumowy: (r as any).typumowy || 'STANDARD', // Użyj typumowy z API jeśli dostępne
-      parent_group_id: (r as any).parent_group_id !== undefined ? (r as any).parent_group_id : null,
+      typumowy: r.typumowy || 'STANDARD',
+      parent_group_id: r.parent_group_id !== undefined ? r.parent_group_id : null,
       source: 'reservation' as const
     }));
     
@@ -197,17 +208,17 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
       kod: r.kod || '',
       sprzet: r.sprzet || '',
       klient: r.klient || '',
-      od: typeof r.od === 'number' ? new Date(r.od).toISOString().split('T')[0] : r.od || '',
+      od: typeof r.od === 'number' ? new Date(r.od).toISOString().split('T')[0]! : r.od || '',
       // Jeśli wypożyczenie jest aktywne (do = 0), ustaw domyślną datę końcową
       // Zapobiega to tworzeniu Invalid Date i błędnym kolorom dostępności
       do: typeof r.do === 'number' && r.do > 0
-        ? new Date(r.do).toISOString().split('T')[0]
-        : new Date(Date.now() + DEFAULT_RENTAL_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        ? new Date(r.do).toISOString().split('T')[0]!
+        : new Date(Date.now() + DEFAULT_RENTAL_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!,
       cena: '0',
       zaplacono: '0',
       numer: '',
-      typumowy: (r as any).typumowy || 'STANDARD', // Użyj typumowy z API jeśli dostępne
-      parent_group_id: (r as any).parent_group_id !== undefined ? (r as any).parent_group_id : null,
+      typumowy: r.typumowy || 'STANDARD',
+      parent_group_id: r.parent_group_id !== undefined ? r.parent_group_id : null,
       source: 'rental' as const
     }));
     

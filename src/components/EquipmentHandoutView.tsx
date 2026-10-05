@@ -399,7 +399,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
         if (a.category !== b.category) return a.category.localeCompare(b.category);
         return a.sprzet.localeCompare(b.sprzet);
       });
-  }, [reservations, serviceDate, selectedCategories, normalizeDate, getEquipmentCategory]);
+  }, [reservations, serviceDate, selectedCategories, normalizeDate]);
 
   // src/components/EquipmentHandoutView.tsx: Obsługa przełączania kategorii
   const handleCategoryToggle = (category: string) => {
