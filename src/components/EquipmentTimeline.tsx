@@ -93,15 +93,6 @@ export const EquipmentTimeline: React.FC<EquipmentTimelineProps> = ({
     return prepareTimelineData(conflictInfo);
   }, [conflictInfo]);
   
-  // Jeśli brak danych, wyświetl komunikat
-  if (conflictInfo.length === 0) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20">
-        <p className="text-white/70">Brak konfliktów w wybranym okresie</p>
-      </div>
-    );
-  }
-  
   // Oblicz zakres dat dla timeline (z marginesem) - jako timestampy
   const timelineStart = useMemo(() => {
     const start = new Date(dateFrom);
@@ -157,6 +148,15 @@ export const EquipmentTimeline: React.FC<EquipmentTimelineProps> = ({
     // Dodaj margines na nagłówek (około 80px) i minimalną wysokość
     return Math.max(400, maxHeight + 100);
   }, [groups, items]);
+
+  // Jeśli brak danych, wyświetl komunikat
+  if (conflictInfo.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20">
+        <p className="text-white/70">Brak konfliktów w wybranym okresie</p>
+      </div>
+    );
+  }
   
   return (
     <div className="w-full bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20 p-4">

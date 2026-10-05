@@ -14,24 +14,26 @@ interface ModalProps {
 }
 
 function Modal({ isOpen, onClose, title, description, children, footer, className }: ModalProps) {
-  if (!isOpen) return null
-
   // Close on Escape key
   React.useEffect(() => {
+    if (!isOpen) return
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose()
     }
     document.addEventListener("keydown", handleEscape)
     return () => document.removeEventListener("keydown", handleEscape)
-  }, [onClose])
+  }, [isOpen, onClose])
 
   // Prevent body scroll when modal is open
   React.useEffect(() => {
+    if (!isOpen) return
     document.body.style.overflow = "hidden"
     return () => {
       document.body.style.overflow = "unset"
     }
-  }, [])
+  }, [isOpen])
+
+  if (!isOpen) return null
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-fade-in">

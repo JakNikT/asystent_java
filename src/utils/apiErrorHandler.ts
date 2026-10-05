@@ -55,7 +55,7 @@ export async function parseApiError(response: Response): Promise<string> {
     
     // If not JSON or parsing failed, return status-based message
     return getStatusBasedMessage(response.status);
-  } catch (parseError) {
+  } catch {
     // If JSON parsing fails (malformed response), return status-based message
     return getStatusBasedMessage(response.status);
   }

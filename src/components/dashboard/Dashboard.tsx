@@ -19,7 +19,6 @@ import TabNavigation from './TabNavigation';
 import DashboardHeader from './DashboardHeader';
 import { DashboardForm } from './DashboardForm';
 import { DashboardActions } from './DashboardActions';
-import { SearchResults } from './SearchResults';
 import PasswordModal from '../PasswordModal';
 import { Layout } from '../layout/Layout';
 import { useDashboardState } from './useDashboardState';
@@ -35,28 +34,21 @@ const Dashboard: React.FC = () => {
     activeTab,
     appMode,
     hasSelectedGroup,
+    setHasSelectedGroup,
     equipmentTypeFilter,
     categoryFilter,
     isPasswordModalOpen,
     passwordError,
     isEmployeeMode,
     skisDatabase,
-    suggestions,
     formData,
-    selectedStyles,
-    searchResults,
-    currentCriteria,
     formErrors,
-    error,
-    isLoading,
-    expandedCategories,
     addNewTab,
     removeTab,
     setActiveTabId,
     handleInputChange,
     handleClear,
     setAppMode,
-    setHasSelectedGroup,
     handleBrowseMode,
     handleBackToSearch,
     handleShowAllEquipment,
@@ -69,13 +61,8 @@ const Dashboard: React.FC = () => {
     handleDateChange,
     handleBrowseCriteriaChange,
     handleFilterSearchChange,
-    toggleCategory,
-    isCardExpandedInRow,
-    toggleCardInRow,
-    handleStyleToggle,
     loadDatabase,
     computedInitialFilter,
-    groupedResults,
     heightRef,
     weightRef,
     levelRef,
@@ -136,28 +123,7 @@ const Dashboard: React.FC = () => {
         {/* Kod został wyłączony - w nowym systemie wyniki są wyświetlane tylko w widoku "Przeglądaj" (BrowseSkisComponent) */}
         {/* Użyj przycisku "Przeglądaj" aby zobaczyć wszystkie narty z filtrowaniem */}
         
-        {/* SearchResults component - wyłączony (wyniki są wyświetlane w widoku "Przeglądaj") */}
-        {false && (
-          <SearchResults
-            searchResults={searchResults}
-            groupedResults={groupedResults}
-            isLoading={isLoading}
-            error={error}
-            formErrors={formErrors}
-            formData={formData}
-            equipmentTypeFilter={equipmentTypeFilter}
-            selectedStyles={selectedStyles}
-            currentCriteria={currentCriteria}
-            skisDatabase={skisDatabase}
-            expandedCategories={expandedCategories}
-            isCardExpandedInRow={isCardExpandedInRow}
-            toggleCategory={toggleCategory}
-            toggleCardInRow={toggleCardInRow}
-            handleStyleToggle={handleStyleToggle}
-            isEmployeeMode={isEmployeeMode}
-            suggestions={suggestions}
-          />
-        )}
+        {/* Wyniki są wyświetlane w widoku "Przeglądaj" (BrowseSkisComponent) */}
       
       {/* Renderowanie komponentu przeglądania */}
       {appMode === 'browse' && (

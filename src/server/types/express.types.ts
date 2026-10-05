@@ -8,18 +8,12 @@ import type { Request, Response, NextFunction } from 'express';
 /**
  * Rozszerzenie Express Request o opcjonalne właściwości
  */
-export interface AppRequest<P = unknown, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> extends Request<P, ResBody, ReqBody, ReqQuery> {
-  // Można dodać niestandardowe właściwości jeśli będą potrzebne
-  // np. user?: User;
-  // np. session?: Session;
-}
+export type AppRequest<P = unknown, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> = Request<P, ResBody, ReqBody, ReqQuery>;
 
 /**
  * Rozszerzenie Express Response o opcjonalne metody pomocnicze
  */
-export interface AppResponse<T = unknown> extends Response<T> {
-  // Można dodać niestandardowe metody jeśli będą potrzebne
-}
+export type AppResponse<T = unknown> = Response<T>;
 
 /**
  * Typ dla Express middleware
