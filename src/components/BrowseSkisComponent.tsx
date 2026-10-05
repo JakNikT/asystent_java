@@ -18,6 +18,8 @@ import {
   validateGenderRealtime
 } from '../utils/formValidation';
 
+const logger = createLogger('BrowseSkisComponent');
+
 interface TabInfo {
   id: string;
   label: string;
@@ -87,9 +89,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   formData,
   onDateChange
 }) => {
-  // src/components/BrowseSkisComponent.tsx: Logger dla BrowseSkisComponent
-  const logger = createLogger('BrowseSkisComponent');
-
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'DLUGOSC',
     direction: 'asc'
@@ -335,7 +334,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     logger.info('BrowseSkisComponent: �� Ręczne odświeżanie dostępności...');
     await loadAvailabilityStatuses();
     showSuccess('Dostępność zaktualizowana');
-  }, [loadAvailabilityStatuses]);
+  }, [loadAvailabilityStatuses, showSuccess]);
 
   // NOWA ZMIANA: Efekt do obliczania kolorów dopasowania
   useEffect(() => {

@@ -63,6 +63,22 @@ const EQUIPMENT_CATEGORIES: Record<number, string> = {
   84312: 'ski_mojo' // SKI mojo
 };
 
+const getEquipmentCategory = (parentGroupId: number | null | undefined, sprzet?: string): string => {
+  if (parentGroupId) {
+    const category = EQUIPMENT_CATEGORIES[parentGroupId];
+    if (category) return category;
+  }
+  // Fallback: użyj nazwy sprzętu
+  if (sprzet) {
+    const lower = sprzet.toLowerCase();
+    if (lower.includes('narty')) return 'narty';
+    if (lower.includes('buty') && !lower.includes('sb') && !lower.includes('snowboard')) return 'buty';
+    if (lower.includes('buty') && (lower.includes('sb') || lower.includes('snowboard'))) return 'buty_sb';
+    if (lower.includes('deska')) return 'deska';
+  }
+  return 'inne';
+};
+
 // src/components/EquipmentHandoutView.tsx: Komponent do wydawania sprzętu klientom - zoptymalizowany pod mobile
 export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ reservations, onBack, startInServiceMode = false, startInCheckMode = false }) => {
   // src/components/EquipmentHandoutView.tsx: Wczytaj stan z localStorage przy inicjalizacji
@@ -92,24 +108,6 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
   // src/components/EquipmentHandoutView.tsx: Stany dla pobierania rezerwacji z API (dla sekcji wydane)
   const [reservationsForDate, setReservationsForDate] = useState<ReservationData[]>([]);
   const [isLoadingReservations, setIsLoadingReservations] = useState<boolean>(false);
-
-  // src/components/EquipmentHandoutView.tsx: Funkcja pomocnicza do kategoryzacji sprzętu
-  const getEquipmentCategory = (parentGroupId: number | null | undefined, sprzet?: string): string => {
-    if (parentGroupId) {
-      const category = EQUIPMENT_CATEGORIES[parentGroupId];
-      if (category) return category;
-    }
-    // Fallback: użyj nazwy sprzętu
-    if (sprzet) {
-      const lower = sprzet.toLowerCase();
-      if (lower.includes('narty')) return 'narty';
-      if (lower.includes('buty') && !lower.includes('sb') && !lower.includes('snowboard')) return 'buty';
-      if (lower.includes('buty') && (lower.includes('sb') || lower.includes('snowboard'))) return 'buty_sb';
-      if (lower.includes('deska')) return 'deska';
-    }
-    return 'inne';
-  };
-
   // src/components/EquipmentHandoutView.tsx: Synchronizuj tryby z propsami przy zmianie
   useEffect(() => {
     // Gdy zmienia się prop startInServiceMode, zaktualizuj stan serviceMode
