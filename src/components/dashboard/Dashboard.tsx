@@ -73,8 +73,8 @@ const Dashboard: React.FC = () => {
   return (
     <Layout
       navigation={
-        /* Tabs Navigation - System kart responsywny, scrollowalny poziomo na mobile - tylko w trybie przeglądaj */
-        appMode === 'browse' ? (
+        /* Tabs Navigation - System kart osób i przycisk logowania pracownika */
+        appMode !== 'history' && appMode !== 'reservations' ? (
           <TabNavigation
             tabs={tabs}
             activeTabId={activeTabId}
@@ -114,6 +114,7 @@ const Dashboard: React.FC = () => {
             onBrowse={() => handleBrowseMode(false)}
             onHistory={() => setAppMode('history')}
             onReservations={() => setAppMode('reservations')}
+            onToggleEmployeeMode={handleToggleEmployeeMode}
           />
         </DashboardHeader>
       }
@@ -154,6 +155,7 @@ const Dashboard: React.FC = () => {
               onRemoveTab={removeTab}
               onRefreshData={loadDatabase}
               isEmployeeMode={isEmployeeMode}
+              onToggleEmployeeMode={handleToggleEmployeeMode}
               onCriteriaChange={handleBrowseCriteriaChange}
               onFilterSearchChange={handleFilterSearchChange}
               filterSearchStates={activeTab.filterSearchStates}

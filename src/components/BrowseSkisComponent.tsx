@@ -37,6 +37,7 @@ interface BrowseSkisComponentProps {
   onRemoveTab?: (tabId: string) => void;
   onRefreshData?: () => Promise<void>;
   isEmployeeMode?: boolean;
+  onToggleEmployeeMode?: () => void;
   onCriteriaChange?: (criteria: Partial<SearchCriteria>) => void;
   onFilterSearchChange?: (filterKey: FilterKey, field: 'searchTerm' | 'searchFlex' | 'searchDlugosc', value: string) => void; // NOWE: Callback do aktualizacji stanu wyszukiwania
   filterSearchStates?: Record<FilterKey, FilterSearchState>; // NOWE: Stan pól wyszukiwania z Dashboard
@@ -81,6 +82,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   onRemoveTab,
   onRefreshData,
   isEmployeeMode = false,
+  onToggleEmployeeMode,
   onCriteriaChange,
   onFilterSearchChange,
   filterSearchStates,
@@ -1071,8 +1073,21 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                   </div>
                 </div>
 
-                {/* 4. Przycisk powrotu */}
-                <div className="flex-shrink-0 ml-auto">
+                {/* 4. Przycisk powrotu i logowania pracownika */}
+                <div className="flex-shrink-0 ml-auto flex items-center gap-2">
+                  {onToggleEmployeeMode && (
+                    <button
+                      onClick={onToggleEmployeeMode}
+                      className={`px-4 py-2 rounded-lg text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                        isEmployeeMode
+                          ? 'bg-green-600 hover:bg-green-700 text-white border border-green-500'
+                          : 'bg-blue-600 hover:bg-blue-700 text-white border border-blue-500'
+                      }`}
+                      title={isEmployeeMode ? 'Tryb pracownika aktywny - kliknij aby wylogować' : 'Kliknij aby zalogować się jako pracownik (PIN)'}
+                    >
+                      <span>{isEmployeeMode ? '🔓 Pracownik' : '🔒 Zaloguj'}</span>
+                    </button>
+                  )}
                   <button
                     onClick={onBack}
                     className="bg-[#0f2744]/50 hover:bg-[#0f2744]/70 text-white px-6 py-2 rounded-lg border border-white/5 hover:border-white/20 text-sm font-bold uppercase tracking-wider transition-all shadow-sm flex items-center justify-center gap-2"
