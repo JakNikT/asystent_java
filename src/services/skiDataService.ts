@@ -10,6 +10,7 @@ import { toastService } from '../hooks/useToast';
 import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 import type { SkiData } from '../types/ski.types';
 import { CSVParser } from '../utils/csvParser';
+import { AuthService } from './authService';
 
 const API_BASE_URL = '/api';
 const logger = createLogger('SkiDataService');
@@ -105,7 +106,8 @@ export class SkiDataService {
       const response = await fetch(`${API_BASE_URL}/skis/${id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...AuthService.getAuthHeaders()
         },
         body: JSON.stringify(updates)
       });
@@ -143,7 +145,8 @@ export class SkiDataService {
       const response = await fetch(`${API_BASE_URL}/skis/bulk`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...AuthService.getAuthHeaders()
         },
         body: JSON.stringify({ ids, updates })
       });

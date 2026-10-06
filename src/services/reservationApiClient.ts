@@ -7,6 +7,7 @@ import { createLogger } from '../utils/logger';
 import { toastService } from '../hooks/useToast';
 import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 import type { ReservationData, ReservationInfo, AvailabilityInfo } from './reservationService';
+import { AuthService } from './authService';
 
 const API_BASE_URL = '/api';
 const logger = createLogger('ReservationApiClient');
@@ -52,7 +53,9 @@ export class ReservationApiClient {
 
     try {
       logger.info('Pobieram rezerwacje z serwera...');
-      const response = await fetch(`${API_BASE_URL}/reservations`);
+      const response = await fetch(`${API_BASE_URL}/reservations`, {
+        headers: AuthService.getAuthHeaders()
+      });
       
       if (!response.ok) {
         const errorMessage = await parseApiError(response);
@@ -417,7 +420,8 @@ static async getSkiAvailabilityStatus(
       const response = await fetch(`${API_BASE_URL}/reservations`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...AuthService.getAuthHeaders()
         },
         body: JSON.stringify(reservationData)
       });
@@ -453,7 +457,8 @@ static async getSkiAvailabilityStatus(
       const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          ...AuthService.getAuthHeaders()
         },
         body: JSON.stringify(updates)
       });
@@ -486,7 +491,8 @@ static async getSkiAvailabilityStatus(
       logger.info('Usuwanie rezerwacji:', id);
       
       const response = await fetch(`${API_BASE_URL}/reservations/${id}`, {
-        method: 'DELETE'
+        method: 'DELETE',
+        headers: AuthService.getAuthHeaders()
       });
       
       if (!response.ok) {

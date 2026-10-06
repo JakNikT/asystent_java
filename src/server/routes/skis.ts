@@ -4,12 +4,13 @@
 
 import express from 'express';
 import { equipmentController } from '../controllers/equipmentController.js';
+import { requireEmployeeAuth } from '../middleware/authMiddleware.js';
 
 const router = express.Router();
 
 router.get('/', equipmentController.getAll);
-router.put('/bulk', equipmentController.bulkUpdate); // Must be before /:id
-router.put('/:id', equipmentController.update);
+router.put('/bulk', requireEmployeeAuth, equipmentController.bulkUpdate); // Must be before /:id
+router.put('/:id', requireEmployeeAuth, equipmentController.update);
 
 export default router;
 

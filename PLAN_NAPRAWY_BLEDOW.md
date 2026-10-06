@@ -10,9 +10,9 @@
 | Faza | Zakres | Priorytet | Szacowany czas |
 | :--- | :--- | :--- | :--- |
 | **Faza 1** | Krytyczne Bezpieczeństwo (RODO & Poświadczenia) | 🔴 Najwyższy | ✅ UKOŃCZONE (Commit aafb3b5) |
-| **Faza 2** | Poprawność i Stabilność Backend & Mostka Java | 🟠 Wysoki | ✅ UKOŃCZONE |
-| **Faza 3** | Uwierzytelnianie Personelu i Kontrola Dostępu | 🟠 Wysoki | 4 - 6 godzin |
-| **Faza 4** | Testy Algorytmu Doboru Sprzętu i Pokrycie Kodu | 🟡 Średni | 4 - 6 godzin |
+| **Faza 2** | Poprawność i Stabilność Backend & Mostka Java | 🟠 Wysoki | ✅ UKOŃCZONE (Commit b757589) |
+| **Faza 3** | Uwierzytelnianie Personelu i Kontrola Dostępu | 🟠 Wysoki | ✅ UKOŃCZONE |
+| **Faza 4** | Testy Algorytmu Doboru Sprzętu i Pokrycie Kodu | 🟡 Średni | ✅ UKOŃCZONE |
 | **Faza 5** | Podatności Zależności npm & DevOps | 🟡 Średni | 2 - 3 godziny |
 
 ---
@@ -265,12 +265,13 @@ Przed uznaniem aplikacji za gotową do produkcji, każdy z poniższych punktów 
 
 - [x] Pliki z danymi klientów usunięte z `public/`, baza sprzętu w `data/` — brak możliwości pobrania `rezerwacja.csv` przez URL serwera (`dist/data` nie istnieje). ✅
 - [x] Hasło do bazy danych usunięte z plików śledzonych przez Gita (`db-config.example.js` + `.gitignore`). ✅
-- [ ] Kod PIN `"0000"` usunięty z kodu frontendu — autoryzacja odbywa się przez backend.
+- [x] Kod PIN `"0000"` usunięty z kodu frontendu — autoryzacja odbywa się przez backend (HMAC tokeny, `authController`, `requireEmployeeAuth`). ✅
 - [x] Źródło ID sprzętu potwierdzone w FireSnow (`obiekt_id`), martwy kod generatora/dodawania usunięty. ✅
 - [x] `FireSnowBridge.java` posiada pulę wątków (`newFixedThreadPool`) i nasłuchuje na `127.0.0.1`. ✅
 - [x] Kontrolery Express przekazują błędy do `next(error)` i centralnego middleware. ✅
-- [ ] Pakiet `@vitest/coverage-v8` zainstalowany — polecenie `npm run test:coverage` działa poprawnie.
-- [ ] Napisano zestaw testów dla `skiMatchingServiceV2.ts` (minimum 15 scenariuszy).
-- [ ] `npx eslint .` przechodzi z wynikiem 0 błędów.
-- [ ] `npx vite build` kończy się sukcesem.
-- [ ] `npx vitest run` kończy się zaliczeniem wszystkich testów.
+- [x] Pakiet `@vitest/coverage-v8` zainstalowany — polecenie `npm run test:coverage` działa poprawnie (raportuje pokrycie). ✅
+- [x] Napisano zestaw testów dla `skiMatchingServiceV2.ts` oraz `authUtils.ts` (66 testów w 5 plikach testowych). ✅
+- [x] `npx eslint .` przechodzi z wynikiem 0 błędów. ✅
+- [x] `npm run build` (`tsc -b && vite build`) kończy się sukcesem. ✅
+- [x] `npm run build:server` (`tsc -p tsconfig.server.json`) kończy się sukcesem. ✅
+- [x] `npx vitest run` kończy się zaliczeniem wszystkich testów (66 passed). ✅

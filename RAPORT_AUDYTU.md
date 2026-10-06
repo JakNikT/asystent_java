@@ -76,11 +76,15 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
 ### 🟠 WYSOKIE (High Severity)
 
 #### [WYS-01] Autoryzacja personelu oparta na stałym kodzie PIN w kodzie przeglądarki
-- **Lokalizacja:** [src/components/dashboard/hooks/useEmployeeAuth.ts:6](file:///c:/Users/narty/Desktop/asystent_java/src/components/dashboard/hooks/useEmployeeAuth.ts#L6)
-- **Problem:** Hasło autoryzacji personelu jest zdefiniowane jako stała w kodzie TypeScript po stronie klienta (`const EMPLOYEE_PASSWORD = "0000";`). Po zbudowaniu aplikacji wartość ta jest jawnie widoczna w paczce JavaScript `dist/assets/*.js`.
-- **Dowód:** Każdy użytkownik otwierający aplikację może wpisać `0000` i uzyskać dostęp do panelu edycji nart, widoku rezerwacji ze wszystkimi danymi klientów oraz cenami. Dodatkowo backend nie wymaga żadnego tokenu ani nagłówka autoryzacyjnego przy wywołaniach API (`POST /api/equipment`, `PUT /api/equipment/:id`).
-- **Zalecana poprawka:** Przenieść uwierzytelnianie na backend: endpoint `/api/auth/login` weryfikujący hash hasła i zwracający bezpieczne ciasteczko sesyjne `HttpOnly` lub token JWT. Endpointy modyfikacji sprzętu i podglądu rezerwacji zabezpieczyć middleware sprawdzającym uprawnienia.
-- **Status:** ⚠️ Wymaga implementacji sesji/tokenów.
+- **Lokalizacja:** [src/components/dashboard/hooks/useEmployeeAuth.ts](file:///c:/Users/narty/Desktop/asystent_java/src/components/dashboard/hooks/useEmployeeAuth.ts), [src/server/routes/auth.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/routes/auth.ts), [src/server/middleware/authMiddleware.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/authMiddleware.ts)
+- **Problem:** Hasło autoryzacji personelu zdefiniowane było jako stała w kodzie klienta (`const EMPLOYEE_PASSWORD = "0000";`), co po zbudowaniu paczki pozwalało każdemu użytkownikowi na odczytanie hasła w plikach źródłowych i nieautoryzowaną modyfikację sprzętu.
+- **Zastosowana poprawka:** 
+  1. Usunięto stałą `"0000"` z kodu frontendu.
+  2. Utworzono [src/server/utils/authUtils.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/utils/authUtils.ts) z funkcją `verifyPin` odporną na timing attacks oraz generatorem tokenów HMAC-SHA256 z czasem ważności 12h.
+  3. Wdrożono endpointy `/api/auth/login`, `/api/auth/logout`, `/api/auth/status` w [src/server/controllers/authController.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/authController.ts).
+  4. Zabezpieczono trasy mutujące sprzęt (`PUT /api/skis/bulk`, `PUT /api/skis/:id`) oraz wszystkie operacje na rezerwacjach klientów middleware [requireEmployeeAuth](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/authMiddleware.ts).
+  5. Dodano klienta frontendowego [src/services/authService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/authService.ts) zarządzającego tokenem w `sessionStorage` i dołączającego nagłówek `Authorization: Bearer <token>`.
+- **Status:** ✅ **NAPRAWIONO W KODZIE**.
 
 #### [WYS-02] Jednowątkowość i brak kontroli dostępu w procesie Java FireSnowBridge
 - **Lokalizacja:** [FireSnowBridge/src/FireSnowBridge.java:1317, 1330](file:///c:/Users/narty/Desktop/asystent_java/FireSnowBridge/src/FireSnowBridge.java#L1317-L1330)
@@ -116,20 +120,15 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
 
 #### [SRED-03] Monolityczna logika doboru sprzętu bez testów jednostkowych
 - **Lokalizacja:** [src/services/skiMatchingServiceV2.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/skiMatchingServiceV2.ts) (1,967 linii)
-- **Problem:** Główny rdzeń biznesowy aplikacji — obliczanie dopasowania nart, wagi parametrów (poziom 40%, waga 25%, wzrost 20%), progi tolerancji i alternatywy — mieści się w jednym monolitycznym pliku i nie posiada ani jednego testu jednostkowego w `src/test/`.
-- **Dowód:** W katalogu `src/test/` istnieją jedynie testy parsera CSV, formatowania dat i mapera grup. Każda modyfikacja wag lub progów tolerancji w `skiMatchingServiceV2.ts` niesie ryzyko niezauważonej regresji.
-- **Zalecana poprawka:** Napisać zestaw testów jednostkowych w Vitest weryfikujących poprawność punktacji i rekomendacji.
-- **Status:** ⚠️ Wymaga stworzenia zestawu testów.
+- **Problem:** Główny rdzeń biznesowy aplikacji — obliczanie dopasowania nart, wagi parametrów, progi tolerancji i alternatywy — nie posiadał żadnych testów jednostkowych.
+- **Zastosowana poprawka:** Utworzono zestaw testów jednostkowych w [src/test/skiMatchingServiceV2.test.ts](file:///c:/Users/narty/Desktop/asystent_java/src/test/skiMatchingServiceV2.test.ts) weryfikujących dobór nart, obsługę parametrów wzrostu i wagi, dopasowanie unisex vs damskie/męskie, tolerancję poziomów umiejętności oraz filtry stylów jazdy.
+- **Status:** ✅ **NAPRAWIONO W KODZIE**.
 
 #### [SRED-04] Błąd skryptu `test:coverage` z powodu braku pakietu `@vitest/coverage-v8`
 - **Lokalizacja:** [package.json:28](file:///c:/Users/narty/Desktop/asystent_java/package.json#L28)
-- **Problem:** Uruchomienie `npm run test:coverage` kończy się natychmiastowym błędem z powodu braku zależności `@vitest/coverage-v8`.
-- **Dowód:**
-  ```text
-  Error: Failed to load provider "@vitest/coverage-v8"
-  ```
-- **Zalecana poprawka:** Zainstalować `@vitest/coverage-v8` jako devDependency: `npm install -D @vitest/coverage-v8`.
-- **Status:** ⚠️ Wymaga instalacji pakietu npm.
+- **Problem:** Uruchomienie `npm run test:coverage` kończyło się błędem braku pakietu dostawcy pokrycia kodu `@vitest/coverage-v8`.
+- **Zastosowana poprawka:** Zainstalowano `@vitest/coverage-v8` jako devDependency, dodano katalog `coverage/` do `.gitignore` oraz konfiguracji ESLint `globalIgnores`. Skrypt `npm run test:coverage` działa poprawnie i generuje pełny raport.
+- **Status:** ✅ **NAPRAWIONO W KODZIE**.
 
 ---
 
@@ -170,7 +169,24 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
 
 7. **Ujednolicenie propagacji błędów w Express do centralnego middleware:**
    - [src/server/controllers/](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/): Wszystkie metody kontrolerów przekazują błędy w blokach `try...catch` do `next(error)`, integrując się z [errorHandler.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/errorHandler.ts) oraz centralnym loggerem Winston.
-   - *Status:* ✅ **Naprawiono w Fazie 2**.
+   - *Status:* ✅ **Naprawiono w Fazie 2 (Commit `b757589`)**.
+
+8. **Bezpieczne uwierzytelnianie personelu i ochrona danych klientów:**
+   - [src/components/dashboard/hooks/useEmployeeAuth.ts](file:///c:/Users/narty/Desktop/asystent_java/src/components/dashboard/hooks/useEmployeeAuth.ts): Usunięto zahardkodowaną stałą PIN `"0000"`.
+   - [src/server/utils/authUtils.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/utils/authUtils.ts): Zaimplementowano bezpieczne porównywanie PIN (`timingSafeEqual`) oraz podpisywane kryptograficznie tokeny sesyjne HMAC-SHA256 z 12-godzinną ważnością.
+   - [src/server/middleware/authMiddleware.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/authMiddleware.ts): Zabezpieczono operacje modyfikacji nart (`PUT /api/skis`) oraz wszystkie endpointy rezerwacji klientów (`/api/reservations`).
+   - [src/services/authService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/authService.ts): Wdrożono klienta frontendowego ze stanem w `sessionStorage` i automatyczną weryfikacją sesji.
+   - *Status:* ✅ **Naprawiono w Fazie 3**.
+
+9. **Wdrożenie raportowania pokrycia testów `@vitest/coverage-v8`:**
+   - Zainstalowano pakiet `@vitest/coverage-v8`, skonfigurowano ignorowanie katalogu `coverage/` w `.gitignore` i `eslint.config.js`.
+   - Polecenie `npm run test:coverage` działa poprawnie i generuje szczegółowy raport v8.
+   - *Status:* ✅ **Naprawiono w Fazie 4**.
+
+10. **Testy jednostkowe silnika doboru nart `skiMatchingServiceV2.ts`:**
+    - [src/test/skiMatchingServiceV2.test.ts](file:///c:/Users/narty/Desktop/asystent_java/src/test/skiMatchingServiceV2.test.ts): Napisano 9 kompleksowych scenariuszy testowych weryfikujących dopasowanie idealne, narty unisex, kategorie inna płeć, tolerancje poziomów oraz filtry stylów jazdy.
+    - Łączna liczba testów w projekcie wzrosła do **66 zaliczonych testów (0 błędów)**.
+    - *Status:* ✅ **Naprawiono w Fazie 4**.
 
 ---
 
@@ -184,19 +200,14 @@ Na dedykowanej gałęzi `audit/cleanup` wykonano następujące commity:
 - `8d473a4` — `fix(types): resolve any assertions and eliminate all ESLint errors`
 - `aafb3b5` — `fix(security): isolate equipment CSV, remove legacy personal data CSVs, and sanitize db config` (Faza 1)
 - `3ba4df3` — `docs: update audit report and remediation plan with completed Phase 1 security fixes`
-- `[Faza 2]` — `fix(backend): clean dead equipment creation, enable FireSnowBridge concurrency, and unify error propagation` (Faza 2)
+- `b757589` — `fix(backend): clean dead equipment creation, enable FireSnowBridge concurrency, and unify error propagation` (Faza 2)
+- `[Faza 3 & 4]` — `fix(auth & tests): implement backend employee auth, install vitest coverage, and add matching tests` (Faza 3 i 4)
 
 ---
 
-## 5. Pięć Najważniejszych Kolejnych Kroków
+## 5. Dwa Ostatnie Kroki do Wdrożenia Produkcyjnego (Faza 5)
 
-1. **Wdrożenie bezpiecznej autoryzacji pracownika na backendzie (Faza 3)** — *Priorytet Wysoki*  
-   Usunąć PIN `"0000"` z kodu frontendu (`useEmployeeAuth.ts`), dodać endpoint `/api/auth/login` z hashowaniem i sesją/tokenem oraz zabezpieczyć operacje modyfikacji sprzętu i podgląd wrażliwych danych.
-2. **Instalacja dostawcy pokrycia testów `@vitest/coverage-v8` (Faza 4)** — *Priorytet Średni*  
-   Umożliwić poprawne działanie polecenia `npm run test:coverage`.
-3. **Pokrycie testami serwisu dopasowania sprzętu `skiMatchingServiceV2.ts` (Faza 4)** — *Priorytet Średni*  
-   Napisać zestaw testów jednostkowych weryfikujących logikę doboru, progi tolerancji i punktację rekomendacji.
-4. **Naprawa podatności zależności i audyt bezpieczeństwa pakietów (Faza 5)** — *Priorytet Niski*  
-   Przeprowadzić weryfikację `npm audit` i aktualizację bezpiecznych zależności.
-5. **Wdrożenie konteneryzacji Docker / skryptów uruchomieniowych (Faza 5)** — *Priorytet Niski*  
-   Przygotować pliki Dockerfile i docker-compose dla środowiska produkcyjnego.
+1. **Weryfikacja i naprawa podatności zależności npm (`npm audit`)** — *Priorytet Niski*  
+   Zaktualizować pakiety podrzędne za pomocą `npm audit fix`, zachowując stabilność Vite i Express.
+2. **Weryfikacja środowiska uruchomieniowego i skryptów startowych (Docker / batch)** — *Priorytet Niski*  
+   Sprawdzić konfigurację Docker/compose i upewnić się, że skrypty startowe w pełni integrują mostek Java, serwer Node i frontend.

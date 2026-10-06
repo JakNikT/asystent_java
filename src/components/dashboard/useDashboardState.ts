@@ -80,8 +80,8 @@ export interface DashboardStateReturn {
   groupMatchesByModel: (matches: SkiMatch[]) => SkiMatch[];
 
   // Funkcje pracownika
-  handlePasswordSubmit: (password: string) => void;
-  handleToggleEmployeeMode: () => void;
+  handlePasswordSubmit: (password: string) => Promise<void> | void;
+  handleToggleEmployeeMode: () => Promise<void> | void;
   setIsPasswordModalOpen: (open: boolean) => void;
   setPasswordError: (error: string) => void;
 
