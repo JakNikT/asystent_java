@@ -9,11 +9,13 @@ import rentalsRouter from './rentals.js';
 import skisRouter from './skis.js';
 import historyRouter from './history.js';
 import fireSnowRouter from './firesnow.js';
+import authRouter from './auth.js';
 import { fireSnowController } from '../controllers/fireSnowController.js';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 
 const router = express.Router();
 
+router.use('/auth', authRouter);
 router.use('/reservations', reservationsRouter);
 router.use('/wypozyczenia', rentalsRouter);
 router.use('/skis', skisRouter);

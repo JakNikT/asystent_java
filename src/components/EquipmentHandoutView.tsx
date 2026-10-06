@@ -3,6 +3,7 @@ import type { ReservationData } from '../services/reservationService';
 import { createLogger } from '../utils/logger';
 import { DatePickerButton } from './DatePickerButton';
 import { loadAppState, saveAppState } from '../utils/localStorage';
+import { AuthService } from '../services/authService';
 
 // src/components/EquipmentHandoutView.tsx: Logger dla EquipmentHandoutView
 const logger = createLogger('EquipmentHandoutView');
@@ -179,7 +180,9 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
       setIsLoadingReservations(true);
       try {
         logger.info('EquipmentHandoutView: Pobieranie rezerwacji dla daty z API', selectedDate);
-        const response = await fetch(`${API_BASE_URL}/reservations/date?date=${selectedDate}`);
+        const response = await fetch(`${API_BASE_URL}/reservations/date?date=${selectedDate}`, {
+          headers: AuthService.getAuthHeaders()
+        });
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 
 interface PasswordModalProps {
   onClose: () => void;
-  onSubmit: (password: string) => void;
+  onSubmit: (password: string) => Promise<void> | void;
   errorMessage?: string;
 }
 

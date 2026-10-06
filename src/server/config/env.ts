@@ -54,6 +54,11 @@ export const config = {
 
     db: dbConfig,
 
+    auth: {
+        employeePin: process.env.EMPLOYEE_PIN || '0000',
+        secret: process.env.AUTH_SECRET || 'firesnow-asystent-jwt-secret-key-2026'
+    },
+
     paths: {
         reservationsCsv: path.join(rootDir, 'data', 'rezerwacja.csv'),
         rentalsCsv: path.join(rootDir, 'data', 'wyp.csv'),
