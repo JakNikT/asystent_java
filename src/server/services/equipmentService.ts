@@ -8,7 +8,7 @@ import { fireSnowService } from './fireSnowService.js';
 import { csvService } from './csvService.js';
 import { mapFireSnowToSkiData } from '../utils/equipmentMapper.js';
 import logger from '../config/logger.js';
-import type { Equipment, CreateEquipmentData, UpdateEquipmentData } from '../types/services.types.js';
+import type { Equipment, UpdateEquipmentData } from '../types/services.types.js';
 
 /**
  * Definicja grup sprzętu
@@ -65,52 +65,6 @@ export const equipmentService = {
         logger.info('Loading equipment from CSV');
         const csvData = await csvService.getSkis();
         return csvData as unknown as Equipment[];
-    },
-
-    /**
-     * Tworzy nowy sprzęt
-     */
-    async create(data: CreateEquipmentData): Promise<Equipment> {
-        const csvData = await csvService.getSkis();
-        const skis = csvData as unknown as Equipment[];
-
-        // Generate ID
-        const maxId = Math.max(...skis.map(ski => parseInt(ski.ID) || 0), 0);
-        const newId = (maxId + 1).toString();
-
-        // Generate Code
-        let newKod = data.KOD || '';
-        if (!newKod) {
-            const existingCodes = skis.map(ski => ski.KOD).filter(Boolean);
-            let codeNum = 1;
-            do {
-                newKod = `NEW_${String(codeNum).padStart(3, '0')}`;
-                codeNum++;
-            } while (existingCodes.includes(newKod));
-        }
-
-        const newSki: Equipment = {
-            ID: newId,
-            TYP_SPRZETU: data.TYP_SPRZETU || 'NARTY',
-            KATEGORIA: data.KATEGORIA || '',
-            MARKA: data.MARKA || '',
-            MODEL: data.MODEL || '',
-            DLUGOSC: data.DLUGOSC || 0,
-            ILOSC: 1,
-            POZIOM: data.POZIOM,
-            PLEC: data.PLEC || 'U',
-            WAGA_MIN: data.WAGA_MIN,
-            WAGA_MAX: data.WAGA_MAX,
-            WZROST_MIN: data.WZROST_MIN,
-            WZROST_MAX: data.WZROST_MAX,
-            PRZEZNACZENIE: data.PRZEZNACZENIE || '',
-            ATUTY: data.ATUTY || '',
-            KOD: newKod
-        };
-
-        skis.push(newSki);
-        await csvService.saveSkis(skis);
-        return newSki;
     },
 
     /**

@@ -3,7 +3,7 @@
  */
 
 import { historyService } from '../services/historyService.js';
-import logger from '../config/logger.js';
+import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 
 export const historyController = {
@@ -12,21 +12,21 @@ export const historyController = {
      */
     async searchClients(
         req: AppRequest<unknown, unknown, unknown, { nazwisko?: string }>,
-        res: AppResponse
+        res: AppResponse,
+        next: NextFunction
     ): Promise<void> {
         try {
             const data = await historyService.searchClients(req.query.nazwisko || '');
             res.json(data);
         } catch (error) {
-            logger.error('Error searching clients', { error });
-            res.status(500).json({ error: 'Błąd wyszukiwania klientów' });
+            next(error);
         }
     },
 
     /**
      * Pobiera daty dla danego klienta
      */
-    async getClientDates(req: AppRequest<{ id: string }>, res: AppResponse): Promise<void> {
+    async getClientDates(req: AppRequest<{ id: string }>, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const clientId = parseInt(req.params.id);
             if (isNaN(clientId)) {
@@ -37,8 +37,7 @@ export const historyController = {
             const data = await historyService.getClientDates(clientId);
             res.json(data);
         } catch (error) {
-            logger.error('Error fetching client dates', { error });
-            res.status(500).json({ error: 'Błąd pobierania dat klienta' });
+            next(error);
         }
     },
 
@@ -47,7 +46,8 @@ export const historyController = {
      */
     async getClientEquipment(
         req: AppRequest<{ id: string }, unknown, unknown, { od?: string; do?: string; sezon?: string }>,
-        res: AppResponse
+        res: AppResponse,
+        next: NextFunction
     ): Promise<void> {
         try {
             const clientId = parseInt(req.params.id);
@@ -65,8 +65,7 @@ export const historyController = {
             const data = await historyService.getClientEquipment(clientId, od, doDate, sezon);
             res.json(data);
         } catch (error) {
-            logger.error('Error fetching client equipment', { error });
-            res.status(500).json({ error: 'Błąd pobierania sprzętu klienta' });
+            next(error);
         }
     }
 };

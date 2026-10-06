@@ -85,39 +85,34 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
 #### [WYS-02] Jednowątkowość i brak kontroli dostępu w procesie Java FireSnowBridge
 - **Lokalizacja:** [FireSnowBridge/src/FireSnowBridge.java:1317, 1330](file:///c:/Users/narty/Desktop/asystent_java/FireSnowBridge/src/FireSnowBridge.java#L1317-L1330)
 - **Problem:** 
-  1. Serwer HTTP wbudowany w FireSnowBridge uruchamiany jest z domyślnym jednowątkowym egzekutorem (`server.setExecutor(null);`). Wszelkie dłuższe zapytania SQL lub operacje odczytu dyskowego blokują całą obsługę API mostka.
-  2. Serwer nasłuchuje na wszystkich interfejsach sieciowych (`0.0.0.0`), a nagłówek CORS w wierszu 1374 ustawiono na wildcard `*`, co pozwala dowolnej maszynie w sieci lokalnej na nieautoryzowany odczyt danych FireSnow na porcie 8081.
+  1. Serwer HTTP wbudowany w FireSnowBridge uruchamiany był z domyślnym jednowątkowym egzekutorem (`server.setExecutor(null);`). Wszelkie dłuższe zapytania SQL lub operacje odczytu dyskowego blokowały całą obsługę API mostka.
+  2. Serwer nasłuchiwał na wszystkich interfejsach sieciowych (`0.0.0.0`), co pozwalało maszynom w sieci lokalnej na nieautoryzowany odczyt danych FireSnow na porcie 8081.
 - **Dowód:**
   ```java
   HttpServer server = HttpServer.create(new InetSocketAddress(API_PORT), 0);
   server.setExecutor(null); // Jednowątkowa kolejka!
   ```
-- **Zalecana poprawka:** 
-  1. Zastąpić `null` pulą wątków: `server.setExecutor(Executors.newFixedThreadPool(8));`.
-  2. Ograniczyć gniazdo wyłącznie do pętli zwrotnej: `new InetSocketAddress("127.0.0.1", API_PORT)`.
-- **Status:** ⚠️ Do wdrożenia w kodzie FireSnowBridge.java.
+- **Zastosowana poprawka:** 
+  1. Zastąpiono `null` pulą wątków: `server.setExecutor(Executors.newFixedThreadPool(poolSize));` z dynamicznym doborem wątków na podstawie dostępnych rdzeni CPU.
+  2. Ograniczono gniazdo wyłącznie do pętli zwrotnej: `new InetSocketAddress("127.0.0.1", API_PORT)`.
+  3. Zrekompilowano źródła Java do katalogu `bin/` oraz wygenerowano nowy plik `FireSnowBridge.jar`.
+- **Status:** ✅ **NAPRAWIONO W KODZIE**.
 
 ---
 
 ### 🟡 ŚREDNIE (Medium Severity)
 
-#### [SRED-01] Błąd generatora ID sprzętu przy dodawaniu nowych pozycji (Prefix NaN Bug)
-- **Lokalizacja:** [src/server/services/equipmentService.ts:78-79](file:///c:/Users/narty/Desktop/asystent_java/src/server/services/equipmentService.ts#L78-L79)
-- **Problem:** Metoda `create` wylicza kolejny identyfikator za pomocą:
-  ```typescript
-  const maxId = Math.max(...skis.map(ski => parseInt(ski.ID) || 0), 0);
-  const newId = (maxId + 1).toString();
-  ```
-- **Dowód:** Identyfikatory sprzętu w systemie mają format alfanumeryczny z prefiksem, np. `N-0001`, `B-0001`. W JavaScript `parseInt('N-0001')` zwraca `NaN`, co z operatorem `|| 0` daje zawsze `0`. Zatem `maxId` wynosi 0, a nowe sztuki otrzymują numery `'1'`, `'2'`, niszcząc konwencję bazy sprzętu.
-- **Zalecana poprawka:** Ekstrakcja części numerycznej za pomocą wyrażenia regularnego (np. `ski.ID?.match(/\d+/)`) i zachowanie odpowiedniego prefiksu (`N-` dla nart, `B-` dla butów, `D-` dla desek).
-- **Status:** ⚠️ Do wdrożenia w `equipmentService.ts`.
+#### [SRED-01] Martwy kod tworzenia sprzętu z błędnym generatorem ID (Prefix NaN Bug)
+- **Lokalizacja:** [src/server/services/equipmentService.ts:78-79](file:///c:/Users/narty/Desktop/asystent_java/src/server/services/equipmentService.ts#L78-L79), [src/server/routes/skis.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/routes/skis.ts), [src/services/skiDataService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/skiDataService.ts)
+- **Problem:** Metoda `create` wyliczała kolejny identyfikator za pomocą `parseInt(ski.ID)`, co dla alfanumerycznych ID (np. `N-0001`) zwracało `NaN` i przypisywało wartości `1`, `2`. W toku audytu ustalono jednoznaczną regułę biznesową: **sprzęt jest wprowadzany i numerowany wyłącznie w aplikacji desktopowej FireSnow** (skąd pochodzi kanoniczny `obiekt_id` mapowany w [equipmentMapper.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/utils/equipmentMapper.ts) na `N-{obiekt_id}`).
+- **Zastosowana poprawka:** Usunięto martwą metodę `create` z `equipmentService.ts`, usunięto handler w `equipmentController.ts`, wycięto trasę `POST /api/skis` z serwera oraz martwą metodę `addSki` z klienta frontendu.
+- **Status:** ✅ **USUNIĘTO MARTWY KOD / ROZWIĄZANO ZGODNIE ZE SPECYFIKACJĄ DOMENY**.
 
 #### [SRED-02] Omijanie centralnego middleware obsługi błędów w kontrolerach Express
-- **Lokalizacja:** [src/server/controllers/equipmentController.ts:31](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/equipmentController.ts#L31), `reservationController.ts`, `fireSnowController.ts`
-- **Problem:** Kontrolery przechwytują błędy w lokalnych blokach `try...catch` i bezpośrednio odpowiadają kodem `res.status(500).json(...)`. Nigdy nie wywołują `next(error)`.
-- **Dowód:** Centralny middleware [src/server/middleware/errorHandler.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/errorHandler.ts) jest całkowicie omijany. Błędy nie są jednolicie formatowane ani logowane do centralnego loggera Winston.
-- **Zalecana poprawka:** Przekazywać błędy do `next(error)` we wszystkich kontrolerach.
-- **Status:** ⚠️ Do wdrożenia w kontrolerach serwera.
+- **Lokalizacja:** [src/server/controllers/equipmentController.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/equipmentController.ts), `reservationController.ts`, `rentalController.ts`, `historyController.ts`, `fireSnowController.ts`
+- **Problem:** Kontrolery przechwytywały błędy w lokalnych blokach `try...catch` i bezpośrednio odpowiadały kodem `res.status(500).json(...)`. Nigdy nie wywoływały `next(error)`. Centralny middleware [src/server/middleware/errorHandler.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/errorHandler.ts) był omijany.
+- **Zastosowana poprawka:** Do wszystkich metod kontrolerów dodano parametr `next: NextFunction`, a w blokach `catch (error)` błędy są bezpośrednio przekazywane do `next(error)`, gwarantując spójne logowanie Winston i jednolity format odpowiedzi HTTP 500.
+- **Status:** ✅ **NAPRAWIONO W KODZIE**.
 
 #### [SRED-03] Monolityczna logika doboru sprzętu bez testów jednostkowych
 - **Lokalizacja:** [src/services/skiMatchingServiceV2.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/skiMatchingServiceV2.ts) (1,967 linii)
@@ -162,29 +157,46 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
    - Zaktualizowano [eslint.config.js](file:///c:/Users/narty/Desktop/asystent_java/eslint.config.js).
    - *Status:* ✅ **Naprawiono w commicie `8d473a4`** (Liczba błędów ESLint spadła z 47 do 0).
 
+5. **Bezpieczeństwo i wielowątkowość procesu Java FireSnowBridge:**
+   - [FireSnowBridge/src/FireSnowBridge.java](file:///c:/Users/narty/Desktop/asystent_java/FireSnowBridge/src/FireSnowBridge.java): Wdrożono pulę wątków egzekutora `Executors.newFixedThreadPool(poolSize)` z odczytem liczby rdzeni procesora, likwidując blokowanie API.
+   - Ograniczono nasłuch gniazda HTTP wyłącznie do adresu pętli zwrotnej `127.0.0.1`, uniemożliwiając dostęp do bazy z sieci LAN.
+   - Zrekompilowano klasy binarne oraz zaktualizowano `FireSnowBridge.jar`.
+   - *Status:* ✅ **Naprawiono w Fazie 2**.
+
+6. **Usunięcie martwego kodu tworzenia sprzętu:**
+   - [src/server/services/equipmentService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/services/equipmentService.ts), [src/server/controllers/equipmentController.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/equipmentController.ts), [src/server/routes/skis.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/routes/skis.ts), [src/services/skiDataService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/skiDataService.ts): Usunięto nieużywaną metodę `create`, trasę `POST /api/skis` oraz klienta `addSki`.
+   - Identyfikatory sprzętu są nadawane i zarządzane kanonicznie wyłącznie w aplikacji desktopowej FireSnow (`obiekt_id`).
+   - *Status:* ✅ **Naprawiono w Fazie 2**.
+
+7. **Ujednolicenie propagacji błędów w Express do centralnego middleware:**
+   - [src/server/controllers/](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/): Wszystkie metody kontrolerów przekazują błędy w blokach `try...catch` do `next(error)`, integrując się z [errorHandler.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/middleware/errorHandler.ts) oraz centralnym loggerem Winston.
+   - *Status:* ✅ **Naprawiono w Fazie 2**.
+
 ---
 
 ## 4. Dziennik Wykonanych Zmian (Changelog Gałęzi `audit/cleanup`)
 
-Na dedykowanej gałęzi `audit/cleanup` wykonano 5 atomowych commitów:
+Na dedykowanej gałęzi `audit/cleanup` wykonano następujące commity:
 
 - `7888af7` — `fix(core): resolve React Rules of Hooks violations and dead code in Dashboard, Modal, Timeline`
 - `0796ec1` — `refactor(components): hoist loggers and helper functions to module scope to avoid re-instantiation`
 - `2ee5422` — `chore: remove dead backup/scratch files and untrack .vite cache directory`
 - `8d473a4` — `fix(types): resolve any assertions and eliminate all ESLint errors`
-- `aafb3b5` — `fix(security): isolate equipment CSV, remove legacy personal data CSVs, and sanitize db config`
+- `aafb3b5` — `fix(security): isolate equipment CSV, remove legacy personal data CSVs, and sanitize db config` (Faza 1)
+- `3ba4df3` — `docs: update audit report and remediation plan with completed Phase 1 security fixes`
+- `[Faza 2]` — `fix(backend): clean dead equipment creation, enable FireSnowBridge concurrency, and unify error propagation` (Faza 2)
 
 ---
 
 ## 5. Pięć Najważniejszych Kolejnych Kroków
 
-1. **Izolacja danych klientów (RODO / CSV Data Isolation)** — *Nakład: S (1-2h)*  
-   Przenieść pliki z `public/data/` do prywatnego katalogu serwera, uniemożliwiając ich pobieranie jako statycznych assetów.
-2. **Wdrożenie bezpiecznej autoryzacji pracownika na backendzie** — *Nakład: M (4-6h)*  
-   Usunąć PIN `0000` z frontendu, dodać endpoint `/api/auth/login` i zabezpieczyć trasy mutujące sprzęt.
-3. **Poprawka generatora ID w `equipmentService.ts`** — *Nakład: S (30min)*  
-   Wdrożyć parsowanie części numerycznej ID z zachowaniem prefiksu alfanumerycznego.
-4. **Wielowątkowość w FireSnowBridge (`FireSnowBridge.java`)** — *Nakład: S (1h)*  
-   Skonfigurować pulę wątków egzekutora i ograniczyć nasłuch do adresu `127.0.0.1`.
-5. **Pokrycie testami serwisu `skiMatchingServiceV2.ts`** — *Nakład: M (4-6h)*  
-   Doinstalować `@vitest/coverage-v8` i napisać testy sprawdzające algorytmy doboru i tolerancji.
+1. **Wdrożenie bezpiecznej autoryzacji pracownika na backendzie (Faza 3)** — *Priorytet Wysoki*  
+   Usunąć PIN `"0000"` z kodu frontendu (`useEmployeeAuth.ts`), dodać endpoint `/api/auth/login` z hashowaniem i sesją/tokenem oraz zabezpieczyć operacje modyfikacji sprzętu i podgląd wrażliwych danych.
+2. **Instalacja dostawcy pokrycia testów `@vitest/coverage-v8` (Faza 4)** — *Priorytet Średni*  
+   Umożliwić poprawne działanie polecenia `npm run test:coverage`.
+3. **Pokrycie testami serwisu dopasowania sprzętu `skiMatchingServiceV2.ts` (Faza 4)** — *Priorytet Średni*  
+   Napisać zestaw testów jednostkowych weryfikujących logikę doboru, progi tolerancji i punktację rekomendacji.
+4. **Naprawa podatności zależności i audyt bezpieczeństwa pakietów (Faza 5)** — *Priorytet Niski*  
+   Przeprowadzić weryfikację `npm audit` i aktualizację bezpiecznych zależności.
+5. **Wdrożenie konteneryzacji Docker / skryptów uruchomieniowych (Faza 5)** — *Priorytet Niski*  
+   Przygotować pliki Dockerfile i docker-compose dla środowiska produkcyjnego.
