@@ -23,8 +23,8 @@ const PasswordModal: React.FC<PasswordModalProps> = ({ onClose, onSubmit, errorM
   }, [errorMessage]);
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-[#2C699F] p-6 rounded-lg shadow-xl border border-white">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]">
+      <div className="bg-[#2C699F] p-6 rounded-lg shadow-2xl border border-white/20 min-w-[320px]">
         <h2 className="text-white text-lg font-bold mb-4">Wprowadź hasło</h2>
         <form onSubmit={handleSubmit}>
           <input
