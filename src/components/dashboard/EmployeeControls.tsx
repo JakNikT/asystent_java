@@ -10,31 +10,18 @@ interface EmployeeControlsProps {
   onBrowse: () => void;
   onHistory: () => void;
   onReservations: () => void;
-  onToggleEmployeeMode: () => void;
 }
 
 const EmployeeControls: React.FC<EmployeeControlsProps> = ({
-  isEmployeeMode,
+  isEmployeeMode: _isEmployeeMode,
   appMode: _appMode, // Zachowane dla przyszłej użyteczności (np. podświetlanie aktywnego trybu)
   onClear,
   onBrowse,
   onHistory,
-  onReservations,
-  onToggleEmployeeMode
+  onReservations
 }) => {
   return (
     <div className="w-full lg:w-auto flex-1 p-3 lg:p-5 bg-black/20 rounded-xl border border-white/10 flex flex-col justify-center gap-3 lg:gap-4 shadow-2xl shadow-black/40 backdrop-blur-md">
-      {/* Przycisk logowania / trybu pracownika */}
-      <button
-        onClick={onToggleEmployeeMode}
-        className={`w-full h-10 ${
-          isEmployeeMode ? 'bg-green-600 hover:bg-green-700' : 'bg-blue-600 hover:bg-blue-700'
-        } text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 transition-all font-bold text-sm uppercase tracking-wider cursor-pointer flex items-center justify-center gap-2`}
-        title={isEmployeeMode ? 'Pracownik zalogowany - kliknij aby wylogować' : 'Kliknij aby zalogować się jako pracownik (PIN)'}
-      >
-        <span>{isEmployeeMode ? '🔓 Wyloguj' : '🔒 Zaloguj'}</span>
-      </button>
-
       {/* Action Buttons - bezpośrednio w kontenerze */}
       <button
         onClick={onClear}
