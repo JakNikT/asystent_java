@@ -9,7 +9,7 @@
 
 | Faza | Zakres | Priorytet | Szacowany czas |
 | :--- | :--- | :--- | :--- |
-| **Faza 1** | Krytyczne Bezpieczeństwo (RODO & Poświadczenia) | 🔴 Najwyższy | 2 - 3 godziny |
+| **Faza 1** | Krytyczne Bezpieczeństwo (RODO & Poświadczenia) | 🔴 Najwyższy | ✅ UKOŃCZONE (Commit aafb3b5) |
 | **Faza 2** | Poprawność i Stabilność Backend & Mostka Java | 🟠 Wysoki | 2 - 4 godziny |
 | **Faza 3** | Uwierzytelnianie Personelu i Kontrola Dostępu | 🟠 Wysoki | 4 - 6 godzin |
 | **Faza 4** | Testy Algorytmu Doboru Sprzętu i Pokrycie Kodu | 🟡 Średni | 4 - 6 godzin |
@@ -290,8 +290,8 @@
 
 Przed uznaniem aplikacji za gotową do produkcji, każdy z poniższych punktów musi zostać zweryfikowany:
 
-- [ ] Pliki z danymi klientów przeniesione poza `public/` — brak możliwości pobrania `rezerwacja.csv` przez URL serwera.
-- [ ] Hasło do bazy danych zrotowane i usunięte z plików śledzonych przez Gita.
+- [x] Pliki z danymi klientów usunięte z `public/`, baza sprzętu w `data/` — brak możliwości pobrania `rezerwacja.csv` przez URL serwera (`dist/data` nie istnieje). ✅
+- [x] Hasło do bazy danych usunięte z plików śledzonych przez Gita (`db-config.example.js` + `.gitignore`). ✅
 - [ ] Kod PIN `"0000"` usunięty z kodu frontendu — autoryzacja odbywa się przez backend.
 - [ ] Generator ID w `equipmentService.ts` poprawnie tworzy identyfikatory z prefiksem (np. `N-0043`).
 - [ ] `FireSnowBridge.java` posiada pulę wątków i nasłuchuje na `127.0.0.1`.

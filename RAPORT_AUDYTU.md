@@ -54,10 +54,10 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
   ```
   Zwracany jest pełny plik CSV z danymi osobowymi bez jakiejkolwiek weryfikacji tożsamości.
 - **Zalecana poprawka:** Przenieść katalog danych z `public/data/` do katalogu serwera (np. `storage/data/` lub `data/` w głównym katalogu projektu). Zaktualizować zmienne ścieżek w `src/server/config/env.ts`, tak aby pliki CSV nigdy nie trafiały do artefaktów frontendu ani do publicznego serwera statycznego.
-- **Status:** ⚠️ Do natychmiastowej realizacji (wymaga przeniesienia katalogu i aktualizacji ścieżek).
+- **Status:** ✅ **NAPRAWIONO (Commit `aafb3b5`)**. Usunięto 9 zbędnych/wrażliwych plików CSV z `public/data/`, przeniesiono bazę sprzętu `NOWA_BAZA_KOMPLETNA.csv` do dedykowanego, prywatnego katalogu `data/` na poziomie serwera, zaktualizowano ścieżki w `env.ts` i dodano bezpieczny fallback w `csvService.ts`. Katalog `dist/data/` nie jest już generowany w procesie buildu.
 
 #### [KRYT-02] Jawne hasła do produkcyjnej bazy danych MySQL w repozytorium Git
-- **Lokalizacja:** [db-config.js:5, 16](file:///c:/Users/narty/Desktop/asystent_java/db-config.js#L5-L16)
+- **Lokalizacja:** [db-config.js:5, 16](file:///c:/Users/narty/Desktop/asystent_java/db-config.example.js#L5-L16)
 - **Problem:** Plik `db-config.js` zawiera zahardkodowane hasło produkcyjne do bazy MySQL (`Mypass123!`) dla użytkownika `root` i baz danych `sprzet_narciarski` oraz `history`. Plik ten został fizycznie zatwierdzony w historii repozytorium Git (commit `c9b1071`).
 - **Dowód:**
   ```javascript
@@ -69,7 +69,7 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
   1. Usunąć `db-config.js` z repozytorium Git i zastąpić go plikiem szablonu `db-config.example.js` bez wartości wrażliwych.
   2. Zmienić hasło bazy MySQL na nowe, wygenerowane losowo.
   3. Zaktualizować plik `.env` na maszynie docelowej.
-- **Status:** ⚠️ Wymaga rotacji hasła przez administratora bazy.
+- **Status:** ✅ **NAPRAWIONO W KODZIE (Commit `aafb3b5`)**. Zastąpiono `db-config.js` plikiem szablonowym `db-config.example.js` bez haseł, dodano `db-config.js` do `.gitignore`. Administrator powinien przeprowadzić rotację hasła w samej bazie MySQL.
 
 ---
 
@@ -166,12 +166,13 @@ Wszystkie pomiary przeprowadzono w identycznym środowisku wykonawczym na maszyn
 
 ## 4. Dziennik Wykonanych Zmian (Changelog Gałęzi `audit/cleanup`)
 
-Na dedykowanej gałęzi `audit/cleanup` wykonano 4 atomowe commity:
+Na dedykowanej gałęzi `audit/cleanup` wykonano 5 atomowych commitów:
 
 - `7888af7` — `fix(core): resolve React Rules of Hooks violations and dead code in Dashboard, Modal, Timeline`
 - `0796ec1` — `refactor(components): hoist loggers and helper functions to module scope to avoid re-instantiation`
 - `2ee5422` — `chore: remove dead backup/scratch files and untrack .vite cache directory`
 - `8d473a4` — `fix(types): resolve any assertions and eliminate all ESLint errors`
+- `aafb3b5` — `fix(security): isolate equipment CSV, remove legacy personal data CSVs, and sanitize db config`
 
 ---
 
