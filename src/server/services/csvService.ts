@@ -48,6 +48,11 @@ export const csvService = {
 
             return processedContent;
         } catch (error) {
+            const err = error as NodeJS.ErrnoException;
+            if (err.code === 'ENOENT') {
+                logger.warn(`CSV file does not exist, returning empty content: ${filePath}`);
+                return '';
+            }
             logger.error('Error reading CSV', { error });
             throw error;
         }
@@ -58,6 +63,13 @@ export const csvService = {
      */
     async parseCsv(filePath: string, options: ParseOptions = {}): Promise<Papa.ParseResult<Record<string, unknown>>> {
         const content = await this.readCsv(filePath);
+        if (!content || !content.trim()) {
+            return {
+                data: [],
+                errors: [],
+                meta: { delimiter: ',', linebreak: '\n', aborted: false, truncated: false, cursor: 0 }
+            };
+        }
         return Papa.parse(content, {
             header: true,
             skipEmptyLines: true,
