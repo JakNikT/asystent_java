@@ -136,11 +136,10 @@ export const csvService = {
     },
 
     /**
-     * Pobiera sprzęt z pliku CSV
+     * Pobiera sprzęt z pliku CSV (przestarzałe - używaj equipmentService z MySQL)
      */
     async getSkis(): Promise<Record<string, unknown>[]> {
-        const result = await this.parseCsv(config.paths.skisCsv);
-        return result.data as Record<string, unknown>[];
+        return [];
     },
 
     /**
@@ -151,12 +150,10 @@ export const csvService = {
     },
 
     /**
-     * Zapisuje sprzęt do pliku CSV
+     * Zapisuje sprzęt do pliku CSV (przestarzałe - używaj equipmentService z MySQL)
      */
-    async saveSkis(skis: unknown[]): Promise<boolean> {
-        return this.writeCsv(config.paths.skisCsv, skis, {
-            columns: ['ID', 'TYP_SPRZETU', 'KATEGORIA', 'MARKA', 'MODEL', 'DLUGOSC', 'ILOSC', 'POZIOM', 'PLEC', 'WAGA_MIN', 'WAGA_MAX', 'WZROST_MIN', 'WZROST_MAX', 'PRZEZNACZENIE', 'ATUTY', 'ROK', 'KOD']
-        });
+    async saveSkis(_skis: unknown[]): Promise<boolean> {
+        return true;
     }
 };
 

@@ -61,8 +61,7 @@ export const config = {
 
     paths: {
         reservationsCsv: path.join(rootDir, 'data', 'rezerwacja.csv'),
-        rentalsCsv: path.join(rootDir, 'data', 'wyp.csv'),
-        skisCsv: path.join(rootDir, 'data', 'NOWA_BAZA_KOMPLETNA.csv')
+        rentalsCsv: path.join(rootDir, 'data', 'wyp.csv')
     }
 } as const;
 
