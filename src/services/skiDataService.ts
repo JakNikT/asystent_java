@@ -133,43 +133,6 @@ export class SkiDataService {
   }
 
   /**
-   * Dodaje nową nartę
-   */
-  static async addSki(skiData: Partial<SkiData>): Promise<SkiData | null> {
-    try {
-      logger.info('Dodawanie nowej narty:', skiData);
-      
-      const response = await fetch(`${API_BASE_URL}/skis`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(skiData)
-      });
-      
-      if (!response.ok) {
-        const errorMessage = await parseApiError(response);
-        throw new Error(errorMessage);
-      }
-      
-      const newSki = await response.json();
-      
-      // Wyczyść cache
-      this.cache = [];
-      this.lastFetch = 0;
-      
-      logger.info('Narta dodana pomyślnie:', newSki);
-      toastService.showSuccess('Narta została dodana');
-      return newSki;
-    } catch (error) {
-      logger.error('Błąd dodawania narty:', error);
-      const errorMessage = handleApiError(error, 'Nie udało się dodać narty');
-      toastService.showError(errorMessage);
-      return null;
-    }
-  }
-
-  /**
    * Aktualizuje wiele nart jednocześnie
    */
   static async updateMultipleSkis(ids: string[], updates: Partial<SkiData>): Promise<SkiData[] | null> {

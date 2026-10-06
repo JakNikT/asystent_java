@@ -10,7 +10,7 @@
 | Faza | Zakres | Priorytet | Szacowany czas |
 | :--- | :--- | :--- | :--- |
 | **Faza 1** | Krytyczne Bezpieczeństwo (RODO & Poświadczenia) | 🔴 Najwyższy | ✅ UKOŃCZONE (Commit aafb3b5) |
-| **Faza 2** | Poprawność i Stabilność Backend & Mostka Java | 🟠 Wysoki | 2 - 4 godziny |
+| **Faza 2** | Poprawność i Stabilność Backend & Mostka Java | 🟠 Wysoki | ✅ UKOŃCZONE |
 | **Faza 3** | Uwierzytelnianie Personelu i Kontrola Dostępu | 🟠 Wysoki | 4 - 6 godzin |
 | **Faza 4** | Testy Algorytmu Doboru Sprzętu i Pokrycie Kodu | 🟡 Średni | 4 - 6 godzin |
 | **Faza 5** | Podatności Zależności npm & DevOps | 🟡 Średni | 2 - 3 godziny |
@@ -85,43 +85,16 @@
 
 ## Faza 2: Poprawność i Stabilność Backend & Mostka Java
 
-### Zadanie 2.1: Naprawa Generatora ID Sprzętu (Prefix NaN Bug)
-- **Problem:** [src/server/services/equipmentService.ts:78](file:///c:/Users/narty/Desktop/asystent_java/src/server/services/equipmentService.ts#L78) wykonuje `parseInt(ski.ID)`. Dla identyfikatorów `N-0001` funkcja zwraca `NaN`, co powoduje resetowanie licznika do 0 i generowanie błędnych ID (`1`, `2`).
-- **Pliki do modyfikacji:**
-  - [src/server/services/equipmentService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/services/equipmentService.ts)
-  - [src/test/equipmentMapper.test.js](file:///c:/Users/narty/Desktop/asystent_java/src/test/equipmentMapper.test.js) (dodanie testu generatora ID)
-- **Proponowana zmiana:**
-  ```typescript
-  // src/server/services/equipmentService.ts:
-  // Dobór prefiksu zależnie od typu sprzętu
-  const getPrefix = (type: string): string => {
-      switch (type) {
-          case 'BUTY': return 'B-';
-          case 'DESKI': return 'D-';
-          case 'BUTY_SNOWBOARD': return 'BS-';
-          case 'NARTY':
-          default: return 'N-';
-      }
-  };
-
-  const prefix = getPrefix(data.TYP_SPRZETU || 'NARTY');
-  
-  // Bezpieczna ekstrakcja najwyższego numeru z zachowaniem prefiksu
-  const maxNumericId = skis.reduce((max, ski) => {
-      if (typeof ski.ID === 'string') {
-          const match = ski.ID.match(/(\d+)/);
-          if (match && match[1]) {
-              const num = parseInt(match[1], 10);
-              return num > max ? num : max;
-          }
-      }
-      return max;
-  }, 0);
-
-  const newId = `${prefix}${String(maxNumericId + 1).padStart(4, '0')}`;
-  ```
+### Zadanie 2.1: Usunięcie Martwego Kodu Dodawania Sprzętu i Potwierdzenie FireSnow Jako Źródła ID
+- **Ustalenie domenowe:** Nowy sprzęt wprowadzany jest **wyłącznie w aplikacji FireSnow**. Baza FireSnow nadaje każdej sztuce unikalny klucz główny `obiekt_id`. To z niego maper [equipmentMapper.ts:215-223](file:///c:/Users/narty/Desktop/asystent_java/src/server/utils/equipmentMapper.ts#L215-L223) tworzy kanoniczne ID: `N-{obiekt_id}` dla nart, `B-{obiekt_id}` dla butów, `D-{obiekt_id}` dla desek.
+- **Problem martwego kodu:** W projekcie znajdowała się metoda `create` w `equipmentService.ts`, trasa `POST /api/skis` oraz `addSki` w `skiDataService.ts`. Kod ten był zaszłością próbującą generować sztuczne ID w formacie numerycznym bez powiązania z FireSnow i nigdy nie był wywoływany przez frontend (w aplikacji pracownik może sprzęt jedynie przeglądać i edytować parametry dopasowania).
+- **Pliki do oczyszczenia:**
+  - [src/server/services/equipmentService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/services/equipmentService.ts) — usunięcie metody `create`
+  - [src/server/controllers/equipmentController.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/controllers/equipmentController.ts) — usunięcie handlera `create`
+  - [src/server/routes/skis.ts](file:///c:/Users/narty/Desktop/asystent_java/src/server/routes/skis.ts) — usunięcie endpointu `POST /`
+  - [src/services/skiDataService.ts](file:///c:/Users/narty/Desktop/asystent_java/src/services/skiDataService.ts) — usunięcie metody `addSki`
 - **Weryfikacja:**
-  Uruchomić test sprawdzający, czy przy liście `['N-0001', 'N-0042']` dodanie kolejnej narty generuje `'N-0043'`.
+  Uruchomić `npx tsc -b`, `npx tsc -p tsconfig.server.json --noEmit` oraz `npx vitest run` potwierdzając brak odwołań i pełną integralność systemu.
 
 ---
 
@@ -293,9 +266,9 @@ Przed uznaniem aplikacji za gotową do produkcji, każdy z poniższych punktów 
 - [x] Pliki z danymi klientów usunięte z `public/`, baza sprzętu w `data/` — brak możliwości pobrania `rezerwacja.csv` przez URL serwera (`dist/data` nie istnieje). ✅
 - [x] Hasło do bazy danych usunięte z plików śledzonych przez Gita (`db-config.example.js` + `.gitignore`). ✅
 - [ ] Kod PIN `"0000"` usunięty z kodu frontendu — autoryzacja odbywa się przez backend.
-- [ ] Generator ID w `equipmentService.ts` poprawnie tworzy identyfikatory z prefiksem (np. `N-0043`).
-- [ ] `FireSnowBridge.java` posiada pulę wątków i nasłuchuje na `127.0.0.1`.
-- [ ] Kontrolery Express przekazują błędy do `next(error)` i centralnego middleware.
+- [x] Źródło ID sprzętu potwierdzone w FireSnow (`obiekt_id`), martwy kod generatora/dodawania usunięty. ✅
+- [x] `FireSnowBridge.java` posiada pulę wątków (`newFixedThreadPool`) i nasłuchuje na `127.0.0.1`. ✅
+- [x] Kontrolery Express przekazują błędy do `next(error)` i centralnego middleware. ✅
 - [ ] Pakiet `@vitest/coverage-v8` zainstalowany — polecenie `npm run test:coverage` działa poprawnie.
 - [ ] Napisano zestaw testów dla `skiMatchingServiceV2.ts` (minimum 15 scenariuszy).
 - [ ] `npx eslint .` przechodzi z wynikiem 0 błędów.

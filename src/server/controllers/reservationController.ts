@@ -3,7 +3,7 @@
  */
 
 import { reservationService } from '../services/reservationService.js';
-import logger from '../config/logger.js';
+import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 import type { CreateReservationData, UpdateReservationData } from '../types/services.types.js';
 
@@ -16,7 +16,7 @@ export const reservationController = {
      * Pobiera rezerwacje dla konkretnej daty
      * GET /api/reservations/date?date=YYYY-MM-DD
      */
-    async getForDate(req: AppRequest<unknown, unknown, unknown, DateQueryParams>, res: AppResponse): Promise<void> {
+    async getForDate(req: AppRequest<unknown, unknown, unknown, DateQueryParams>, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const date = req.query.date;
 
@@ -35,41 +35,38 @@ export const reservationController = {
             const data = await reservationService.getForDate(date);
             res.json(data);
         } catch (error) {
-            logger.error('Error fetching reservations for date', { error });
-            res.status(500).json({ error: 'Błąd pobierania rezerwacji dla daty' });
+            next(error);
         }
     },
 
     /**
      * Pobiera wszystkie rezerwacje
      */
-    async getAll(_req: AppRequest, res: AppResponse): Promise<void> {
+    async getAll(_req: AppRequest, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const data = await reservationService.getAll();
             res.json(data);
         } catch (error) {
-            logger.error('Error fetching reservations', { error });
-            res.status(500).json({ error: 'Błąd pobierania rezerwacji' });
+            next(error);
         }
     },
 
     /**
      * Tworzy nową rezerwację
      */
-    async create(req: AppRequest<unknown, unknown, CreateReservationData>, res: AppResponse): Promise<void> {
+    async create(req: AppRequest<unknown, unknown, CreateReservationData>, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const data = await reservationService.create(req.body);
             res.json(data);
         } catch (error) {
-            logger.error('Error creating reservation', { error });
-            res.status(500).json({ error: 'Błąd dodawania rezerwacji' });
+            next(error);
         }
     },
 
     /**
      * Aktualizuje istniejącą rezerwację
      */
-    async update(req: AppRequest<{ id: string }, unknown, UpdateReservationData>, res: AppResponse): Promise<void> {
+    async update(req: AppRequest<{ id: string }, unknown, UpdateReservationData>, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const data = await reservationService.update(req.params.id, req.body);
             if (!data) {
@@ -78,15 +75,14 @@ export const reservationController = {
             }
             res.json(data);
         } catch (error) {
-            logger.error('Error updating reservation', { error });
-            res.status(500).json({ error: 'Błąd aktualizacji rezerwacji' });
+            next(error);
         }
     },
 
     /**
      * Usuwa rezerwację
      */
-    async delete(req: AppRequest<{ id: string }>, res: AppResponse): Promise<void> {
+    async delete(req: AppRequest<{ id: string }>, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const data = await reservationService.delete(req.params.id);
             if (!data) {
@@ -95,8 +91,7 @@ export const reservationController = {
             }
             res.json(data);
         } catch (error) {
-            logger.error('Error deleting reservation', { error });
-            res.status(500).json({ error: 'Błąd usuwania rezerwacji' });
+            next(error);
         }
     }
 };

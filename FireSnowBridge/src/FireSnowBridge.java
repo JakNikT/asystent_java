@@ -1313,8 +1313,8 @@ ResultSet rsRent = stmtRent.executeQuery();
                 }
             }
             
-            // Create HTTP server
-            HttpServer server = HttpServer.create(new InetSocketAddress(API_PORT), 0);
+            // Create HTTP server (bind strictly to localhost for security)
+            HttpServer server = HttpServer.create(new InetSocketAddress("127.0.0.1", API_PORT), 0);
             
             // Register endpoints
             server.createContext("/api/health", new HealthHandler());
@@ -1326,8 +1326,9 @@ ResultSet rsRent = stmtRent.executeQuery();
             server.createContext("/api/dostepnosc/okres", new DostepnoscOkresHandler());
             server.createContext("/api/sprzet/wszystkie", new WszystkieSprzetHandler());
             server.createContext("/api/rezerwacje/dla-daty", new RezerwacjeDlaDatyHandler());
-            // Start server
-            server.setExecutor(null); // Default executor
+            // Start server with concurrent thread pool
+            int poolSize = Math.max(4, Runtime.getRuntime().availableProcessors());
+            server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(poolSize));
             server.start();
             
             System.out.println();

@@ -149,16 +149,17 @@ export interface UpdateReservationData extends Partial<CreateReservationData> {
 }
 
 /**
- * Dane do utworzenia sprzętu
+ * Dane do aktualizacji sprzętu
  */
-export interface CreateEquipmentData {
-  TYP_SPRZETU: string;
-  KATEGORIA: string;
-  MARKA: string;
-  MODEL: string;
-  DLUGOSC: number;
-  PLEC: string;
-  KOD: string;
+export interface UpdateEquipmentData {
+  ID?: string;
+  TYP_SPRZETU?: string;
+  KATEGORIA?: string;
+  MARKA?: string;
+  MODEL?: string;
+  DLUGOSC?: number;
+  PLEC?: string;
+  KOD?: string;
   POZIOM?: string;
   WAGA_MIN?: number;
   WAGA_MAX?: number;
@@ -166,13 +167,6 @@ export interface CreateEquipmentData {
   WZROST_MAX?: number;
   PRZEZNACZENIE?: string;
   ATUTY?: string;
-}
-
-/**
- * Dane do aktualizacji sprzętu
- */
-export interface UpdateEquipmentData extends Partial<CreateEquipmentData> {
-  ID?: string;
 }
 
 /**

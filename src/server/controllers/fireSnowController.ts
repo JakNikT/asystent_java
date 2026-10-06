@@ -5,6 +5,7 @@
 import { fireSnowService } from '../services/fireSnowService.js';
 import { config } from '../config/env.js';
 import logger from '../config/logger.js';
+import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 
 export const fireSnowController = {
@@ -32,7 +33,7 @@ export const fireSnowController = {
     /**
      * Odświeża cache FireSnow API
      */
-    async refreshCache(_req: AppRequest, res: AppResponse): Promise<void> {
+    async refreshCache(_req: AppRequest, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const data = await fireSnowService.refreshCache();
             res.json({
@@ -41,11 +42,7 @@ export const fireSnowController = {
                 api_response: data
             });
         } catch (error) {
-            const err = error as Error;
-            res.status(500).json({
-                success: false,
-                error: err.message
-            });
+            next(error);
         }
     },
 
@@ -54,7 +51,8 @@ export const fireSnowController = {
      */
     async getAvailability(
         req: AppRequest<unknown, unknown, unknown, { from?: string; to?: string }>,
-        res: AppResponse
+        res: AppResponse,
+        next: NextFunction
     ): Promise<void> {
         const startTime = Date.now();
         try {
@@ -66,9 +64,7 @@ export const fireSnowController = {
 
             res.json(data);
         } catch (error) {
-            const duration = Date.now() - startTime;
-            logger.error(`Error fetching availability (after ${duration}ms)`, { error });
-            res.status(500).json({ error: 'Błąd pobierania dostępności' });
+            next(error);
         }
     }
 };
