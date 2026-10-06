@@ -114,7 +114,6 @@ const Dashboard: React.FC = () => {
             onBrowse={() => handleBrowseMode(false)}
             onHistory={() => setAppMode('history')}
             onReservations={() => setAppMode('reservations')}
-            onToggleEmployeeMode={handleToggleEmployeeMode}
           />
         </DashboardHeader>
       }

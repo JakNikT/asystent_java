@@ -14,7 +14,6 @@ interface DashboardActionsProps {
   onBrowse: () => void;
   onHistory: () => void;
   onReservations: () => void;
-  onToggleEmployeeMode: () => void;
 }
 
 /**
@@ -27,8 +26,7 @@ export const DashboardActions: React.FC<DashboardActionsProps> = ({
   onClear,
   onBrowse,
   onHistory,
-  onReservations,
-  onToggleEmployeeMode
+  onReservations
 }) => {
   return (
     <EmployeeControls
@@ -38,7 +36,6 @@ export const DashboardActions: React.FC<DashboardActionsProps> = ({
       onBrowse={onBrowse}
       onHistory={onHistory}
       onReservations={onReservations}
-      onToggleEmployeeMode={onToggleEmployeeMode}
     />
   );
 };
