@@ -6,6 +6,7 @@ import { EquipmentHandoutView } from './EquipmentHandoutView';
 import { DatePickerButton } from './DatePickerButton';
 import { loadAppState, saveAppState } from '../utils/localStorage';
 import type { ViewType } from '../types/viewTypes';
+import { toastService } from '../hooks/useToast';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
 const logger = createLogger('ReservationsView');
@@ -426,6 +427,32 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       logger.info('ReservationsView: Odświeżono liczniki zwrotów', result);
     } catch (error) {
       logger.error('ReservationsView: Błąd odświeżania liczników zwrotów', error);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  // Pełne odświeżenie danych: wymusza reload w FireSnow Bridge oraz czyści cache
+  const handleFullRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      try {
+        await fetch('/api/firesnow/refresh', { method: 'POST' });
+      } catch (err) {
+        logger.warn('ReservationsView: Nie udało się odświeżyć Bridge:', err);
+      }
+      ReservationApiClient.clearCache();
+      if (viewType === 'returns') {
+        if (returnDate) {
+          await refreshReturnsCount();
+        }
+      } else if (['all', 'reservations', 'rentals', 'past'].includes(viewType)) {
+        await loadReservations(viewType as 'all' | 'reservations' | 'rentals' | 'past');
+      }
+      toastService.showSuccess('Dane z FireSnow zostały zsynchronizowane');
+    } catch (error) {
+      logger.error('ReservationsView: Błąd pełnego odświeżania', error);
+      toastService.showError('Nie udało się odświeżyć danych z FireSnow');
     } finally {
       setIsRefreshing(false);
     }
@@ -1214,6 +1241,17 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                     }`}
                 >
                   🕒 Przeszłe
+                </button>
+                <button
+                  onClick={handleFullRefresh}
+                  disabled={isRefreshing || isLoading}
+                  title="Wymuś natychmiastowe pobranie najnowszych danych z programu FireSnow"
+                  className={`px-4 lg:px-6 py-2 lg:py-3 rounded-lg font-bold uppercase tracking-wider transition-all shadow-sm text-sm lg:text-base border border-blue-400/30 bg-blue-600/40 hover:bg-blue-600/60 text-white flex items-center justify-center gap-2 ${
+                    isRefreshing ? 'opacity-50 cursor-not-allowed' : ''
+                  }`}
+                >
+                  <span className={isRefreshing ? 'animate-spin inline-block' : ''}>🔄</span>
+                  {isRefreshing ? 'Odświeżanie...' : 'Odśwież FireSnow'}
                 </button>
               </div>
 
