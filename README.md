@@ -299,16 +299,6 @@ npm run build
 npm run preview
 ```
 
-## 🐳 Docker
-
-```bash
-# Development
-docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
-
-# Production
-docker-compose up -d
-```
-
 ## 📚 Dokumentacja
 
 - **README+.md** - Kompleksowa dokumentacja techniczna

@@ -6,7 +6,7 @@
 - [x] Implementation Phase - Frontend Cleanup (UKOŃCZONE ✅)
 - [x] Implementation Phase - Testing Setup (UKOŃCZONE ✅)
 - [ ] Verification Phase
-- [ ] Docker/DevOps
+- [x] Docker/DevOps - Docker ŚWIADOMIE USUNIĘTY (niepotrzebny, aplikacja lokalna na Windows)
 
 ## Background and Motivation
 The user wants to review and improve the existing `asystent-nart-web` application. The app is a ski rental assistant integrating with "FireSnow" software via API and CSV files. It uses a Vite+React+TS frontend and a Node.js/Express backend.
@@ -31,7 +31,7 @@ The user wants to review and improve the existing `asystent-nart-web` applicatio
      - equipmentMapper.test.js (20 tests)
    - ✅ Fixed bug in csvParser.js (empty string detection)
 4. **DevOps & Tooling**: ❌ NIE ROZPOCZĘTE
-   - ❌ Add Docker support.
+   - 🚫 Docker support - usunięty (był nieaktualny: odwoływał się do server.js, backend jest w TS).
    - ❌ Add proper logging (Winston/Pino).
 
 ## Project Status Board
@@ -40,7 +40,7 @@ The user wants to review and improve the existing `asystent-nart-web` applicatio
 - [x] Frontend Dashboard Created
 - [x] Remove old AnimaComponent ✅
 - [x] Add Tests ✅
-- [ ] Add Docker
+- [x] ~~Add Docker~~ - zrezygnowano, pliki Dockera usunięte
 - [ ] Production Deployment
 
 ## Completed Work Summary
@@ -90,12 +90,13 @@ The user wants to review and improve the existing `asystent-nart-web` applicatio
 - ✅ `AnimaComponent.tsx` removed (backup created)
 - ✅ Vitest setup complete with 39 passing tests
 - ✅ Bug fixed in csvParser during testing
-- ❌ No Docker configuration yet
+- 🚫 Docker usunięty z projektu (Dockerfile, docker-compose*.yml, .dockerignore, docs/DOCKER_*.md)
 - ✅ Application running on 2 dev servers
 - 🎯 Branch: `cleanup-and-tests` (2 commits ahead of `podział_server`)
 
 ## Lessons & Decisions
 - The project uses a "dual-mode" data fetching strategy (API with CSV fallback), which is critical to maintain.
+- Docker is NOT used: app runs locally on Windows alongside FireSnow + FireSnowBridge (Java). Start via start_jedno_okno.bat.
 - Backend refactoring was successful - modular structure is in place
 - Frontend refactored - Dashboard created and AnimaComponent removed
 - Testing revealed a bug in csvParser.js which was fixed
