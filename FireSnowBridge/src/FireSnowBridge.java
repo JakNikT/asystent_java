@@ -28,10 +28,11 @@ public class FireSnowBridge {
     private static final String DEFAULT_EQUIPMENT_GROUPS = 
         "130615,130679,131174,131361,131364,131534,131533";
     
-    // Connection pooling with TTL (Time To Live)
-    private static Connection connection = null;
-    private static long lastRefresh = 0;
-    private static final long TTL = 120000; // 2 minutes in milliseconds
+    // Automatic DB reloading with file change detection and TTL
+    private static volatile boolean isDatabaseMounted = false;
+    private static volatile long dbMountedTime = 0;
+    private static volatile long lastDbFilesModified = 0;
+    private static long TTL = 30000; // 30 seconds default (configurable in config.properties via db.ttl)
     
     /**
      * Loads configuration from config.properties file
@@ -48,11 +49,13 @@ public class FireSnowBridge {
             DB_PASSWORD = props.getProperty("db.password", "");
             API_PORT = Integer.parseInt(props.getProperty("api.port", "8081"));
             EQUIPMENT_GROUPS = props.getProperty("equipment.groups", DEFAULT_EQUIPMENT_GROUPS);
+            TTL = Long.parseLong(props.getProperty("db.ttl", "30000"));
             
             System.out.println("FireSnowBridge: Configuration loaded successfully");
             System.out.println("FireSnowBridge: Database URL: " + DB_URL);
             System.out.println("FireSnowBridge: API Port: " + API_PORT);
             System.out.println("FireSnowBridge: Equipment Groups: " + EQUIPMENT_GROUPS);
+            System.out.println("FireSnowBridge: Database Cache TTL: " + TTL + " ms");
             
         } catch (IOException e) {
             System.err.println("FireSnowBridge: Error loading config.properties, using defaults");
@@ -61,46 +64,101 @@ public class FireSnowBridge {
             DB_PASSWORD = "";
             API_PORT = 8081;
             EQUIPMENT_GROUPS = DEFAULT_EQUIPMENT_GROUPS;
+            TTL = 30000;
         }
     }
     
     /**
-     * Creates READ-ONLY connection to FireSnow database with automatic TTL refresh
-     * Connections older than 2 minutes are automatically closed and reopened
-     * This ensures we always read fresh data from disk
+     * Extracts base file path from HSQLDB file: URL if applicable
      */
-    private static Connection getConnection() throws SQLException {
-        long now = System.currentTimeMillis();
-        
-        // Check if connection is expired (older than TTL)
-        if (connection != null && (now - lastRefresh > TTL)) {
-            System.out.println("FireSnowBridge: Connection expired (> 2 min), closing...");
-            try {
-                connection.close();
-            } catch (SQLException e) {
-                // Ignore errors when closing
-                System.err.println("FireSnowBridge: Error closing expired connection: " + e.getMessage());
+    private static String getFileDbBasePath() {
+        if (DB_URL != null && DB_URL.contains("file:")) {
+            String path = DB_URL.substring(DB_URL.indexOf("file:") + 5);
+            if (path.contains(";")) {
+                path = path.substring(0, path.indexOf(";"));
             }
-            connection = null;
-            System.gc(); // Suggest garbage collection to free memory
+            return path;
+        }
+        return null;
+    }
+
+    /**
+     * Checks newest modification timestamp among all HSQLDB files on disk
+     */
+    private static long getDatabaseFilesLastModified(String basePath) {
+        if (basePath == null) return 0;
+        String[] extensions = { ".script", ".log", ".properties", ".data", ".lck" };
+        long maxMod = 0;
+        for (String ext : extensions) {
+            File f = new File(basePath + ext);
+            if (f.exists()) {
+                long lm = f.lastModified();
+                if (lm > maxMod) {
+                    maxMod = lm;
+                }
+            }
+        }
+        return maxMod;
+    }
+
+    /**
+     * Executes HSQLDB SHUTDOWN to close and unload in-memory database instance.
+     * This forces the next connection to mount and read fresh files from disk.
+     */
+    private static synchronized void shutdownDatabaseIfMounted() {
+        if (!isDatabaseMounted) {
+            return;
+        }
+        System.out.println("FireSnowBridge: Executing HSQLDB SHUTDOWN to reload database from disk...");
+        try (Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD)) {
+            try (Statement stmt = conn.createStatement()) {
+                stmt.execute("SHUTDOWN");
+                System.out.println("FireSnowBridge: HSQLDB SHUTDOWN completed successfully");
+            }
+        } catch (SQLException e) {
+            System.err.println("FireSnowBridge: SHUTDOWN notice: " + e.getMessage());
+        }
+        isDatabaseMounted = false;
+        dbMountedTime = 0;
+        System.gc();
+    }
+
+    /**
+     * Creates READ-ONLY connection to FireSnow database with automatic change detection.
+     * If FireSnow modified files on disk, or if TTL expired, it executes SHUTDOWN to reload.
+     */
+    private static synchronized Connection getConnection() throws SQLException {
+        long now = System.currentTimeMillis();
+        String basePath = getFileDbBasePath();
+        
+        if (basePath != null && isDatabaseMounted) {
+            long currentFilesMod = getDatabaseFilesLastModified(basePath);
+            boolean filesChanged = (lastDbFilesModified > 0 && currentFilesMod > lastDbFilesModified);
+            boolean ttlExpired = (now - dbMountedTime) > TTL;
+            
+            if (filesChanged || ttlExpired) {
+                if (filesChanged) {
+                    System.out.println("FireSnowBridge: Database files on disk modified (" + currentFilesMod + " > " + lastDbFilesModified + ") - reloading fresh data!");
+                } else {
+                    System.out.println("FireSnowBridge: Database cache TTL expired (" + (now - dbMountedTime) + "ms > " + TTL + "ms) - reloading!");
+                }
+                shutdownDatabaseIfMounted();
+            }
         }
         
-        // Open new connection if needed
-        if (connection == null || connection.isClosed()) {
-            System.out.println("FireSnowBridge: Opening fresh connection...");
-            System.out.println("FireSnowBridge: URL: " + DB_URL);
-            
-            connection = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-            
-            // Force READ-ONLY mode for safety!
-            connection.setReadOnly(true);
-            
-            lastRefresh = now;
-            
-            System.out.println("FireSnowBridge: Fresh connection established (will auto-refresh in 2 min)");
+        Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+        conn.setReadOnly(true);
+        
+        if (!isDatabaseMounted) {
+            isDatabaseMounted = true;
+            dbMountedTime = now;
+            if (basePath != null) {
+                lastDbFilesModified = getDatabaseFilesLastModified(basePath);
+                System.out.println("FireSnowBridge: Fresh database mounted from disk. Files timestamp: " + lastDbFilesModified);
+            }
         }
         
-        return connection;
+        return conn;
     }
     
     /**
@@ -109,25 +167,9 @@ public class FireSnowBridge {
      * Used by /api/refresh endpoint for manual refresh
      */
     private static synchronized void closeAllConnections() {
-        System.out.println("FireSnowBridge: Manual refresh requested - closing all connections");
-        
-        if (connection != null) {
-            try {
-                connection.close();
-                System.out.println("FireSnowBridge: Connection closed successfully");
-            } catch (SQLException e) {
-                System.err.println("FireSnowBridge: Error closing connection: " + e.getMessage());
-            }
-            connection = null;
-        }
-        
-        // Reset timestamp to force new connection
-        lastRefresh = 0;
-        
-        // Suggest garbage collection
-        System.gc();
-        
-        System.out.println("FireSnowBridge: All connections closed, next request will read fresh data");
+        System.out.println("FireSnowBridge: Manual refresh requested - executing SHUTDOWN");
+        shutdownDatabaseIfMounted();
+        System.out.println("FireSnowBridge: Next request will read fresh data from disk");
     }
     
     /**
