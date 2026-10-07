@@ -49,6 +49,40 @@ interface OverrideRow extends RowDataPacket {
     dlugosc: number | null;
 }
 
+let tableInitialized = false;
+
+async function ensureTableExists(pool: Awaited<ReturnType<typeof getDBConnection>>): Promise<void> {
+    if (tableInitialized) return;
+    try {
+        const sql = `
+            CREATE TABLE IF NOT EXISTS equipment_overrides (
+                id VARCHAR(50) NOT NULL,
+                kod VARCHAR(50) DEFAULT NULL,
+                wzrost_min INT DEFAULT NULL,
+                wzrost_max INT DEFAULT NULL,
+                waga_min INT DEFAULT NULL,
+                waga_max INT DEFAULT NULL,
+                poziom VARCHAR(20) DEFAULT NULL,
+                plec VARCHAR(10) DEFAULT NULL,
+                przeznaczenie VARCHAR(50) DEFAULT NULL,
+                atuty VARCHAR(255) DEFAULT NULL,
+                kategoria VARCHAR(50) DEFAULT NULL,
+                typ_sprzetu VARCHAR(50) DEFAULT NULL,
+                marka VARCHAR(100) DEFAULT NULL,
+                model VARCHAR(200) DEFAULT NULL,
+                dlugosc DECIMAL(5,1) DEFAULT NULL,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                KEY idx_kod (kod)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+        `;
+        await pool.query(sql);
+        tableInitialized = true;
+    } catch (e) {
+        logger.warn('equipmentService: Nie udało się automatycznie zainicjalizować tabeli equipment_overrides', { error: (e as Error).message });
+    }
+}
+
 /**
  * Pobiera mapę nadpisań parametrów z bazy MySQL
  */
@@ -58,6 +92,7 @@ async function getOverridesMap(): Promise<{ byId: Map<string, OverrideRow>; byCo
 
     try {
         const pool = await getDBConnection();
+        await ensureTableExists(pool);
         const [rows] = await pool.query<OverrideRow[]>(
             'SELECT id, kod, wzrost_min, wzrost_max, waga_min, waga_max, poziom, plec, przeznaczenie, atuty, kategoria, typ_sprzetu, marka, model, dlugosc FROM equipment_overrides'
         );
@@ -170,6 +205,7 @@ export const equipmentService = {
         const dlugosc = data.DLUGOSC !== undefined ? data.DLUGOSC : (current.DLUGOSC ?? null);
 
         const pool = await getDBConnection();
+        await ensureTableExists(pool);
         const sql = `
             INSERT INTO equipment_overrides
                 (id, kod, wzrost_min, wzrost_max, waga_min, waga_max, poziom, plec, przeznaczenie, atuty, kategoria, typ_sprzetu, marka, model, dlugosc)
