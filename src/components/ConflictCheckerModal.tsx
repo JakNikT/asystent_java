@@ -318,6 +318,7 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
             }}
             disabled={isLoading}
             minDate={dateFrom || undefined}
+            quickFrom={dateFrom || undefined}
           />
         </div>
         

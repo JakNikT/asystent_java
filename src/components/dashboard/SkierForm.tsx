@@ -49,6 +49,7 @@ const SkierForm: React.FC<SkierFormProps> = ({
             value={formData.dateTo}
             onChange={(date) => onDateChange('dateTo', date)}
             minDate={formData.dateFrom || undefined}
+            quickFrom={formData.dateFrom || undefined}
           />
         </div>
 

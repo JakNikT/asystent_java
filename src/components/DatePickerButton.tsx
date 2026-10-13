@@ -6,6 +6,8 @@ import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { plPL } from '@mui/x-date-pickers/locales';
+import useMediaQuery from '@mui/material/useMediaQuery';
+import { QuickDatePicker } from './date/QuickDatePicker';
 
 // src/components/DatePickerButton.tsx: Ustawienie polskiej lokalizacji
 dayjs.locale('pl');
@@ -27,6 +29,8 @@ interface DatePickerButtonProps {
   minDate?: string;
   maxDate?: string;
   disabled?: boolean;
+  /** Data bazowa dla skrótów „+N dni” (np. Data od przy polu Data do) – tylko desktop */
+  quickFrom?: string;
 }
 
 // src/components/DatePickerButton.tsx: Motyw dopasowany do aplikacji (primary: #386BB2, ciemne tło)
@@ -93,7 +97,26 @@ export const DatePickerButton: React.FC<DatePickerButtonProps> = ({
   minDate,
   maxDate,
   disabled = false,
+  quickFrom,
 }) => {
+  // src/components/DatePickerButton.tsx: Desktop (mysz) -> szybki wybór DD/MM/RRRR; dotyk -> kalendarz MUI
+  // To samo kryterium co domyślne desktopModeMediaQuery w MUI X
+  const isDesktop = useMediaQuery('(pointer: fine)', { noSsr: true });
+
+  if (isDesktop) {
+    return (
+      <QuickDatePicker
+        label={label}
+        value={value}
+        onChange={onChange}
+        icon={icon}
+        minDate={minDate}
+        maxDate={maxDate}
+        disabled={disabled}
+        quickFrom={quickFrom}
+      />
+    );
+  }
   // src/components/DatePickerButton.tsx: Konwersja string (YYYY-MM-DD) na Dayjs
   const dayjsValue = value ? dayjs(value) : null;
 

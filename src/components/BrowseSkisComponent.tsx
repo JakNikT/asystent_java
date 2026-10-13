@@ -1051,6 +1051,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                       value={formData.dateTo || ''}
                       onChange={(date) => onDateChange('dateTo', date)}
                       minDate={formData.dateFrom || undefined}
+                      quickFrom={formData.dateFrom || undefined}
                     />
                   </div>
                 )}

@@ -1275,6 +1275,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                         value={dateTo}
                         onChange={setDateTo}
                         minDate={dateFrom || undefined}
+                        quickFrom={dateFrom || undefined}
                       />
                     </div>
                   </div>
