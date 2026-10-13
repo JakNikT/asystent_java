@@ -99,9 +99,8 @@ export const DatePickerButton: React.FC<DatePickerButtonProps> = ({
   disabled = false,
   quickFrom,
 }) => {
-  // src/components/DatePickerButton.tsx: Desktop (mysz) -> szybki wybór DD/MM/RRRR; dotyk -> kalendarz MUI
-  // To samo kryterium co domyślne desktopModeMediaQuery w MUI X
-  const isDesktop = useMediaQuery('(pointer: fine)', { noSsr: true });
+  // src/components/DatePickerButton.tsx: Ekran desktop/tablet (szerokość >= 768px lub mysz) -> szybki wybór DD/MM/RRRR; małe ekrany mobilne -> kalendarz MUI
+  const isDesktop = useMediaQuery('(min-width: 768px), (pointer: fine)', { noSsr: true });
 
   if (isDesktop) {
     return (
