@@ -76,5 +76,6 @@ FireSnowBridge/lib/*.properties
 FireSnowBridge/lib/*.script
 FireSnowBridge/lib/*.tmp/
 
-hsqldb.jar - jest potrzebny!
-!FireSnowBridge/lib/hsqldb.jar
+# Narzędzia AI (scratch)
+.cursor/
+.gemini/
