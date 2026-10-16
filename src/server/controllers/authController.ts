@@ -7,6 +7,7 @@ import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 import { verifyPin, createSessionToken, verifySessionToken } from '../utils/authUtils.js';
 import logger from '../config/logger.js';
+import { recordFailedLogin, clearFailedLogins } from '../middleware/loginRateLimit.js';
 
 interface LoginBody {
     password?: string;
@@ -34,6 +35,7 @@ export const authController = {
             const isValid = verifyPin(inputPin);
 
             if (!isValid) {
+                recordFailedLogin(req.ip ?? 'unknown');
                 logger.warn('Nieudana próba logowania pracownika (błędne hasło)', {
                     ip: req.ip
                 });
@@ -41,6 +43,7 @@ export const authController = {
                 return;
             }
 
+            clearFailedLogins(req.ip ?? 'unknown');
             const token = createSessionToken('employee');
             logger.info('Pomyślne logowanie pracownika', { ip: req.ip });
 
