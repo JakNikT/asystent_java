@@ -54,6 +54,22 @@ export async function getHistoryDBConnection(): Promise<DBConnection> {
     return historyPool;
 }
 
+/**
+ * Zamyka obie pule połączeń MySQL i zeruje zmienne (kolejne wywołania getDBConnection utworzą nowe pule)
+ */
+export async function closeDBPools(): Promise<void> {
+    const pools = [pool, historyPool];
+    pool = null;
+    historyPool = null;
+
+    const results = await Promise.allSettled(pools.map(p => p?.end()));
+    for (const result of results) {
+        if (result.status === 'rejected') {
+            logger.error('src/server/config/database.ts: Błąd zamykania puli MySQL', { error: String(result.reason) });
+        }
+    }
+}
+
 
 
 
