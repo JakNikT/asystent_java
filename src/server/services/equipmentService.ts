@@ -9,6 +9,7 @@ import { getDBConnection } from '../config/database.js';
 import { mapFireSnowToSkiData } from '../utils/equipmentMapper.js';
 import logger from '../config/logger.js';
 import type { Equipment, UpdateEquipmentData } from '../types/services.types.js';
+import type { DBConnection } from '../types/database.types.js';
 import type { RowDataPacket } from 'mysql2/promise';
 
 /**
@@ -50,9 +51,36 @@ interface OverrideRow extends RowDataPacket {
 }
 
 let tableInitialized = false;
+let lastInitAttempt = 0;
+let lastOverridesWarning = 0;
+const RETRY_INTERVAL_MS = 60_000;
 
-async function ensureTableExists(pool: Awaited<ReturnType<typeof getDBConnection>>): Promise<void> {
+/**
+ * Pola nadpisywalne: pole API -> kolumna equipment_overrides (jawna biała lista).
+ * Nazwy kolumn do SQL pochodzą wyłącznie stąd, nigdy z kluczy żądania.
+ */
+const OVERRIDE_FIELDS = [
+    ['WZROST_MIN', 'wzrost_min'],
+    ['WZROST_MAX', 'wzrost_max'],
+    ['WAGA_MIN', 'waga_min'],
+    ['WAGA_MAX', 'waga_max'],
+    ['POZIOM', 'poziom'],
+    ['PLEC', 'plec'],
+    ['PRZEZNACZENIE', 'przeznaczenie'],
+    ['ATUTY', 'atuty'],
+    ['KATEGORIA', 'kategoria'],
+    ['TYP_SPRZETU', 'typ_sprzetu'],
+    ['MARKA', 'marka'],
+    ['MODEL', 'model'],
+    ['DLUGOSC', 'dlugosc']
+] as const satisfies ReadonlyArray<readonly [keyof UpdateEquipmentData, string]>;
+
+async function ensureTableExists(pool: DBConnection): Promise<void> {
     if (tableInitialized) return;
+    // Po niepowodzeniu nie próbuj ponownie częściej niż co RETRY_INTERVAL_MS
+    const now = Date.now();
+    if (now - lastInitAttempt < RETRY_INTERVAL_MS) return;
+    lastInitAttempt = now;
     try {
         const sql = `
             CREATE TABLE IF NOT EXISTS equipment_overrides (
@@ -103,7 +131,12 @@ async function getOverridesMap(): Promise<{ byId: Map<string, OverrideRow>; byCo
         }
     } catch (error) {
         const err = error as Error;
-        logger.warn('equipmentService: Nie udało się pobrać nadpisań z MySQL', { error: err.message });
+        // Nie loguj ostrzeżenia przy każdym GET /skis
+        const now = Date.now();
+        if (now - lastOverridesWarning >= RETRY_INTERVAL_MS) {
+            lastOverridesWarning = now;
+            logger.warn('equipmentService: Nie udało się pobrać nadpisań z MySQL', { error: err.message });
+        }
     }
 
     return { byId, byCode };
@@ -131,45 +164,85 @@ function applyOverride(item: Equipment, override: OverrideRow): Equipment {
     };
 }
 
+/**
+ * Pobiera sprzęt z FireSnow i nakłada nadpisania z MySQL. Przy błędzie FireSnow rzuca wyjątek.
+ */
+async function fetchMergedEquipment(): Promise<Equipment[]> {
+    if (!config.useFireSnowApi) {
+        logger.warn('equipmentService: Tryb FireSnow API wyłączony w konfiguracji');
+        return [];
+    }
+
+    const fireSnowData = await fireSnowService.getAllEquipment();
+    logger.info(`equipmentService: Pobrano ${fireSnowData.length} rekordów sprzętu z FireSnow API`);
+
+    const allEquipment: Equipment[] = [];
+
+    for (const group of GROUPS) {
+        const groupData = fireSnowData.filter(item => (item.parent_group_id as number) === group.id);
+
+        if (groupData.length > 0) {
+            const mappedGroupData = groupData.map(item => mapFireSnowToSkiData(item));
+            allEquipment.push(...mappedGroupData);
+        }
+    }
+
+    // Pobierz nadpisania z MySQL i wzbogać sprzęt
+    const { byId, byCode } = await getOverridesMap();
+
+    const enrichedEquipment = allEquipment.map(item => {
+        const override = byId.get(item.ID) || (item.KOD ? byCode.get(item.KOD) : undefined);
+        if (override) {
+            return applyOverride(item, override);
+        }
+        return item;
+    });
+
+    logger.info(`equipmentService: Łącznie zmapowano ${enrichedEquipment.length} sztuk sprzętu (nadpisano z MySQL: ${byId.size} ID)`);
+    return enrichedEquipment;
+}
+
+/**
+ * Zapisuje w MySQL wyłącznie pola przekazane w `data` (!== undefined), nie przypinając reszty
+ */
+async function applyUpdate(current: Equipment, data: UpdateEquipmentData): Promise<Equipment> {
+    const kod = data.KOD ?? current.KOD ?? null;
+
+    const columns: string[] = ['id', 'kod'];
+    const values: Array<string | number | null> = [current.ID, kod];
+    const changes: Partial<Equipment> = {};
+
+    for (const [field, column] of OVERRIDE_FIELDS) {
+        const value = data[field];
+        if (value === undefined) continue;
+        columns.push(column);
+        values.push(value);
+        // null czyści nadpisanie (wartość wraca do FireSnow przy następnym odczycie)
+        if (value !== null) Object.assign(changes, { [field]: value });
+    }
+
+    const placeholders = columns.map(() => '?').join(', ');
+    const updateClause = columns.filter(column => column !== 'id').map(column => `${column} = VALUES(${column})`).join(', ');
+
+    const pool = await getDBConnection();
+    await ensureTableExists(pool);
+    await pool.query(
+        `INSERT INTO equipment_overrides (${columns.join(', ')}) VALUES (${placeholders}) ON DUPLICATE KEY UPDATE ${updateClause}`,
+        values
+    );
+
+    logger.info('equipmentService: Zapisano parametry sprzętu w MySQL', { id: current.ID, kod, fields: columns.length - 2 });
+
+    return { ...current, ...changes, ID: current.ID, KOD: kod || current.KOD };
+}
+
 export const equipmentService = {
     /**
      * Pobiera wszystkie pozycje sprzętu (z FireSnow API) wzbogacone o parametry z MySQL
      */
     async getAll(): Promise<Equipment[]> {
-        if (!config.useFireSnowApi) {
-            logger.warn('equipmentService: Tryb FireSnow API wyłączony w konfiguracji');
-            return [];
-        }
-
         try {
-            const fireSnowData = await fireSnowService.getAllEquipment();
-            logger.info(`equipmentService: Pobrano ${fireSnowData.length} rekordów sprzętu z FireSnow API`);
-
-            const allEquipment: Equipment[] = [];
-
-            for (const group of GROUPS) {
-                const groupData = fireSnowData.filter(item => (item.parent_group_id as number) === group.id);
-
-                if (groupData.length > 0) {
-                    const mappedGroupData = groupData.map(item => mapFireSnowToSkiData(item));
-                    allEquipment.push(...mappedGroupData);
-                }
-            }
-
-            // Pobierz nadpisania z MySQL i wzbogać sprzęt
-            const { byId, byCode } = await getOverridesMap();
-
-            const enrichedEquipment = allEquipment.map(item => {
-                const override = byId.get(item.ID) || (item.KOD ? byCode.get(item.KOD) : undefined);
-                if (override) {
-                    return applyOverride(item, override);
-                }
-                return item;
-            });
-
-            logger.info(`equipmentService: Łącznie zmapowano ${enrichedEquipment.length} sztuk sprzętu (nadpisano z MySQL: ${byId.size} ID)`);
-            return enrichedEquipment;
-
+            return await fetchMergedEquipment();
         } catch (error) {
             const err = error as Error;
             logger.error('equipmentService: Błąd pobierania sprzętu z FireSnow API', { error: err.message });
@@ -181,96 +254,35 @@ export const equipmentService = {
      * Aktualizuje parametry sprzętu i zapisuje je w MySQL (equipment_overrides)
      */
     async update(id: string, data: UpdateEquipmentData): Promise<Equipment | null> {
-        // Znajdź bieżący sprzęt w FireSnow
-        const all = await this.getAll();
-        const current = all.find(s => s.ID === id || (data.KOD && s.KOD === data.KOD));
+        const all = await fetchMergedEquipment();
+        const current = all.find(s => s.ID === id);
         if (!current) {
-            logger.warn('equipmentService: Nie znaleziono sprzętu do edycji', { id, kod: data.KOD });
+            logger.warn('equipmentService: Nie znaleziono sprzętu do edycji', { id });
             return null;
         }
 
-        const kod = data.KOD || current.KOD || null;
-        const wzrost_min = data.WZROST_MIN !== undefined ? data.WZROST_MIN : (current.WZROST_MIN ?? null);
-        const wzrost_max = data.WZROST_MAX !== undefined ? data.WZROST_MAX : (current.WZROST_MAX ?? null);
-        const waga_min = data.WAGA_MIN !== undefined ? data.WAGA_MIN : (current.WAGA_MIN ?? null);
-        const waga_max = data.WAGA_MAX !== undefined ? data.WAGA_MAX : (current.WAGA_MAX ?? null);
-        const poziom = data.POZIOM !== undefined ? data.POZIOM : (current.POZIOM ?? null);
-        const plec = data.PLEC !== undefined ? data.PLEC : (current.PLEC ?? null);
-        const przeznaczenie = data.PRZEZNACZENIE !== undefined ? data.PRZEZNACZENIE : (current.PRZEZNACZENIE ?? null);
-        const atuty = data.ATUTY !== undefined ? data.ATUTY : (current.ATUTY ?? null);
-        const kategoria = data.KATEGORIA !== undefined ? data.KATEGORIA : (current.KATEGORIA ?? null);
-        const typ_sprzetu = data.TYP_SPRZETU !== undefined ? data.TYP_SPRZETU : (current.TYP_SPRZETU ?? null);
-        const marka = data.MARKA !== undefined ? data.MARKA : (current.MARKA ?? null);
-        const model = data.MODEL !== undefined ? data.MODEL : (current.MODEL ?? null);
-        const dlugosc = data.DLUGOSC !== undefined ? data.DLUGOSC : (current.DLUGOSC ?? null);
-
-        const pool = await getDBConnection();
-        await ensureTableExists(pool);
-        const sql = `
-            INSERT INTO equipment_overrides
-                (id, kod, wzrost_min, wzrost_max, waga_min, waga_max, poziom, plec, przeznaczenie, atuty, kategoria, typ_sprzetu, marka, model, dlugosc)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE
-                kod = VALUES(kod),
-                wzrost_min = VALUES(wzrost_min),
-                wzrost_max = VALUES(wzrost_max),
-                waga_min = VALUES(waga_min),
-                waga_max = VALUES(waga_max),
-                poziom = VALUES(poziom),
-                plec = VALUES(plec),
-                przeznaczenie = VALUES(przeznaczenie),
-                atuty = VALUES(atuty),
-                kategoria = VALUES(kategoria),
-                typ_sprzetu = VALUES(typ_sprzetu),
-                marka = VALUES(marka),
-                model = VALUES(model),
-                dlugosc = VALUES(dlugosc)
-        `;
-
-        await pool.query(sql, [
-            current.ID,
-            kod,
-            wzrost_min,
-            wzrost_max,
-            waga_min,
-            waga_max,
-            poziom,
-            plec,
-            przeznaczenie,
-            atuty,
-            kategoria,
-            typ_sprzetu,
-            marka,
-            model,
-            dlugosc
-        ]);
-
-        logger.info('equipmentService: Zapisano parametry sprzętu w MySQL', { id: current.ID, kod });
-
-        return {
-            ...current,
-            ...data,
-            ID: current.ID,
-            KOD: kod || current.KOD
-        };
+        return applyUpdate(current, data);
     },
 
     /**
      * Masowa aktualizacja wielu pozycji sprzętu w MySQL
      */
     async bulkUpdate(ids: string[], updates: Partial<UpdateEquipmentData>): Promise<Equipment[]> {
-        const updatedSkis: Equipment[] = [];
-
         // Chroń ID i KOD przed masowym nadpisaniem
         const safeUpdates = { ...updates };
         delete safeUpdates.ID;
         delete safeUpdates.KOD;
 
+        const all = await fetchMergedEquipment();
+        const updatedSkis: Equipment[] = [];
+
         for (const id of ids) {
-            const updated = await this.update(id, safeUpdates);
-            if (updated) {
-                updatedSkis.push(updated);
+            const current = all.find(s => s.ID === id);
+            if (!current) {
+                logger.warn('equipmentService: Nie znaleziono sprzętu do edycji', { id });
+                continue;
             }
+            updatedSkis.push(await applyUpdate(current, safeUpdates));
         }
 
         logger.info(`equipmentService: Zaktualizowano masowo ${updatedSkis.length} pozycji sprzętu w MySQL`);

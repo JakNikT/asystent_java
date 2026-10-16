@@ -136,14 +136,14 @@ export interface UpdateEquipmentData {
   KATEGORIA?: string;
   MARKA?: string;
   MODEL?: string;
-  DLUGOSC?: number;
+  DLUGOSC?: number | null;
   PLEC?: string;
   KOD?: string;
   POZIOM?: string;
-  WAGA_MIN?: number;
-  WAGA_MAX?: number;
-  WZROST_MIN?: number;
-  WZROST_MAX?: number;
+  WAGA_MIN?: number | null;
+  WAGA_MAX?: number | null;
+  WZROST_MIN?: number | null;
+  WZROST_MAX?: number | null;
   PRZEZNACZENIE?: string;
   ATUTY?: string;
 }
