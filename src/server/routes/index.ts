@@ -34,6 +34,11 @@ router.get('/health', (_req: AppRequest, res: AppResponse) => {
     });
 });
 
+// Nieznane endpointy API - JSON zamiast HTML
+router.use((_req: AppRequest, res: AppResponse) => {
+    res.status(404).json({ success: false, error: { message: 'Nie znaleziono zasobu', code: 'NOT_FOUND' } });
+});
+
 export default router;
 
 

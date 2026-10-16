@@ -4,7 +4,6 @@
  */
 
 import express from 'express';
-import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import routes from './routes/index.js';
@@ -17,8 +16,8 @@ const rootDir = path.resolve(__dirname, '../../');
 const app = express();
 
 // Middleware
-app.use(cors());
-app.use(express.json());
+app.disable('x-powered-by');
+app.use(express.json({ limit: '100kb' }));
 
 // API Routes
 app.use('/api', routes);
@@ -28,7 +27,7 @@ if (process.env.NODE_ENV === 'production') {
     app.use(express.static(path.join(rootDir, 'dist')));
 
     // Catch-all route for React
-    app.use((_req, res) => {
+    app.get('/{*splat}', (_req, res) => {
         res.sendFile(path.join(rootDir, 'dist', 'index.html'));
     });
 } else {

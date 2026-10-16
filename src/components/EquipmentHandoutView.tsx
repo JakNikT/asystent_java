@@ -8,8 +8,8 @@ import { AuthService } from '../services/authService';
 // src/components/EquipmentHandoutView.tsx: Logger dla EquipmentHandoutView
 const logger = createLogger('EquipmentHandoutView');
 
-// API URL dla pobierania rezerwacji
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
+// API URL dla pobierania rezerwacji (przez proxy Vite / ten sam origin w produkcji)
+const API_BASE_URL = '/api';
 
 interface EquipmentHandoutViewProps {
   reservations: ReservationData[];
