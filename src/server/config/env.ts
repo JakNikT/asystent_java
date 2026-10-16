@@ -16,13 +16,31 @@ const __dirname = path.dirname(__filename);
 const rootDir = path.resolve(__dirname, '../../../');
 
 // Validate required environment variables
-const requiredEnvVars = ['DB_PASSWORD'] as const;
+const requiredEnvVars = ['DB_PASSWORD', 'EMPLOYEE_PIN', 'AUTH_SECRET'] as const;
 const missingEnvVars = requiredEnvVars.filter(varName => !process.env[varName]);
 
 if (missingEnvVars.length > 0) {
     console.error('❌ Błąd konfiguracji: Brakujące wymagane zmienne środowiskowe:');
     missingEnvVars.forEach(varName => console.error(`   - ${varName}`));
-    console.error('\n💡 Wskazówka: Skopiuj plik .env.example do .env i uzupełnij wartości.');
+    console.error('\n💡 Wskazówka: Skopiuj plik env.example do .env i uzupełnij wartości.');
+    process.exit(1);
+}
+
+const employeePin = process.env.EMPLOYEE_PIN!;
+const authSecret = process.env.AUTH_SECRET!;
+const configErrors: string[] = [];
+
+if (!/^\d{4,12}$/.test(employeePin) || employeePin === '0000') {
+    configErrors.push('EMPLOYEE_PIN musi składać się z 4-12 cyfr i nie może być równy 0000');
+}
+if (authSecret.length < 32 || authSecret === 'firesnow-asystent-jwt-secret-key-2026' || authSecret === 'change-me') {
+    configErrors.push('AUTH_SECRET musi mieć co najmniej 32 znaki i nie może być wartością domyślną');
+}
+
+if (configErrors.length > 0) {
+    console.error('❌ Błąd konfiguracji: Nieprawidłowe wartości zmiennych środowiskowych:');
+    configErrors.forEach(message => console.error(`   - ${message}`));
+    console.error('\n💡 Wskazówka: AUTH_SECRET wygenerujesz: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
     process.exit(1);
 }
 
@@ -55,8 +73,8 @@ export const config = {
     db: dbConfig,
 
     auth: {
-        employeePin: process.env.EMPLOYEE_PIN || '0000',
-        secret: process.env.AUTH_SECRET || 'firesnow-asystent-jwt-secret-key-2026'
+        employeePin,
+        secret: authSecret
     },
 
     paths: {
