@@ -229,7 +229,8 @@ npm install express cors
 - `npm run dev` - Tryb deweloperski (lokalny)
 - `npm run build` - Budowanie aplikacji
 - `npm run server` - Uruchomienie serwera sieciowego
-- `npm run build:server` - Budowanie + instalacja zależności serwera
+- `npm run start` - Uruchomienie serwera (produkcja, `tsx server.ts`)
+- `npm run typecheck` - Sprawdzenie typów frontendu i serwera
 
 ## Bezpieczeństwo
 

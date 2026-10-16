@@ -19,7 +19,8 @@ npm run dev:server                 # Backend with watch (port 5001)
 cd FireSnowBridge && start-headless.bat  # Java bridge (port 8081)
 
 # Testing
-npm test                           # Run all tests
+npm test                           # Run all tests once (vitest run)
+npm run test:watch                 # Tests in watch mode
 npm run test:ui                    # Interactive test UI
 npm run test:coverage              # Coverage report
 
@@ -28,9 +29,10 @@ npm run lint                       # ESLint
 npm run format                     # Prettier format
 npm run format:check               # Check formatting
 
-# Build
-npm run build                      # Build frontend + backend
-npm run build:server               # Compile backend only
+# Build / production
+npm run build                      # Build frontend (tsc -b + vite build)
+npm run start                      # Production backend (tsx server.ts)
+npm run typecheck                  # Typecheck frontend + backend
 ```
 
 ## Architecture
