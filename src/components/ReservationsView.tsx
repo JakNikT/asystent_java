@@ -7,6 +7,7 @@ import { DatePickerButton } from './DatePickerButton';
 import { loadAppState, saveAppState } from '../utils/localStorage';
 import type { ViewType } from '../types/viewTypes';
 import { toastService } from '../hooks/useToast';
+import { AuthService } from '../services/authService';
 
 // src/components/ReservationsView.tsx: Logger dla ReservationsView
 const logger = createLogger('ReservationsView');
@@ -408,7 +409,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       // Wymuś odświeżenie połączenia Java Bridge do bazy HSQLDB
       // (Bridge utrzymuje połączenie przez 2 min - bez tego odczytuje stare dane)
       try {
-        await fetch('/api/firesnow/refresh', { method: 'POST' });
+        await fetch('/api/firesnow/refresh', { method: 'POST', headers: AuthService.getAuthHeaders() });
       } catch {
         // Ignoruj błąd Bridge - kontynuuj z tym co mamy
         logger.warn('ReservationsView: Nie udało się odświeżyć Bridge, kontynuuję');
@@ -437,7 +438,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     setIsRefreshing(true);
     try {
       try {
-        await fetch('/api/firesnow/refresh', { method: 'POST' });
+        await fetch('/api/firesnow/refresh', { method: 'POST', headers: AuthService.getAuthHeaders() });
       } catch (err) {
         logger.warn('ReservationsView: Nie udało się odświeżyć Bridge:', err);
       }

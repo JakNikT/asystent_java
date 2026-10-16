@@ -6,6 +6,7 @@
 import { createLogger } from '../utils/logger';
 import { toastService } from '../hooks/useToast';
 import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
+import { AuthService } from './authService';
 
 const API_BASE_URL = '/api';
 
@@ -72,7 +73,8 @@ export class HistoryService {
       this.logger.info('Wyszukiwanie klientów po nazwisku:', nazwisko);
 
       const response = await fetch(
-        `${API_BASE_URL}/historia/klienci/wyszukaj?nazwisko=${encodeURIComponent(nazwisko)}`
+        `${API_BASE_URL}/historia/klienci/wyszukaj?nazwisko=${encodeURIComponent(nazwisko)}`,
+        { headers: AuthService.getAuthHeaders() }
       );
 
       if (!response.ok) {
@@ -99,7 +101,9 @@ export class HistoryService {
     try {
       this.logger.debug('Pobieranie dat dla klienta ID:', clientId);
 
-      const response = await fetch(`${API_BASE_URL}/historia/klient/${clientId}/daty`);
+      const response = await fetch(`${API_BASE_URL}/historia/klient/${clientId}/daty`, {
+        headers: AuthService.getAuthHeaders()
+      });
 
       if (!response.ok) {
         const errorMessage = await parseApiError(response);
@@ -142,7 +146,8 @@ export class HistoryService {
       const queryParams = new URLSearchParams(params);
 
       const response = await fetch(
-        `${API_BASE_URL}/historia/klient/${clientId}/sprzet?${queryParams.toString()}`
+        `${API_BASE_URL}/historia/klient/${clientId}/sprzet?${queryParams.toString()}`,
+        { headers: AuthService.getAuthHeaders() }
       );
 
       if (!response.ok) {

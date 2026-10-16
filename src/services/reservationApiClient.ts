@@ -100,7 +100,9 @@ export class ReservationApiClient {
 
     try {
       logger.info('Pobieram wypożyczenia z serwera...');
-      const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`);
+      const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`, {
+        headers: AuthService.getAuthHeaders()
+      });
       
       if (!response.ok) {
         const errorMessage = await parseApiError(response);
@@ -259,7 +261,9 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
   static async loadPastRentals(): Promise<ReservationData[]> {
     try {
       logger.info('Pobieram przeszłe wypożyczenia z serwera...');
-      const response = await fetch(`${API_BASE_URL}/wypozyczenia/przeszle`);
+      const response = await fetch(`${API_BASE_URL}/wypozyczenia/przeszle`, {
+        headers: AuthService.getAuthHeaders()
+      });
       
       if (!response.ok) {
         const errorMessage = await parseApiError(response);
