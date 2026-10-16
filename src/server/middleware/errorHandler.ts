@@ -63,8 +63,13 @@ const getUserFriendlyMessage = (error: AppError, statusCode: number): string => 
     return error.userMessage;
   }
 
-  // Jeśli błąd ma message, użyj go (ale sprawdź czy nie jest zbyt techniczny)
-  if (error.message && !error.message.includes('Error:') && !error.message.includes('at ')) {
+  // Dla błędów 4xx komunikat błędu jest przeznaczony dla klienta (ale nie zbyt techniczny)
+  if (
+    statusCode < 500 &&
+    error.message &&
+    !error.message.includes('Error:') &&
+    !error.message.includes('at ')
+  ) {
     return error.message;
   }
 
@@ -90,18 +95,12 @@ const getUserFriendlyMessage = (error: AppError, statusCode: number): string => 
  */
 const isDatabaseError = (error: unknown): boolean => {
   if (!error || typeof error !== 'object') return false;
-  
-  const err = error as Record<string, unknown>;
-  const errorMessage = (err.message as string | undefined)?.toLowerCase() || '';
-  const errorCode = (err.code as string | undefined)?.toLowerCase() || '';
-  
+
+  // Sygnatura błędów mysql2: code 'ER_*' / 'PROTOCOL_*' lub sqlState
+  const err = error as { code?: unknown; sqlState?: unknown };
   return (
-    errorMessage.includes('database') ||
-    errorMessage.includes('sql') ||
-    errorMessage.includes('connection') ||
-    errorMessage.includes('timeout') ||
-    errorCode.includes('sql') ||
-    errorCode.includes('db')
+    (typeof err.code === 'string' && (err.code.startsWith('ER_') || err.code.startsWith('PROTOCOL_'))) ||
+    err.sqlState !== undefined
   );
 };
 
@@ -217,21 +216,19 @@ const errorHandler = (
   // Logowanie błędu
   const logContext: Record<string, unknown> = {
     method: req.method,
-    url: req.url,
+    url: req.path,
     statusCode,
     errorCode,
     error: error.message,
     stack: error.stack,
-    body: req.body,
-    query: req.query,
     params: req.params,
   };
 
   // src/server/middleware/errorHandler.ts: Logowanie błędu z kontekstem
   if (statusCode >= 500) {
-    logger.error(`API Error: ${req.method} ${req.url}`, logContext);
+    logger.error(`API Error: ${req.method} ${req.path}`, logContext);
   } else {
-    logger.warn(`API Warning: ${req.method} ${req.url}`, logContext);
+    logger.warn(`API Warning: ${req.method} ${req.path}`, logContext);
   }
 
   // Standaryzowany format odpowiedzi
