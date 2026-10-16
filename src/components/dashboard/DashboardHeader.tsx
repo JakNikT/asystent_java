@@ -12,6 +12,7 @@ interface DashboardHeaderProps {
   appMode?: AppMode;
   onQuickFilter?: (type: string, category: string) => void;
   onShowAllEquipment?: () => void;
+  isEmployeeMode: boolean;
 }
 
 const DashboardHeader: React.FC<DashboardHeaderProps> = ({ 
@@ -20,7 +21,8 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   categoryFilter = '',
   appMode = 'search',
   onQuickFilter,
-  onShowAllEquipment
+  onShowAllEquipment,
+  isEmployeeMode
 }) => {
   const [isConflictModalOpen, setIsConflictModalOpen] = useState(false);
   
@@ -31,18 +33,20 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
         <img 
           src="/images/logo.png" 
           alt="Narty Poznań Logo" 
-          className="w-[180px] h-[180px] lg:w-[220px] lg:h-[220px] rounded-full object-cover shadow-2xl shadow-black/50 border-4 border-white/10 cursor-pointer hover:opacity-80 transition-opacity"
+          className={`w-[180px] h-[180px] lg:w-[220px] lg:h-[220px] rounded-full object-cover shadow-2xl shadow-black/50 border-4 border-white/10 ${isEmployeeMode ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
           style={{ clipPath: 'circle(50%)' }}
-          onClick={() => setIsConflictModalOpen(true)}
-          title="Kliknij aby sprawdzić konflikty w kalendarzu sprzętu"
+          onClick={isEmployeeMode ? () => setIsConflictModalOpen(true) : undefined}
+          title={isEmployeeMode ? 'Kliknij aby sprawdzić konflikty w kalendarzu sprzętu' : undefined}
         />
       </div>
       
-      {/* Modal sprawdzania konfliktów */}
-      <ConflictCheckerModal
-        isOpen={isConflictModalOpen}
-        onClose={() => setIsConflictModalOpen(false)}
-      />
+      {/* Modal sprawdzania konfliktów (tylko dla pracownika - zawiera dane klientów) */}
+      {isEmployeeMode && isConflictModalOpen && (
+        <ConflictCheckerModal
+          isOpen={isConflictModalOpen}
+          onClose={() => setIsConflictModalOpen(false)}
+        />
+      )}
       
       {/* Main Content Container - bez zewnętrznego layoutu */}
       <div className="w-full max-w-[1100px] mx-auto my-4 lg:my-6 flex flex-col gap-4 px-3 lg:px-0">

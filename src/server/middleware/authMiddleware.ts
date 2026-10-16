@@ -51,3 +51,13 @@ export function requireEmployeeAuth(req: AppRequest, res: AppResponse, next: Nex
 
     next();
 }
+
+/**
+ * Nie blokuje żądania: ustawia req.isEmployee = true tylko dla ważnego tokenu Bearer
+ * (w każdym innym przypadku false). NIGDY nie zwraca 401.
+ */
+export function optionalEmployeeAuth(req: AppRequest, _res: AppResponse, next: NextFunction): void {
+    const [scheme, token] = (req.headers.authorization ?? '').split(' ');
+    req.isEmployee = scheme === 'Bearer' && !!token && verifySessionToken(token).valid;
+    next();
+}

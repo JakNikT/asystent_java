@@ -174,7 +174,9 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
     
     logger.debug(`Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
     
-    const response = await fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
+    const response = await fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`, {
+      headers: AuthService.getAuthHeaders()
+    });
     
     if (!response.ok) {
       const errorMessage = await parseApiError(response);

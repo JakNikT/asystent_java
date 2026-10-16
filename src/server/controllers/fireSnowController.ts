@@ -7,6 +7,27 @@ import logger from '../config/logger.js';
 import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 
+/** Pola identyfikujące klienta lub zawierające swobodny tekst o kliencie */
+const CLIENT_FIELDS = ['klient', 'klient_id', 'klient_nazwisko', 'uwagi'] as const;
+
+/**
+ * Zwraca kopię odpowiedzi dostępności bez pól klienta w rezerwacjach i wypożyczeniach
+ */
+function withoutClientData(data: unknown): unknown {
+    if (typeof data !== 'object' || data === null) return data;
+    const strip = (items: unknown): unknown =>
+        Array.isArray(items)
+            ? items.map((item: unknown) => {
+                if (typeof item !== 'object' || item === null) return item;
+                const copy = { ...(item as Record<string, unknown>) };
+                for (const field of CLIENT_FIELDS) delete copy[field];
+                return copy;
+            })
+            : items;
+    const payload = data as { reservations?: unknown; rentals?: unknown };
+    return { ...payload, reservations: strip(payload.reservations), rentals: strip(payload.rentals) };
+}
+
 export const fireSnowController = {
     /**
      * Sprawdza status zdrowia FireSnow API
@@ -53,7 +74,7 @@ export const fireSnowController = {
             const duration = Date.now() - startTime;
             logger.info(`Availability fetched in ${duration}ms`);
 
-            res.json(data);
+            res.json(req.isEmployee ? data : withoutClientData(data));
         } catch (error) {
             next(error);
         }

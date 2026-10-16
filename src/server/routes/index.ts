@@ -11,6 +11,7 @@ import historyRouter from './history.js';
 import fireSnowRouter from './firesnow.js';
 import authRouter from './auth.js';
 import { fireSnowController } from '../controllers/fireSnowController.js';
+import { optionalEmployeeAuth } from '../middleware/authMiddleware.js';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 
 const router = express.Router();
@@ -22,8 +23,7 @@ router.use('/skis', skisRouter);
 router.use('/historia', historyRouter);
 router.use('/firesnow', fireSnowRouter);
 
-// Special route from server.ts
-router.get('/dostepnosc/okres', fireSnowController.getAvailability);
+router.get('/dostepnosc/okres', optionalEmployeeAuth, fireSnowController.getAvailability);
 
 // Health check
 router.get('/health', (_req: AppRequest, res: AppResponse) => {

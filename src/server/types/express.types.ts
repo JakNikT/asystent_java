@@ -8,7 +8,8 @@ import type { Request, Response, NextFunction } from 'express';
 /**
  * Rozszerzenie Express Request o opcjonalne właściwości
  */
-export type AppRequest<P = unknown, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> = Request<P, ResBody, ReqBody, ReqQuery>;
+export type AppRequest<P = unknown, ResBody = unknown, ReqBody = unknown, ReqQuery = unknown> =
+  Request<P, ResBody, ReqBody, ReqQuery> & { isEmployee?: boolean };
 
 /**
  * Rozszerzenie Express Response o opcjonalne metody pomocnicze

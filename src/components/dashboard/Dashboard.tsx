@@ -95,6 +95,7 @@ const Dashboard: React.FC = () => {
           appMode={appMode}
           onQuickFilter={handleQuickFilterInSearch}
           onShowAllEquipment={handleShowAllEquipment}
+          isEmployeeMode={isEmployeeMode}
         >
           <DashboardForm
             formData={formData}
