@@ -1,11 +1,10 @@
 /**
  * src/server/services/rentalService.ts: Serwis do obsługi wypożyczeń
- * Pobiera wypożyczenia z FireSnow API lub CSV fallback
+ * Pobiera wypożyczenia z FireSnow API
  */
 
 import { config } from '../config/env.js';
 import { fireSnowService } from './fireSnowService.js';
-import { csvService } from './csvService.js';
 import logger from '../config/logger.js';
 import type { FireSnowRental, Reservation } from '../types/services.types.js';
 
@@ -91,44 +90,25 @@ function mapFireSnowPastRental(item: FireSnowRental): Reservation & { source: st
     };
 }
 
-/**
- * Filtruje wypożyczenia z CSV, usuwając nieprawidłowe wpisy
- */
-function filterCsvRentals(rentals: Record<string, unknown>[]): Reservation[] {
-    return rentals.filter(rental => {
-        const r = rental as Record<string, unknown>;
-        if (!r.klient || !r.sprzet) return false;
-        if (typeof r.klient === 'string' && r.klient.includes('Suma:')) return false;
-        if (typeof r.sprzet === 'string' && r.sprzet.includes('Suma:')) return false;
-        if (!r.od || !r.do) return false;
-        return true;
-    }).map(rental => ({
-        ...rental,
-        typumowy: 'STANDARD',
-        numer: (rental.kod as string) || `WYP-${Date.now()}`
-    })) as Reservation[];
-}
-
 export const rentalService = {
     /**
      * Pobiera aktywne wypożyczenia
      */
     async getActive(): Promise<Reservation[]> {
-        if (config.useFireSnowApi) {
-            try {
-                const data = await fireSnowService.getActiveRentals();
-                logger.info(`Mapped ${data.length} rentals from API`);
-                return data.map(mapFireSnowRental);
-            } catch (error) {
-                const err = error as Error;
-                logger.warn('FireSnow API unavailable, fallback to CSV', { error: err.message });
-            }
+        if (!config.useFireSnowApi) {
+            logger.warn('rentalService: Tryb FireSnow API wyłączony w konfiguracji');
+            return [];
         }
 
-        const data = await csvService.getRentals();
-        const filtered = filterCsvRentals(data);
-        logger.info(`Loaded ${filtered.length} rentals from CSV`);
-        return filtered;
+        try {
+            const data = await fireSnowService.getActiveRentals();
+            logger.info(`Mapped ${data.length} rentals from API`);
+            return data.map(mapFireSnowRental);
+        } catch (error) {
+            const err = error as Error;
+            logger.error('rentalService: Błąd pobierania wypożyczeń z FireSnow API', { error: err.message });
+            return [];
+        }
     },
 
     /**

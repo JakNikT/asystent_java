@@ -5,7 +5,6 @@
 import { reservationService } from '../services/reservationService.js';
 import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
-import type { CreateReservationData, UpdateReservationData } from '../types/services.types.js';
 
 interface DateQueryParams {
     date?: string;
@@ -45,50 +44,6 @@ export const reservationController = {
     async getAll(_req: AppRequest, res: AppResponse, next: NextFunction): Promise<void> {
         try {
             const data = await reservationService.getAll();
-            res.json(data);
-        } catch (error) {
-            next(error);
-        }
-    },
-
-    /**
-     * Tworzy nową rezerwację
-     */
-    async create(req: AppRequest<unknown, unknown, CreateReservationData>, res: AppResponse, next: NextFunction): Promise<void> {
-        try {
-            const data = await reservationService.create(req.body);
-            res.json(data);
-        } catch (error) {
-            next(error);
-        }
-    },
-
-    /**
-     * Aktualizuje istniejącą rezerwację
-     */
-    async update(req: AppRequest<{ id: string }, unknown, UpdateReservationData>, res: AppResponse, next: NextFunction): Promise<void> {
-        try {
-            const data = await reservationService.update(req.params.id, req.body);
-            if (!data) {
-                res.status(404).json({ error: 'Rezerwacja nie znaleziona' });
-                return;
-            }
-            res.json(data);
-        } catch (error) {
-            next(error);
-        }
-    },
-
-    /**
-     * Usuwa rezerwację
-     */
-    async delete(req: AppRequest<{ id: string }>, res: AppResponse, next: NextFunction): Promise<void> {
-        try {
-            const data = await reservationService.delete(req.params.id);
-            if (!data) {
-                res.status(404).json({ error: 'Rezerwacja nie znaleziona' });
-                return;
-            }
             res.json(data);
         } catch (error) {
             next(error);

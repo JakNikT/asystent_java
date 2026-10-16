@@ -20,10 +20,8 @@ app.listen(PORT, '0.0.0.0', () => {
   logger.info(`📊 API dostępne pod: http://localhost:${PORT}/api/`);
   logger.info('');
   logger.info('📡 FireSnow API Integration:');
-  logger.info(`   Status: ${config.useFireSnowApi ? 'ENABLED ✅' : 'DISABLED (używa CSV)'}`);
+  logger.info(`   Status: ${config.useFireSnowApi ? 'ENABLED ✅' : 'DISABLED (brak danych rezerwacji i wypożyczeń)'}`);
   logger.info(`   URL: ${config.fireSnowApiUrl}`);
-  logger.info(`   Fallback rezerwacje: CSV (${config.paths.reservationsCsv})`);
-  logger.info(`   Fallback wypożyczenia: CSV (${config.paths.rentalsCsv})`);
   logger.info('');
   logger.info('💡 Endpointy:');
   logger.info('   GET  /api/reservations - Pobierz rezerwacje');

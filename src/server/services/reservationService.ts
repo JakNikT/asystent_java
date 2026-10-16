@@ -1,14 +1,13 @@
 /**
  * src/server/services/reservationService.ts: Serwis do obsługi rezerwacji
- * Pobiera rezerwacje z FireSnow API lub CSV fallback
+ * Pobiera rezerwacje z FireSnow API
  */
 
 import { config } from '../config/env.js';
 import { fireSnowService } from './fireSnowService.js';
-import { csvService } from './csvService.js';
 import { formatFireSnowDate } from '../utils/formatters.js';
 import logger from '../config/logger.js';
-import type { FireSnowReservation, Reservation, CreateReservationData, UpdateReservationData } from '../types/services.types.js';
+import type { FireSnowReservation, Reservation } from '../types/services.types.js';
 
 /**
  * Mapuje rezerwację z FireSnow API na format aplikacji
@@ -51,137 +50,51 @@ function mapFireSnowReservation(item: FireSnowReservation): Reservation {
     };
 }
 
-/**
- * Filtruje rezerwacje z CSV, usuwając nieprawidłowe wpisy
- */
-function filterCsvReservations(reservations: Record<string, unknown>[]): Reservation[] {
-    return reservations.filter(reservation => {
-        const r = reservation as Record<string, unknown>;
-        if (!r.klient || !r.sprzet) return false;
-        if (r.klient === '57' || r.sprzet === 'Suma:') return false;
-        if (typeof r.klient === 'string' && r.klient.includes('Suma:')) return false;
-        if (typeof r.sprzet === 'string' && r.sprzet.includes('Suma:')) return false;
-        if (!r.od || !r.do) return false;
-        return true;
-    }) as unknown as Reservation[];
-}
-
 export const reservationService = {
     /**
      * Pobiera rezerwacje dla konkretnej daty (aktywne i wydane)
      * @param date - Data w formacie YYYY-MM-DD
      */
     async getForDate(date: string): Promise<Reservation[]> {
-        if (config.useFireSnowApi) {
-            try {
-                const data = await fireSnowService.getReservationsForDate(date);
-                logger.info(`src/server/services/reservationService.ts: Pobrano ${data.length} rezerwacji dla daty ${date} z FireSnow API`);
-                return data.map(mapFireSnowReservation);
-            } catch (error) {
-                const err = error as Error;
-                logger.warn(`src/server/services/reservationService.ts: FireSnow API unavailable for date ${date}, fallback to CSV`, {
-                    error: err.message,
-                    code: (err as { code?: string }).code || 'UNKNOWN'
-                });
-            }
+        if (!config.useFireSnowApi) {
+            logger.warn('reservationService: Tryb FireSnow API wyłączony w konfiguracji');
+            return [];
         }
 
-        // Fallback: filter CSV by date
-        const data = await csvService.getReservations();
-        const filtered = filterCsvReservations(data);
-
-        // Filter by date (match start date)
-        const forDate = filtered.filter(r => {
-            if (!r.od) return false;
-            // Normalize date format for comparison
-            const resDate = r.od.split(' ')[0]; // Remove time part if present
-            return resDate === date;
-        });
-
-        logger.info(`src/server/services/reservationService.ts: Pobrano ${forDate.length} rezerwacji dla daty ${date} z CSV`);
-        return forDate as unknown as Reservation[];
+        try {
+            const data = await fireSnowService.getReservationsForDate(date);
+            logger.info(`reservationService: Pobrano ${data.length} rezerwacji dla daty ${date} z FireSnow API`);
+            return data.map(mapFireSnowReservation);
+        } catch (error) {
+            const err = error as Error;
+            logger.error(`reservationService: Błąd pobierania rezerwacji dla daty ${date} z FireSnow API`, {
+                error: err.message
+            });
+            return [];
+        }
     },
 
     /**
-     * Pobiera wszystkie rezerwacje
+     * Pobiera wszystkie aktywne rezerwacje
      */
     async getAll(): Promise<Reservation[]> {
-        // src/server/services/reservationService.ts: Próba pobrania rezerwacji z FireSnow API
-        if (config.useFireSnowApi) {
-            try {
-                const data = await fireSnowService.getActiveReservations();
-                logger.info(`src/server/services/reservationService.ts: Pobrano ${data.length} rezerwacji z FireSnow API`);
-                return data.map(mapFireSnowReservation);
-            } catch (error) {
-                // src/server/services/reservationService.ts: FireSnow API niedostępne - użycie fallback do CSV
-                const err = error as Error;
-                logger.warn(`src/server/services/reservationService.ts: FireSnow API unavailable, fallback to CSV`, { 
-                    error: err.message,
-                    code: (err as { code?: string }).code || 'UNKNOWN',
-                    hint: 'Sprawdź czy FireSnow Bridge jest uruchomiony (port 8081) i czy Java jest poprawnie skonfigurowana'
-                });
-            }
+        if (!config.useFireSnowApi) {
+            logger.warn('reservationService: Tryb FireSnow API wyłączony w konfiguracji');
+            return [];
         }
 
-        // Fallback or default to CSV
-        const data = await csvService.getReservations();
-        const filtered = filterCsvReservations(data);
-        logger.info(`Loaded ${filtered.length} reservations from CSV`);
-        return filtered as unknown as Reservation[];
-    },
-
-    /**
-     * Tworzy nową rezerwację
-     */
-    async create(data: CreateReservationData): Promise<Reservation> {
-        const reservations = await csvService.getReservations();
-        const filtered = filterCsvReservations(reservations);
-
-        const newReservation: Reservation = {
-            klient: data.klient,
-            sprzet: data.sprzet,
-            kod: data.kod,
-            od: data.od,
-            do: data.do,
-            cena: data.cena || '0',
-            zaplacono: data.zaplacono || '',
-            numer: Date.now().toString(),
-            typumowy: data.typumowy || 'STANDARD'
-        };
-
-        filtered.push(newReservation);
-        await csvService.saveReservations(filtered);
-        return newReservation;
-    },
-
-    /**
-     * Aktualizuje istniejącą rezerwację
-     */
-    async update(id: string, data: UpdateReservationData): Promise<Reservation | null> {
-        const reservations = await csvService.getReservations();
-        const filtered = filterCsvReservations(reservations);
-
-        const index = filtered.findIndex(r => r.numer === id || r.kod === id);
-        if (index === -1) return null;
-
-        filtered[index] = { ...filtered[index]!, ...data };
-        await csvService.saveReservations(filtered);
-        return filtered[index]!;
-    },
-
-    /**
-     * Usuwa rezerwację
-     */
-    async delete(id: string): Promise<Reservation | null> {
-        const reservations = await csvService.getReservations();
-        const filtered = filterCsvReservations(reservations);
-
-        const index = filtered.findIndex(r => r.numer === id || r.kod === id);
-        if (index === -1) return null;
-
-        const [deleted] = filtered.splice(index, 1);
-        await csvService.saveReservations(filtered);
-        return deleted || null;
+        try {
+            const data = await fireSnowService.getActiveReservations();
+            logger.info(`reservationService: Pobrano ${data.length} rezerwacji z FireSnow API`);
+            return data.map(mapFireSnowReservation);
+        } catch (error) {
+            const err = error as Error;
+            logger.error('reservationService: Błąd pobierania rezerwacji z FireSnow API', {
+                error: err.message,
+                hint: 'Sprawdź czy FireSnow Bridge jest uruchomiony (port 8081) i czy Java jest poprawnie skonfigurowana'
+            });
+            return [];
+        }
     }
 };
 

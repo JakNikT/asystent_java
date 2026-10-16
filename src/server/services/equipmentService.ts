@@ -1,6 +1,6 @@
 /**
  * src/server/services/equipmentService.ts: Serwis do obsługi sprzętu narciarskiego
- * Pobiera sprzęt z FireSnow API lub CSV fallback
+ * Pobiera sprzęt z FireSnow API i nakłada nadpisania z MySQL
  */
 
 import { config } from '../config/env.js';

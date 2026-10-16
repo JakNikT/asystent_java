@@ -15,7 +15,7 @@ import logger from '../config/logger.js';
 /**
  * Kody błędów dla różnych typów problemów
  */
-const ERROR_CODES = {
+export const ERROR_CODES = {
   VALIDATION_ERROR: 'VALIDATION_ERROR',
   DATABASE_ERROR: 'DATABASE_ERROR',
   EXTERNAL_API_ERROR: 'EXTERNAL_API_ERROR',

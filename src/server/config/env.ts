@@ -4,16 +4,10 @@
  */
 
 import dotenv from 'dotenv';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import type { DatabaseConfig } from '../types/database.types.js';
 
 // Load .env file
 dotenv.config();
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const rootDir = path.resolve(__dirname, '../../../');
 
 // Validate required environment variables
 const requiredEnvVars = ['DB_PASSWORD', 'EMPLOYEE_PIN', 'AUTH_SECRET'] as const;
@@ -75,11 +69,6 @@ export const config = {
     auth: {
         employeePin,
         secret: authSecret
-    },
-
-    paths: {
-        reservationsCsv: path.join(rootDir, 'data', 'rezerwacja.csv'),
-        rentalsCsv: path.join(rootDir, 'data', 'wyp.csv')
     }
 } as const;
 

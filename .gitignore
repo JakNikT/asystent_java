@@ -25,11 +25,6 @@ __pycache__/
 # Database credentials
 db-config.js
 
-# Sensitive data dumps
-data/rezerwacja.csv
-data/wyp.csv
-data/*.tmp.csv
-
 # Log files
 *.log
 logs/

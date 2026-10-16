@@ -128,27 +128,6 @@ export interface Equipment {
 }
 
 /**
- * Dane do utworzenia rezerwacji
- */
-export interface CreateReservationData {
-  klient: string;
-  sprzet: string;
-  kod: string;
-  od: string;
-  do: string;
-  cena?: string;
-  zaplacono?: string;
-  typumowy?: string;
-}
-
-/**
- * Dane do aktualizacji rezerwacji
- */
-export interface UpdateReservationData extends Partial<CreateReservationData> {
-  numer?: string;
-}
-
-/**
  * Dane do aktualizacji sprzętu
  */
 export interface UpdateEquipmentData {
