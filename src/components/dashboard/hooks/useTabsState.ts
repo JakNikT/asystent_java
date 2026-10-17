@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import type { TabData } from '../../../types/dashboard.types';
 import { initialFormErrors } from '../../../utils/formValidation';
 
@@ -60,6 +60,8 @@ export const useTabsState = (): UseTabsStateReturn => {
     ]);
 
     const [activeTabId, setActiveTabId] = useState<string>('1');
+    // Licznik ID kart: (tabs.length + 1) dawał duplikaty po usunięciu karty ze środka
+    const nextTabId = useRef(2);
 
     const activeTab = tabs.find(tab => tab.id === activeTabId) || tabs[0];
 
@@ -70,7 +72,7 @@ export const useTabsState = (): UseTabsStateReturn => {
     };
 
     const addNewTab = () => {
-        const newId = (tabs.length + 1).toString();
+        const newId = String(nextTabId.current++);
         const newTab: TabData = {
             id: newId,
             label: `Osoba ${newId}`,
@@ -120,13 +122,11 @@ export const useTabsState = (): UseTabsStateReturn => {
     const removeTab = (tabId: string) => {
         if (tabs.length === 1) return;
 
-        setTabs(prev => {
-            const filtered = prev.filter(tab => tab.id !== tabId);
-            if (tabId === activeTabId && filtered.length > 0) {
-                setActiveTabId(filtered[0].id);
-            }
-            return filtered;
-        });
+        const filtered = tabs.filter(tab => tab.id !== tabId);
+        setTabs(filtered);
+        if (tabId === activeTabId) {
+            setActiveTabId(filtered[0].id);
+        }
     };
 
     return {

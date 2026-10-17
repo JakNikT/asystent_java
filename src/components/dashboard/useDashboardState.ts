@@ -245,13 +245,15 @@ export const useDashboardState = (): DashboardStateReturn => {
     });
   };
 
+  // `criteria` jest pełnym zestawem kryteriów (BrowseSkisComponent przekazuje {...browseCriteria} z nadpisanym polem),
+  // więc undefined oznacza wyczyszczone pole
   const handleBrowseCriteriaChange = (criteria: Partial<SearchCriteria>) => {
     setFormData(prev => ({
       ...prev,
-      height: { ...prev.height, value: criteria.wzrost?.toString() || prev.height.value },
-      weight: { ...prev.weight, value: criteria.waga?.toString() || prev.weight.value },
-      level: criteria.poziom?.toString() || prev.level,
-      gender: criteria.plec?.toUpperCase() || prev.gender
+      height: { ...prev.height, value: criteria.wzrost !== undefined ? String(criteria.wzrost) : '' },
+      weight: { ...prev.weight, value: criteria.waga !== undefined ? String(criteria.waga) : '' },
+      level: criteria.poziom !== undefined ? String(criteria.poziom) : '',
+      gender: criteria.plec ? criteria.plec.toUpperCase() : ''
     }));
   };
 
