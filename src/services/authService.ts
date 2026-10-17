@@ -47,20 +47,19 @@ export class AuthService {
   }
 
   /**
-   * fetch z automatycznym nagłówkiem Authorization. Odpowiedź 401 przy posiadanym tokenie oznacza
-   * wygaśnięcie sesji: token jest usuwany i wysyłane jest zdarzenie `auth:expired`.
+   * fetch z automatycznym nagłówkiem Authorization. Odpowiedź 401 oznacza brak ważnej sesji (wygasły,
+   * błędny lub usunięty token): token jest usuwany i wysyłane jest zdarzenie `auth:expired`, dzięki czemu
+   * UI wraca do trybu klienta także wtedy, gdy token zniknął z sessionStorage.
    * (login/logout używają gołego fetch - 401 przy logowaniu to błędny PIN, nie wygaśnięcie sesji)
    */
   static async fetch(input: string, init: RequestInit = {}): Promise<Response> {
-    const hadToken = this.getToken() !== null;
-
     const headers = new Headers(this.getAuthHeaders());
     new Headers(init.headers).forEach((value, key) => headers.set(key, value));
 
     const response = await fetch(input, { ...init, headers });
 
-    if (response.status === 401 && hadToken) {
-      logger.warn('Sesja pracownika wygasła (401) - usuwam token');
+    if (response.status === 401) {
+      logger.warn('Brak ważnej sesji pracownika (401) - usuwam token');
       this.removeToken();
       window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
     }

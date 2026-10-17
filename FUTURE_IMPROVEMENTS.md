@@ -24,3 +24,9 @@ Usprawnienia, optymalizacje i dług techniczny zauważone w trakcie realizacji `
 - **Niespójne końce linii** – git ostrzega `CRLF will be replaced by LF` przy kolejnych commitach (pliki w working copy mają CRLF). Pomysł: dodać `.gitattributes` (`* text=auto eol=lf`) i jednorazowo znormalizować.
 - **Wiele przestarzałych plików dokumentacji w rootcie** (`PLAN_NAPRAWY_BLEDOW.md`, `RAPORT_AUDYTU.md`, `REVIEW_*.md`, `PODSUMOWANIE_POPRAWEK.md`) – część opisuje stan sprzed zmian (np. „PIN 0000"). Pomysł: przenieść do `docs/archive/` albo usunąć.
 - **Frontendowy `src/utils/csvParser.ts` i zależność `papaparse`** – pozostałość po CSV; usuwane w 3.1 / Fazie 3.
+
+## Frontend
+
+- **Fałszywy toast „Dane z FireSnow zostały zsynchronizowane" przy wyłączonym moście** – `GET /skis` zwraca `[]` z 200 (`equipmentService.getAll` połyka błąd), więc `skiDataService`/`useSkiData` zgłasza sukces synchronizacji mimo awarii. Pomysł: rozróżnić awarię od pustej listy (patrz wpis o „degraded" w sekcji Backend).
+- **Widok Przeglądaj jest przywracany po odświeżeniu strony** (`appMode = 'browse'` z localStorage), ale bez wybranej grupy i bez wiedzy o sesji – po reloadzie użytkownik ląduje w pustym widoku. Pomysł: nie przywracać `browse` albo przywracać też grupę.
+- **Etykiety kart nie są przenumerowywane** po usunięciu karty (np. „Osoba 2", „Osoba 4"). Pomysł: etykieta z indeksu pozycji zamiast z ID.
