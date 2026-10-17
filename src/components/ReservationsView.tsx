@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ReservationApiClient } from '../services/reservationApiClient';
-import type { ReservationData } from '../services/reservationService';
+import type { ReservationData } from '../types/reservation.types';
 import { createLogger } from '../utils/logger';
 import { EquipmentHandoutView } from './EquipmentHandoutView';
 import { DatePickerButton } from './DatePickerButton';

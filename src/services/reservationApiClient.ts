@@ -6,7 +6,7 @@
 import { createLogger } from '../utils/logger';
 import { toastService } from '../hooks/useToast';
 import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
-import type { ReservationData, ReservationInfo, AvailabilityInfo } from './reservationService';
+import type { ReservationData, ReservationInfo, AvailabilityInfo } from '../types/reservation.types';
 import { AuthService } from './authService';
 import { DEFAULT_RENTAL_DAYS, SERVICE_BUFFER_DAYS, calendarDayNumber, dayGap } from '../utils/availability';
 import { dateToISO } from '../utils/dateParts';

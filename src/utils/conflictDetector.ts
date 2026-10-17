@@ -1,7 +1,7 @@
 // src/utils/conflictDetector.ts: Logika wykrywania konfliktów w kalendarzu sprzętu
 // Sprawdza czy przerwy między rezerwacjami/wypożyczeniami tego samego sprzętu mieszczą się w buforze serwisowym
 
-import type { ReservationData } from '../services/reservationService';
+import type { ReservationData } from '../types/reservation.types';
 import type { ConflictInfo, Conflict, ConflictAnalysisResult } from '../types/conflict.types';
 import { SERVICE_BUFFER_DAYS, dayGap } from './availability';
 

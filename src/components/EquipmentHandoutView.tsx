@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import type { ReservationData } from '../services/reservationService';
+import type { ReservationData } from '../types/reservation.types';
 import { createLogger } from '../utils/logger';
 import { DatePickerButton } from './DatePickerButton';
 import { loadAppState, saveAppState } from '../utils/localStorage';

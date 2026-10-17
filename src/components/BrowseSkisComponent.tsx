@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
 import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.types';
+import type { AvailabilityInfo } from '../types/reservation.types';
 import type { FormErrors } from '../utils/formValidation';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
@@ -56,21 +57,6 @@ interface SortConfig {
   direction: SortDirection;
 }
 
-interface AvailabilityStatus {
-  status: string;
-  color: string;
-  message: string;
-  reservations?: Array<{
-    startDate: Date | string;
-    endDate: Date | string;
-    clientName?: string;
-    id?: string;
-    equipment?: string;
-    notes?: string;
-    price?: number;
-  }>;
-}
-
 /**
  * Klucz grupy "ten sam model": marka, model, długość, typ sprzętu i kategoria
  */
@@ -104,7 +90,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   });
 
   const [currentPage, setCurrentPage] = useState(1);
-  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, AvailabilityStatus>>(new Map());
+  const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, AvailabilityInfo>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   // src/components/BrowseSkisComponent.tsx: Stan dla filtrów długości (mobile view dla VIP/TOP)
@@ -255,7 +241,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     setIsRefreshingAvailability(true);
     const startTime = Date.now();
 
-    const statusMap = new Map<string, AvailabilityStatus>();
+    const statusMap = new Map<string, AvailabilityInfo>();
 
     try {
       // Sprawdź czy użytkownik wpisał daty

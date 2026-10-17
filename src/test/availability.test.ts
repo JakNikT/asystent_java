@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { calendarDayNumber, dayGap, SERVICE_BUFFER_DAYS } from '../utils/availability';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { detectConflicts } from '../utils/conflictDetector';
-import type { ReservationData } from '../services/reservationService';
+import type { ReservationData } from '../types/reservation.types';
 
 const res = (od: string, doo: string, kod = 'N1'): ReservationData => ({
   klient: 'Test',

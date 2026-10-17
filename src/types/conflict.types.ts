@@ -1,6 +1,6 @@
 // src/types/conflict.types.ts: Typy TypeScript dla wykrywania konfliktów w kalendarzu sprzętu
 
-import type { ReservationData } from '../services/reservationService';
+import type { ReservationData } from './reservation.types';
 
 /**
  * Informacje o pojedynczym konflikcie między dwoma rezerwacjami/wypożyczeniami

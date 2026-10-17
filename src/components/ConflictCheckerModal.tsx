@@ -8,7 +8,7 @@ import { EquipmentTimeline } from './EquipmentTimeline';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { detectConflicts } from '../utils/conflictDetector';
 import type { ConflictAnalysisResult } from '../types/conflict.types';
-import type { ReservationData } from '../services/reservationService';
+import type { ReservationData } from '../types/reservation.types';
 import { DatePickerButton } from './DatePickerButton';
 import { SERVICE_BUFFER_DAYS } from '../utils/availability';
 
