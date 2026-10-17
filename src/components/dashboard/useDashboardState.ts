@@ -138,9 +138,10 @@ export const useDashboardState = (): DashboardStateReturn => {
       sessionStorage.setItem('app-initialized', 'true');
       return 'search';
     } else {
-      // Odświeżenie strony - przywróć zapisany stan
-      const savedAppState = loadAppState();
-      return savedAppState?.appMode || 'search';
+      // Odświeżenie strony - przywróć zapisany stan. Widoki pracownika (rezerwacje, historia) nie są
+      // przywracane: sesja pracownika jest weryfikowana asynchronicznie po starcie.
+      const savedMode = loadAppState()?.appMode;
+      return savedMode === 'reservations' || savedMode === 'history' ? 'search' : savedMode || 'search';
     }
   });
 

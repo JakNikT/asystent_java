@@ -13,7 +13,7 @@ interface EmployeeControlsProps {
 }
 
 const EmployeeControls: React.FC<EmployeeControlsProps> = ({
-  isEmployeeMode: _isEmployeeMode,
+  isEmployeeMode,
   appMode: _appMode, // Zachowane dla przyszłej użyteczności (np. podświetlanie aktywnego trybu)
   onClear,
   onBrowse,
@@ -36,21 +36,25 @@ const EmployeeControls: React.FC<EmployeeControlsProps> = ({
       >
         📋 Przeglądaj
       </button>
-      
-      <button 
-        onClick={onHistory}
-        className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider"
-      >
-        📜 Historia
-      </button>
-      
-      {/* Przycisk "Wydania" - zawsze widoczny */}
-      <button 
-        onClick={onReservations}
-        className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider cursor-pointer"
-      >
-        📦 Wydania
-      </button>
+
+      {/* Przyciski "Historia" i "Wydania" - tylko w trybie pracownika (dane klientów) */}
+      {isEmployeeMode && (
+        <>
+          <button 
+            onClick={onHistory}
+            className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider"
+          >
+            📜 Historia
+          </button>
+
+          <button 
+            onClick={onReservations}
+            className="w-full h-10 bg-primary text-white border-transparent focus:border-blue-400 rounded-md shadow-md shadow-black/30 hover:shadow-lg hover:shadow-black/40 hover:bg-primary/80 transition-all font-bold text-sm uppercase tracking-wider cursor-pointer"
+          >
+            📦 Wydania
+          </button>
+        </>
+      )}
     </div>
   );
 };
