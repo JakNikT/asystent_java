@@ -173,8 +173,12 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
   useEffect(() => {
     if (!selectedDate || serviceMode || checkMode) {
       setReservationsForDate([]);
+      setIsLoadingReservations(false);
       return;
     }
+
+    // Cleanup ustawia flagę - spóźniona odpowiedź dla poprzedniej daty nie nadpisuje bieżącego stanu
+    let cancelled = false;
 
     const fetchReservationsForDate = async () => {
       setIsLoadingReservations(true);
@@ -187,9 +191,11 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
         }
 
         const data = await response.json();
+        if (cancelled) return;
         logger.info('EquipmentHandoutView: Pobrano rezerwacji z API', data.length);
         setReservationsForDate(data);
       } catch (error) {
+        if (cancelled) return;
         logger.warn('EquipmentHandoutView: Błąd pobierania z API, fallback do lokalnych danych', error);
         // Fallback: użyj lokalnego filtrowania z przekazanych rezerwacji
         const filtered = reservations.filter(res => {
@@ -198,11 +204,15 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
         });
         setReservationsForDate(filtered);
       } finally {
-        setIsLoadingReservations(false);
+        if (!cancelled) setIsLoadingReservations(false);
       }
     };
 
     fetchReservationsForDate();
+
+    return () => {
+      cancelled = true;
+    };
   }, [selectedDate, serviceMode, checkMode, reservations, normalizeDate]);
 
   // src/components/EquipmentHandoutView.tsx: Wczytaj klientów z rezerwacjami na wybrany dzień

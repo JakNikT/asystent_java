@@ -370,7 +370,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // src/components/BrowseSkisComponent.tsx: Funkcja ręcznego odświeżania dostępności
   const handleManualRefresh = useCallback(async () => {
-    logger.info('BrowseSkisComponent: �� Ręczne odświeżanie dostępności...');
+    logger.info('BrowseSkisComponent: 🔄 Ręczne odświeżanie dostępności...');
     await loadAvailabilityStatuses();
     showSuccess('Dostępność zaktualizowana');
   }, [loadAvailabilityStatuses, showSuccess]);
