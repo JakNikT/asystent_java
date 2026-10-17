@@ -3,6 +3,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { SkiDataService } from '../../../services/skiDataService';
 import type { SkiData } from '../../../types/ski.types';
 import { createLogger } from '../../../utils/logger';
+import { toastService } from '../../../hooks/useToast';
+import { handleApiError } from '../../../utils/apiErrorHandler';
 
 const logger = createLogger('useSkiData');
 
@@ -28,7 +30,7 @@ export const useSkiData = (): UseSkiDataReturn => {
             logger.info(`useSkiData: Załadowano ${data.length} nart do stanu`);
         } catch (error) {
             logger.error('useSkiData: Błąd podczas ładowania bazy nart:', error);
-            // W przypadku błędu, SkiDataService powinien obsłużyć fallback do CSV
+            toastService.showError(handleApiError(error, 'Nie udało się załadować danych o nartach'));
         }
     };
 

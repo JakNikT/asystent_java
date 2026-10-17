@@ -1,15 +1,13 @@
 /**
  * src/services/skiDataService.ts: Klient API dla zarządzania danymi nart
  * 
- * Komunikacja z backend API do edycji i dodawania nart
- * FALLBACK: Jeśli API nie działa, wczytuje z lokalnego CSV
+ * Komunikacja z backend API do pobierania i edycji danych nart
  */
 
 import { createLogger } from '../utils/logger';
 import { toastService } from '../hooks/useToast';
 import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 import type { SkiData } from '../types/ski.types';
-import { CSVParser } from '../utils/csvParser';
 import { AuthService } from './authService';
 
 const API_BASE_URL = '/api';
@@ -66,24 +64,11 @@ export class SkiDataService {
     } catch (error) {
       logger.error('Błąd pobierania nart z API:', error);
       
-      // FALLBACK: Spróbuj wczytać z lokalnego CSV
+      // Brak danych w cache - błąd trafia do wywołującego (UI pokazuje komunikat)
       if (this.cache.length === 0) {
-        try {
-          logger.info('Próbuję wczytać z lokalnego CSV...');
-          const skisFromCSV = await CSVParser.loadFromPublic();
-          this.cache = skisFromCSV;
-          this.lastFetch = Date.now();
-          logger.info(`Załadowano ${skisFromCSV.length} nart z CSV`);
-          toastService.showInfo('Używam danych z lokalnego pliku (API niedostępne)');
-          return skisFromCSV;
-        } catch (csvError) {
-          logger.error('Błąd wczytywania CSV:', csvError);
-          const errorMessage = handleApiError(csvError, 'Nie udało się załadować danych o nartach');
-          toastService.showError(errorMessage);
-          return [];
-        }
+        throw error;
       }
-      
+
       // W przeciwnym razie użyj cache (może być nieaktualny)
       logger.warn('Używam cache mimo błędu');
       const errorMessage = handleApiError(error, 'Problem z połączeniem. Używam danych z cache.');
