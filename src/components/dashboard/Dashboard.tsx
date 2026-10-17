@@ -3,7 +3,7 @@
  * Po refaktoryzacji - używa hooka useDashboardState i mniejszych komponentów
  */
 
-import React, { Suspense, lazy } from 'react';
+import React, { Suspense, lazy, useMemo } from 'react';
 // src/components/dashboard/Dashboard.tsx: Lazy loading dla dużych komponentów w celu optymalizacji rozmiaru chunków
 // Konwertujemy named exports na default exports dla React.lazy
 const BrowseSkisComponent = lazy(() => 
@@ -22,6 +22,7 @@ import { DashboardActions } from './DashboardActions';
 import PasswordModal from '../PasswordModal';
 import { Layout } from '../layout/Layout';
 import { useDashboardState } from './useDashboardState';
+import type { SearchCriteria } from '../../types/ski.types';
 
 const Dashboard: React.FC = () => {
   // src/components/dashboard/Dashboard.tsx: Użycie hooka zarządzania stanem
@@ -69,6 +70,18 @@ const Dashboard: React.FC = () => {
     genderRef,
     shoeSizeRef,
   } = dashboardState;
+
+  // Kryteria dla Przeglądaj: stabilna tożsamość (zależności prymitywne) - nowe obiekty Date z parseDate
+  // co render zmieniały tożsamość callbacków w BrowseSkisComponent i wywoływały refetch przy każdym znaku
+  const browseCriteria = useMemo<Partial<SearchCriteria>>(() => ({
+    wzrost: formData.height.value ? parseInt(formData.height.value) : undefined,
+    waga: formData.weight.value ? parseInt(formData.weight.value) : undefined,
+    poziom: formData.level ? parseInt(formData.level) : undefined,
+    plec: formData.gender ? (formData.gender.toUpperCase() as 'M' | 'K' | 'W') : undefined,
+    dateFrom: parseDate(formData.dateFrom),
+    dateTo: parseDate(formData.dateTo)
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- parseDate jest czystą funkcją parsującą string
+  }), [formData.height.value, formData.weight.value, formData.level, formData.gender, formData.dateFrom, formData.dateTo]);
 
   return (
     <Layout
@@ -138,14 +151,7 @@ const Dashboard: React.FC = () => {
           }>
             <BrowseSkisComponent
               allSkis={skisDatabase}
-              browseCriteria={{
-                wzrost: formData.height.value ? parseInt(formData.height.value) : undefined,
-                waga: formData.weight.value ? parseInt(formData.weight.value) : undefined,
-                poziom: formData.level ? parseInt(formData.level) : undefined,
-                plec: formData.gender ? (formData.gender.toUpperCase() as 'M' | 'K' | 'W') : undefined,
-                dateFrom: parseDate(formData.dateFrom),
-                dateTo: parseDate(formData.dateTo)
-              }}
+              browseCriteria={browseCriteria}
               onBack={handleBackToSearch}
               initialFilter={computedInitialFilter}
               tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}

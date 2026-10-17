@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
 import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.types';
 import type { FormErrors } from '../utils/formValidation';
@@ -70,6 +70,13 @@ interface AvailabilityStatus {
     price?: number;
   }>;
 }
+
+/**
+ * Klucz grupy "ten sam model": marka, model, długość, typ sprzętu i kategoria
+ */
+const getModelGroupKey = (ski: SkiData): string =>
+  [ski.MARKA || '', ski.MODEL || '', ski.DLUGOSC, ski.TYP_SPRZETU || '', ski.KATEGORIA || ''].join('|');
+
 export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   allSkis,
   browseCriteria,
@@ -223,9 +230,28 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Błąd pobierania dostępności: zostawia poprzednie kolory, pokazuje baner; ref pozwala zgłosić toast tylko przy przejściu false→true
   const [availabilityError, setAvailabilityError] = useState<boolean>(false);
   const availabilityErrorRef = useRef<boolean>(false);
+  // Numer ostatniego żądania - odpowiedź starszego żądania nie nadpisuje nowszego stanu
+  const requestIdRef = useRef(0);
+  // Daty jako prymitywy: obiekty Date mają nową tożsamość przy każdym renderze rodzica
+  const dateFromMs = browseCriteria?.dateFrom?.getTime();
+  const dateToMs = browseCriteria?.dateTo?.getTime();
+
+  // Grupy nart tego samego modelu - budowane raz na zmianę allSkis (zamiast filtrowania allSkis w każdym wierszu)
+  const skisByModel = useMemo(() => {
+    const groups = new Map<string, SkiData[]>();
+    for (const s of allSkis) {
+      if (!s) continue;
+      const key = getModelGroupKey(s);
+      const group = groups.get(key);
+      if (group) group.push(s);
+      else groups.set(key, [s]);
+    }
+    return groups;
+  }, [allSkis]);
 
   // src/components/BrowseSkisComponent.tsx: Funkcja wielokrotnego użytku do ładowania statusów dostępności
   const loadAvailabilityStatuses = useCallback(async () => {
+    const myId = ++requestIdRef.current;
     setIsRefreshingAvailability(true);
     const startTime = Date.now();
 
@@ -233,7 +259,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
     try {
       // Sprawdź czy użytkownik wpisał daty
-      const hasUserDates = browseCriteria?.dateFrom && browseCriteria?.dateTo;
+      const hasUserDates = dateFromMs !== undefined && dateToMs !== undefined;
 
       if (!hasUserDates) {
         logger.info('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
@@ -244,13 +270,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       }
 
       // Użyj dat z formularza użytkownika
-      const startDate = browseCriteria.dateFrom;
-      const endDate = browseCriteria.dateTo;
+      const startDate = new Date(dateFromMs);
+      const endDate = new Date(dateToMs);
 
-      if (!startDate || !endDate) {
-        logger.info('BrowseSkisComponent: Brak dat, przerywam sprawdzanie dostępności.');
-        return;
-      }
 
       // Policz ile nart ma kod
       const skisWithCode = allSkis.filter(ski => ski.KOD && ski.KOD !== 'NO_CODE');
@@ -308,11 +330,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       logger.info('BrowseSkisComponent:   ⏱️  Czas wykonania:', duration, 'ms');
       logger.info('═══════════════════════════════════════════════════════');
 
+      if (myId !== requestIdRef.current) return;
       setAvailabilityStatuses(statusMap);
       setLastRefreshTime(new Date());
       availabilityErrorRef.current = false;
       setAvailabilityError(false);
     } catch (error) {
+      if (myId !== requestIdRef.current) return;
       logger.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
       // Poprzedni stan availabilityStatuses zostaje (nie nadpisujemy go pustymi/zielonymi danymi)
       if (!availabilityErrorRef.current) {
@@ -321,9 +345,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       availabilityErrorRef.current = true;
       setAvailabilityError(true);
     } finally {
-      setIsRefreshingAvailability(false);
+      if (myId === requestIdRef.current) setIsRefreshingAvailability(false);
     }
-  }, [allSkis, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
+  }, [allSkis, dateFromMs, dateToMs]);
 
   // src/components/BrowseSkisComponent.tsx: Początkowe załadowanie statusów dostępności
   useEffect(() => {
@@ -332,7 +356,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
   // src/components/BrowseSkisComponent.tsx: Automatyczne odświeżanie dostępności co 30 sekund
   useEffect(() => {
-    if (!autoRefreshEnabled || !browseCriteria?.dateFrom || !browseCriteria?.dateTo) {
+    if (!autoRefreshEnabled || dateFromMs === undefined || dateToMs === undefined) {
       return;
     }
 
@@ -342,7 +366,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }, 30000); // 30 sekund
 
     return () => clearInterval(interval);
-  }, [autoRefreshEnabled, loadAvailabilityStatuses, browseCriteria?.dateFrom, browseCriteria?.dateTo]);
+  }, [autoRefreshEnabled, loadAvailabilityStatuses, dateFromMs, dateToMs]);
 
   // src/components/BrowseSkisComponent.tsx: Funkcja ręcznego odświeżania dostępności
   const handleManualRefresh = useCallback(async () => {
@@ -378,14 +402,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // src/components/BrowseSkisComponent.tsx: Znajduje narty tego samego modelu, typu i kategorii
   const generateAvailabilitySquares = (ski: SkiData): React.ReactElement => {
     // Znajdź wszystkie narty tego samego modelu, długości, typu i kategorii
-    const sameModelSkis = allSkis.filter(s =>
-      s && ski &&
-      (s.MARKA || '') === (ski.MARKA || '') &&
-      (s.MODEL || '') === (ski.MODEL || '') &&
-      s.DLUGOSC === ski.DLUGOSC &&
-      (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
-      (s.KATEGORIA || '') === (ski.KATEGORIA || '')
-    );
+    const sameModelSkis = skisByModel.get(getModelGroupKey(ski)) ?? [];
 
     const squares = sameModelSkis.map((s, index) => {
       const availabilityInfo = s.KOD ? availabilityStatuses.get(s.KOD) : null;
@@ -571,14 +588,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       if (updateAll && targetSkiId === undefined) {
         // Aktualizacja wszystkich nart w grupie
         // src/components/BrowseSkisComponent.tsx: Uwzględnia również typ sprzętu i kategorię
-        const sameModelSkis = allSkis.filter(s =>
-          s && selectedSki &&
-          (s.MARKA || '') === (selectedSki.MARKA || '') &&
-          (s.MODEL || '') === (selectedSki.MODEL || '') &&
-          s.DLUGOSC === selectedSki.DLUGOSC &&
-          (s.TYP_SPRZETU || '') === (selectedSki.TYP_SPRZETU || '') &&
-          (s.KATEGORIA || '') === (selectedSki.KATEGORIA || '')
-        );
+        const sameModelSkis = selectedSki ? skisByModel.get(getModelGroupKey(selectedSki)) ?? [] : [];
 
         if (sameModelSkis.length === 0) {
           throw new Error('Nie znaleziono nart w grupie');
@@ -641,14 +651,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Funkcja pomocnicza: znajdź wszystkie narty w grupie (dla modala edycji)
   // src/components/BrowseSkisComponent.tsx: Uwzględnia również typ sprzętu i kategorię
   const getSkisInGroup = (ski: SkiData): SkiData[] => {
-    return allSkis.filter(s =>
-      s && ski &&
-      (s.MARKA || '') === (ski.MARKA || '') &&
-      (s.MODEL || '') === (ski.MODEL || '') &&
-      s.DLUGOSC === ski.DLUGOSC &&
-      (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
-      (s.KATEGORIA || '') === (ski.KATEGORIA || '')
-    );
+    return skisByModel.get(getModelGroupKey(ski)) ?? [];
   };
 
   // src/components/BrowseSkisComponent.tsx: Funkcja przełączania filtra długości (mobile view)
@@ -1664,14 +1667,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           {!expandedCards.has(ski.ID) && generateAvailabilitySquares(ski)}
                           {/* Widok rozwinięty: kwadraty z kodami w 3 kolumnach */}
                           {expandedCards.has(ski.ID) && (() => {
-                            const sameModelSkis = allSkis.filter(s =>
-                              s && ski &&
-                              (s.MARKA || '') === (ski.MARKA || '') &&
-                              (s.MODEL || '') === (ski.MODEL || '') &&
-                              s.DLUGOSC === ski.DLUGOSC &&
-                              (s.TYP_SPRZETU || '') === (ski.TYP_SPRZETU || '') &&
-                              (s.KATEGORIA || '') === (ski.KATEGORIA || '')
-                            );
+                            const sameModelSkis = skisByModel.get(getModelGroupKey(ski)) ?? [];
                             return (
                               <div className="grid grid-cols-3 gap-2">
                                 {sameModelSkis.map((s, index) => {
