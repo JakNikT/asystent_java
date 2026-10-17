@@ -8,6 +8,9 @@ import { createLogger } from '../utils/logger';
 const logger = createLogger('AuthService');
 const TOKEN_KEY = 'employee_session_token';
 
+/** Zdarzenie wysyłane na window, gdy serwer odrzuci token (401) */
+export const AUTH_EXPIRED_EVENT = 'auth:expired';
+
 export class AuthService {
   /**
    * Pobiera zapisany token sesyjny
@@ -41,6 +44,28 @@ export class AuthService {
   static getAuthHeaders(): Record<string, string> {
     const token = this.getToken();
     return token ? { Authorization: `Bearer ${token}` } : {};
+  }
+
+  /**
+   * fetch z automatycznym nagłówkiem Authorization. Odpowiedź 401 przy posiadanym tokenie oznacza
+   * wygaśnięcie sesji: token jest usuwany i wysyłane jest zdarzenie `auth:expired`.
+   * (login/logout używają gołego fetch - 401 przy logowaniu to błędny PIN, nie wygaśnięcie sesji)
+   */
+  static async fetch(input: string, init: RequestInit = {}): Promise<Response> {
+    const hadToken = this.getToken() !== null;
+
+    const headers = new Headers(this.getAuthHeaders());
+    new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+
+    const response = await fetch(input, { ...init, headers });
+
+    if (response.status === 401 && hadToken) {
+      logger.warn('Sesja pracownika wygasła (401) - usuwam token');
+      this.removeToken();
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    }
+
+    return response;
   }
 
   /**

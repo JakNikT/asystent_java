@@ -53,9 +53,7 @@ export class ReservationApiClient {
 
     try {
       logger.info('Pobieram rezerwacje z serwera...');
-      const response = await fetch(`${API_BASE_URL}/reservations`, {
-        headers: AuthService.getAuthHeaders()
-      });
+      const response = await AuthService.fetch(`${API_BASE_URL}/reservations`);
       
       if (!response.ok) {
         const errorMessage = await parseApiError(response);
@@ -100,9 +98,7 @@ export class ReservationApiClient {
 
     try {
       logger.info('Pobieram wypożyczenia z serwera...');
-      const response = await fetch(`${API_BASE_URL}/wypozyczenia/aktualne`, {
-        headers: AuthService.getAuthHeaders()
-      });
+      const response = await AuthService.fetch(`${API_BASE_URL}/wypozyczenia/aktualne`);
       
       if (!response.ok) {
         const errorMessage = await parseApiError(response);
@@ -174,9 +170,7 @@ static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<Re
     
     logger.debug(`Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
     
-    const response = await fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`, {
-      headers: AuthService.getAuthHeaders()
-    });
+    const response = await AuthService.fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
     
     if (!response.ok) {
       const errorMessage = await parseApiError(response);
@@ -263,9 +257,7 @@ private static formatFireSnowDateString(dateStr: string | null | undefined): str
   static async loadPastRentals(): Promise<ReservationData[]> {
     try {
       logger.info('Pobieram przeszłe wypożyczenia z serwera...');
-      const response = await fetch(`${API_BASE_URL}/wypozyczenia/przeszle`, {
-        headers: AuthService.getAuthHeaders()
-      });
+      const response = await AuthService.fetch(`${API_BASE_URL}/wypozyczenia/przeszle`);
       
       if (!response.ok) {
         const errorMessage = await parseApiError(response);

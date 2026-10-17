@@ -180,9 +180,7 @@ export const EquipmentHandoutView: React.FC<EquipmentHandoutViewProps> = ({ rese
       setIsLoadingReservations(true);
       try {
         logger.info('EquipmentHandoutView: Pobieranie rezerwacji dla daty z API', selectedDate);
-        const response = await fetch(`${API_BASE_URL}/reservations/date?date=${selectedDate}`, {
-          headers: AuthService.getAuthHeaders()
-        });
+        const response = await AuthService.fetch(`${API_BASE_URL}/reservations/date?date=${selectedDate}`);
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);

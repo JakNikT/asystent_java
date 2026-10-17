@@ -127,18 +127,7 @@ export const useDashboardState = (): DashboardStateReturn => {
     updateActiveTab
   } = useTabsState();
 
-  // 3. Employee Auth
-  const {
-    isEmployeeMode,
-    isPasswordModalOpen,
-    passwordError,
-    handlePasswordSubmit,
-    handleToggleEmployeeMode: toggleEmployeeModeInternal,
-    setIsPasswordModalOpen,
-    setPasswordError
-  } = useEmployeeAuth();
-
-  // 4. App Mode & Other Global State
+  // 3. App Mode (przed Employee Auth - hook potrzebuje appMode/setAppMode do obsługi wygaśnięcia sesji)
   const [appMode, setAppMode] = useState<AppMode>(() => {
     // src/components/dashboard/useDashboardState.ts: Wykrywanie pierwszego uruchomienia vs odświeżenia
     // Używamy sessionStorage do wykrycia czy to pierwsza wizyta w tej sesji przeglądarki
@@ -154,6 +143,17 @@ export const useDashboardState = (): DashboardStateReturn => {
       return savedAppState?.appMode || 'search';
     }
   });
+
+  // 4. Employee Auth & Other Global State
+  const {
+    isEmployeeMode,
+    isPasswordModalOpen,
+    passwordError,
+    handlePasswordSubmit,
+    handleToggleEmployeeMode,
+    setIsPasswordModalOpen,
+    setPasswordError
+  } = useEmployeeAuth(appMode, setAppMode);
   const [hasSelectedGroup, setHasSelectedGroup] = useState<boolean>(false);
 
   // src/components/dashboard/useDashboardState.ts: Automatyczne zapisywanie stanu aplikacji
@@ -271,8 +271,6 @@ export const useDashboardState = (): DashboardStateReturn => {
   };
 
   // App Mode Handlers
-  const handleToggleEmployeeMode = () => toggleEmployeeModeInternal(appMode, setAppMode);
-
   const handleBrowseMode = (hasGroup: boolean = false) => {
     setHasSelectedGroup(hasGroup);
     setAppMode('browse');

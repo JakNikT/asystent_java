@@ -380,3 +380,20 @@ export function clearAppState(): void {
     console.error(`src/utils/localStorage.ts: Błąd podczas czyszczenia stanu aplikacji:`, error);
   }
 }
+
+/**
+ * Czyści zapisany stan widoku "wydaj" (w tym wybranego klienta), zachowując resztę stanu aplikacji
+ */
+export function clearHandoutState(): void {
+  try {
+    const state = loadAppState();
+    if (!state?.handoutState) return;
+
+    const rest: AppStateData = { ...state };
+    delete rest.handoutState;
+    localStorage.setItem(APP_STATE_KEY, JSON.stringify(rest));
+    console.log(`src/utils/localStorage.ts: Stan widoku "wydaj" wyczyszczony`);
+  } catch (error) {
+    console.error(`src/utils/localStorage.ts: Błąd podczas czyszczenia stanu widoku "wydaj":`, error);
+  }
+}

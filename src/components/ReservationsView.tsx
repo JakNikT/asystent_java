@@ -409,7 +409,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
       // Wymuś odświeżenie połączenia Java Bridge do bazy HSQLDB
       // (Bridge utrzymuje połączenie przez 2 min - bez tego odczytuje stare dane)
       try {
-        await fetch('/api/firesnow/refresh', { method: 'POST', headers: AuthService.getAuthHeaders() });
+        await AuthService.fetch('/api/firesnow/refresh', { method: 'POST' });
       } catch {
         // Ignoruj błąd Bridge - kontynuuj z tym co mamy
         logger.warn('ReservationsView: Nie udało się odświeżyć Bridge, kontynuuję');
@@ -438,7 +438,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
     setIsRefreshing(true);
     try {
       try {
-        await fetch('/api/firesnow/refresh', { method: 'POST', headers: AuthService.getAuthHeaders() });
+        await AuthService.fetch('/api/firesnow/refresh', { method: 'POST' });
       } catch (err) {
         logger.warn('ReservationsView: Nie udało się odświeżyć Bridge:', err);
       }

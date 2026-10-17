@@ -103,12 +103,9 @@ export class SkiDataService {
       logger.debug('TYP_SPRZETU do wysłania:', updates.TYP_SPRZETU);
       logger.debug('PRZEZNACZENIE do wysłania:', updates.PRZEZNACZENIE);
       
-      const response = await fetch(`${API_BASE_URL}/skis/${id}`, {
+      const response = await AuthService.fetch(`${API_BASE_URL}/skis/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...AuthService.getAuthHeaders()
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updates)
       });
       
@@ -142,12 +139,9 @@ export class SkiDataService {
       logger.info('Aktualizacja wielu nart:', ids);
       logger.debug('Dane do aktualizacji:', updates);
       
-      const response = await fetch(`${API_BASE_URL}/skis/bulk`, {
+      const response = await AuthService.fetch(`${API_BASE_URL}/skis/bulk`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...AuthService.getAuthHeaders()
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids, updates })
       });
       
