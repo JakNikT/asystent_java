@@ -1,8 +1,11 @@
 // src/components/dashboard/DashboardHeader.tsx: Komponent layoutowy nagłówka z logo i kontenerem formularza
 
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import EquipmentFilters from './EquipmentFilters';
-import { ConflictCheckerModal } from '../ConflictCheckerModal';
+// Lazy: modal ciągnie react-calendar-timeline + moment - nie ładujemy ich w głównym bundlu
+const ConflictCheckerModal = lazy(() =>
+  import('../ConflictCheckerModal').then(m => ({ default: m.ConflictCheckerModal }))
+);
 import type { AppMode } from '../../types/dashboard.types';
 
 interface DashboardHeaderProps {
@@ -42,10 +45,12 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
       
       {/* Modal sprawdzania konfliktów (tylko dla pracownika - zawiera dane klientów) */}
       {isEmployeeMode && isConflictModalOpen && (
-        <ConflictCheckerModal
-          isOpen={isConflictModalOpen}
-          onClose={() => setIsConflictModalOpen(false)}
-        />
+        <Suspense fallback={null}>
+          <ConflictCheckerModal
+            isOpen={isConflictModalOpen}
+            onClose={() => setIsConflictModalOpen(false)}
+          />
+        </Suspense>
       )}
       
       {/* Main Content Container - bez zewnętrznego layoutu */}

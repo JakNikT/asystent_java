@@ -4,6 +4,9 @@
 import type { ReservationData } from '../types/reservation.types';
 import type { ConflictInfo, Conflict, ConflictAnalysisResult } from '../types/conflict.types';
 import { SERVICE_BUFFER_DAYS, dayGap } from './availability';
+import { createLogger } from './logger';
+
+const logger = createLogger('conflictDetector');
 
 /**
  * Grupuje rezerwacje po kodzie sprzętu
@@ -140,9 +143,9 @@ export function detectConflicts(
   dateFrom: Date,
   dateTo: Date
 ): ConflictAnalysisResult {
-  console.log('conflictDetector.ts: Rozpoczynam analizę konfliktów...');
-  console.log(`conflictDetector.ts: Okres analizy: ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
-  console.log(`conflictDetector.ts: Liczba rezerwacji do analizy: ${data.length}`);
+  logger.debug('conflictDetector.ts: Rozpoczynam analizę konfliktów...');
+  logger.debug(`conflictDetector.ts: Okres analizy: ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
+  logger.debug(`conflictDetector.ts: Liczba rezerwacji do analizy: ${data.length}`);
   
   // Filtruj rezerwacje w zakresie dat (lub które mogą wpływać na okres)
   // Bierzemy rezerwacje które:
@@ -156,16 +159,16 @@ export function detectConflicts(
     return resStart <= dateTo && resEnd >= dateFrom;
   });
   
-  console.log(`conflictDetector.ts: Po filtrowaniu dat: ${filteredData.length} rezerwacji w zakresie`);
+  logger.debug(`conflictDetector.ts: Po filtrowaniu dat: ${filteredData.length} rezerwacji w zakresie`);
   
   // Filtruj tylko narty i buty (wyklucz kije, kaski, deski, buty snowboardowe, etc.)
   const skiBootData = filteredData.filter(isSkiOrBoot);
   
   const filteredOutCount = filteredData.length - skiBootData.length;
   if (filteredOutCount > 0) {
-    console.log(`conflictDetector.ts: Wykluczono ${filteredOutCount} rezerwacji innych typów sprzętu (kije, kaski, deski, etc.)`);
+    logger.debug(`conflictDetector.ts: Wykluczono ${filteredOutCount} rezerwacji innych typów sprzętu (kije, kaski, deski, etc.)`);
   }
-  console.log(`conflictDetector.ts: Po filtrowaniu typów: ${skiBootData.length} rezerwacji (tylko narty i buty)`);
+  logger.debug(`conflictDetector.ts: Po filtrowaniu typów: ${skiBootData.length} rezerwacji (tylko narty i buty)`);
   
   // src/utils/conflictDetector.ts: Deduplikuj rezerwacje - usuń duplikaty na podstawie klient+kod+data
   // Ta sama rezerwacja może być w systemie zarówno jako 'reservation' jak i 'rental'
@@ -184,13 +187,13 @@ export function detectConflicts(
   const uniqueData = Array.from(deduplicated.values());
   const duplicatesRemoved = skiBootData.length - uniqueData.length;
   if (duplicatesRemoved > 0) {
-    console.log(`conflictDetector.ts: Usunięto ${duplicatesRemoved} duplikatów rezerwacji`);
+    logger.debug(`conflictDetector.ts: Usunięto ${duplicatesRemoved} duplikatów rezerwacji`);
   }
-  console.log(`conflictDetector.ts: Po deduplikacji: ${uniqueData.length} unikalnych rezerwacji`);
+  logger.debug(`conflictDetector.ts: Po deduplikacji: ${uniqueData.length} unikalnych rezerwacji`);
   
   // Grupuj po kodzie sprzętu (tylko unikalne narty i buty)
   const grouped = groupByEquipmentCode(uniqueData);
-  console.log(`conflictDetector.ts: Znaleziono ${grouped.size} unikalnych kodów sprzętu`);
+  logger.debug(`conflictDetector.ts: Znaleziono ${grouped.size} unikalnych kodów sprzętu`);
   
   const sprzetyZKonfliktami: ConflictInfo[] = [];
   let lacznaLiczbaKonfliktow = 0;
@@ -204,7 +207,7 @@ export function detectConflicts(
     const konflikty = detectConflictsForEquipment(kod, sprzet, reservations);
     
     if (konflikty.length > 0) {
-      console.log(`conflictDetector.ts: Sprzęt ${kod} (${sprzet}): ${konflikty.length} konfliktów`);
+      logger.debug(`conflictDetector.ts: Sprzęt ${kod} (${sprzet}): ${konflikty.length} konfliktów`);
       
       sprzetyZKonfliktami.push({
         kod,
@@ -217,7 +220,7 @@ export function detectConflicts(
     }
   }
   
-  console.log(`conflictDetector.ts: Analiza zakończona. Znaleziono ${sprzetyZKonfliktami.length} sprzętów z konfliktami, łącznie ${lacznaLiczbaKonfliktow} konfliktów`);
+  logger.debug(`conflictDetector.ts: Analiza zakończona. Znaleziono ${sprzetyZKonfliktami.length} sprzętów z konfliktami, łącznie ${lacznaLiczbaKonfliktow} konfliktów`);
   
   return {
     okresOd: dateFrom,

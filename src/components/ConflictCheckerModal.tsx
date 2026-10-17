@@ -8,9 +8,12 @@ import { EquipmentTimeline } from './EquipmentTimeline';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { detectConflicts } from '../utils/conflictDetector';
 import type { ConflictAnalysisResult } from '../types/conflict.types';
-import type { ReservationData } from '../types/reservation.types';
 import { DatePickerButton } from './DatePickerButton';
 import { SERVICE_BUFFER_DAYS } from '../utils/availability';
+import { dateToISO } from '../utils/dateParts';
+import { createLogger } from '../utils/logger';
+
+const logger = createLogger('ConflictCheckerModal');
 
 interface ConflictCheckerModalProps {
   isOpen: boolean;
@@ -23,16 +26,15 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
 }) => {
   // Stan formularza
   const [dateFrom, setDateFrom] = useState<string>(() => {
-    // Domyślnie: dzisiaj
-    const today = new Date();
-    return today.toISOString().split('T')[0];
+    // Domyślnie: dzisiaj (lokalny dzień kalendarzowy, nie UTC)
+    return dateToISO(new Date());
   });
   
   const [dateTo, setDateTo] = useState<string>(() => {
     // Domyślnie: za 30 dni
     const future = new Date();
     future.setDate(future.getDate() + 30);
-    return future.toISOString().split('T')[0];
+    return dateToISO(future);
   });
   
   // Stan analizy
@@ -66,17 +68,17 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
     setAnalysisResult(null);
     
     try {
-      console.log('ConflictCheckerModal: Pobieram dane dla okresu...');
+      logger.debug('ConflictCheckerModal: Pobieram dane dla okresu...');
       
       // Pobierz dane rezerwacji i wypożyczeń dla okresu
       const data = await ReservationApiClient.loadAvailabilityForPeriod(fromDate, toDate);
       
-      console.log(`ConflictCheckerModal: Pobrano ${data.length} pozycji`);
+      logger.debug(`ConflictCheckerModal: Pobrano ${data.length} pozycji`);
       
       // Wykryj konflikty
       const result = detectConflicts(data, fromDate, toDate);
       
-      console.log(`ConflictCheckerModal: Znaleziono ${result.lacznaLiczbaKonfliktow} konfliktów`);
+      logger.debug(`ConflictCheckerModal: Znaleziono ${result.lacznaLiczbaKonfliktow} konfliktów`);
       
       setAnalysisResult(result);
     } catch (err) {
@@ -93,185 +95,6 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
   const handleReset = () => {
     setAnalysisResult(null);
     setError(null);
-  };
-  
-  /**
-   * Generuje przykładowe dane testowe z konfliktami
-   */
-  const generateTestData = (): ReservationData[] => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    // Przykładowe rezerwacje z konfliktami
-    const testData: ReservationData[] = [];
-    
-    // Sprzęt 1: N123 - ma konflikt (0 dni przerwy)
-    const kod1 = 'N123';
-    const sprzet1 = 'Rossignol Experience 88 170cm';
-    
-    // Rezerwacja 1: 10-15 grudnia
-    const res1Start = new Date(today);
-    res1Start.setDate(res1Start.getDate() + 10);
-    const res1End = new Date(res1Start);
-    res1End.setDate(res1End.getDate() + 5);
-    
-    testData.push({
-      kod: kod1,
-      sprzet: sprzet1,
-      klient: 'Jan Kowalski',
-      od: res1Start.toISOString().split('T')[0],
-      do: res1End.toISOString().split('T')[0],
-      numer: 'R 001/12/2024',
-      cena: '150',
-      zaplacono: '150',
-      typumowy: 'STANDARD',
-      source: 'reservation'
-    });
-    
-    // Rezerwacja 2: 15-20 grudnia (0 dni przerwy - KONFLIKT!)
-    const res2Start = new Date(res1End); // Tego samego dnia co koniec poprzedniej
-    const res2End = new Date(res2Start);
-    res2End.setDate(res2End.getDate() + 5);
-    
-    testData.push({
-      kod: kod1,
-      sprzet: sprzet1,
-      klient: 'Anna Nowak',
-      od: res2Start.toISOString().split('T')[0],
-      do: res2End.toISOString().split('T')[0],
-      numer: 'R 002/12/2024',
-      cena: '180',
-      zaplacono: '180',
-      typumowy: 'STANDARD',
-      source: 'reservation'
-    });
-    
-    // Sprzęt 2: B456 - ma konflikt (1 dzień przerwy)
-    const kod2 = 'B456';
-    const sprzet2 = 'Salomon X Pro 100 27.5';
-    
-    // Rezerwacja 3: 5-10 grudnia
-    const res3Start = new Date(today);
-    res3Start.setDate(res3Start.getDate() + 5);
-    const res3End = new Date(res3Start);
-    res3End.setDate(res3End.getDate() + 5);
-    
-    testData.push({
-      kod: kod2,
-      sprzet: sprzet2,
-      klient: 'Piotr Wiśniewski',
-      od: res3Start.toISOString().split('T')[0],
-      do: res3End.toISOString().split('T')[0],
-      numer: 'R 003/12/2024',
-      cena: '120',
-      zaplacono: '120',
-      typumowy: 'STANDARD',
-      source: 'reservation'
-    });
-    
-    // Rezerwacja 4: 11-16 grudnia (1 dzień przerwy - KONFLIKT!)
-    const res4Start = new Date(res3End);
-    res4Start.setDate(res4Start.getDate() + 1); // Tylko 1 dzień przerwy
-    const res4End = new Date(res4Start);
-    res4End.setDate(res4End.getDate() + 5);
-    
-    testData.push({
-      kod: kod2,
-      sprzet: sprzet2,
-      klient: 'Maria Zielińska',
-      od: res4Start.toISOString().split('T')[0],
-      do: res4End.toISOString().split('T')[0],
-      numer: 'R 004/12/2024',
-      cena: '130',
-      zaplacono: '130',
-      typumowy: 'STANDARD',
-      source: 'reservation'
-    });
-    
-    // Sprzęt 3: N789 - bez konfliktu (3 dni przerwy - OK)
-    const kod3 = 'N789';
-    const sprzet3 = 'Atomic Vantage 90 165cm';
-    
-    // Rezerwacja 5: 1-5 grudnia
-    const res5Start = new Date(today);
-    res5Start.setDate(res5Start.getDate() + 1);
-    const res5End = new Date(res5Start);
-    res5End.setDate(res5End.getDate() + 4);
-    
-    testData.push({
-      kod: kod3,
-      sprzet: sprzet3,
-      klient: 'Tomasz Krawczyk',
-      od: res5Start.toISOString().split('T')[0],
-      do: res5End.toISOString().split('T')[0],
-      numer: 'R 005/12/2024',
-      cena: '140',
-      zaplacono: '140',
-      typumowy: 'STANDARD',
-      source: 'reservation'
-    });
-    
-    // Rezerwacja 6: 8-12 grudnia (3 dni przerwy - OK)
-    const res6Start = new Date(res5End);
-    res6Start.setDate(res6Start.getDate() + 3); // 3 dni przerwy
-    const res6End = new Date(res6Start);
-    res6End.setDate(res6End.getDate() + 4);
-    
-    testData.push({
-      kod: kod3,
-      sprzet: sprzet3,
-      klient: 'Katarzyna Lewandowska',
-      od: res6Start.toISOString().split('T')[0],
-      do: res6End.toISOString().split('T')[0],
-      numer: 'R 006/12/2024',
-      cena: '150',
-      zaplacono: '150',
-      typumowy: 'STANDARD',
-      source: 'reservation'
-    });
-    
-    return testData;
-  };
-  
-  /**
-   * Obsługa przycisku testowego - wyświetla przykładowe dane
-   */
-  const handleTestData = () => {
-    const fromDate = new Date(dateFrom);
-    const toDate = new Date(dateTo);
-    
-    if (isNaN(fromDate.getTime()) || isNaN(toDate.getTime())) {
-      setError('Nieprawidłowe daty');
-      return;
-    }
-    
-    setIsLoading(true);
-    setError(null);
-    setAnalysisResult(null);
-    
-    // Symuluj krótkie opóźnienie dla lepszego UX
-    setTimeout(() => {
-      try {
-        console.log('ConflictCheckerModal: Generuję przykładowe dane testowe...');
-        
-        // Wygeneruj przykładowe dane
-        const testData = generateTestData();
-        
-        console.log(`ConflictCheckerModal: Wygenerowano ${testData.length} przykładowych rezerwacji`);
-        
-        // Wykryj konflikty
-        const result = detectConflicts(testData, fromDate, toDate);
-        
-        console.log(`ConflictCheckerModal: Znaleziono ${result.lacznaLiczbaKonfliktow} konfliktów w danych testowych`);
-        
-        setAnalysisResult(result);
-      } catch (err) {
-        console.error('ConflictCheckerModal: Błąd podczas generowania danych testowych:', err);
-        setError(err instanceof Error ? err.message : 'Wystąpił błąd podczas generowania danych testowych');
-      } finally {
-        setIsLoading(false);
-      }
-    }, 500); // 500ms opóźnienie dla lepszego UX
   };
   
   return (
@@ -331,14 +154,6 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
             className="min-w-[200px]"
           >
             {isLoading ? 'Sprawdzanie...' : 'Sprawdź konflikty'}
-          </Button>
-          <Button
-            onClick={handleTestData}
-            disabled={isLoading || !dateFrom || !dateTo}
-            variant="secondary"
-            className="min-w-[150px]"
-          >
-            {isLoading ? 'Ładowanie...' : 'Test'}
           </Button>
         </div>
         

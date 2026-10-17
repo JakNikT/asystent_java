@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import type { SkiData, SearchResults, SearchCriteria, SkiMatch } from '../../types/ski.types';
+import type { SkiData, SearchResults, SearchCriteria } from '../../types/ski.types';
 import type { FormData, TabData, AppMode, FilterKey } from '../../types/dashboard.types';
 import type { FormErrors } from '../../utils/formValidation';
 import { loadAppState, saveAppState } from '../../utils/localStorage';
@@ -15,6 +15,9 @@ import { useTabsState } from './hooks/useTabsState';
 import { useEmployeeAuth } from './hooks/useEmployeeAuth';
 import { useFormLogic } from './hooks/useFormLogic';
 import { useSearchLogic } from './hooks/useSearchLogic';
+import { createLogger } from '../../utils/logger';
+
+const logger = createLogger('useDashboardState');
 
 export interface DashboardStateReturn {
   // Stany
@@ -29,7 +32,6 @@ export interface DashboardStateReturn {
   passwordError: string;
   isEmployeeMode: boolean;
   skisDatabase: SkiData[];
-  suggestions: string[];
 
   // Skróty do danych aktywnej karty
   formData: FormData;
@@ -60,9 +62,6 @@ export interface DashboardStateReturn {
 
   // Funkcje wyszukiwania
   handleInputChange: (section: keyof FormData, field: string, value: string, inputRef?: HTMLInputElement) => void;
-  handleSubmit: (customFormData?: FormData) => void;
-  handleSubmitWithStyles: (styles: string[]) => void;
-  handleStyleToggle: (style: string) => void;
   handleClear: () => void;
 
   // Funkcje trybów aplikacji
@@ -76,8 +75,6 @@ export interface DashboardStateReturn {
   // Funkcje filtrów
   setEquipmentTypeFilter: (filter: string) => void;
   setCategoryFilter: (filter: string) => void;
-  filterSearchResults: (results: SearchResults | null) => SearchResults | null;
-  groupMatchesByModel: (matches: SkiMatch[]) => SkiMatch[];
 
   // Funkcje pracownika
   handlePasswordSubmit: (password: string) => Promise<void> | void;
@@ -100,8 +97,6 @@ export interface DashboardStateReturn {
 
   // Computed values
   computedInitialFilter: string;
-  filteredSearchResults: SearchResults | null;
-  groupedResults: SearchResults | null;
   parseDate: (dateStr: string) => Date | undefined;
 
   // Refs
@@ -163,7 +158,7 @@ export const useDashboardState = (): DashboardStateReturn => {
     const isInitialRender = !sessionStorage.getItem('app-initialized');
     if (!isInitialRender) {
       saveAppState(appMode);
-      console.log(`[useDashboardState] Zapisano appMode do localStorage: ${appMode}`);
+      logger.debug(`[useDashboardState] Zapisano appMode do localStorage: ${appMode}`);
     }
   }, [appMode]);
 
@@ -184,17 +179,11 @@ export const useDashboardState = (): DashboardStateReturn => {
   const {
     equipmentTypeFilter,
     categoryFilter,
-    suggestions,
     setEquipmentTypeFilter,
     setCategoryFilter,
-    handleSubmit,
-    handleSubmitWithStyles,
     handleClear,
-    handleStyleToggle,
-    filterSearchResults,
-    groupMatchesByModel,
     parseDate
-  } = useSearchLogic(activeTab, updateActiveTab, skisDatabase);
+  } = useSearchLogic(updateActiveTab);
 
   // Wrappers for setters from activeTab
   const setSelectedStyles = (styles: string[] | ((prev: string[]) => string[])) => {
@@ -306,7 +295,6 @@ export const useDashboardState = (): DashboardStateReturn => {
     passwordError,
     isEmployeeMode,
     skisDatabase,
-    suggestions,
 
     // Active Tab shortcuts
     formData: activeTab.formData,
@@ -335,9 +323,6 @@ export const useDashboardState = (): DashboardStateReturn => {
     setExpandedRows,
 
     handleInputChange,
-    handleSubmit,
-    handleSubmitWithStyles,
-    handleStyleToggle,
     handleClear,
 
     setAppMode,
@@ -349,8 +334,6 @@ export const useDashboardState = (): DashboardStateReturn => {
 
     setEquipmentTypeFilter,
     setCategoryFilter,
-    filterSearchResults,
-    groupMatchesByModel,
 
     handlePasswordSubmit,
     handleToggleEmployeeMode,
@@ -369,15 +352,6 @@ export const useDashboardState = (): DashboardStateReturn => {
 
     // Computed
     computedInitialFilter: equipmentTypeFilter, // simplistic
-    filteredSearchResults: filterSearchResults(activeTab.searchResults),
-    groupedResults: activeTab.searchResults ? {
-      idealne: groupMatchesByModel(activeTab.searchResults.idealne),
-      alternatywy: groupMatchesByModel(activeTab.searchResults.alternatywy),
-      poziom_za_nisko: groupMatchesByModel(activeTab.searchResults.poziom_za_nisko),
-      inna_plec: groupMatchesByModel(activeTab.searchResults.inna_plec),
-      na_sile: groupMatchesByModel(activeTab.searchResults.na_sile),
-      wszystkie: groupMatchesByModel(activeTab.searchResults.wszystkie)
-    } : null,
     parseDate,
 
     // Refs

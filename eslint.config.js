@@ -34,4 +34,12 @@ export default defineConfig([
       ],
     },
   },
+  {
+    // Frontend loguje przez createLogger (utils/logger.ts); serwer i testy są wyłączone z reguły
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/utils/logger.ts', 'src/server/**', 'src/test/**'],
+    rules: {
+      'no-console': ['error', { allow: ['warn', 'error'] }],
+    },
+  },
 ])

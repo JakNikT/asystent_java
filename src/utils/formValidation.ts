@@ -1,7 +1,10 @@
 // System walidacji formularza dla Asystenta Doboru Nart
-// console.log(src/utils/formValidation.ts: System walidacji załadowany)
+// logger.debug(src/utils/formValidation.ts: System walidacji załadowany)
 
 import type { FormData } from '../types/dashboard.types';
+import { createLogger } from './logger';
+
+const logger = createLogger('formValidation');
 
 export interface ValidationResult {
   isValid: boolean;
@@ -29,207 +32,11 @@ export const initialFormErrors: FormErrors = {
 };
 
 /**
- * Waliduje pojedynczy dzień (01-31)
- * console.log(src/utils/formValidation.ts: Walidacja dnia - zakres 01-31)
- */
-export function validateDay(day: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja dnia - wartość: "${day}", długość: ${day.length}`);
-  
-  if (!day) {
-    return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
-  }
-
-  // Sprawdź czy zawiera tylko cyfry
-  if (!/^\d*$/.test(day)) {
-    return { isValid: false, message: 'Dzień może zawierać tylko cyfry' };
-  }
-
-  // Pozwól na wpisanie pierwszego znaku
-  if (day.length === 1) {
-    console.log(`src/utils/formValidation.ts: Pierwszy znak - OK`);
-    return { isValid: true, message: '' };
-  }
-
-  // Sprawdź dwucyfrową liczbę
-  if (day.length === 2) {
-    const dayNum = parseInt(day);
-    if (dayNum >= 1 && dayNum <= 31) {
-      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba ${dayNum} - OK`);
-      return { isValid: true, message: '' };
-    } else {
-      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba ${dayNum} poza zakresem - BŁĄD`);
-      return { isValid: false, message: 'Dzień musi być między 01-31' };
-    }
-  }
-
-  // Jeśli więcej niż 2 cyfry
-  return { isValid: false, message: 'Dzień może mieć maksymalnie 2 cyfry' };
-}
-
-/**
- * Waliduje pojedynczy miesiąc (01-12)
- * console.log(src/utils/formValidation.ts: Walidacja miesiąca - zakres 01-12)
- */
-export function validateMonth(month: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja miesiąca - wartość: "${month}", długość: ${month.length}`);
-  
-  if (!month) {
-    return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
-  }
-
-  // Sprawdź czy zawiera tylko cyfry
-  if (!/^\d*$/.test(month)) {
-    return { isValid: false, message: 'Miesiąc może zawierać tylko cyfry' };
-  }
-
-  // Pozwól na wpisanie pierwszego znaku
-  if (month.length === 1) {
-    console.log(`src/utils/formValidation.ts: Pierwszy znak miesiąca - OK`);
-    return { isValid: true, message: '' };
-  }
-
-  // Sprawdź dwucyfrową liczbę
-  if (month.length === 2) {
-    const monthNum = parseInt(month);
-    if (monthNum >= 1 && monthNum <= 12) {
-      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba miesiąca ${monthNum} - OK`);
-      return { isValid: true, message: '' };
-    } else {
-      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba miesiąca ${monthNum} poza zakresem - BŁĄD`);
-      return { isValid: false, message: 'Miesiąc musi być między 01-12' };
-    }
-  }
-
-  // Jeśli więcej niż 2 cyfry
-  return { isValid: false, message: 'Miesiąc może mieć maksymalnie 2 cyfry' };
-}
-
-/**
- * Waliduje pojedynczy rok w formacie 2-cyfrowym (24-30)
- * console.log(src/utils/formValidation.ts: Walidacja roku - zakres 24-30)
- */
-export function validateYear(year: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja roku - wartość: "${year}", długość: ${year.length}`);
-  
-  if (!year) {
-    return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
-  }
-
-  // Sprawdź czy zawiera tylko cyfry
-  if (!/^\d*$/.test(year)) {
-    return { isValid: false, message: 'Rok może zawierać tylko cyfry' };
-  }
-
-  // Pozwól na wpisanie pierwszego znaku
-  if (year.length === 1) {
-    console.log(`src/utils/formValidation.ts: Pierwszy znak roku - OK`);
-    return { isValid: true, message: '' };
-  }
-
-  // Sprawdź dwucyfrową liczbę (zakres 24-30)
-  if (year.length === 2) {
-    const yearNum = parseInt(year);
-    if (yearNum >= 24 && yearNum <= 30) {
-      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba roku ${yearNum} - OK`);
-      return { isValid: true, message: '' };
-    } else {
-      console.log(`src/utils/formValidation.ts: Dwucyfrowa liczba roku ${yearNum} poza zakresem - BŁĄD`);
-      return { isValid: false, message: 'Rok musi być między 24-30' };
-    }
-  }
-
-  // Jeśli więcej niż 2 cyfry
-  return { isValid: false, message: 'Rok może mieć maksymalnie 2 cyfry' };
-}
-
-/**
- * Waliduje datę w formacie DD/MM/YYYY
- * console.log(src/utils/formValidation.ts: Walidacja daty - format DD/MM/YYYY)
- */
-export function validateDate(day: string, month: string, year: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja daty - dzień: "${day}", miesiąc: "${month}", rok: "${year}"`);
-  console.log(`src/utils/formValidation.ts: Sprawdzanie pustych pól - day empty: ${!day || day.trim() === ''}, month empty: ${!month || month.trim() === ''}, year empty: ${!year || year.trim() === ''}`);
-  
-  // Jeśli wszystkie pola są puste, data jest opcjonalna
-  if ((!day || day.trim() === '') && (!month || month.trim() === '') && (!year || year.trim() === '')) {
-    console.log(`src/utils/formValidation.ts: Data opcjonalna - wszystkie pola puste`);
-    return { isValid: true, message: '' };
-  }
-  
-  // Jeśli tylko niektóre pola są wypełnione, to błąd
-  const hasDay = day && day.trim() !== '';
-  const hasMonth = month && month.trim() !== '';
-  const hasYear = year && year.trim() !== '';
-  
-  if ((hasDay && !hasMonth) || (hasDay && !hasYear) || (hasMonth && !hasDay) || (hasMonth && !hasYear) || (hasYear && !hasDay) || (hasYear && !hasMonth)) {
-    return {
-      isValid: false,
-      message: 'Jeśli wypełniasz datę, wszystkie pola muszą być wypełnione'
-    };
-  }
-
-  // Sprawdź format liczbowy (tylko jeśli pola nie są puste)
-  const dayNum = parseInt(day);
-  const monthNum = parseInt(month);
-  const yearNum = parseInt(year);
-
-  if (isNaN(dayNum) || isNaN(monthNum) || isNaN(yearNum)) {
-    return {
-      isValid: false,
-      message: 'Data musi zawierać tylko cyfry'
-    };
-  }
-
-  // Sprawdź zakresy
-  if (dayNum < 1 || dayNum > 31) {
-    return {
-      isValid: false,
-      message: 'Dzień musi być między 1-31'
-    };
-  }
-
-  if (monthNum < 1 || monthNum > 12) {
-    return {
-      isValid: false,
-      message: 'Miesiąc musi być między 1-12'
-    };
-  }
-
-  // Konwertuj 2-cyfrowy rok na pełny format (24 → 2024, 25 → 2025, itd.)
-  let fullYear = yearNum;
-  if (yearNum >= 24 && yearNum <= 30) {
-    fullYear = 2000 + yearNum;
-  } else if (yearNum >= 2024 && yearNum <= 2030) {
-    fullYear = yearNum; // Już pełny format
-  } else {
-    return {
-      isValid: false,
-      message: 'Rok musi być między 24-30'
-    };
-  }
-
-  // Sprawdź czy data jest prawidłowa (np. 31.02.2024 nie istnieje)
-  const date = new Date(fullYear, monthNum - 1, dayNum);
-  if (date.getDate() !== dayNum || date.getMonth() !== monthNum - 1 || date.getFullYear() !== fullYear) {
-    return {
-      isValid: false,
-      message: 'Nieprawidłowa data (np. 31.02.2024)'
-    };
-  }
-
-  console.log(`src/utils/formValidation.ts: Data poprawna - ${day}/${month}/${year}`);
-  return {
-    isValid: true,
-    message: ''
-  };
-}
-
-/**
  * Waliduje wzrost w czasie rzeczywistym (100-250 cm)
- * console.log(src/utils/formValidation.ts: Walidacja wzrostu w czasie rzeczywistym - zakres 100-250 cm)
+ * logger.debug(src/utils/formValidation.ts: Walidacja wzrostu w czasie rzeczywistym - zakres 100-250 cm)
  */
 export function validateHeightRealtime(height: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja wzrostu w czasie rzeczywistym - wartość: ${height}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja wzrostu w czasie rzeczywistym - wartość: ${height}`);
   
   if (!height) {
     return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
@@ -250,10 +57,10 @@ export function validateHeightRealtime(height: string): ValidationResult {
 
 /**
  * Waliduje wagę w czasie rzeczywistym (20-200 kg)
- * console.log(src/utils/formValidation.ts: Walidacja wagi w czasie rzeczywistym - zakres 20-200 kg)
+ * logger.debug(src/utils/formValidation.ts: Walidacja wagi w czasie rzeczywistym - zakres 20-200 kg)
  */
 export function validateWeightRealtime(weight: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja wagi w czasie rzeczywistym - wartość: ${weight}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja wagi w czasie rzeczywistym - wartość: ${weight}`);
   
   if (!weight) {
     return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
@@ -274,10 +81,10 @@ export function validateWeightRealtime(weight: string): ValidationResult {
 
 /**
  * Waliduje poziom w czasie rzeczywistym (1-6)
- * console.log(src/utils/formValidation.ts: Walidacja poziomu w czasie rzeczywistym - zakres 1-6)
+ * logger.debug(src/utils/formValidation.ts: Walidacja poziomu w czasie rzeczywistym - zakres 1-6)
  */
 export function validateLevelRealtime(level: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja poziomu w czasie rzeczywistym - wartość: ${level}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja poziomu w czasie rzeczywistym - wartość: ${level}`);
   
   if (!level) {
     return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
@@ -298,10 +105,10 @@ export function validateLevelRealtime(level: string): ValidationResult {
 
 /**
  * Waliduje płeć w czasie rzeczywistym (M/K)
- * console.log(src/utils/formValidation.ts: Walidacja płci w czasie rzeczywistym - M lub K)
+ * logger.debug(src/utils/formValidation.ts: Walidacja płci w czasie rzeczywistym - M lub K)
  */
 export function validateGenderRealtime(gender: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja płci w czasie rzeczywistym - wartość: ${gender}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja płci w czasie rzeczywistym - wartość: ${gender}`);
   
   if (!gender) {
     return { isValid: true, message: '' }; // Puste pole jest OK podczas wpisywania
@@ -317,10 +124,10 @@ export function validateGenderRealtime(gender: string): ValidationResult {
 
 /**
  * Waliduje rozmiar buta w czasie rzeczywistym (20-35 cm)
- * console.log(src/utils/formValidation.ts: Walidacja rozmiaru buta w czasie rzeczywistym - zakres 20-35 cm)
+ * logger.debug(src/utils/formValidation.ts: Walidacja rozmiaru buta w czasie rzeczywistym - zakres 20-35 cm)
  */
 export function validateShoeSizeRealtime(shoeSize: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja rozmiaru buta w czasie rzeczywistym - wartość: ${shoeSize}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja rozmiaru buta w czasie rzeczywistym - wartość: ${shoeSize}`);
   
   if (!shoeSize) {
     return { isValid: true, message: '' }; // Puste pole jest OK (opcjonalne)
@@ -352,10 +159,10 @@ export function validateShoeSizeRealtime(shoeSize: string): ValidationResult {
 
 /**
  * Waliduje wzrost w zakresie 100-250 cm
- * console.log(src/utils/formValidation.ts: Walidacja wzrostu - zakres 100-250 cm)
+ * logger.debug(src/utils/formValidation.ts: Walidacja wzrostu - zakres 100-250 cm)
  */
 export function validateHeight(height: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja wzrostu - wartość: ${height}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja wzrostu - wartość: ${height}`);
   
   if (!height) {
     return {
@@ -379,7 +186,7 @@ export function validateHeight(height: string): ValidationResult {
     };
   }
 
-  console.log(`src/utils/formValidation.ts: Wzrost poprawny - ${heightNum} cm`);
+  logger.debug(`src/utils/formValidation.ts: Wzrost poprawny - ${heightNum} cm`);
   return {
     isValid: true,
     message: ''
@@ -388,10 +195,10 @@ export function validateHeight(height: string): ValidationResult {
 
 /**
  * Waliduje wagę w zakresie 20-200 kg
- * console.log(src/utils/formValidation.ts: Walidacja wagi - zakres 20-200 kg)
+ * logger.debug(src/utils/formValidation.ts: Walidacja wagi - zakres 20-200 kg)
  */
 export function validateWeight(weight: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja wagi - wartość: ${weight}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja wagi - wartość: ${weight}`);
   
   if (!weight) {
     return {
@@ -415,7 +222,7 @@ export function validateWeight(weight: string): ValidationResult {
     };
   }
 
-  console.log(`src/utils/formValidation.ts: Waga poprawna - ${weightNum} kg`);
+  logger.debug(`src/utils/formValidation.ts: Waga poprawna - ${weightNum} kg`);
   return {
     isValid: true,
     message: ''
@@ -424,10 +231,10 @@ export function validateWeight(weight: string): ValidationResult {
 
 /**
  * Waliduje poziom umiejętności w zakresie 1-6
- * console.log(src/utils/formValidation.ts: Walidacja poziomu - zakres 1-6)
+ * logger.debug(src/utils/formValidation.ts: Walidacja poziomu - zakres 1-6)
  */
 export function validateLevel(level: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja poziomu - wartość: ${level}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja poziomu - wartość: ${level}`);
   
   if (!level) {
     return {
@@ -451,7 +258,7 @@ export function validateLevel(level: string): ValidationResult {
     };
   }
 
-  console.log(`src/utils/formValidation.ts: Poziom poprawny - ${levelNum}`);
+  logger.debug(`src/utils/formValidation.ts: Poziom poprawny - ${levelNum}`);
   return {
     isValid: true,
     message: ''
@@ -459,65 +266,11 @@ export function validateLevel(level: string): ValidationResult {
 }
 
 /**
- * Waliduje końcowy format dnia (sprawdza czy jest w formacie 01-09 lub 10-31)
- * console.log(src/utils/formValidation.ts: Walidacja końcowa dnia)
- */
-export function validateDayFinal(day: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja końcowa dnia - wartość: "${day}"`);
-  
-  if (!day) {
-    return { isValid: false, message: 'Dzień jest wymagany' };
-  }
-
-  const dayNum = parseInt(day);
-  
-  // Sprawdź czy jest w poprawnym formacie
-  if (day.startsWith('0') && day.length === 2) {
-    // Format 01-09
-    if (dayNum >= 1 && dayNum <= 9) {
-      return { isValid: true, message: '' };
-    }
-  } else if (day.length === 2 && dayNum >= 10 && dayNum <= 31) {
-    // Format 10-31
-    return { isValid: true, message: '' };
-  }
-  
-  return { isValid: false, message: 'Dzień musi być w formacie 01-09 lub 10-31' };
-}
-
-/**
- * Waliduje końcowy format miesiąca (sprawdza czy jest w formacie 01-09 lub 10-12)
- * console.log(src/utils/formValidation.ts: Walidacja końcowa miesiąca)
- */
-export function validateMonthFinal(month: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja końcowa miesiąca - wartość: "${month}"`);
-  
-  if (!month) {
-    return { isValid: false, message: 'Miesiąc jest wymagany' };
-  }
-
-  const monthNum = parseInt(month);
-  
-  // Sprawdź czy jest w poprawnym formacie
-  if (month.startsWith('0') && month.length === 2) {
-    // Format 01-09
-    if (monthNum >= 1 && monthNum <= 9) {
-      return { isValid: true, message: '' };
-    }
-  } else if (month.length === 2 && monthNum >= 10 && monthNum <= 12) {
-    // Format 10-12
-    return { isValid: true, message: '' };
-  }
-  
-  return { isValid: false, message: 'Miesiąc musi być w formacie 01-09 lub 10-12' };
-}
-
-/**
  * Waliduje płeć (M lub K)
- * console.log(src/utils/formValidation.ts: Walidacja płci - M lub K)
+ * logger.debug(src/utils/formValidation.ts: Walidacja płci - M lub K)
  */
 export function validateGender(gender: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja płci - wartość: ${gender}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja płci - wartość: ${gender}`);
   
   if (!gender) {
     return {
@@ -534,7 +287,7 @@ export function validateGender(gender: string): ValidationResult {
     };
   }
 
-  console.log(`src/utils/formValidation.ts: Płeć poprawna - ${normalizedGender}`);
+  logger.debug(`src/utils/formValidation.ts: Płeć poprawna - ${normalizedGender}`);
   return {
     isValid: true,
     message: ''
@@ -543,14 +296,14 @@ export function validateGender(gender: string): ValidationResult {
 
 /**
  * Waliduje datę w formacie YYYY-MM-DD (opcjonalna)
- * console.log(src/utils/formValidation.ts: Walidacja daty w formacie YYYY-MM-DD)
+ * logger.debug(src/utils/formValidation.ts: Walidacja daty w formacie YYYY-MM-DD)
  */
 export function validateDateString(dateStr: string): ValidationResult {
-  console.log(`src/utils/formValidation.ts: Walidacja daty string - wartość: "${dateStr}"`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja daty string - wartość: "${dateStr}"`);
   
   // Pusta data jest OK (opcjonalna)
   if (!dateStr || dateStr.trim() === '') {
-    console.log(`src/utils/formValidation.ts: Data opcjonalna - pusta`);
+    logger.debug(`src/utils/formValidation.ts: Data opcjonalna - pusta`);
     return { isValid: true, message: '' };
   }
   
@@ -566,33 +319,33 @@ export function validateDateString(dateStr: string): ValidationResult {
     return { isValid: false, message: 'Nieprawidłowa data' };
   }
   
-  console.log(`src/utils/formValidation.ts: Data string poprawna - ${dateStr}`);
+  logger.debug(`src/utils/formValidation.ts: Data string poprawna - ${dateStr}`);
   return { isValid: true, message: '' };
 }
 
 /**
  * Waliduje cały formularz
- * console.log(src/utils/formValidation.ts: Walidacja całego formularza)
+ * logger.debug(src/utils/formValidation.ts: Walidacja całego formularza)
  */
 export function validateForm(formData: FormData): { isValid: boolean; errors: FormErrors } {
-  console.log('src/utils/formValidation.ts: Rozpoczęcie walidacji całego formularza');
+  logger.debug('src/utils/formValidation.ts: Rozpoczęcie walidacji całego formularza');
   
   const errors: FormErrors = { ...initialFormErrors };
   let isValid = true;
 
   // Waliduj datę od (teraz string w formacie YYYY-MM-DD)
-  console.log(`src/utils/formValidation.ts: Walidacja daty od - wartość: "${formData.dateFrom}"`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja daty od - wartość: "${formData.dateFrom}"`);
   const dateFromResult = validateDateString(formData.dateFrom);
-  console.log(`src/utils/formValidation.ts: Wynik walidacji daty od - isValid: ${dateFromResult.isValid}, message: "${dateFromResult.message}"`);
+  logger.debug(`src/utils/formValidation.ts: Wynik walidacji daty od - isValid: ${dateFromResult.isValid}, message: "${dateFromResult.message}"`);
   if (!dateFromResult.isValid) {
     errors.dateFrom = dateFromResult.message;
     isValid = false;
   }
 
   // Waliduj datę do (teraz string w formacie YYYY-MM-DD)
-  console.log(`src/utils/formValidation.ts: Walidacja daty do - wartość: "${formData.dateTo}"`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja daty do - wartość: "${formData.dateTo}"`);
   const dateToResult = validateDateString(formData.dateTo);
-  console.log(`src/utils/formValidation.ts: Wynik walidacji daty do - isValid: ${dateToResult.isValid}, message: "${dateToResult.message}"`);
+  logger.debug(`src/utils/formValidation.ts: Wynik walidacji daty do - isValid: ${dateToResult.isValid}, message: "${dateToResult.message}"`);
   if (!dateToResult.isValid) {
     errors.dateTo = dateToResult.message;
     isValid = false;
@@ -626,6 +379,6 @@ export function validateForm(formData: FormData): { isValid: boolean; errors: Fo
     isValid = false;
   }
 
-  console.log(`src/utils/formValidation.ts: Walidacja zakończona - poprawny: ${isValid}`);
+  logger.debug(`src/utils/formValidation.ts: Walidacja zakończona - poprawny: ${isValid}`);
   return { isValid, errors };
 }
