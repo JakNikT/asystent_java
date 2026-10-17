@@ -24,7 +24,7 @@ export interface Conflict {
     numer?: string;
     source?: 'reservation' | 'rental';
   };
-  przerwaDni: number; // Liczba dni przerwy (0, 1 < 2)
+  przerwaDni: number; // Liczba dni przerwy (<= SERVICE_BUFFER_DAYS)
 }
 
 /**

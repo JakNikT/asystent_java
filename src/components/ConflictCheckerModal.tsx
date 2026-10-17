@@ -10,6 +10,7 @@ import { detectConflicts } from '../utils/conflictDetector';
 import type { ConflictAnalysisResult } from '../types/conflict.types';
 import type { ReservationData } from '../services/reservationService';
 import { DatePickerButton } from './DatePickerButton';
+import { SERVICE_BUFFER_DAYS } from '../utils/availability';
 
 interface ConflictCheckerModalProps {
   isOpen: boolean;
@@ -278,7 +279,7 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Sprawdzanie konfliktów w kalendarzu sprzętu"
-      description="Sprawdź czy sprzęty mają wystarczającą przerwę (min. 2 dni) między rezerwacjami"
+      description={`Sprawdź czy sprzęty mają wystarczającą przerwę między rezerwacjami (Bufor serwisowy: ${SERVICE_BUFFER_DAYS} dni)`}
       className="max-w-[95vw] w-full max-h-[95vh] overflow-y-auto bg-brand-dark/50 backdrop-blur-sm border-white/10"
       footer={
         <div className="flex gap-2">
@@ -459,7 +460,7 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
               <div className="p-8 text-center bg-brand-dark/40 backdrop-blur-sm rounded-[20px] border border-white/10 shadow-lg shadow-black/20">
                 <p className="text-lg font-semibold mb-2 text-green-400">✅ Brak konfliktów!</p>
                 <p className="text-white/70">
-                  Wszystkie sprzęty mają wystarczającą przerwę (≥ 2 dni) między rezerwacjami.
+                  Wszystkie sprzęty mają przerwę dłuższą niż bufor serwisowy ({SERVICE_BUFFER_DAYS} dni) między rezerwacjami.
                 </p>
               </div>
             )}

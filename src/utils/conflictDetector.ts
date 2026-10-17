@@ -1,23 +1,9 @@
 // src/utils/conflictDetector.ts: Logika wykrywania konfliktów w kalendarzu sprzętu
-// Sprawdza czy przerwy między rezerwacjami/wypożyczeniami tego samego sprzętu są mniejsze niż 2 dni
+// Sprawdza czy przerwy między rezerwacjami/wypożyczeniami tego samego sprzętu mieszczą się w buforze serwisowym
 
 import type { ReservationData } from '../services/reservationService';
 import type { ConflictInfo, Conflict, ConflictAnalysisResult } from '../types/conflict.types';
-
-/**
- * Oblicza różnicę w dniach między dwiema datami (bez godzin)
- * Zwraca liczbę całkowitych dni między datami
- */
-export function calculateDaysBetween(date1: Date, date2: Date): number {
-  // Normalizuj daty do początku dnia (bez godzin)
-  const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-  const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-  
-  const diffTime = d1.getTime() - d2.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  
-  return diffDays;
-}
+import { SERVICE_BUFFER_DAYS, dayGap } from './availability';
 
 /**
  * Grupuje rezerwacje po kodzie sprzętu
@@ -87,7 +73,7 @@ function isSkiOrBoot(reservation: ReservationData): boolean {
 
 /**
  * Wykrywa konflikty dla pojedynczego sprzętu (kodu)
- * Konflikt = przerwa < 2 dni między kolejnymi rezerwacjami
+ * Konflikt = przerwa <= SERVICE_BUFFER_DAYS dni między kolejnymi rezerwacjami (spójnie z żółtym w Przeglądaj)
  */
 function detectConflictsForEquipment(
   _kod: string,
@@ -107,12 +93,12 @@ function detectConflictsForEquipment(
     const endDate1 = new Date(res1.do);
     const startDate2 = new Date(res2.od);
     
-    // Oblicz przerwę w dniach
+    // Oblicz przerwę w dniach kalendarzowych
     // Przerwa = różnica między końcem rezerwacji 1 a początkiem rezerwacji 2
-    const przerwaDni = calculateDaysBetween(startDate2, endDate1);
+    const przerwaDni = dayGap(endDate1, startDate2);
     
-    // Konflikt gdy przerwa < 2 dni
-    if (przerwaDni < 2) {
+    // Konflikt gdy przerwa mieści się w buforze serwisowym
+    if (przerwaDni <= SERVICE_BUFFER_DAYS) {
       conflicts.push({
         rezerwacja1: {
           klient: res1.klient,

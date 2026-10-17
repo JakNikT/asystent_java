@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { SkiData, SearchCriteria, MatchDetails } from '../types/ski.types';
 import type { FilterSearchState, FilterKey, FormData } from '../types/dashboard.types';
 import type { FormErrors } from '../utils/formValidation';
 import { ReservationApiClient } from '../services/reservationApiClient';
 import { SkiEditModal } from './SkiEditModal';
-import { useToast } from '../hooks/useToast';
+import { useToast, toastService } from '../hooks/useToast';
 import { SkiMatchingServiceV2 } from '../services/skiMatchingServiceV2';
 import { SkiDataService } from '../services/skiDataService';
 import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils/nameFormatter';
@@ -220,6 +220,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [isRefreshingAvailability, setIsRefreshingAvailability] = useState<boolean>(false);
   const [lastRefreshTime, setLastRefreshTime] = useState<Date | null>(null);
   const [autoRefreshEnabled, setAutoRefreshEnabled] = useState<boolean>(true);
+  // Błąd pobierania dostępności: zostawia poprzednie kolory, pokazuje baner; ref pozwala zgłosić toast tylko przy przejściu false→true
+  const [availabilityError, setAvailabilityError] = useState<boolean>(false);
+  const availabilityErrorRef = useRef<boolean>(false);
 
   // src/components/BrowseSkisComponent.tsx: Funkcja wielokrotnego użytku do ładowania statusów dostępności
   const loadAvailabilityStatuses = useCallback(async () => {
@@ -235,6 +238,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       if (!hasUserDates) {
         logger.info('BrowseSkisComponent: Brak dat - wszystkie narty dostępne (zielone kwadraciki)');
         setAvailabilityStatuses(new Map());
+        availabilityErrorRef.current = false;
+        setAvailabilityError(false);
         return;
       }
 
@@ -305,8 +310,16 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
 
       setAvailabilityStatuses(statusMap);
       setLastRefreshTime(new Date());
+      availabilityErrorRef.current = false;
+      setAvailabilityError(false);
     } catch (error) {
       logger.error('BrowseSkisComponent: ❌ Błąd ładowania statusów dostępności:', error);
+      // Poprzedni stan availabilityStatuses zostaje (nie nadpisujemy go pustymi/zielonymi danymi)
+      if (!availabilityErrorRef.current) {
+        toastService.showError('Nie udało się pobrać dostępności sprzętu');
+      }
+      availabilityErrorRef.current = true;
+      setAvailabilityError(true);
     } finally {
       setIsRefreshingAvailability(false);
     }
@@ -1107,6 +1120,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
               </div>
             ) : (
               <>
+                {availabilityError && (
+                  <div role="alert" className="mb-4 p-3 rounded-xl border border-yellow-500/40 bg-yellow-500/10 text-yellow-200 text-sm">
+                    Nie udało się pobrać dostępności – kolory mogą być nieaktualne.
+                  </div>
+                )}
                 {/* Tabela sprzętu - widoczna tylko na desktop */}
                 <div className="hidden lg:block bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
                   <div className="overflow-x-auto">

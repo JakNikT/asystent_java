@@ -8,15 +8,11 @@ import { toastService } from '../hooks/useToast';
 import { parseApiError, handleApiError } from '../utils/apiErrorHandler';
 import type { ReservationData, ReservationInfo, AvailabilityInfo } from './reservationService';
 import { AuthService } from './authService';
+import { DEFAULT_RENTAL_DAYS, SERVICE_BUFFER_DAYS, calendarDayNumber, dayGap } from '../utils/availability';
+import { dateToISO } from '../utils/dateParts';
 
 const API_BASE_URL = '/api';
 const logger = createLogger('ReservationApiClient');
-
-// Stałe dla logiki dostępności
-/** Domyślna data końcowa dla aktywnych wypożyczeń bez określonego terminu (30 dni) */
-const DEFAULT_RENTAL_DAYS = 30;
-/** Minimalny bufor serwisowy w dniach - poniżej tej wartości pokazuje żółte ostrzeżenie */
-const SERVICE_BUFFER_DAYS = 2;
 
 /**
  * Klient API dla rezerwacji
@@ -164,75 +160,70 @@ export class ReservationApiClient {
  * Zwraca tylko rezerwacje i wypożyczenia które mogą kolidować z okresem
  */
 static async loadAvailabilityForPeriod(dateFrom: Date, dateTo: Date): Promise<ReservationData[]> {
-  try {
-    const fromTimestamp = dateFrom.getTime();
-    const toTimestamp = dateTo.getTime();
-    
-    logger.debug(`Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
-    
-    const response = await AuthService.fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
-    
-    if (!response.ok) {
-      const errorMessage = await parseApiError(response);
-      throw new Error(errorMessage);
-    }
-    
-    interface PeriodResponseItem {
-      kod?: string;
-      sprzet?: string;
-      klient?: string;
-      typumowy?: string;
-      parent_group_id?: number | null;
-    }
+  const fromTimestamp = dateFrom.getTime();
+  const toTimestamp = dateTo.getTime();
 
-    const data = await response.json() as {
-      reservations?: Array<PeriodResponseItem & { od?: string; do?: string }>;
-      rentals?: Array<PeriodResponseItem & { od?: number | string; do?: number | string }>;
-    };
-    
-    // Mapuj dane do formatu ReservationData
-    const reservations = (data.reservations || []).map((r) => ({
-      kod: r.kod || '',
-      sprzet: r.sprzet || '',
-      klient: r.klient || '',
-      od: this.formatFireSnowDateString(r.od),
-      do: this.formatFireSnowDateString(r.do),
-      cena: '0',
-      zaplacono: '0',
-      numer: '',
-      typumowy: r.typumowy || 'STANDARD',
-      parent_group_id: r.parent_group_id !== undefined ? r.parent_group_id : null,
-      source: 'reservation' as const
-    }));
-    
-    const rentals = (data.rentals || []).map((r) => ({
-      kod: r.kod || '',
-      sprzet: r.sprzet || '',
-      klient: r.klient || '',
-      od: typeof r.od === 'number' ? new Date(r.od).toISOString().split('T')[0]! : r.od || '',
-      // Jeśli wypożyczenie jest aktywne (do = 0), ustaw domyślną datę końcową
-      // Zapobiega to tworzeniu Invalid Date i błędnym kolorom dostępności
-      do: typeof r.do === 'number' && r.do > 0
-        ? new Date(r.do).toISOString().split('T')[0]!
-        : new Date(Date.now() + DEFAULT_RENTAL_DAYS * 24 * 60 * 60 * 1000).toISOString().split('T')[0]!,
-      cena: '0',
-      zaplacono: '0',
-      numer: '',
-      typumowy: r.typumowy || 'STANDARD',
-      parent_group_id: r.parent_group_id !== undefined ? r.parent_group_id : null,
-      source: 'rental' as const
-    }));
-    
-    const allData = [...reservations, ...rentals];
-    logger.info(`Pobrano ${allData.length} pozycji (${reservations.length} rezerwacji + ${rentals.length} wypożyczeń)`);
-    
-    return allData;
-  } catch (error) {
-    logger.error('Błąd pobierania dostępności dla okresu:', error);
-    const errorMessage = handleApiError(error, 'Nie udało się sprawdzić dostępności sprzętu');
-    toastService.showError(errorMessage);
-    return [];
+  logger.debug(`Pobieram dostępność dla okresu ${dateFrom.toLocaleDateString()} - ${dateTo.toLocaleDateString()}`);
+
+  // Błędy (HTTP i sieciowe) są rzucane do wywołującego - UI musi odróżnić awarię od braku rezerwacji
+  const response = await AuthService.fetch(`${API_BASE_URL}/dostepnosc/okres?from=${fromTimestamp}&to=${toTimestamp}`);
+
+  if (!response.ok) {
+    const errorMessage = await parseApiError(response);
+    throw new Error(errorMessage);
   }
+
+  interface PeriodResponseItem {
+    kod?: string;
+    sprzet?: string;
+    klient?: string;
+    typumowy?: string;
+    parent_group_id?: number | null;
+  }
+
+  const data = await response.json() as {
+    reservations?: Array<PeriodResponseItem & { od?: string; do?: string }>;
+    rentals?: Array<PeriodResponseItem & { od?: number | string; do?: number | string }>;
+  };
+
+  // Mapuj dane do formatu ReservationData
+  const reservations = (data.reservations || []).map((r) => ({
+    kod: r.kod || '',
+    sprzet: r.sprzet || '',
+    klient: r.klient || '',
+    od: this.formatFireSnowDateString(r.od),
+    do: this.formatFireSnowDateString(r.do),
+    cena: '0',
+    zaplacono: '0',
+    numer: '',
+    typumowy: r.typumowy || 'STANDARD',
+    parent_group_id: r.parent_group_id !== undefined ? r.parent_group_id : null,
+    source: 'reservation' as const
+  }));
+
+  const rentals = (data.rentals || []).map((r) => ({
+    kod: r.kod || '',
+    sprzet: r.sprzet || '',
+    klient: r.klient || '',
+    // Daty wypożyczeń jako lokalne dni kalendarzowe (toISOString dawało datę UTC, czasem o dzień wcześniejszą)
+    od: typeof r.od === 'number' ? dateToISO(new Date(r.od)) : r.od || '',
+    // Jeśli wypożyczenie jest aktywne (do = 0), ustaw domyślną datę końcową
+    // Zapobiega to tworzeniu Invalid Date i błędnym kolorom dostępności
+    do: typeof r.do === 'number' && r.do > 0
+      ? dateToISO(new Date(r.do))
+      : dateToISO(new Date(Date.now() + DEFAULT_RENTAL_DAYS * 86400000)),
+    cena: '0',
+    zaplacono: '0',
+    numer: '',
+    typumowy: r.typumowy || 'STANDARD',
+    parent_group_id: r.parent_group_id !== undefined ? r.parent_group_id : null,
+    source: 'rental' as const
+  }));
+
+  const allData = [...reservations, ...rentals];
+  logger.info(`Pobrano ${allData.length} pozycji (${reservations.length} rezerwacji + ${rentals.length} wypożyczeń)`);
+
+  return allData;
 }
 
 // Helper function for date formatting
@@ -355,21 +346,23 @@ static async getSkiAvailabilityStatus(
         status: this.getReservationStatus(reservation)
       };
       
-      // Sprawdź CZERWONY (bezpośredni konflikt)
-      const overlaps = resStart <= userDateTo && resEnd >= userDateFrom;
-      
+      // Porównanie na dniach kalendarzowych, nie na timestampach (rezerwacja od 11:00 w ostatnim dniu
+      // użytkownika też jest konfliktem, mimo że userDateTo to północ)
+      const overlaps = calendarDayNumber(resStart) <= calendarDayNumber(userDateTo) &&
+        calendarDayNumber(resEnd) >= calendarDayNumber(userDateFrom);
+
       if (overlaps) {
         hasDirectConflict = true;
         allReservations.push(reservationInfo);
       }
       // Sprawdź ŻÓŁTY (bufor serwisowy - za mało dni na przygotowanie sprzętu)
       else {
-        const daysBefore = this.differenceInDays(userDateFrom, resEnd);
-        const daysAfter = this.differenceInDays(resStart, userDateTo);
+        const gapBefore = dayGap(resEnd, userDateFrom);
+        const gapAfter = dayGap(userDateTo, resStart);
 
-        const isBeforeWarning = daysBefore >= 1 && daysBefore <= SERVICE_BUFFER_DAYS;
-        const isAfterWarning = daysAfter >= 1 && daysAfter <= SERVICE_BUFFER_DAYS;
-        
+        const isBeforeWarning = gapBefore >= 1 && gapBefore <= SERVICE_BUFFER_DAYS;
+        const isAfterWarning = gapAfter >= 1 && gapAfter <= SERVICE_BUFFER_DAYS;
+
         if (isBeforeWarning || isAfterWarning) {
           hasWarningConflict = true;
           allReservations.push(reservationInfo);
@@ -554,16 +547,6 @@ static async getSkiAvailabilityStatus(
     end2: Date
   ): boolean {
     return start1 <= end2 && start2 <= end1;
-  }
-
-  private static differenceInDays(date1: Date, date2: Date): number {
-    const d1 = new Date(date1.getFullYear(), date1.getMonth(), date1.getDate());
-    const d2 = new Date(date2.getFullYear(), date2.getMonth(), date2.getDate());
-    
-    const diffTime = d1.getTime() - d2.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
-    return diffDays;
   }
 
   private static getReservationStatus(reservation: ReservationData): 'active' | 'completed' | 'cancelled' {
