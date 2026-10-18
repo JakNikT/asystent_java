@@ -14,6 +14,7 @@ import java.util.Properties;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.sql.PreparedStatement;
 
 public class FireSnowBridge {
@@ -28,11 +29,13 @@ public class FireSnowBridge {
     private static final String DEFAULT_EQUIPMENT_GROUPS = 
         "130615,130679,131174,131361,131364,131534,131533";
     
-    // Automatic DB reloading with file change detection and TTL
+    // Przeładowanie bazy tylko przy zmianie plików HSQLDB na dysku lub ręcznym /api/refresh.
+    // Czytelnicy (sesje zapytań) trzymają read lock; przeładowanie (SHUTDOWN) wymaga write locka,
+    // więc nigdy nie ubija zapytań w locie.
+    private static final ReentrantReadWriteLock dbLock = new ReentrantReadWriteLock();
+    private static final Object mountLock = new Object();
     private static volatile boolean isDatabaseMounted = false;
-    private static volatile long dbMountedTime = 0;
     private static volatile long lastDbFilesModified = 0;
-    private static long TTL = 30000; // 30 seconds default (configurable in config.properties via db.ttl)
     
     /**
      * Loads configuration from config.properties file.
@@ -115,8 +118,14 @@ public class FireSnowBridge {
     /**
      * Executes HSQLDB SHUTDOWN to close and unload in-memory database instance.
      * This forces the next connection to mount and read fresh files from disk.
+     * MUSI być wywoływane pod write lockiem (brak aktywnych sesji).
+     * Nigdy nie wykonuje SHUTDOWN na zdalnym serwerze hsql:// (tylko tryb file:).
      */
-    private static synchronized void shutdownDatabaseIfMounted() {
+    private static void shutdownDatabaseIfMounted() {
+        if (getFileDbBasePath() == null) {
+            isDatabaseMounted = false;
+            return;
+        }
         if (!isDatabaseMounted) {
             return;
         }
@@ -130,56 +139,96 @@ public class FireSnowBridge {
             System.err.println("FireSnowBridge: SHUTDOWN notice: " + e.getMessage());
         }
         isDatabaseMounted = false;
-        dbMountedTime = 0;
-        System.gc();
     }
 
     /**
-     * Creates READ-ONLY connection to FireSnow database with automatic change detection.
-     * If FireSnow modified files on disk, or if TTL expired, it executes SHUTDOWN to reload.
+     * Czy pliki bazy na dysku są nowsze niż w chwili zamontowania
      */
-    private static synchronized Connection getConnection() throws SQLException {
-        long now = System.currentTimeMillis();
+    private static boolean reloadNeeded() {
         String basePath = getFileDbBasePath();
-        
-        if (basePath != null && isDatabaseMounted) {
-            long currentFilesMod = getDatabaseFilesLastModified(basePath);
-            boolean filesChanged = (lastDbFilesModified > 0 && currentFilesMod > lastDbFilesModified);
-            boolean ttlExpired = (now - dbMountedTime) > TTL;
-            
-            if (filesChanged || ttlExpired) {
-                if (filesChanged) {
-                    System.out.println("FireSnowBridge: Database files on disk modified (" + currentFilesMod + " > " + lastDbFilesModified + ") - reloading fresh data!");
-                } else {
-                    System.out.println("FireSnowBridge: Database cache TTL expired (" + (now - dbMountedTime) + "ms > " + TTL + "ms) - reloading!");
-                }
-                shutdownDatabaseIfMounted();
-            }
-        }
-        
-        Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
-        conn.setReadOnly(true);
-        
-        if (!isDatabaseMounted) {
-            isDatabaseMounted = true;
-            dbMountedTime = now;
-            if (basePath != null) {
-                lastDbFilesModified = getDatabaseFilesLastModified(basePath);
-                System.out.println("FireSnowBridge: Fresh database mounted from disk. Files timestamp: " + lastDbFilesModified);
-            }
-        }
-        
-        return conn;
+        return basePath != null && isDatabaseMounted
+            && getDatabaseFilesLastModified(basePath) > lastDbFilesModified;
     }
-    
+
     /**
-     * Closes all database connections and forces garbage collection
-     * This allows next request to read fresh data from disk
-     * Used by /api/refresh endpoint for manual refresh
+     * Sesja zapytań: połączenie READ-ONLY + read lock zwalniany przy close().
      */
-    private static synchronized void closeAllConnections() {
+    static final class DbSession implements AutoCloseable {
+        final Connection connection;
+
+        DbSession(Connection connection) {
+            this.connection = connection;
+        }
+
+        @Override
+        public void close() throws SQLException {
+            try {
+                connection.close();
+            } finally {
+                dbLock.readLock().unlock();
+            }
+        }
+    }
+
+    /**
+     * Otwiera sesję READ-ONLY. Jeśli pliki bazy zmieniły się na dysku, najpierw przeładowuje bazę pod
+     * write lockiem (czeka aż zakończą się sesje w toku), potem bierze read lock.
+     */
+    static DbSession openSession() throws SQLException {
+        if (reloadNeeded()) {
+            dbLock.writeLock().lock();
+            try {
+                if (reloadNeeded()) {
+                    System.out.println("FireSnowBridge: Database files on disk modified (> " + lastDbFilesModified + ") - reloading fresh data!");
+                    shutdownDatabaseIfMounted();
+                }
+            } finally {
+                dbLock.writeLock().unlock();
+            }
+        }
+
+        dbLock.readLock().lock();
+        try {
+            Connection conn = DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
+            try {
+                conn.setReadOnly(true);
+
+                if (!isDatabaseMounted) {
+                    synchronized (mountLock) {
+                        if (!isDatabaseMounted) {
+                            String basePath = getFileDbBasePath();
+                            if (basePath != null) {
+                                lastDbFilesModified = getDatabaseFilesLastModified(basePath);
+                                System.out.println("FireSnowBridge: Fresh database mounted from disk. Files timestamp: " + lastDbFilesModified);
+                            }
+                            // lastDbFilesModified ustawione PRZED flagą (reloadNeeded czyta obie)
+                            isDatabaseMounted = true;
+                        }
+                    }
+                }
+
+                return new DbSession(conn);
+            } catch (SQLException | RuntimeException e) {
+                try { conn.close(); } catch (SQLException ignored) { }
+                throw e;
+            }
+        } catch (SQLException | RuntimeException e) {
+            dbLock.readLock().unlock();
+            throw e;
+        }
+    }
+
+    /**
+     * Ręczne przeładowanie (/api/refresh): write lock + SHUTDOWN - następne zapytanie czyta świeże pliki
+     */
+    private static void reloadNow() {
         System.out.println("FireSnowBridge: Manual refresh requested - executing SHUTDOWN");
-        shutdownDatabaseIfMounted();
+        dbLock.writeLock().lock();
+        try {
+            shutdownDatabaseIfMounted();
+        } finally {
+            dbLock.writeLock().unlock();
+        }
         System.out.println("FireSnowBridge: Next request will read fresh data from disk");
     }
     
@@ -199,7 +248,8 @@ public class FireSnowBridge {
                 return;
             }
             
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 // Użyj zmiennej conn do weryfikacji połączenia
                 boolean isValid = !conn.isClosed();
                 String response = "{\"status\":\"ok\",\"database\":\"connected\",\"connection_valid\":" + isValid + ",\"message\":\"FireSnow Bridge API is running\"}";
@@ -244,7 +294,8 @@ public class FireSnowBridge {
                 return;
             }
             
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 
                 // Fixed SQL with correct column names (discovered via Database Manager)
                 // Używamy ABSTRACTENTITYCM dla nazwy klienta (tak jak w wypożyczeniach)
@@ -388,7 +439,8 @@ public class FireSnowBridge {
                 return;
             }
             
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 
                 // SQL query for past rentals from SESSIONINFOFGHJ table
                 String sql = 
@@ -498,7 +550,8 @@ public class FireSnowBridge {
                 return;
             }
             
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 
                 // Fixed SQL - use ABSTRACTPOSITION not ABSTRACTPRODUCT (NAME column is there)
                 String sql = 
@@ -580,7 +633,8 @@ public class FireSnowBridge {
                 return;
             }
             
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 
                 // SQL query for active rentals from SESSIONINFOFGHJ table
                 String sql = 
@@ -699,7 +753,8 @@ static class DostepnoscOkresHandler implements HttpHandler {
             return;
         }
         
-        try (Connection conn = getConnection()) {
+        try (DbSession session = openSession()) {
+            Connection conn = session.connection;
             // Get query parameters
             String query = exchange.getRequestURI().getQuery();
             Map<String, String> params = parseQuery(query);
@@ -976,7 +1031,7 @@ ResultSet rsRent = stmtRent.executeQuery();
             
             try {
                 // Close all connections to force fresh read on next request
-                closeAllConnections();
+                reloadNow();
                 
                 String response = "{\"status\":\"ok\",\"message\":\"Database connections refreshed. Next request will read fresh data from disk.\"}";
                 
@@ -1023,7 +1078,8 @@ ResultSet rsRent = stmtRent.executeQuery();
                 return;
             }
 
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 // Get query parameters
                 String query = exchange.getRequestURI().getQuery();
                 Map<String, String> params = parseQueryParams(query);
@@ -1209,7 +1265,8 @@ ResultSet rsRent = stmtRent.executeQuery();
                 return;
             }
             
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 
                 // SQL query for all equipment from all sub-groups
                 // FireSnowBridge.java: Automatyczne pobieranie wszystkich podgrup dla głównych grup
@@ -1357,7 +1414,8 @@ ResultSet rsRent = stmtRent.executeQuery();
             
             // Test database connection
             System.out.println("FireSnowBridge: Testing database connection...");
-            try (Connection conn = getConnection()) {
+            try (DbSession session = openSession()) {
+                Connection conn = session.connection;
                 // Użyj zmiennej conn do weryfikacji połączenia
                 if (conn.isReadOnly()) {
                     System.out.println("FireSnowBridge: Database connection OK! (READ-ONLY mode)");
