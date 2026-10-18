@@ -25,6 +25,13 @@ describe('dayGap / calendarDayNumber', () => {
     expect(dayGap(new Date(2026, 2, 29, 12, 0), new Date(2026, 2, 29, 12, 0))).toBe(0);
     expect(dayGap(new Date(2026, 2, 30), new Date(2026, 2, 28))).toBe(-2);
   });
+
+  it('liczy dni na granicach miesiąca i roku (w tym luty roku przestępnego)', () => {
+    expect(dayGap(new Date(2026, 0, 31), new Date(2026, 1, 1))).toBe(1);
+    expect(dayGap(new Date(2026, 1, 28), new Date(2026, 2, 1))).toBe(1); // 2026 nieprzestępny
+    expect(dayGap(new Date(2028, 1, 28), new Date(2028, 2, 1))).toBe(2); // 29.02.2028 istnieje
+    expect(dayGap(new Date(2026, 11, 31), new Date(2027, 0, 1))).toBe(1);
+  });
 });
 
 describe('getSkiAvailabilityStatus (system 3-kolorowy)', () => {
@@ -53,6 +60,17 @@ describe('getSkiAvailabilityStatus (system 3-kolorowy)', () => {
 
   it('ignoruje rezerwacje innych kodów', async () => {
     expect(await status([res('2026-02-11 11:00:00', '2026-02-12 19:00:00', 'N2')])).toBe('available');
+  });
+
+  it('przerwa 3 dni kalendarzowe przez przejście na czas letni (27→30.03.2026) to zielony, nie żółty', async () => {
+    // W strefie Europe/Warsaw 27.03 19:00 → 30.03 00:00 to mniej niż 72 h (doba 29.03 ma 23 h)
+    const data = [res('2026-03-20 11:00:00', '2026-03-27 19:00:00')];
+    const from = new Date(2026, 2, 30);
+    const to = new Date(2026, 3, 2);
+    expect((await ReservationApiClient.getSkiAvailabilityStatus('N1', from, to, data)).status).toBe('available');
+    // przerwa 2 dni (28→30.03) pozostaje żółta
+    const near = [res('2026-03-20 11:00:00', '2026-03-28 19:00:00')];
+    expect((await ReservationApiClient.getSkiAvailabilityStatus('N1', from, to, near)).status).toBe('warning');
   });
 });
 
