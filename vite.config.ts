@@ -24,24 +24,7 @@ export default defineConfig({
   assetsInclude: ['**/*.csv'],
   // Ustawienia kodowania
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
-    global: 'globalThis'
-  },
-  resolve: {
-    alias: {
-      // Polyfille dla Node.js modules w przeglądarce
-      buffer: 'buffer',
-      stream: 'stream-browserify',
-      util: 'util'
-    }
-  },
-  optimizeDeps: {
-    esbuildOptions: {
-      // Node.js global to browser globalThis
-      define: {
-        global: 'globalThis'
-      }
-    }
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
   },
   // Optymalizacja chunków - podział na mniejsze fragmenty dla lepszej wydajności
   build: {
@@ -51,17 +34,9 @@ export default defineConfig({
       output: {
         // Manualne chunki dla głównych bibliotek - lepsza cache'owalność i szybsze ładowanie
         manualChunks: (id) => {
-          // Vendor chunk - React i React DOM
-          if (id.includes('node_modules/react') || id.includes('node_modules/react-dom')) {
+          // Vendor chunk - tylko React, React DOM i scheduler (nie react-calendar-timeline itp.)
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) {
             return 'vendor';
-          }
-          // Animations chunk - Framer Motion
-          if (id.includes('node_modules/framer-motion')) {
-            return 'animations';
-          }
-          // CSV parsing chunk - PapaParse
-          if (id.includes('node_modules/papaparse')) {
-            return 'csv';
           }
           // Timeline chunk - react-calendar-timeline
           if (id.includes('node_modules/react-calendar-timeline')) {
