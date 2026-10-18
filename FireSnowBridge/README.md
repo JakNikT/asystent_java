@@ -182,7 +182,7 @@ Powinno zwrócić:
 
 ndzie (KOMPUTER 3):**
 
-Zobacz: [`EXPRESS_INTEGRATION.md`](EXPRESS_INTEGRATION.md)
+Zobacz: [`EXPRESS_INTEGRATION.md`](../docs/archive/firesnowbridge/EXPRESS_INTEGRATION.md)
 
 Dodaj endpoint:
 ```javascript
@@ -195,7 +195,7 @@ app.get('/api/rezerwacje', async (req, res) => {
 
 ### **W React frontendzie:**
 
-Zobacz: [`REACT_EXAMPLES.md`](REACT_EXAMPLES.md)
+Zobacz: [`REACT_EXAMPLES.md`](../docs/archive/firesnowbridge/REACT_EXAMPLES.md)
 
 Użyj custom hook:
 ```typescript
@@ -308,8 +308,7 @@ api.port=8081
 ```
 FireSnowBridge/
 ├── README.md                      ← Ten plik
-├── EXPRESS_INTEGRATION.md         ← Jak dodać do Express
-├── REACT_EXAMPLES.md              ← Przykłady React
+├── (dokumentacja archiwalna: ../docs/archive/firesnowbridge/)
 │
 ├── config.properties              ← Konfiguracja
 ├── start.bat                      ← Uruchomienie

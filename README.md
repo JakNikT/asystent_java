@@ -301,7 +301,7 @@ npm run preview
 
 ## 📚 Dokumentacja
 
-- **README+.md** - Kompleksowa dokumentacja techniczna
+- **docs/archive/README+.md** - Archiwalna dokumentacja techniczna
 - **docs/** - Szczegółowa dokumentacja
 - **INSTRUKCJA_URUCHOMIENIA.md** - Instrukcja uruchomienia
 

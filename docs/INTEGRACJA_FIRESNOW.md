@@ -302,7 +302,7 @@ C:\FireSnowBridge\
 ├── start-with-watchdog.bat      ← ✅ URUCHOM TO
 ├── watchdog.ps1
 ├── FireSnowBridge.jar
-└── WATCHDOG_INSTRUKCJA.md
+└── (WATCHDOG_INSTRUKCJA.md - przeniesione do docs/archive/firesnowbridge/)
 ```
 
 ---

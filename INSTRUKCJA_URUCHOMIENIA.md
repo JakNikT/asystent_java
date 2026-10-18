@@ -117,8 +117,8 @@ DB_HISTORY_NAME=history
 
 ## 📚 Więcej Informacji
 
-- **Pełny przegląd**: `REVIEW_APLIKACJI.md`
-- **Szczegóły poprawek**: `PODSUMOWANIE_POPRAWEK.md`
+- **Pełny przegląd (archiwum)**: `docs/archive/REVIEW_APLIKACJI.md`
+- **Szczegóły poprawek (archiwum)**: `docs/archive/PODSUMOWANIE_POPRAWEK.md`
 - **Wzorcowa konfiguracja**: `env.example`
 
 ---
