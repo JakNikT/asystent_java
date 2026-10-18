@@ -1,7 +1,7 @@
 // FireSnowBridge.java: Prosty REST API bridge do bazy FireSnow
 // 
 // Ten program łączy się z bazą FireSnow i udostępnia dane przez REST API
-// Używa tylko Java 8 (kompatybilne z JRE z FireSnow)
+// Wymaga Java 21+ (kompilacja: --release 21; patrz compile.bat)
 
 import com.sun.net.httpserver.HttpServer;
 import com.sun.net.httpserver.HttpHandler;

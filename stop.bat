@@ -12,7 +12,7 @@ set "KILLED=0"
 
 REM === KROK 1: Zatrzymaj FireSnowBridge (Java - port 8081) ===
 echo [1/4] Zatrzymywanie FireSnowBridge (Java API - port 8081)...
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":8081" ^| findstr "LISTENING"') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":8081 .*LISTENING"') do (
     echo   Zatrzymywanie procesu PID: %%a
     taskkill /PID %%a /F >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
@@ -26,7 +26,7 @@ echo.
 REM === KROK 2: Zatrzymaj Backend Express Server (Node.js - port 5001) ===
 echo [2/4] Zatrzymywanie Backend Express Server (port 5001)...
 set "KILLED=0"
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5001" ^| findstr "LISTENING"') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5001 .*LISTENING"') do (
     echo   Zatrzymywanie procesu PID: %%a
     taskkill /PID %%a /F >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
@@ -40,7 +40,7 @@ echo.
 REM === KROK 3: Zatrzymaj Vite Dev Server (port 5002) ===
 echo [3/4] Zatrzymywanie Vite Dev Server (port 5002)...
 set "KILLED=0"
-for /f "tokens=5" %%a in ('netstat -ano ^| findstr ":5002" ^| findstr "LISTENING"') do (
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr /R /C:":5002 .*LISTENING"') do (
     echo   Zatrzymywanie procesu PID: %%a
     taskkill /PID %%a /F >nul 2>&1
     if !ERRORLEVEL! EQU 0 (
@@ -55,7 +55,7 @@ REM === KROK 4: Weryfikacja - Sprawdz czy porty sa wolne ===
 echo [4/4] Weryfikacja portow...
 set "ALL_CLEAR=1"
 
-netstat -ano | findstr ":8081" | findstr "LISTENING" >nul
+netstat -ano | findstr /R /C:":8081 .*LISTENING" >nul
 if !ERRORLEVEL! EQU 0 (
     echo   [UWAGA] Port 8081 nadal zajety!
     set "ALL_CLEAR=0"
@@ -63,7 +63,7 @@ if !ERRORLEVEL! EQU 0 (
     echo   [OK] Port 8081 wolny (FireSnowBridge)
 )
 
-netstat -ano | findstr ":5001" | findstr "LISTENING" >nul
+netstat -ano | findstr /R /C:":5001 .*LISTENING" >nul
 if !ERRORLEVEL! EQU 0 (
     echo   [UWAGA] Port 5001 nadal zajety!
     set "ALL_CLEAR=0"
@@ -71,7 +71,7 @@ if !ERRORLEVEL! EQU 0 (
     echo   [OK] Port 5001 wolny (Backend)
 )
 
-netstat -ano | findstr ":5002" | findstr "LISTENING" >nul
+netstat -ano | findstr /R /C:":5002 .*LISTENING" >nul
 if !ERRORLEVEL! EQU 0 (
     echo   [UWAGA] Port 5002 nadal zajety!
     set "ALL_CLEAR=0"

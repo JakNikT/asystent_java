@@ -14,7 +14,7 @@ Stworzyłem kompletny system do automatycznego pobierania danych z FireSnow!
 
 ### **1. Kod programu:**
 - `src/FireSnowBridge.java` - Główny program (370 linii)
-- Prosty, zrozumiały kod Java 8
+- Prosty, zrozumiały kod Java (Java 21+)
 
 ### **2. Konfiguracja:**
 - `config.properties` - Ustawienia (IP, port, baza)
@@ -147,7 +147,7 @@ REZULTAT: Dane zawsze aktualne, automatycznie! 🎉
 
 ## 💪 TECHNOLOGIA:
 
-- **Język:** Java 8 (kompatybilny z JRE FireSnow)
+- **Język:** Java 21+ (kompilacja `--release 21`)
 - **Baza:** HSQLDB 2.4.1
 - **API:** HTTP Server (wbudowany w Java)
 - **Format:** JSON

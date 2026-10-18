@@ -1,5 +1,5 @@
 @echo off
-REM Kompilacja FireSnow Bridge API z Java 21
+REM Kompilacja FireSnow Bridge API (Java 21+, --release 21)
 REM ================================
 setlocal enabledelayedexpansion
 
@@ -14,69 +14,69 @@ echo [1/6] Sprawdzanie zaleznosci...
 if not exist "lib\hsqldb.jar" (
     echo [BLAD] Brak pliku lib\hsqldb.jar
     echo        Pobierz HSQLDB z https://sourceforge.net/projects/hsqldb/
-    pause
+    if "%CI%"=="" pause
     exit /b 1
 )
 echo [OK] Znaleziono lib\hsqldb.jar
 
-REM Wykryj Java - najpierw sprobuj hardcoded sciezki
+REM Wykryj JDK: portable jdk\ -> JAVA_HOME -> PATH
 echo.
-echo [2/6] Wykrywanie Java 21...
+echo [2/6] Wykrywanie JDK (Java 21+)...
 set "JAVAC_CMD="
 set "JAR_CMD="
 
-REM Sprawdz hardcoded sciezke (najszybsza opcja)
-if exist "C:\Program Files\Java\jdk-21.0.9+10\bin\javac.exe" (
-    set "JAVAC_CMD=C:\Program Files\Java\jdk-21.0.9+10\bin\javac.exe"
-    set "JAR_CMD=C:\Program Files\Java\jdk-21.0.9+10\bin\jar.exe"
-    echo [OK] Znaleziono Java 21 w domyslnej lokalizacji
+if exist "%~dp0jdk\bin\javac.exe" (
+    set "JAVAC_CMD=%~dp0jdk\bin\javac.exe"
+    set "JAR_CMD=%~dp0jdk\bin\jar.exe"
+    echo [OK] Znaleziono portable JDK: %~dp0jdk
     goto :java_found
 )
 
-REM Sprawdz JAVA_HOME
 if defined JAVA_HOME (
     if exist "%JAVA_HOME%\bin\javac.exe" (
         set "JAVAC_CMD=%JAVA_HOME%\bin\javac.exe"
         set "JAR_CMD=%JAVA_HOME%\bin\jar.exe"
-        echo [OK] Znaleziono Java w JAVA_HOME: %JAVA_HOME%
+        echo [OK] Znaleziono JDK w JAVA_HOME: %JAVA_HOME%
         goto :java_found
     )
 )
 
-REM Sprawdz PATH
 where javac >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
     set "JAVAC_CMD=javac"
     set "JAR_CMD=jar"
-    echo [OK] Znaleziono Java w PATH
+    echo [OK] Znaleziono JDK w PATH
     goto :java_found
 )
 
-REM Nie znaleziono Java
-echo [BLAD] Nie znaleziono Java 21!
+echo [BLAD] Nie znaleziono JDK (wymagana Java 21 lub nowsza)!
 echo.
-echo Sprawdz czy Java 21 jest zainstalowana:
-echo   1. Pobierz z https://adoptium.net/
-echo   2. Zainstaluj JDK 21
-echo   3. Ustaw zmienna JAVA_HOME lub dodaj do PATH
+echo   1. Pobierz JDK 21 z https://adoptium.net/
+echo   2. Zainstaluj JDK i ustaw JAVA_HOME lub dodaj do PATH
 echo.
-pause
+if "%CI%"=="" pause
 exit /b 1
 
 :java_found
 
-REM Sprawdz wersje Java
+REM Sprawdz wersje kompilatora (wymagane >= 21 dla --release 21)
 echo.
-echo [3/6] Sprawdzanie wersji Java...
-"%JAVAC_CMD%" -version 2>&1 | findstr /C:"21" >nul
-if %ERRORLEVEL% NEQ 0 (
-    echo [OSTRZEZENIE] Wykryta inna wersja niz Java 21
-    "%JAVAC_CMD%" -version
-    echo Kontynuowac mimo to? (T/N)
-    choice /C TN /N
-    if errorlevel 2 exit /b 1
+echo [3/6] Sprawdzanie wersji JDK...
+set "JAVAC_VERSION="
+for /f "tokens=2" %%v in ('"%JAVAC_CMD%" -version 2^>^&1') do set "JAVAC_VERSION=%%v"
+set "JAVAC_MAJOR="
+for /f "tokens=1 delims=." %%m in ("!JAVAC_VERSION!") do set "JAVAC_MAJOR=%%m"
+if "!JAVAC_MAJOR!"=="" (
+    echo [BLAD] Nie udalo sie odczytac wersji javac
+    if "%CI%"=="" pause
+    exit /b 1
 )
-echo [OK] Wersja Java jest poprawna
+if !JAVAC_MAJOR! LSS 21 (
+    echo [BLAD] Wykryto javac !JAVAC_VERSION! - wymagana Java 21 lub nowsza
+    if "%CI%"=="" pause
+    exit /b 1
+)
+echo [OK] javac !JAVAC_VERSION!
 
 REM Stworz katalog bin jesli nie istnieje
 echo.
@@ -88,16 +88,15 @@ REM Usun stare pliki .class
 if exist "bin\*.class" del /Q bin\*.class >nul 2>&1
 if exist "src\*.class" del /Q src\*.class >nul 2>&1
 
-REM Kompiluj z zachowaniem kompatybilnosci wstecznej Java 8+
 echo.
-echo [5/6] Kompilowanie FireSnowBridge.java...
-"%JAVAC_CMD%" --release 8 -cp "lib\hsqldb.jar" -d bin src\FireSnowBridge.java
+echo [5/6] Kompilowanie FireSnowBridge.java (--release 21)...
+"%JAVAC_CMD%" --release 21 -cp "lib\hsqldb.jar" -d bin src\FireSnowBridge.java
 
 if %ERRORLEVEL% NEQ 0 (
     echo.
     echo [BLAD] Kompilacja nie powiodla sie!
     echo        Sprawdz bledy powyzej.
-    pause
+    if "%CI%"=="" pause
     exit /b 1
 )
 echo [OK] Kompilacja zakonczona sukcesem
@@ -107,18 +106,18 @@ echo.
 echo [6/6] Tworzenie pliku JAR...
 cd bin
 "%JAR_CMD%" cf ..\FireSnowBridge.jar FireSnowBridge*.class
+set "JAR_RC=%ERRORLEVEL%"
 cd ..
 
-if %ERRORLEVEL% NEQ 0 (
+if not "%JAR_RC%"=="0" (
     echo [BLAD] Nie udalo sie utworzyc pliku JAR!
-    pause
+    if "%CI%"=="" pause
     exit /b 1
 )
 
-REM Sprawdz czy JAR zostal utworzony
 if not exist "FireSnowBridge.jar" (
     echo [BLAD] Plik FireSnowBridge.jar nie zostal utworzony!
-    pause
+    if "%CI%"=="" pause
     exit /b 1
 )
 
@@ -126,16 +125,9 @@ echo [OK] Plik JAR utworzony pomyslnie
 
 echo.
 echo ========================================
-echo   SUKCES! FireSnowBridge.jar gotowy
+echo   SUKCES - FireSnowBridge.jar gotowy
 echo ========================================
 echo.
-echo Kompilacja z Java 21 zakonczona pomyslnie!
-echo Plik: FireSnowBridge.jar
-echo Rozmiar: 
-dir FireSnowBridge.jar | findstr "FireSnowBridge.jar"
+echo Uruchomienie: start-headless.bat
 echo.
-echo Mozesz teraz uruchomic aplikacje uzywajac:
-echo   - start.bat
-echo   - start_bez_kompilacji.bat
-echo.
-pause
+if "%CI%"=="" pause
