@@ -241,39 +241,22 @@ public class FireSnowBridge {
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: Health check requested");
             
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
-            
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
                 // Użyj zmiennej conn do weryfikacji połączenia
                 boolean isValid = !conn.isClosed();
                 String response = "{\"status\":\"ok\",\"database\":\"connected\",\"connection_valid\":" + isValid + ",\"message\":\"FireSnow Bridge API is running\"}";
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Health check OK");
                 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database connection failed: " + e.getMessage());
                 String response = "{\"status\":\"error\",\"database\":\"disconnected\",\"error\":\"" + 
                                 escapeJson(e.getMessage()) + "\"}";
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, response);
             }
         }
     }
@@ -286,13 +269,6 @@ public class FireSnowBridge {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: Active reservations requested");
-            
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
             
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
@@ -398,27 +374,15 @@ public class FireSnowBridge {
                 
                 String response = json.toString();
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Returned active reservations");
                 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database error: " + e.getMessage());
                 e.printStackTrace();
                 
-                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
         }
     }
@@ -431,13 +395,6 @@ public class FireSnowBridge {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: Past rentals requested");
-            
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
             
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
@@ -509,27 +466,15 @@ public class FireSnowBridge {
                 
                 String response = json.toString();
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Returned past rentals");
                 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database error: " + e.getMessage());
                 e.printStackTrace();
                 
-                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
         }
     }
@@ -542,13 +487,6 @@ public class FireSnowBridge {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: Reserved skis requested");
-            
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
             
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
@@ -592,27 +530,15 @@ public class FireSnowBridge {
                 
                 String response = json.toString();
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Returned reserved skis");
                 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database error: " + e.getMessage());
                 e.printStackTrace();
                 
-                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
         }
     }
@@ -625,13 +551,6 @@ public class FireSnowBridge {
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: Active rentals requested");
-            
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
             
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
@@ -673,15 +592,6 @@ public class FireSnowBridge {
                     if (!first) json.append(",");
                     first = false;
 
-                    long dataOd = rs.getLong("data_od");
-                    long dataDo = rs.getLong("data_do");
-                    long pozostalyCzas = rs.getLong("pozostaly_czas");
-                    
-                    // Oblicz data_do dla aktywnych wypożyczeń (gdy data_do = 0)
-                    if (dataDo == 0 && pozostalyCzas > 0) {
-                        dataDo = dataOd + pozostalyCzas;
-                    }
-                    
                     json.append("{");
                     json.append("\"session_id\":").append(rs.getLong("session_id")).append(",");
                     json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
@@ -712,27 +622,15 @@ public class FireSnowBridge {
                 
                 String response = json.toString();
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Returned active rentals");
                 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database error: " + e.getMessage());
                 e.printStackTrace();
                 
-                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
         }
     }
@@ -746,28 +644,33 @@ static class DostepnoscOkresHandler implements HttpHandler {
     public void handle(HttpExchange exchange) throws IOException {
         System.out.println("FireSnowBridge: Availability check for date range requested");
         
-        setCorsHeaders(exchange);
-        
-        if ("OPTIONS".equals(exchange.getRequestMethod())) {
-            exchange.sendResponseHeaders(204, -1);
+        // Parametry from/to parsowane PRZED otwarciem sesji (błędny parametr = 400, bez zajmowania połączenia)
+        long dateFrom;
+        long dateTo;
+        try {
+            Map<String, String> params = parseQuery(exchange.getRequestURI().getQuery());
+            // Default: current year if no dates provided
+            dateFrom = params.containsKey("from") ?
+                Long.parseLong(params.get("from")) : 1735689600000L; // 2025-01-01
+            dateTo = params.containsKey("to") ?
+                Long.parseLong(params.get("to")) : Long.MAX_VALUE;
+        } catch (NumberFormatException e) {
+            sendJson(exchange, 400, "{\"error\":\"Nieprawidłowy parametr from/to\"}");
             return;
         }
-        
+
         try (DbSession session = openSession()) {
             Connection conn = session.connection;
-            // Get query parameters
-            String query = exchange.getRequestURI().getQuery();
-            Map<String, String> params = parseQuery(query);
-            
-            // Default: current year if no dates provided
-            long dateFrom = params.containsKey("from") ? 
-                Long.parseLong(params.get("from")) : 1735689600000L; // 2025-01-01
-            long dateTo = params.containsKey("to") ? 
-                Long.parseLong(params.get("to")) : Long.MAX_VALUE;
-            
+
 // Calculate buffer dates (±2 days for yellow warnings)
-long bufferBefore = dateFrom - (2L * 24 * 60 * 60 * 1000); // -2 days
-long bufferAfter = dateTo + (2L * 24 * 60 * 60 * 1000);   // +2 days
+// Znaczniki ograniczone do zakresu bezpiecznie akceptowanego przez HSQLDB (z zapasem na strefę czasową):
+// Timestamp(Long.MAX_VALUE) i 9999-12-31 kończą się "datetime field overflow", a samo dateTo + 2 dni
+// przepełniłoby long (brak parametru "to").
+final long MIN_TS = -62135596800000L + 86400000L;  // 0001-01-02
+final long MAX_TS = 253402214400000L;              // 9999-12-30
+final long TWO_DAYS_MS = 172800000L;
+long bufferBefore = (dateFrom < MIN_TS + TWO_DAYS_MS) ? MIN_TS : dateFrom - TWO_DAYS_MS; // -2 days
+long bufferAfter = (dateTo > MAX_TS - TWO_DAYS_MS) ? MAX_TS : dateTo + TWO_DAYS_MS;       // +2 days
 
 // Convert timestamps directly to SQL Timestamp (NOT through Date!)
 java.sql.Timestamp bufferBeforeTs = new java.sql.Timestamp(bufferBefore);
@@ -941,61 +844,71 @@ ResultSet rsRent = stmtRent.executeQuery();
             stmtRent.close();
             
             String response = json.toString();
-            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-            exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-            
-            OutputStream os = exchange.getResponseBody();
-            os.write(response.getBytes(StandardCharsets.UTF_8));
-            os.close();
+            sendJson(exchange, 200, response);
             
             System.out.println("FireSnowBridge: Returned availability data for date range");
             
-        } catch (SQLException e) {
+        } catch (Exception e) {
             System.err.println("FireSnowBridge: Database error: " + e.getMessage());
             e.printStackTrace();
             
-            String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-            exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-            exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-            
-            OutputStream os = exchange.getResponseBody();
-            os.write(response.getBytes(StandardCharsets.UTF_8));
-            os.close();
+            sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
         }
-    }
-    
-    private static Map<String, String> parseQuery(String query) {
-        Map<String, String> params = new HashMap<>();
-        if (query == null) return params;
-        for (String param : query.split("&")) {
-            String[] pair = param.split("=");
-            if (pair.length == 2) {
-                params.put(pair[0], pair[1]);
-            }
-        }
-        return params;
     }
 }
     
     /**
-     * Sets CORS headers to allow frontend connection
+     * Parsuje query string: dekoduje URL (UTF-8), dzieli po pierwszym '=' (wartość może zawierać '=')
      */
-    private static void setCorsHeaders(HttpExchange exchange) {
-        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET, OPTIONS");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type");
+    private static Map<String, String> parseQuery(String query) {
+        Map<String, String> params = new HashMap<>();
+        if (query == null) return params;
+        for (String param : query.split("&")) {
+            String[] pair = param.split("=", 2);
+            if (pair.length == 2) {
+                params.put(
+                    java.net.URLDecoder.decode(pair[0], StandardCharsets.UTF_8),
+                    java.net.URLDecoder.decode(pair[1], StandardCharsets.UTF_8));
+            }
+        }
+        return params;
     }
-    
+
     /**
-     * Escapes special characters in JSON
+     * Wysyła odpowiedź JSON (UTF-8) i zamyka strumień
+     */
+    private static void sendJson(HttpExchange exchange, int status, String body) throws IOException {
+        byte[] bytes = body.getBytes(StandardCharsets.UTF_8);
+        exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
+        exchange.sendResponseHeaders(status, bytes.length);
+        try (OutputStream os = exchange.getResponseBody()) {
+            os.write(bytes);
+        }
+    }
+
+    /**
+     * Escapes special characters in JSON (w tym wszystkie znaki sterowania < 0x20 jako \\u00XX)
      */
     private static String escapeJson(String str) {
         if (str == null) return "";
-        return str.replace("\\", "\\\\")
-                  .replace("\"", "\\\"")
-                  .replace("\n", "\\n")
-                  .replace("\r", "\\r")
-                  .replace("\t", "\\t");
+        StringBuilder sb = new StringBuilder(str.length() + 16);
+        for (int i = 0; i < str.length(); i++) {
+            char c = str.charAt(i);
+            switch (c) {
+                case '\\': sb.append("\\\\"); break;
+                case '"': sb.append("\\\""); break;
+                case '\n': sb.append("\\n"); break;
+                case '\r': sb.append("\\r"); break;
+                case '\t': sb.append("\\t"); break;
+                default:
+                    if (c < 0x20) {
+                        sb.append(String.format("\\u%04x", (int) c));
+                    } else {
+                        sb.append(c);
+                    }
+            }
+        }
+        return sb.toString();
     }
     
     /**
@@ -1021,26 +934,20 @@ ResultSet rsRent = stmtRent.executeQuery();
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: /api/refresh endpoint called");
-            
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
+
+            if (!"POST".equals(exchange.getRequestMethod())) {
+                exchange.getResponseHeaders().set("Allow", "POST");
+                sendJson(exchange, 405, "{\"error\":\"Metoda niedozwolona\"}");
                 return;
             }
-            
+
             try {
                 // Close all connections to force fresh read on next request
                 reloadNow();
                 
                 String response = "{\"status\":\"ok\",\"message\":\"Database connections refreshed. Next request will read fresh data from disk.\"}";
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Manual refresh completed successfully");
                 
@@ -1048,14 +955,7 @@ ResultSet rsRent = stmtRent.executeQuery();
                 System.err.println("FireSnowBridge: Refresh failed: " + e.getMessage());
                 e.printStackTrace();
                 
-                String response = "{\"status\":\"error\",\"message\":\"" + escapeJson(e.getMessage()) + "\"}";
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
         }
     }
@@ -1071,27 +971,16 @@ ResultSet rsRent = stmtRent.executeQuery();
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: Reservations for date requested");
 
-            setCorsHeaders(exchange);
-
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
-
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
                 // Get query parameters
                 String query = exchange.getRequestURI().getQuery();
-                Map<String, String> params = parseQueryParams(query);
+                Map<String, String> params = parseQuery(query);
 
                 String dateParam = params.get("date");
                 if (dateParam == null || dateParam.isEmpty()) {
                     String response = "{\"error\":\"Missing required parameter: date (format: YYYY-MM-DD)\"}";
-                    exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                    exchange.sendResponseHeaders(400, response.getBytes(StandardCharsets.UTF_8).length);
-                    OutputStream os = exchange.getResponseBody();
-                    os.write(response.getBytes(StandardCharsets.UTF_8));
-                    os.close();
+                    sendJson(exchange, 400, response);
                     return;
                 }
 
@@ -1199,12 +1088,7 @@ ResultSet rsRent = stmtRent.executeQuery();
 
                 String response = json.toString();
 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
 
                 System.out.println("FireSnowBridge: Returned " + count + " reservations for date " + dateParam);
 
@@ -1213,38 +1097,14 @@ ResultSet rsRent = stmtRent.executeQuery();
 
                 String response = "{\"error\":\"Invalid date format. Use YYYY-MM-DD\"}";
 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(400, response.getBytes(StandardCharsets.UTF_8).length);
+                sendJson(exchange, 400, response);
 
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
-
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database error: " + e.getMessage());
                 e.printStackTrace();
 
-                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
-        }
-
-        private static Map<String, String> parseQueryParams(String query) {
-            Map<String, String> params = new HashMap<>();
-            if (query == null) return params;
-            for (String param : query.split("&")) {
-                String[] pair = param.split("=");
-                if (pair.length == 2) {
-                    params.put(pair[0], pair[1]);
-                }
-            }
-            return params;
         }
     }
 
@@ -1257,13 +1117,6 @@ ResultSet rsRent = stmtRent.executeQuery();
         @Override
         public void handle(HttpExchange exchange) throws IOException {
             System.out.println("FireSnowBridge: All equipment requested");
-            
-            setCorsHeaders(exchange);
-            
-            if ("OPTIONS".equals(exchange.getRequestMethod())) {
-                exchange.sendResponseHeaders(204, -1);
-                return;
-            }
             
             try (DbSession session = openSession()) {
                 Connection conn = session.connection;
@@ -1369,27 +1222,15 @@ ResultSet rsRent = stmtRent.executeQuery();
                 
                 String response = json.toString();
                 
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(200, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 200, response);
                 
                 System.out.println("FireSnowBridge: Returned all equipment");
                 
-            } catch (SQLException e) {
+            } catch (Exception e) {
                 System.err.println("FireSnowBridge: Database error: " + e.getMessage());
                 e.printStackTrace();
                 
-                String response = "{\"error\":\"" + escapeJson(e.getMessage()) + "\"}";
-                
-                exchange.getResponseHeaders().set("Content-Type", "application/json; charset=UTF-8");
-                exchange.sendResponseHeaders(500, response.getBytes(StandardCharsets.UTF_8).length);
-                
-                OutputStream os = exchange.getResponseBody();
-                os.write(response.getBytes(StandardCharsets.UTF_8));
-                os.close();
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
             }
         }
     }
@@ -1451,7 +1292,7 @@ ResultSet rsRent = stmtRent.executeQuery();
             System.out.println();
             System.out.println("Available endpoints:");
             System.out.println("  GET /api/health                    - Check API status");
-            System.out.println("  GET /api/refresh                   - Refresh database cache");
+            System.out.println("  POST /api/refresh                  - Refresh database cache");
             System.out.println("  GET /api/rezerwacje/aktywne       - Get active reservations");
             System.out.println("  GET /api/wypozyczenia/aktualne    - Get active rentals");
             System.out.println("  GET /api/wypozyczenia/przeszle    - Get past rentals (returned)");

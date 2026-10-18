@@ -34,3 +34,8 @@ Usprawnienia, optymalizacje i dług techniczny zauważone w trakcie realizacji `
 - **Logi przeniesione z `console.log` na `logger.debug` mechanicznie** – wiadomości nadal zawierają ręczny prefiks ścieżki pliku (`src/utils/...:`), który `createLogger` dodaje sam. Pomysł: usunąć prefiksy, zredukować szum w `formValidation.ts` (log na każde naciśnięcie klawisza).
 - **`jsdom` nadal w `node_modules`** – nie jest zależnością projektu, ale `package-lock.json` trzyma go jako opcjonalny peer `vitest` (`npm ls jsdom` pokazuje go pod `vitest`). Testy używają `happy-dom`. Pomysł: po następnym czystym `npm install` z regeneracją lockfile sprawdzić, czy zniknie.
 - **Skrypty `scripts/*.js` wymagają `papaparse`/`iconv-lite`** – po 3.4 przestają działać (zależności odinstalowane); są usuwane w 5.1 razem z npm-skryptem `convert-firefnow`.
+
+## Most Java
+
+- **Zapytania zależne od schematu bazy** – na kopii `C:/database` (stan z października 2026) `GET /api/rezerwacje/dla-daty` kończy się błędem `RENTALPOSITION` (brak tabeli), a `GET /api/narty/zarezerwowane` błędem `P.CODE`. Express maskuje to pustą listą (`reservationService.getForDate` zwraca `[]`). W `RezerwacjeDlaDatyHandler` parametr `date` jest też walidowany dopiero po `prepareStatement`, więc błędna data daje 500 zamiast 400. Pomysł: zweryfikować schemat produkcyjny, przenieść walidację formatu daty przed otwarciem sesji.
+- **Pozostałe odpowiedzi błędów mostu** – `HealthHandler` zwraca `e.getMessage()` w polu `error`; `{"error":"Błąd wewnętrzny"}` jest tylko w pozostałych handlerach.
