@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      # Testy używają test.env z vitest.config.ts - .env nie jest potrzebny
+      - run: npm test
+
+  bridge:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - name: Compile FireSnowBridge
+        run: javac --release 21 -cp FireSnowBridge/lib/hsqldb.jar -d "$RUNNER_TEMP/out" FireSnowBridge/src/FireSnowBridge.java
