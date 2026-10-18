@@ -35,37 +35,48 @@ public class FireSnowBridge {
     private static long TTL = 30000; // 30 seconds default (configurable in config.properties via db.ttl)
     
     /**
-     * Loads configuration from config.properties file
+     * Loads configuration from config.properties file.
+     * Brak pliku lub klucza db.url kończy proces (brak ukrytych domyślnych adresów bazy).
      */
     private static void loadConfig() {
         System.out.println("FireSnowBridge: Loading configuration...");
         Properties props = new Properties();
-        
+
         try (FileInputStream fis = new FileInputStream("config.properties")) {
             props.load(fis);
-            
-            DB_URL = props.getProperty("db.url", "jdbc:hsqldb:hsql://192.168.8.48:9001/FireSport_database_4");
-            DB_USER = props.getProperty("db.user", "SA");
-            DB_PASSWORD = props.getProperty("db.password", "");
-            API_PORT = Integer.parseInt(props.getProperty("api.port", "8081"));
-            EQUIPMENT_GROUPS = props.getProperty("equipment.groups", DEFAULT_EQUIPMENT_GROUPS);
-            TTL = Long.parseLong(props.getProperty("db.ttl", "30000"));
-            
-            System.out.println("FireSnowBridge: Configuration loaded successfully");
-            System.out.println("FireSnowBridge: Database URL: " + DB_URL);
-            System.out.println("FireSnowBridge: API Port: " + API_PORT);
-            System.out.println("FireSnowBridge: Equipment Groups: " + EQUIPMENT_GROUPS);
-            System.out.println("FireSnowBridge: Database Cache TTL: " + TTL + " ms");
-            
         } catch (IOException e) {
-            System.err.println("FireSnowBridge: Error loading config.properties, using defaults");
-            DB_URL = "jdbc:hsqldb:hsql://192.168.8.48:9001/FireSport_database_4";
-            DB_USER = "SA";
-            DB_PASSWORD = "";
-            API_PORT = 8081;
-            EQUIPMENT_GROUPS = DEFAULT_EQUIPMENT_GROUPS;
-            TTL = 30000;
+            System.err.println("FireSnowBridge: brak config.properties lub db.url");
+            System.exit(1);
         }
+
+        DB_URL = props.getProperty("db.url");
+        if (DB_URL == null || DB_URL.trim().isEmpty()) {
+            System.err.println("FireSnowBridge: brak config.properties lub db.url");
+            System.exit(1);
+        }
+        DB_URL = DB_URL.trim();
+
+        DB_USER = props.getProperty("db.user", "SA");
+        DB_PASSWORD = props.getProperty("db.password", "");
+
+        try {
+            API_PORT = Integer.parseInt(props.getProperty("api.port", "8081").trim());
+        } catch (NumberFormatException e) {
+            System.err.println("FireSnowBridge: nieprawidłowy api.port");
+            System.exit(1);
+        }
+
+        // equipment.groups trafia do SQL konkatenacją - tylko liczby rozdzielone przecinkami
+        EQUIPMENT_GROUPS = props.getProperty("equipment.groups", DEFAULT_EQUIPMENT_GROUPS).trim();
+        if (!EQUIPMENT_GROUPS.matches("\\d+(,\\d+)*")) {
+            System.err.println("FireSnowBridge: nieprawidłowe equipment.groups (oczekiwano: liczby rozdzielone przecinkami)");
+            System.exit(1);
+        }
+
+        System.out.println("FireSnowBridge: Configuration loaded successfully");
+        System.out.println("FireSnowBridge: Database URL: " + DB_URL);
+        System.out.println("FireSnowBridge: API Port: " + API_PORT);
+        System.out.println("FireSnowBridge: Equipment Groups: " + EQUIPMENT_GROUPS);
     }
     
     /**
