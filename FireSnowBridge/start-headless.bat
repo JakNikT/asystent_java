@@ -2,29 +2,35 @@
 REM FireSnow Bridge API - Headless (bez pauz)
 REM ===================================
 
-REM Sprawdź czy pliki wymagane istnieją
+REM Sprawdz czy pliki wymagane istnieja
 if not exist "FireSnowBridge.jar" (
     echo FireSnowBridge.jar nie istnieje - uruchom: npm run build:bridge
     exit /b 1
 )
-if not exist "lib\hsqldb.jar" exit /b 1
+if not exist "lib\hsqldb.jar" (
+    echo Brak pliku lib\hsqldb.jar
+    exit /b 1
+)
 
-REM Szukanie Java - NAJPIERW portable Java z folderu jdk/
-set JAVA_CMD=
+REM Szukanie Javy: portable jdk\ -> JAVA_HOME -> PATH -> stare sciezki
+set "JAVA_CMD="
 
-REM 1. Sprawdź portable Java (najwyższy priorytet)
-set "PORTABLE_JDK=%~dp0jdk"
-if exist "%PORTABLE_JDK%\bin\java.exe" (
-    set "JAVA_CMD=%PORTABLE_JDK%\bin\java.exe"
+if exist "%~dp0jdk\bin\java.exe" (
+    set "JAVA_CMD=%~dp0jdk\bin\java.exe"
     goto :java_found
 )
 
-REM 2. Sprawdź Java 21 w systemie (wymagana wersja)
-if exist "C:\Program Files\Java\jdk-21.0.9+10\bin\java.exe" (
-    for /f "tokens=*" %%i in ('java -version 2^>^&1 ^| findstr /C:"21"') do (
-        set JAVA_CMD=java
+if defined JAVA_HOME (
+    if exist "%JAVA_HOME%\bin\java.exe" (
+        set "JAVA_CMD=%JAVA_HOME%\bin\java.exe"
         goto :java_found
     )
+)
+
+where java >nul 2>&1
+if %ERRORLEVEL% EQU 0 (
+    set "JAVA_CMD=java"
+    goto :java_found
 )
 
 if exist "C:\Program Files\Java\latest\bin\java.exe" (
@@ -32,7 +38,9 @@ if exist "C:\Program Files\Java\latest\bin\java.exe" (
     goto :java_found
 )
 
-REM Nie znaleziono Javy
+echo Nie znaleziono Javy (wymagana Java 21 lub nowsza).
+echo   - zainstaluj JDK 21 (np. winget install EclipseAdoptium.Temurin.21.JDK)
+echo   - albo skopiuj JDK do folderu FireSnowBridge\jdk
 exit /b 1
 
 :java_found
