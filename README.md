@@ -9,11 +9,11 @@ Nowoczesna aplikacja webowa do inteligentnego doboru sprzętu narciarskiego i sn
 - **Inteligentny dobór sprzętu** - zaawansowany algorytm dopasowujący narty, buty i deski snowboardowe na podstawie kryteriów użytkownika (wzrost, waga, poziom, płeć, styl jazdy)
 - **System wielokartowy** - obsługa wielu klientów jednocześnie w jednej sesji
 - **Przeglądanie bazy danych** - interaktywna tabela do przeglądania, sortowania i filtrowania całego dostępnego sprzętu
-- **Zarządzanie sprzętem** - możliwość dodawania, edytowania i usuwania pozycji z bazy danych (tryb pracownika)
-- **System rezerwacji** - integracja w czasie rzeczywistym z systemem FireSnow, wizualizacja dostępności sprzętu
-- **Historia klientów** - przeglądanie historii wypożyczeń i rezerwacji
+- **Zarządzanie sprzętem** - edycja pozycji (pojedynczo i zbiorczo) po zalogowaniu PIN-em pracownika; dane bazowe pochodzą z FireSnow, a zmiany zapisywane są w MySQL jako nadpisania
+- **Rezerwacje i dostępność** - integracja z systemem FireSnow (tylko odczyt), wizualizacja dostępności sprzętu w systemie 3 kolorów oraz oś czasu zajętości
+- **Historia klientów** - przeglądanie historii wypożyczeń z dwóch źródeł: archiwum MySQL (2012–2023) i FireSnow (bieżące sezony); awaria jednego źródła nie blokuje drugiego
 - **Obsługa błędów** - React Error Boundary, globalny error handler API, system powiadomień Toast
-- **Nowoczesny interfejs** - zaprojektowany z użyciem Tailwind CSS i Framer Motion
+- **Nowoczesny interfejs** - Tailwind CSS i Material UI (MUI)
 - **Responsywność** - aplikacja dostosowana do urządzeń mobilnych i desktopowych
 
 ## 🚀 Szybki start
@@ -38,9 +38,11 @@ cp env.example .env
 ```
 
 2. Uzupełnij dane w pliku `.env`:
-   - `DB_PASSWORD` - hasło do bazy danych MySQL (wymagane)
-   - `DB_HOST`, `DB_USER`, `DB_NAME` - dane połączenia z bazą
+   - `DB_PASSWORD` - hasło do bazy danych MySQL (wymagane, serwer nie wystartuje bez niego)
+   - `DB_HOST`, `DB_USER`, `DB_NAME`, `DB_HISTORY_NAME` - dane połączenia z bazą
    - `FIRESNOW_API_URL` - URL do FireSnow Bridge API (domyślnie: `http://localhost:8081`)
+   - `EMPLOYEE_PIN` - PIN pracownika (4-12 cyfr, różny od `0000`)
+   - `AUTH_SECRET` - losowy sekret min. 32 znaki, np. `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`
 
 ### Uruchomienie
 
@@ -70,7 +72,7 @@ cd FireSnowBridge
 start-headless.bat
 
 # Terminal 2: Backend API
-npm run server
+npm run dev:server
 
 # Terminal 3: Frontend
 npm run dev
@@ -82,43 +84,47 @@ npm run dev
 asystent_java/
 ├── src/
 │   ├── components/          # Komponenty React
-│   │   ├── dashboard/       # Główny dashboard
-│   │   │   ├── Dashboard.tsx (~1,802 linii)
-│   │   │   ├── DashboardHeader.tsx
-│   │   │   ├── SkierForm.tsx
-│   │   │   └── TabNavigation.tsx
+│   │   ├── dashboard/       # Główny dashboard (Dashboard.tsx jest orkiestratorem)
+│   │   │   ├── hooks/       # useFormLogic, useSearchLogic, useSkiData, useEmployeeAuth, useTabsState
+│   │   │   └── ...          # DashboardForm, SkierForm, EquipmentFilters, EmployeeControls itd.
 │   │   ├── BrowseSkisComponent.tsx
+│   │   ├── EquipmentTimeline.tsx
+│   │   ├── EquipmentHandoutView.tsx
+│   │   ├── ConflictCheckerModal.tsx
 │   │   ├── ReservationsView.tsx
 │   │   ├── HistoryView.tsx
-│   │   ├── ErrorBoundary.tsx  # React Error Boundary
-│   │   └── ui/              # Komponenty UI (Button, Input, etc.)
-│   ├── hooks/               # React Hooks
-│   │   └── useToast.ts      # Toast Manager hook
-│   ├── server/              # Backend Express.js
-│   │   ├── app.js           # Główna aplikacja Express
+│   │   ├── PasswordModal.tsx
+│   │   ├── ErrorBoundary.tsx
+│   │   ├── Toast.tsx
+│   │   └── ui/              # Komponenty UI (Button, Input, Label, Modal)
+│   ├── hooks/               # useToast.tsx (Toast Manager)
+│   ├── server/              # Backend Express.js (TypeScript)
+│   │   ├── app.ts           # Główna aplikacja Express
 │   │   ├── config/          # Konfiguracja (env, database, logger)
 │   │   ├── controllers/     # Kontrolery API
 │   │   ├── services/        # Logika biznesowa
-│   │   ├── routes/         # Routing API
-│   │   ├── middleware/      # Middleware Express
-│   │   │   └── errorHandler.js  # Global error handler
-│   │   └── utils/          # Narzędzia pomocnicze
-│   ├── services/            # Serwisy frontend (TypeScript)
-│   │   ├── skiMatchingServiceV2.ts (1,851 linii)
-│   │   ├── reservationApiClient.ts
-│   │   └── skiDataService.ts
+│   │   ├── routes/          # Routing API
+│   │   ├── middleware/      # authMiddleware, errorHandler, loginRateLimit
+│   │   ├── types/
+│   │   └── utils/
+│   ├── services/            # Serwisy frontend
+│   │   ├── skiMatchingServiceV2.ts   # Algorytm doboru
+│   │   ├── reservationApiClient.ts   # Dostępność (system 3 kolorów)
+│   │   ├── skiDataService.ts
+│   │   ├── historyService.ts
+│   │   └── authService.ts
 │   ├── types/               # Definicje typów TypeScript
 │   ├── utils/               # Narzędzia pomocnicze
 │   └── App.tsx
-├── FireSnowBridge/          # Integracja z FireSnow
-│   ├── src/
-│   │   └── FireSnowBridge.java (1,136+ linii)
+├── FireSnowBridge/          # Integracja z FireSnow (Java)
+│   ├── src/FireSnowBridge.java
 │   └── config.properties
 ├── public/
-│   ├── data/                # Pliki CSV (baza sprzętu)
-│   └── images/              # Obrazy i zasoby
-├── server.js                # Entry point backendu
-├── start_jedno_okno.bat     # Skrypt uruchomienia (Windows)
+│   ├── fonts/
+│   └── images/
+├── server.ts                # Entry point backendu
+├── start_jedno_okno.bat     # Uruchomienie wszystkich serwisów (Windows)
+├── start_produkcja.bat      # Uruchomienie produkcyjne (Windows)
 ├── package.json
 ├── vite.config.ts
 └── .env                     # Konfiguracja środowiskowa (nie w repo)
@@ -132,11 +138,16 @@ asystent_java/
 
 ## 🎯 API Endpoints
 
+Endpointy oznaczone 🔒 wymagają zalogowania jako pracownik.
+
+### Autoryzacja
+- `POST /api/auth/login` - Logowanie PIN-em pracownika
+- `POST /api/auth/logout` - Wylogowanie
+- `GET /api/auth/status` - Status sesji
+
 ### Rezerwacje
-- `GET /api/reservations` - Pobierz wszystkie rezerwacje
-- `POST /api/reservations` - Utwórz rezerwację
-- `PUT /api/reservations/:id` - Aktualizuj rezerwację
-- `DELETE /api/reservations/:id` - Usuń rezerwację
+- `GET /api/reservations` - Pobierz rezerwacje
+- `GET /api/reservations/date` - Rezerwacje dla podanej daty
 
 ### Wypożyczenia
 - `GET /api/wypozyczenia/aktualne` - Aktywne wypożyczenia
@@ -144,44 +155,44 @@ asystent_java/
 
 ### Sprzęt
 - `GET /api/skis` - Pobierz wszystkie pozycje sprzętu
-- `POST /api/skis` - Dodaj nowy sprzęt
-- `PUT /api/skis/:id` - Aktualizuj sprzęt
-- `PUT /api/skis/bulk` - Masowa aktualizacja
+- `PUT /api/skis/:id` 🔒 - Aktualizuj sprzęt
+- `PUT /api/skis/bulk` 🔒 - Masowa aktualizacja
 
 ### Historia
 - `GET /api/historia/klienci/wyszukaj` - Wyszukaj klientów
 - `GET /api/historia/klient/:id/daty` - Daty klienta
 - `GET /api/historia/klient/:id/sprzet` - Sprzęt klienta
+- `GET /api/historia/firesnow/klienci/wyszukaj?nazwisko=` - Wyszukaj klientów z wypożyczeniami w FireSnow
+- `GET /api/historia/firesnow/klient/:id/daty` - Umowy klienta w FireSnow
+- `GET /api/historia/firesnow/klient/:id/sprzet?dokument=` - Sprzęt z jednej umowy FireSnow
 
 ### FireSnow
 - `GET /api/firesnow/status` - Status FireSnow Bridge
-- `POST /api/firesnow/refresh` - Odśwież cache
-- `GET /api/dostepnosc/okres` - Dostępność w okresie
+- `POST /api/firesnow/refresh` 🔒 - Odśwież cache
+- `GET /api/dostepnosc/okres?from={ts}&to={ts}` - Dostępność w okresie
 
 ### Health Check
 - `GET /api/health` - Status serwera
 
-## 🗄️ Baza danych
+## 🗄️ Źródła danych
 
-### CSV (lokalna)
-- `NOWABAZA_final.csv` - główna baza sprzętu narciarskiego
+### FireSnow (główne źródło, tylko odczyt)
+- Sprzęt, rezerwacje i wypożyczenia pobierane przez FireSnow Bridge API
+- Przy `USE_FIRESNOW_API=false` backend zwraca puste listy (brak innego źródła danych)
 
-### MySQL (opcjonalna)
-- `sprzet_narciarski` - główna baza danych
+### MySQL
+- `sprzet_narciarski` - nadpisania danych sprzętu nakładane na dane z FireSnow
 - `history` - baza historii wypożyczeń
-
-### FireSnow (read-only)
-- Integracja przez FireSnow Bridge API
-- Automatyczne pobieranie rezerwacji i wypożyczeń
 
 ## 🛠️ Technologie
 
 ### Frontend
-- **React 19.1.1** - Framework UI
-- **TypeScript 5.8.3** - Type safety
-- **Vite 7.1.7** - Build tool
-- **Tailwind CSS 3.4.17** - Styling
-- **Framer Motion 12.23.22** - Animacje
+- **React 19** - Framework UI
+- **TypeScript 5.9** - Type safety
+- **Vite 7** - Build tool
+- **Tailwind CSS 3.4** - Styling
+- **MUI 7** (`@mui/material`, `@mui/x-date-pickers`) - Komponenty UI i wybór dat
+- **react-calendar-timeline**, **dayjs** - Oś czasu zajętości i obsługa dat
 
 ### Backend
 - **Node.js** (LTS) - Runtime
@@ -199,7 +210,7 @@ Aplikacja posiada kompleksowy system obsługi błędów:
 
 ### Frontend
 - **Error Boundary** (`src/components/ErrorBoundary.tsx`) - przechwytuje błędy renderowania React i wyświetla przyjazny komunikat z opcjami odzyskania
-- **Toast Manager** (`src/hooks/useToast.ts`) - centralny system powiadomień użytkownika:
+- **Toast Manager** (`src/hooks/useToast.tsx`) - centralny system powiadomień użytkownika:
   - Context API dla komponentów React
   - Singleton service dla API clients
   - Kolejka powiadomień (max 3 naraz)
@@ -207,7 +218,7 @@ Aplikacja posiada kompleksowy system obsługi błędów:
 - **Integracja z API clients** - automatyczne powiadomienia o błędach i sukcesach operacji
 
 ### Backend
-- **Global Error Handler** (`src/server/middleware/errorHandler.js`) - standaryzowany format odpowiedzi błędów:
+- **Global Error Handler** (`src/server/middleware/errorHandler.ts`) - standaryzowany format odpowiedzi błędów:
   - Obsługa błędów walidacji (400)
   - Obsługa błędów bazy danych (500)
   - Obsługa błędów zewnętrznych API (503)
@@ -263,6 +274,10 @@ DB_PASSWORD=twoje_haslo
 DB_NAME=sprzet_narciarski
 DB_HISTORY_NAME=history
 
+# Autoryzacja pracownika
+EMPLOYEE_PIN=
+AUTH_SECRET=
+
 # Logowanie
 LOG_LEVEL=info
 LOG_DIR=logs
@@ -279,14 +294,11 @@ db.url=jdbc:hsqldb:file:C:/FireSoft/FireSnowServer20/database/FireSport_database
 ## 🧪 Testy
 
 ```bash
-# Uruchom testy
-npm test
-
-# Testy z UI
-npm run test:ui
-
-# Pokrycie kodu
-npm run test:coverage
+npm test               # Testy (vitest run)
+npm run test:ui        # Testy z UI
+npm run test:coverage  # Pokrycie kodu
+npm run typecheck      # Typecheck frontendu i backendu
+npm run lint           # ESLint
 ```
 
 ## 📦 Build produkcyjny
@@ -295,9 +307,11 @@ npm run test:coverage
 # Build frontendu
 npm run build
 
-# Uruchomienie produkcyjne
-npm run preview
+# Backend produkcyjny (tsx server.ts)
+npm run start
 ```
+
+Na Windows można użyć `start_produkcja.bat`.
 
 ## 📚 Dokumentacja
 
@@ -329,5 +343,5 @@ Projekt prywatny - WYPAS Ski Rental
 
 ---
 
-**Ostatnia aktualizacja:** 2025-12-14  
+**Ostatnia aktualizacja:** 2026-10-21  
 **Wersja aplikacji:** 6.0+

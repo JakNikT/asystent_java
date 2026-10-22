@@ -17,6 +17,7 @@ export interface ClientSearchResult {
     imie: string;
     telefon: string;
     pelna_nazwa: string;
+    source: 'mysql' | 'firesnow';
 }
 
 /**
@@ -29,6 +30,9 @@ export interface ClientDate {
     do_iso: string;
     sezon: string;
     liczba_pozycji: number;
+    // Tylko FireSnow: umowa (RENTDOCUMENT_ID) i jej numer
+    dokument_id?: number;
+    numer?: string;
 }
 
 /**
@@ -113,7 +117,8 @@ export const historyService = {
             nazwisko: row.Nazwisko || '',
             imie: row.Imie || '',
             telefon: row.Telefon || '',
-            pelna_nazwa: `${row.Imie || ''} ${row.Nazwisko || ''}`.trim() || 'Brak nazwy'
+            pelna_nazwa: `${row.Imie || ''} ${row.Nazwisko || ''}`.trim() || 'Brak nazwy',
+            source: 'mysql' as const
         }));
     },
 

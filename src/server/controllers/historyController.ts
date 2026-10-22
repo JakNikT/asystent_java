@@ -3,6 +3,7 @@
  */
 
 import { historyService } from '../services/historyService.js';
+import { fireSnowHistoryService } from '../services/fireSnowHistoryService.js';
 import type { NextFunction } from 'express';
 import type { AppRequest, AppResponse } from '../types/express.types.js';
 
@@ -63,6 +64,68 @@ export const historyController = {
             }
 
             const data = await historyService.getClientEquipment(clientId, od, doDate, sezon);
+            res.json(data);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Wyszukuje klientów FireSnow po nazwisku
+     */
+    async searchFireSnowClients(
+        req: AppRequest<unknown, unknown, unknown, { nazwisko?: string }>,
+        res: AppResponse,
+        next: NextFunction
+    ): Promise<void> {
+        try {
+            const data = await fireSnowHistoryService.searchClients(req.query.nazwisko || '');
+            res.json(data);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Pobiera umowy klienta FireSnow
+     */
+    async getFireSnowClientDates(req: AppRequest<{ id: string }>, res: AppResponse, next: NextFunction): Promise<void> {
+        try {
+            const clientId = parseInt(req.params.id);
+            if (isNaN(clientId)) {
+                res.status(400).json({ error: 'Nieprawidłowe ID klienta' });
+                return;
+            }
+
+            const data = await fireSnowHistoryService.getClientDates(clientId);
+            res.json(data);
+        } catch (error) {
+            next(error);
+        }
+    },
+
+    /**
+     * Pobiera pozycje jednej umowy klienta FireSnow
+     */
+    async getFireSnowClientEquipment(
+        req: AppRequest<{ id: string }, unknown, unknown, { dokument?: string }>,
+        res: AppResponse,
+        next: NextFunction
+    ): Promise<void> {
+        try {
+            const clientId = parseInt(req.params.id);
+            if (isNaN(clientId)) {
+                res.status(400).json({ error: 'Nieprawidłowe ID klienta' });
+                return;
+            }
+
+            const documentId = parseInt(req.query.dokument ?? '');
+            if (isNaN(documentId)) {
+                res.status(400).json({ error: 'Brakuje lub nieprawidłowy parametr dokument' });
+                return;
+            }
+
+            const data = await fireSnowHistoryService.getClientEquipment(clientId, documentId);
             res.json(data);
         } catch (error) {
             next(error);

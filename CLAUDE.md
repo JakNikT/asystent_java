@@ -68,8 +68,7 @@ FireSnowBridge/
 
 ### Data Flow
 1. **FireSnow API** (primary): Equipment, reservations, and rentals from external system via Java bridge
-2. **CSV fallback**: `public/data/NOWA_BAZA_KOMPLETNA.csv` - used when FireSnow unavailable
-3. **MySQL**: `sprzet_narciarski` (equipment) and `history` (rental history)
+2. **MySQL**: `sprzet_narciarski` (equipment overrides) and `history` (rental history)
 
 ### Equipment Availability System (Browse/Przeglądaj)
 3-color system for equipment availability in `src/services/reservationApiClient.ts`:
@@ -95,7 +94,7 @@ Required `.env` variables:
 ```env
 PORT=5001
 FIRESNOW_API_URL=http://localhost:8081
-USE_FIRESNOW_API=true              # false for CSV-only mode
+USE_FIRESNOW_API=true              # false = backend returns empty lists (no CSV fallback)
 DB_HOST=localhost
 DB_USER=root
 DB_PASSWORD=<required>
@@ -112,11 +111,12 @@ db.url=jdbc:hsqldb:file:/path/to/FireSport_database_4;readonly=true
 ## API Structure
 
 Main endpoints:
-- `/api/skis` - Equipment CRUD (from FireSnow or CSV fallback)
+- `/api/skis` - Equipment (FireSnow data merged with MySQL overrides; PUT requires employee auth)
 - `/api/reservations` - Reservation management
 - `/api/dostepnosc/okres?from={ts}&to={ts}` - Availability check for date range (returns conflicts)
 - `/api/wypozyczenia/aktualne|przeszle` - Active/past rentals
 - `/api/historia/klienci/wyszukaj` - Client history search
+- `/api/historia/firesnow/klienci/wyszukaj|klient/:id/daty|klient/:id/sprzet` - Same history from FireSnow rentals (Bridge: `/api/historia/klienci|umowy|sprzet`)
 - `/api/firesnow/status` - Bridge health check
 - `/api/health` - Server status
 
@@ -132,7 +132,6 @@ Main endpoints:
 - Component-specific hooks in `components/dashboard/hooks/`
 - Global hooks in `src/hooks/`
 - Backend types in `src/server/types/`, frontend in `src/types/`
-- CSV files use CP1250 encoding (Windows Polish)
 - Logging: Winston on backend (`logs/`), client logger on frontend
 
 ## Testing

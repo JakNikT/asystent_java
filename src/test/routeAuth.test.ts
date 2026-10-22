@@ -54,6 +54,9 @@ const bearer = () => ({ Authorization: `Bearer ${createSessionToken('employee')}
 describe('trasy z danymi klientów wymagają tokenu pracownika', () => {
   const protectedRoutes: Array<[string, string]> = [
     ['GET', '/api/historia/klienci/wyszukaj?nazwisko=a'],
+    ['GET', '/api/historia/firesnow/klienci/wyszukaj?nazwisko=ab'],
+    ['GET', '/api/historia/firesnow/klient/1/daty'],
+    ['GET', '/api/historia/firesnow/klient/1/sprzet?dokument=1'],
     ['GET', '/api/wypozyczenia/aktualne'],
     ['GET', '/api/wypozyczenia/przeszle'],
     ['POST', '/api/firesnow/refresh'],

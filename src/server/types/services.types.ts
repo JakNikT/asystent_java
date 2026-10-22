@@ -71,6 +71,48 @@ export interface FireSnowRental {
 }
 
 /**
+ * Klient z historii FireSnow (GET /api/historia/klienci)
+ * imie/nazwisko bywają puste - wtedy nazwa jest tylko w klient_nazwa ("NAZWISKO IMIĘ")
+ */
+export interface FireSnowHistoryClient {
+  klient_id: number;
+  imie: string;
+  nazwisko: string;
+  telefon: string;
+  klient_nazwa: string;
+}
+
+/**
+ * Umowa klienta z historii FireSnow (GET /api/historia/umowy)
+ * Czasy w ms; min_stop = 0 oznacza, że co najmniej jedna pozycja jest wciąż wypożyczona
+ */
+export interface FireSnowHistoryContract {
+  dokument_id: number;
+  numer_dokumentu: string;
+  data_od: number;
+  data_do: number;
+  min_stop: number;
+  liczba_pozycji: number;
+  cena: number;
+  zaplacono: number;
+}
+
+/**
+ * Pozycja umowy z historii FireSnow (GET /api/historia/sprzet)
+ * Czasy w ms; data_do = 0 oznacza sprzęt nieoddany
+ */
+export interface FireSnowHistoryPosition {
+  session_id: number;
+  nazwa_sprzetu: string;
+  kod_sprzetu: string;
+  data_od: number;
+  data_do: number;
+  cena: number;
+  zaplacono: number;
+  numer_dokumentu: string;
+}
+
+/**
  * Sprzęt z FireSnow API
  */
 export interface FireSnowEquipment {

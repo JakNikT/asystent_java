@@ -1236,6 +1236,232 @@ ResultSet rsRent = stmtRent.executeQuery();
     }
     
     /**
+     * Handler for endpoint /api/historia/klienci
+     * Searches customers by surname (min. 2 chars) who have at least one rental (SESSIONINFOFGHJ)
+     * Parameter: nazwisko
+     */
+    static class HistoriaKlienciHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            System.out.println("FireSnowBridge: History client search requested");
+
+            try {
+                Map<String, String> params = parseQuery(exchange.getRequestURI().getRawQuery());
+                String nazwisko = params.get("nazwisko");
+                if (nazwisko == null || nazwisko.trim().length() < 2) {
+                    sendJson(exchange, 400, "{\"error\":\"Parametr nazwisko wymaga co najmniej 2 znaków\"}");
+                    return;
+                }
+
+                try (DbSession session = openSession()) {
+                    Connection conn = session.connection;
+
+                    String sql =
+                        "SELECT rc.ID as klient_id, rc.FORENAME as imie, rc.SURNAME as nazwisko, " +
+                        "  rc.PHONE1 as telefon, ae.NAME as klient_nazwa " +
+                        "FROM RENT_CUSTOMERS rc " +
+                        "LEFT JOIN ABSTRACTENTITYCM ae ON ae.ID = rc.ID " +
+                        // SURNAME/FORENAME in RENT_CUSTOMERS are usually NULL; the real name ("NAZWISKO IMIE") is ABSTRACTENTITYCM.NAME
+                        "WHERE (UPPER(rc.SURNAME) LIKE UPPER(?) OR UPPER(ae.NAME) LIKE UPPER(?)) " +
+                        "AND EXISTS (SELECT 1 FROM SESSIONINFOFGHJ si WHERE si.CUSTOMER_ID = rc.ID) " +
+                        "ORDER BY ae.NAME " +
+                        "LIMIT 50";
+
+                    StringBuilder json = new StringBuilder("[");
+                    int count = 0;
+
+                    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                        String wzorzec = "%" + nazwisko.trim() + "%";
+                        stmt.setString(1, wzorzec);
+                        stmt.setString(2, wzorzec);
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            while (rs.next()) {
+                                if (count > 0) json.append(",");
+                                count++;
+
+                                json.append("{");
+                                json.append("\"klient_id\":").append(rs.getLong("klient_id")).append(",");
+                                json.append("\"imie\":\"").append(escapeJson(rs.getString("imie"))).append("\",");
+                                json.append("\"nazwisko\":\"").append(escapeJson(rs.getString("nazwisko"))).append("\",");
+                                json.append("\"telefon\":\"").append(escapeJson(rs.getString("telefon"))).append("\",");
+                                json.append("\"klient_nazwa\":\"").append(escapeJson(rs.getString("klient_nazwa"))).append("\"");
+                                json.append("}");
+                            }
+                        }
+                    }
+
+                    json.append("]");
+                    sendJson(exchange, 200, json.toString());
+                    System.out.println("FireSnowBridge: Returned " + count + " history clients");
+                }
+
+            } catch (IllegalArgumentException e) {
+                System.err.println("FireSnowBridge: Invalid query encoding: " + e.getMessage());
+                sendJson(exchange, 400, "{\"error\":\"Nieprawidłowe parametry zapytania\"}");
+
+            } catch (Exception e) {
+                System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+                e.printStackTrace();
+
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
+            }
+        }
+    }
+
+    /**
+     * Handler for endpoint /api/historia/umowy
+     * Returns rental contracts (grouped by RENTDOCUMENT_ID) of one customer
+     * Parameter: klient (customer ID)
+     * min_stop = 0 means that at least one position is still active
+     */
+    static class HistoriaUmowyHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            System.out.println("FireSnowBridge: History contracts requested");
+
+            try {
+                Map<String, String> params = parseQuery(exchange.getRequestURI().getRawQuery());
+                Long klientId = parseLongSafe(params.get("klient"));
+                if (klientId == null) {
+                    sendJson(exchange, 400, "{\"error\":\"Brak lub nieprawidłowy parametr klient\"}");
+                    return;
+                }
+
+                try (DbSession session = openSession()) {
+                    Connection conn = session.connection;
+
+                    String sql =
+                        "SELECT si.RENTDOCUMENT_ID as dokument_id, doc.NUMBER as numer_dokumentu, " +
+                        "  MIN(si.STARTTIME) as data_od, MAX(si.STOPTIME) as data_do, MIN(si.STOPTIME) as min_stop, " +
+                        "  COUNT(*) as liczba_pozycji, SUM(si.PRICE) as cena, SUM(si.PAYMENT) as zaplacono " +
+                        "FROM SESSIONINFOFGHJ si " +
+                        "LEFT JOIN ABSTRACTDOCUMENT doc ON doc.ID = si.RENTDOCUMENT_ID " +
+                        "WHERE si.CUSTOMER_ID = ? " +
+                        "GROUP BY si.RENTDOCUMENT_ID, doc.NUMBER " +
+                        "ORDER BY data_od DESC";
+
+                    StringBuilder json = new StringBuilder("[");
+                    int count = 0;
+
+                    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                        stmt.setLong(1, klientId);
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            while (rs.next()) {
+                                if (count > 0) json.append(",");
+                                count++;
+
+                                json.append("{");
+                                // NULL RENTDOCUMENT_ID is reported as 0 (see HistoriaSprzetHandler)
+                                json.append("\"dokument_id\":").append(rs.getLong("dokument_id")).append(",");
+                                json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\",");
+                                json.append("\"data_od\":").append(rs.getLong("data_od")).append(",");
+                                json.append("\"data_do\":").append(rs.getLong("data_do")).append(",");
+                                json.append("\"min_stop\":").append(rs.getLong("min_stop")).append(",");
+                                json.append("\"liczba_pozycji\":").append(rs.getInt("liczba_pozycji")).append(",");
+                                json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
+                                json.append("\"zaplacono\":").append(rs.getDouble("zaplacono"));
+                                json.append("}");
+                            }
+                        }
+                    }
+
+                    json.append("]");
+                    sendJson(exchange, 200, json.toString());
+                    System.out.println("FireSnowBridge: Returned " + count + " history contracts");
+                }
+
+            } catch (IllegalArgumentException e) {
+                System.err.println("FireSnowBridge: Invalid query encoding: " + e.getMessage());
+                sendJson(exchange, 400, "{\"error\":\"Nieprawidłowe parametry zapytania\"}");
+
+            } catch (Exception e) {
+                System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+                e.printStackTrace();
+
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
+            }
+        }
+    }
+
+    /**
+     * Handler for endpoint /api/historia/sprzet
+     * Returns positions (equipment) of one contract of one customer
+     * Parameters: klient (customer ID), dokument (RENTDOCUMENT_ID; 0 = rentals without a document)
+     */
+    static class HistoriaSprzetHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            System.out.println("FireSnowBridge: History equipment requested");
+
+            try {
+                Map<String, String> params = parseQuery(exchange.getRequestURI().getRawQuery());
+                Long klientId = parseLongSafe(params.get("klient"));
+                Long dokumentId = parseLongSafe(params.get("dokument"));
+                if (klientId == null || dokumentId == null) {
+                    sendJson(exchange, 400, "{\"error\":\"Brak lub nieprawidłowy parametr klient/dokument\"}");
+                    return;
+                }
+
+                try (DbSession session = openSession()) {
+                    Connection conn = session.connection;
+
+                    boolean bezDokumentu = dokumentId == 0L;
+                    String sql =
+                        "SELECT si.ID as session_id, si.STARTTIME as data_od, si.STOPTIME as data_do, " +
+                        "  si.PRICE as cena, si.PAYMENT as zaplacono, " +
+                        "  ae_equipment.NAME as nazwa_sprzetu, ae_equipment.CODE as kod_sprzetu, " +
+                        "  doc.NUMBER as numer_dokumentu " +
+                        "FROM SESSIONINFOFGHJ si " +
+                        "LEFT JOIN ABSTRACTENTITYCM ae_equipment ON ae_equipment.ID = si.RENTOBJECT_ID " +
+                        "LEFT JOIN ABSTRACTDOCUMENT doc ON doc.ID = si.RENTDOCUMENT_ID " +
+                        "WHERE si.CUSTOMER_ID = ? AND " +
+                        (bezDokumentu ? "si.RENTDOCUMENT_ID IS NULL " : "si.RENTDOCUMENT_ID = ? ") +
+                        "ORDER BY ae_equipment.NAME";
+
+                    StringBuilder json = new StringBuilder("[");
+                    int count = 0;
+
+                    try (PreparedStatement stmt = conn.prepareStatement(sql)) {
+                        stmt.setLong(1, klientId);
+                        if (!bezDokumentu) stmt.setLong(2, dokumentId);
+                        try (ResultSet rs = stmt.executeQuery()) {
+                            while (rs.next()) {
+                                if (count > 0) json.append(",");
+                                count++;
+
+                                json.append("{");
+                                json.append("\"session_id\":").append(rs.getLong("session_id")).append(",");
+                                json.append("\"nazwa_sprzetu\":\"").append(escapeJson(rs.getString("nazwa_sprzetu"))).append("\",");
+                                json.append("\"kod_sprzetu\":\"").append(escapeJson(rs.getString("kod_sprzetu"))).append("\",");
+                                json.append("\"data_od\":").append(rs.getLong("data_od")).append(",");
+                                json.append("\"data_do\":").append(rs.getLong("data_do")).append(",");
+                                json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
+                                json.append("\"zaplacono\":").append(rs.getDouble("zaplacono")).append(",");
+                                json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\"");
+                                json.append("}");
+                            }
+                        }
+                    }
+
+                    json.append("]");
+                    sendJson(exchange, 200, json.toString());
+                    System.out.println("FireSnowBridge: Returned " + count + " history positions");
+                }
+
+            } catch (IllegalArgumentException e) {
+                System.err.println("FireSnowBridge: Invalid query encoding: " + e.getMessage());
+                sendJson(exchange, 400, "{\"error\":\"Nieprawidłowe parametry zapytania\"}");
+
+            } catch (Exception e) {
+                System.err.println("FireSnowBridge: Database error: " + e.getMessage());
+                e.printStackTrace();
+
+                sendJson(exchange, 500, "{\"error\":\"Błąd wewnętrzny\"}");
+            }
+        }
+    }
+
+    /**
      * Main method - starts HTTP server
      */
     public static void main(String[] args) {
@@ -1278,6 +1504,9 @@ ResultSet rsRent = stmtRent.executeQuery();
             server.createContext("/api/dostepnosc/okres", new DostepnoscOkresHandler());
             server.createContext("/api/sprzet/wszystkie", new WszystkieSprzetHandler());
             server.createContext("/api/rezerwacje/dla-daty", new RezerwacjeDlaDatyHandler());
+            server.createContext("/api/historia/klienci", new HistoriaKlienciHandler());
+            server.createContext("/api/historia/umowy", new HistoriaUmowyHandler());
+            server.createContext("/api/historia/sprzet", new HistoriaSprzetHandler());
             // Start server with concurrent thread pool
             int poolSize = Math.max(4, Runtime.getRuntime().availableProcessors());
             server.setExecutor(java.util.concurrent.Executors.newFixedThreadPool(poolSize));
@@ -1300,6 +1529,9 @@ ResultSet rsRent = stmtRent.executeQuery();
             System.out.println("  GET /api/dostepnosc/okres         - Get availability for date range");
             System.out.println("  GET /api/sprzet/wszystkie          - Get all equipment with full parameters");
             System.out.println("  GET /api/rezerwacje/dla-daty       - Get reservations for specific date");
+            System.out.println("  GET /api/historia/klienci          - Search customers with rental history");
+            System.out.println("  GET /api/historia/umowy            - Get rental contracts of a customer");
+            System.out.println("  GET /api/historia/sprzet           - Get equipment of a rental contract");
             System.out.println();
             System.out.println("Press Ctrl+C to stop the server");
             System.out.println("===========================================");

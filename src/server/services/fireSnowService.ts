@@ -5,7 +5,14 @@
 
 import { config } from '../config/env.js';
 import logger from '../config/logger.js';
-import type { FireSnowReservation, FireSnowRental, FireSnowEquipment } from '../types/services.types.js';
+import type {
+    FireSnowReservation,
+    FireSnowRental,
+    FireSnowEquipment,
+    FireSnowHistoryClient,
+    FireSnowHistoryContract,
+    FireSnowHistoryPosition
+} from '../types/services.types.js';
 
 /**
  * Opcje dla fetchFireSnow
@@ -95,6 +102,30 @@ export const fireSnowService = {
      */
     async getReservationsForDate(date: string): Promise<FireSnowReservation[]> {
         return fetchFireSnow<FireSnowReservation[]>(`/api/rezerwacje/dla-daty?date=${date}`);
+    },
+
+    /**
+     * Wyszukuje klientów z wypożyczeniami po nazwisku (historia FireSnow)
+     */
+    async searchHistoryClients(nazwisko: string): Promise<FireSnowHistoryClient[]> {
+        const query = new URLSearchParams({ nazwisko });
+        return fetchFireSnow<FireSnowHistoryClient[]>(`/api/historia/klienci?${query.toString()}`);
+    },
+
+    /**
+     * Pobiera umowy klienta (wypożyczenia pogrupowane po dokumencie)
+     */
+    async getHistoryContracts(clientId: number): Promise<FireSnowHistoryContract[]> {
+        const query = new URLSearchParams({ klient: String(clientId) });
+        return fetchFireSnow<FireSnowHistoryContract[]>(`/api/historia/umowy?${query.toString()}`);
+    },
+
+    /**
+     * Pobiera pozycje (sprzęt) jednej umowy klienta
+     */
+    async getHistoryEquipment(clientId: number, documentId: number): Promise<FireSnowHistoryPosition[]> {
+        const query = new URLSearchParams({ klient: String(clientId), dokument: String(documentId) });
+        return fetchFireSnow<FireSnowHistoryPosition[]>(`/api/historia/sprzet?${query.toString()}`);
     },
 
     /**

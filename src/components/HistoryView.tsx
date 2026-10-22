@@ -1,11 +1,11 @@
 /**
- * Komponent widoku historii wypożyczeń z MySQL (2022-2023)
+ * Komponent widoku historii wypożyczeń klientów: archiwum MySQL (2012-2023) + FireSnow (bieżące sezony)
  * Trzy kroki: wyszukiwanie klienta → wybór daty → wyświetlenie sprzętu
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HistoryService } from '../services/historyService';
-import type { ClientData, DateRange, HistoryEquipmentData } from '../services/historyService';
+import type { ClientData, DateRange, HistoryEquipmentData, HistorySource } from '../services/historyService';
 import { createLogger } from '../utils/logger';
 
 interface HistoryViewProps {
@@ -15,6 +15,11 @@ interface HistoryViewProps {
 type HistoryStep = 'search' | 'dates' | 'equipment';
 
 const logger = createLogger('HistoryView');
+
+const SOURCE_LABELS: Record<HistorySource, string> = {
+  firesnow: 'FireSnow',
+  mysql: 'Archiwum 2012–2023'
+};
 
 export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   const [step, setStep] = useState<HistoryStep>('search');
@@ -26,11 +31,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   const [equipment, setEquipment] = useState<HistoryEquipmentData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
+  const [unavailableSources, setUnavailableSources] = useState<HistorySource[]>([]);
 
   // Debounce dla wyszukiwania klientów
   useEffect(() => {
     if (step !== 'search' || searchTerm.trim().length < 2) {
       setClients([]);
+      setUnavailableSources([]);
       return;
     }
 
@@ -39,7 +46,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
       setError('');
       try {
         const results = await HistoryService.searchClients(searchTerm);
-        setClients(results);
+        setClients(results.clients);
+        setUnavailableSources(results.unavailableSources);
+        if (results.unavailableSources.length === Object.keys(SOURCE_LABELS).length) {
+          setError('Żadne źródło historii nie jest dostępne. Sprawdź połączenie z bazami danych.');
+        }
       } catch (err) {
         logger.error('Błąd wyszukiwania klientów:', err);
         setError('Błąd wyszukiwania klientów. Sprawdź połączenie z bazą danych.');
@@ -59,7 +70,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     setError('');
 
     try {
-      const clientDates = await HistoryService.getClientDates(client.id);
+      const clientDates = await HistoryService.getClientDates(client);
       setDates(clientDates);
       setStep('dates');
     } catch (err) {
@@ -79,12 +90,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     setError('');
 
     try {
-      const clientEquipment = await HistoryService.getClientEquipment(
-        selectedClient.id,
-        dateRange.od,
-        dateRange.do,
-        dateRange.sezon
-      );
+      const clientEquipment = await HistoryService.getClientEquipment(selectedClient, dateRange);
       setEquipment(clientEquipment);
       setStep('equipment');
     } catch (err) {
@@ -109,6 +115,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     }
   };
 
+  // FireSnow zwraca cenę per pozycja (sumujemy), archiwum MySQL kwotę całej umowy w każdym wierszu
+  const totalPrice = selectedClient?.source === 'firesnow'
+    ? String(Math.round(equipment.reduce((sum, item) => sum + (parseFloat(item.cena) || 0), 0) * 100) / 100)
+    : equipment[0]?.cena || '0';
+
   return (
     <div 
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative p-3 lg:p-6"
@@ -125,7 +136,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
           <div className="flex flex-col lg:flex-row lg:justify-between lg:items-center gap-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                Historia wypożyczeń (23/22 - 19/18 - 18/17 - 17/16 - 16/15 - 15/14 - 14/13 - 13/12 - 12/11)
+                Historia wypożyczeń klientów
               </h1>
               <p className="text-white/70 text-sm">
                 {step === 'search' && 'Wyszukaj klienta po nazwisku'}
@@ -182,6 +193,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               </div>
             )}
 
+            {error === '' && unavailableSources.length > 0 && (
+              <div className="bg-yellow-600/30 border border-yellow-500/50 text-yellow-100 p-3 rounded-lg mb-4">
+                {unavailableSources.includes('firesnow')
+                  ? 'FireSnow niedostępny, pokazano tylko archiwum.'
+                  : 'Archiwum 2012–2023 niedostępne, pokazano tylko FireSnow.'}
+              </div>
+            )}
+
             {isLoading && (
               <div className="text-white text-center py-4">
                 Wyszukiwanie...
@@ -195,12 +214,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                 </h3>
                 {clients.map((client) => (
                   <button
-                    key={client.id}
+                    key={`${client.source}-${client.id}`}
                     onClick={() => handleClientSelect(client)}
                     className="w-full text-left p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 transition-all shadow-sm"
                   >
-                    <div className="text-white font-semibold">
-                      {client.pelna_nazwa}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-white font-semibold">
+                        {client.pelna_nazwa}
+                      </div>
+                      <span className="text-xs uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-[#A6C2EF] whitespace-nowrap">
+                        {SOURCE_LABELS[client.source]}
+                      </span>
                     </div>
                     {client.telefon && (
                       <div className="text-[#A6C2EF] text-sm mt-1">
@@ -243,12 +267,12 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               <div className="space-y-2">
                 {dates.map((dateRange, index) => (
                   <button
-                    key={`${dateRange.od}-${dateRange.do}-${index}`}
+                    key={`${dateRange.dokument_id ?? ''}-${dateRange.od}-${dateRange.do}-${index}`}
                     onClick={() => handleDateSelect(dateRange)}
                     className="w-full text-left p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 transition-all shadow-sm"
                   >
                     <div className="text-white font-semibold">
-                      Od: {dateRange.od} - Do: {dateRange.do} {dateRange.sezon ? `(Sezon: ${dateRange.sezon})` : ''}
+                      {dateRange.numer ? `${dateRange.numer}: ` : ''}Od: {dateRange.od} - Do: {dateRange.do} {dateRange.sezon ? `(Sezon: ${dateRange.sezon})` : ''}
                     </div>
                     <div className="text-[#A6C2EF] text-sm mt-1">
                       {dateRange.liczba_pozycji} {dateRange.liczba_pozycji === 1 ? 'pozycja' : 'pozycji'}
@@ -313,13 +337,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                         <td className="px-4 py-2 text-white">
                           {item.status || '-'}
                         </td>
-                        {/* Wyświetl kwotę tylko w pierwszym wierszu, scalając dla wszystkich pozycji */}
+                        {/* Kwota scalona dla wszystkich pozycji: FireSnow = suma pozycji, archiwum = kwota z pierwszego wiersza */}
                         {index === 0 && (
                           <td
                             className="px-4 py-2 text-white text-center align-middle font-bold text-lg border-l border-[#2C699F]"
                             rowSpan={equipment.length}
                           >
-                            {item.cena || '0'} zł
+                            {totalPrice} zł
                           </td>
                         )}
                       </tr>

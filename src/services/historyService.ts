@@ -1,5 +1,5 @@
 /**
- * Serwis do obsługi historii wypożyczeń z MySQL (2022-2023)
+ * Serwis do obsługi historii wypożyczeń: archiwum MySQL (2012-2023) i FireSnow (bieżące sezony)
  * Komunikacja z API historii wypożyczeń
  */
 
@@ -11,6 +11,11 @@ import { AuthService } from './authService';
 const API_BASE_URL = '/api';
 
 /**
+ * Źródło danych klienta: archiwum MySQL lub FireSnow
+ */
+export type HistorySource = 'mysql' | 'firesnow';
+
+/**
  * Dane klienta z bazy historii
  */
 export interface ClientData {
@@ -19,6 +24,15 @@ export interface ClientData {
   imie: string;
   telefon: string;
   pelna_nazwa: string;
+  source: HistorySource;
+}
+
+/**
+ * Wynik wyszukiwania: klienci z obu źródeł + źródła, które nie odpowiedziały
+ */
+export interface ClientSearchResult {
+  clients: ClientData[];
+  unavailableSources: HistorySource[];
 }
 
 /**
@@ -31,6 +45,8 @@ export interface DateRange {
   do_iso: string; // Format ISO 8601
   liczba_pozycji: number;
   sezon: string;
+  dokument_id?: number; // Tylko FireSnow: ID umowy
+  numer?: string; // Tylko FireSnow: numer umowy
 }
 
 /**
@@ -48,7 +64,7 @@ export interface HistoryEquipmentData {
   typumowy: string;
   uwagi?: string;
   status?: string; // Status: "Oddane" lub "Nie oddane"
-  source: 'history';
+  source: 'history' | 'firesnow';
   dlugosc?: number | null;
   liczba_dni?: number;
 }
@@ -61,53 +77,71 @@ export class HistoryService {
   private static logger = createLogger('HistoryService');
 
   /**
-   * Wyszukuje klientów po nazwisku
-   * historyService.ts: Wyszukiwanie klientów w bazie historii
+   * Pobiera JSON z endpointu historii; błąd HTTP zamienia na wyjątek
    */
-  static async searchClients(nazwisko: string): Promise<ClientData[]> {
-    if (!nazwisko || nazwisko.trim().length < 2) {
-      return [];
+  private static async fetchJson<T>(url: string): Promise<T> {
+    const response = await AuthService.fetch(url);
+
+    if (!response.ok) {
+      const errorMessage = await parseApiError(response);
+      throw new Error(errorMessage);
     }
 
-    try {
-      this.logger.info('Wyszukiwanie klientów po nazwisku:', nazwisko);
-
-      const response = await AuthService.fetch(
-        `${API_BASE_URL}/historia/klienci/wyszukaj?nazwisko=${encodeURIComponent(nazwisko)}`
-      );
-
-      if (!response.ok) {
-        const errorMessage = await parseApiError(response);
-        throw new Error(errorMessage);
-      }
-
-      const clients = await response.json();
-      this.logger.info(`Znaleziono ${clients.length} klientów`);
-      return clients;
-    } catch (error) {
-      this.logger.error('Błąd wyszukiwania klientów:', error);
-      const errorMessage = handleApiError(error, 'Nie udało się wyszukać klientów');
-      toastService.showError(errorMessage);
-      return []; // Zwróć pustą tablicę zamiast rzucać błąd
-    }
+    return response.json() as Promise<T>;
   }
 
   /**
-   * Pobiera daty wypożyczeń dla klienta
+   * Wyszukuje klientów po nazwisku w FireSnow i archiwum MySQL jednocześnie
+   * Lista: najpierw FireSnow (nowsze), potem archiwum. Awaria jednego źródła nie blokuje drugiego.
+   * Toast błędu tylko wtedy, gdy nie odpowiedziało żadne źródło.
+   */
+  static async searchClients(nazwisko: string): Promise<ClientSearchResult> {
+    if (!nazwisko || nazwisko.trim().length < 2) {
+      return { clients: [], unavailableSources: [] };
+    }
+
+    this.logger.info('Wyszukiwanie klientów po nazwisku:', nazwisko);
+    const query = `nazwisko=${encodeURIComponent(nazwisko)}`;
+
+    const sources: HistorySource[] = ['firesnow', 'mysql'];
+    const results = await Promise.allSettled([
+      this.fetchJson<ClientData[]>(`${API_BASE_URL}/historia/firesnow/klienci/wyszukaj?${query}`),
+      this.fetchJson<ClientData[]>(`${API_BASE_URL}/historia/klienci/wyszukaj?${query}`)
+    ]);
+
+    const clients: ClientData[] = [];
+    const unavailableSources: HistorySource[] = [];
+    const failures: unknown[] = [];
+
+    results.forEach((result, index) => {
+      if (result.status === 'fulfilled') {
+        clients.push(...result.value);
+      } else {
+        this.logger.error(`Błąd wyszukiwania klientów (${sources[index]}):`, result.reason);
+        unavailableSources.push(sources[index]!);
+        failures.push(result.reason);
+      }
+    });
+
+    if (failures.length === results.length) {
+      toastService.showError(handleApiError(failures[0], 'Nie udało się wyszukać klientów'));
+    }
+
+    this.logger.info(`Znaleziono ${clients.length} klientów`);
+    return { clients, unavailableSources };
+  }
+
+  /**
+   * Pobiera daty (FireSnow: umowy) wypożyczeń dla klienta z jego źródła
    * historyService.ts: Pobieranie unikalnych dat wypożyczeń dla wybranego klienta
    */
-  static async getClientDates(clientId: number): Promise<DateRange[]> {
+  static async getClientDates(client: ClientData): Promise<DateRange[]> {
     try {
-      this.logger.debug('Pobieranie dat dla klienta ID:', clientId);
+      this.logger.debug('Pobieranie dat dla klienta ID:', client.id, 'źródło:', client.source);
 
-      const response = await AuthService.fetch(`${API_BASE_URL}/historia/klient/${clientId}/daty`);
+      const path = client.source === 'firesnow' ? 'historia/firesnow/klient' : 'historia/klient';
+      const dates = await this.fetchJson<DateRange[]>(`${API_BASE_URL}/${path}/${client.id}/daty`);
 
-      if (!response.ok) {
-        const errorMessage = await parseApiError(response);
-        throw new Error(errorMessage);
-      }
-
-      const dates = await response.json();
       this.logger.info(`Znaleziono ${dates.length} unikalnych dat`);
       return dates;
     } catch (error) {
@@ -119,39 +153,26 @@ export class HistoryService {
   }
 
   /**
-   * Pobiera sprzęt wypożyczony przez klienta w konkretnym okresie
+   * Pobiera sprzęt wypożyczony przez klienta w konkretnym okresie (FireSnow: na konkretnej umowie)
    * historyService.ts: Pobieranie sprzętu dla wybranej daty wypożyczenia
    */
-  static async getClientEquipment(
-    clientId: number,
-    od: string,
-    doDate: string,
-    sezon?: string
-  ): Promise<HistoryEquipmentData[]> {
+  static async getClientEquipment(client: ClientData, dateRange: DateRange): Promise<HistoryEquipmentData[]> {
     try {
-      this.logger.debug('Pobieranie sprzętu dla klienta ID:', clientId, 'od:', od, 'do:', doDate, 'sezon:', sezon);
+      this.logger.debug('Pobieranie sprzętu dla klienta ID:', client.id, 'źródło:', client.source, 'okres:', dateRange);
 
-      const params: Record<string, string> = {
-        od: od,
-        do: doDate
-      };
-
-      if (sezon) {
-        params.sezon = sezon;
+      let url: string;
+      if (client.source === 'firesnow') {
+        const queryParams = new URLSearchParams({ dokument: String(dateRange.dokument_id ?? '') });
+        url = `${API_BASE_URL}/historia/firesnow/klient/${client.id}/sprzet?${queryParams.toString()}`;
+      } else {
+        const params: Record<string, string> = { od: dateRange.od, do: dateRange.do };
+        if (dateRange.sezon) {
+          params.sezon = dateRange.sezon;
+        }
+        url = `${API_BASE_URL}/historia/klient/${client.id}/sprzet?${new URLSearchParams(params).toString()}`;
       }
 
-      const queryParams = new URLSearchParams(params);
-
-      const response = await AuthService.fetch(
-        `${API_BASE_URL}/historia/klient/${clientId}/sprzet?${queryParams.toString()}`
-      );
-
-      if (!response.ok) {
-        const errorMessage = await parseApiError(response);
-        throw new Error(errorMessage);
-      }
-
-      const equipment = await response.json();
+      const equipment = await this.fetchJson<HistoryEquipmentData[]>(url);
       this.logger.info(`Znaleziono ${equipment.length} pozycji sprzętu`);
       return equipment;
     } catch (error) {

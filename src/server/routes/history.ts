@@ -15,6 +15,11 @@ router.get('/klienci/wyszukaj', historyController.searchClients);
 router.get('/klient/:id/daty', historyController.getClientDates);
 router.get('/klient/:id/sprzet', historyController.getClientEquipment);
 
+// Historia z FireSnow (wypożyczenia z bieżących sezonów)
+router.get('/firesnow/klienci/wyszukaj', historyController.searchFireSnowClients);
+router.get('/firesnow/klient/:id/daty', historyController.getFireSnowClientDates);
+router.get('/firesnow/klient/:id/sprzet', historyController.getFireSnowClientEquipment);
+
 export default router;
 
 
