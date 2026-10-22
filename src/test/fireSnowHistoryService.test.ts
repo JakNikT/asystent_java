@@ -55,7 +55,9 @@ describe('fireSnowHistoryService.getClientDates', () => {
     getHistoryContracts.mockResolvedValue([{
       dokument_id: 55, numer_dokumentu: 'WP 12/01/2026',
       data_od: local(2026, 1, 5, 9), data_do: local(2026, 1, 9, 17), min_stop: local(2026, 1, 9, 17),
-      liczba_pozycji: 3, cena: 300, zaplacono: 300
+      liczba_pozycji: 3, cena: 300, zaplacono: 300,
+      uwagi: 'WIĄZANIA S', rabat_procent_umowy: 0.15, rabat_kwota_umowy: 0,
+      rabat_procent_pozycji_max: 0, rabat_kwota_pozycji: 45, bonus_ms: 86400000
     }]);
 
     const [contract] = await fireSnowHistoryService.getClientDates(1);
@@ -68,7 +70,11 @@ describe('fireSnowHistoryService.getClientDates', () => {
       sezon: '2025/26',
       liczba_pozycji: 3,
       dokument_id: 55,
-      numer: 'WP 12/01/2026'
+      numer: 'WP 12/01/2026',
+      rabat_procent: 15,
+      rabat_kwota: 45,
+      dni_gratis: 1,
+      uwagi: 'WIĄZANIA S'
     });
   });
 
@@ -83,6 +89,45 @@ describe('fireSnowHistoryService.getClientDates', () => {
 
     expect(contract!.do).toBe('w trakcie');
     expect(contract!.do_iso).toBe('');
+  });
+
+  describe('rabat, dni gratis i uwagi', () => {
+    const contract = (overrides: Record<string, unknown>) => ({
+      dokument_id: 60, numer_dokumentu: 'WP 144/12/2023',
+      data_od: local(2023, 12, 1), data_do: local(2023, 12, 5), min_stop: local(2023, 12, 5),
+      liczba_pozycji: 2, cena: 400, zaplacono: 400,
+      uwagi: null, rabat_procent_umowy: 0, rabat_kwota_umowy: 0,
+      rabat_procent_pozycji_max: 0, rabat_kwota_pozycji: 0, bonus_ms: 0,
+      ...overrides
+    });
+
+    const mapOne = async (overrides: Record<string, unknown>) => {
+      getHistoryContracts.mockResolvedValue([contract(overrides)]);
+      const [mapped] = await fireSnowHistoryService.getClientDates(1);
+      return mapped!;
+    };
+
+    it('rabat procentowy umowy ma pierwszeństwo, a bez niego liczy się największy rabat z pozycji', async () => {
+      expect((await mapOne({ rabat_procent_umowy: 0.15, rabat_procent_pozycji_max: 0.2 })).rabat_procent).toBe(15);
+      expect((await mapOne({ rabat_procent_umowy: 0, rabat_procent_pozycji_max: 0.2 })).rabat_procent).toBe(20);
+      expect((await mapOne({})).rabat_procent).toBe(0);
+    });
+
+    it('rabat kwotowy nie dubluje się: kwota umowy powtarza sumę rabatów pozycji (jak w danych FireSnow)', async () => {
+      expect((await mapOne({ rabat_kwota_umowy: 162, rabat_kwota_pozycji: 162 })).rabat_kwota).toBe(162);
+      expect((await mapOne({ rabat_kwota_umowy: 0, rabat_kwota_pozycji: 153.004 })).rabat_kwota).toBe(153);
+      expect((await mapOne({ rabat_kwota_umowy: 20, rabat_kwota_pozycji: 0 })).rabat_kwota).toBe(20);
+    });
+
+    it('dni gratis to bonus_ms w dobach', async () => {
+      expect((await mapOne({ bonus_ms: 172800000 })).dni_gratis).toBe(2);
+      expect((await mapOne({ bonus_ms: 0 })).dni_gratis).toBe(0);
+    });
+
+    it('uwagi: null to pusty tekst, a białe znaki na brzegach są przycinane', async () => {
+      expect((await mapOne({ uwagi: null })).uwagi).toBe('');
+      expect((await mapOne({ uwagi: '  WIĄZANIA S ' })).uwagi).toBe('WIĄZANIA S');
+    });
   });
 });
 
@@ -123,6 +168,17 @@ describe('fireSnowHistoryService.getClientEquipment', () => {
     const items = await fireSnowHistoryService.getClientEquipment(1, 55);
 
     expect(items.map(i => i.typumowy)).toEqual(['PROMOTOR', 'STANDARD']);
+  });
+
+  it('mapuje rabat pozycji: ułamek na procent, kwota zaokrąglona do 0,01; brak rabatu to 0', async () => {
+    getHistoryEquipment.mockResolvedValue([
+      position({ rabat_procent: 0.2, rabat_kwota: 45.004 }),
+      position({ rabat_procent: 0, rabat_kwota: 0 })
+    ]);
+
+    const items = await fireSnowHistoryService.getClientEquipment(1, 55);
+
+    expect(items.map(i => [i.rabat_procent, i.rabat_kwota])).toEqual([[20, 45], [0, 0]]);
   });
 });
 

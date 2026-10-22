@@ -32,6 +32,24 @@ const SourceNotice: React.FC<{ sources: HistorySource[] }> = ({ sources }) => {
   );
 };
 
+/**
+ * Rabat jako tekst: "15%", "45 zł" lub "15% + 45 zł"; null gdy brak rabatu
+ */
+function formatDiscount(procent?: number, kwota?: number, prefix = ''): string | null {
+  if (procent && kwota) return `${prefix}${procent}% (${kwota} zł)`;
+  if (procent) return `${prefix}${procent}%`;
+  if (kwota) return `${prefix}${kwota} zł`;
+  return null;
+}
+
+/**
+ * Dni gratis z polską odmianą: "1 dzień", "2 dni"; null gdy brak
+ */
+function formatFreeDays(dni?: number, prefix = '', suffix = ''): string | null {
+  if (!dni) return null;
+  return `${prefix}${dni} ${dni === 1 ? 'dzień' : 'dni'}${suffix}`;
+}
+
 export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   const [step, setStep] = useState<HistoryStep>('search');
   const [searchTerm, setSearchTerm] = useState('');
@@ -132,6 +150,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   const totalPrice = selectedDate?.source === 'firesnow'
     ? String(Math.round(equipment.reduce((sum, item) => sum + (parseFloat(item.cena) || 0), 0) * 100) / 100)
     : equipment[0]?.cena || '0';
+
+  const isFireSnow = selectedDate?.source === 'firesnow';
 
   return (
     <div 
@@ -295,6 +315,22 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                     <div className="text-[#A6C2EF] text-sm mt-1">
                       {dateRange.liczba_pozycji} {dateRange.liczba_pozycji === 1 ? 'pozycja' : 'pozycji'}
                     </div>
+                    {(() => {
+                      const badges = [
+                        formatDiscount(dateRange.rabat_procent, dateRange.rabat_kwota, 'Rabat '),
+                        formatFreeDays(dateRange.dni_gratis, '+', ' gratis'),
+                        dateRange.uwagi ? '📝 uwagi' : null
+                      ].filter((b): b is string => b !== null);
+                      return badges.length > 0 ? (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {badges.map((badge) => (
+                            <span key={badge} className="text-xs px-2 py-1 rounded bg-white/10 text-[#A6C2EF] whitespace-nowrap">
+                              {badge}
+                            </span>
+                          ))}
+                        </div>
+                      ) : null;
+                    })()}
                   </button>
                 ))}
               </div>
@@ -330,6 +366,20 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               </div>
             )}
 
+            {!isLoading && isFireSnow && (
+              <div className="mb-4 p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 shadow-sm text-left">
+                <h4 className="text-white font-semibold mb-2">Szczegóły umowy</h4>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-sm">
+                  <dt className="text-[#A6C2EF]">Rabat:</dt>
+                  <dd className="text-white">{formatDiscount(selectedDate.rabat_procent, selectedDate.rabat_kwota) ?? 'brak'}</dd>
+                  <dt className="text-[#A6C2EF]">Dni gratis:</dt>
+                  <dd className="text-white">{formatFreeDays(selectedDate.dni_gratis) ?? 'brak'}</dd>
+                  <dt className="text-[#A6C2EF]">Uwagi:</dt>
+                  <dd className="text-white whitespace-pre-wrap">{selectedDate.uwagi || 'brak'}</dd>
+                </dl>
+              </div>
+            )}
+
             {!isLoading && equipment.length > 0 && (
               <div className="overflow-x-auto">
                 <table className="w-full text-left">
@@ -340,6 +390,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                       <th className="px-4 py-2 text-white font-semibold">Długość</th>
                       <th className="px-4 py-2 text-white font-semibold">Liczba dni</th>
                       <th className="px-4 py-2 text-white font-semibold">Status</th>
+                      {isFireSnow && <th className="px-4 py-2 text-white font-semibold">Rabat</th>}
                       <th className="px-4 py-2 text-white font-semibold text-center">Kwota</th>
                     </tr>
                   </thead>
@@ -358,6 +409,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                         <td className="px-4 py-2 text-white">
                           {item.status || '-'}
                         </td>
+                        {isFireSnow && (
+                          <td className="px-4 py-2 text-white">
+                            {formatDiscount(item.rabat_procent, item.rabat_kwota) ?? '-'}
+                          </td>
+                        )}
                         {/* Kwota scalona dla wszystkich pozycji: FireSnow = suma pozycji, archiwum = kwota z pierwszego wiersza */}
                         {index === 0 && (
                           <td

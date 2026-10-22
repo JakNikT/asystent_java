@@ -14,6 +14,20 @@ const ACTIVE_LABEL = 'w trakcie';
 const pad2 = (n: number): string => String(n).padStart(2, '0');
 
 /**
+ * Ułamek (0.15) → procent (15)
+ */
+function toPercent(fraction: number | null | undefined): number {
+    return Math.round((fraction || 0) * 100);
+}
+
+/**
+ * Kwota zaokrąglona do 0,01
+ */
+function roundMoney(value: number | null | undefined): number {
+    return Math.round((value || 0) * 100) / 100;
+}
+
+/**
  * ms → DD.MM.YYYY (czas lokalny serwera)
  */
 export function formatDatePl(ms: number): string {
@@ -103,7 +117,12 @@ export const fireSnowHistoryService = {
                 sezon: seasonForTimestamp(row.data_od),
                 liczba_pozycji: row.liczba_pozycji,
                 dokument_id: row.dokument_id,
-                numer: row.numer_dokumentu || ''
+                numer: row.numer_dokumentu || '',
+                rabat_procent: toPercent(row.rabat_procent_umowy || row.rabat_procent_pozycji_max),
+                // rabat_kwota_umowy w FireSnow powtarza sumę rabatów pozycji (np. 162 = 162), więc nie sumujemy
+                rabat_kwota: roundMoney(Math.max(row.rabat_kwota_umowy || 0, row.rabat_kwota_pozycji || 0)),
+                dni_gratis: Math.round((row.bonus_ms || 0) / DAY_MS),
+                uwagi: (row.uwagi || '').trim()
             };
         });
     },
@@ -136,7 +155,9 @@ export const fireSnowHistoryService = {
                 status: returned ? 'Oddane' : 'Nie oddane',
                 source: 'firesnow',
                 dlugosc: null,
-                liczba_dni: Math.max(0, Math.ceil((end - pos.data_od) / DAY_MS))
+                liczba_dni: Math.max(0, Math.ceil((end - pos.data_od) / DAY_MS)),
+                rabat_procent: toPercent(pos.rabat_procent),
+                rabat_kwota: roundMoney(pos.rabat_kwota)
             };
         });
     }

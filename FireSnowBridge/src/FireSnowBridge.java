@@ -1333,9 +1333,15 @@ ResultSet rsRent = stmtRent.executeQuery();
                     String sql =
                         "SELECT si.RENTDOCUMENT_ID as dokument_id, doc.NUMBER as numer_dokumentu, " +
                         "  MIN(si.STARTTIME) as data_od, MAX(si.STOPTIME) as data_do, MIN(si.STOPTIME) as min_stop, " +
-                        "  COUNT(*) as liczba_pozycji, SUM(si.PRICE) as cena, SUM(si.PAYMENT) as zaplacono " +
+                        "  COUNT(*) as liczba_pozycji, SUM(si.PRICE) as cena, SUM(si.PAYMENT) as zaplacono, " +
+                        // MAX zamiast GROUP BY, żeby nie grupować po VARCHAR(4096); wartości dokumentu są takie same na każdej pozycji
+                        "  MAX(doc.DESCRIPTION) as uwagi, " +
+                        "  MAX(acd.PERCENTDISCOUNTHIB) as rabat_procent_umowy, MAX(acd.VALUEDISCOUNTHIB) as rabat_kwota_umowy, " +
+                        "  MAX(si.PERCENTDISCOUNTHIB) as rabat_procent_pozycji_max, SUM(si.VALUEDISCOUNTHIB) as rabat_kwota_pozycji, " +
+                        "  MAX(si.BONUSTIME) as bonus_ms " +
                         "FROM SESSIONINFOFGHJ si " +
                         "LEFT JOIN ABSTRACTDOCUMENT doc ON doc.ID = si.RENTDOCUMENT_ID " +
+                        "LEFT JOIN ABSTRACTCASHABLEDOCUMENT acd ON acd.ID = si.RENTDOCUMENT_ID " +
                         "WHERE si.CUSTOMER_ID = ? " +
                         "GROUP BY si.RENTDOCUMENT_ID, doc.NUMBER " +
                         "ORDER BY data_od DESC";
@@ -1359,7 +1365,13 @@ ResultSet rsRent = stmtRent.executeQuery();
                                 json.append("\"min_stop\":").append(rs.getLong("min_stop")).append(",");
                                 json.append("\"liczba_pozycji\":").append(rs.getInt("liczba_pozycji")).append(",");
                                 json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
-                                json.append("\"zaplacono\":").append(rs.getDouble("zaplacono"));
+                                json.append("\"zaplacono\":").append(rs.getDouble("zaplacono")).append(",");
+                                json.append("\"uwagi\":\"").append(escapeJson(rs.getString("uwagi"))).append("\",");
+                                json.append("\"rabat_procent_umowy\":").append(rs.getDouble("rabat_procent_umowy")).append(",");
+                                json.append("\"rabat_kwota_umowy\":").append(rs.getDouble("rabat_kwota_umowy")).append(",");
+                                json.append("\"rabat_procent_pozycji_max\":").append(rs.getDouble("rabat_procent_pozycji_max")).append(",");
+                                json.append("\"rabat_kwota_pozycji\":").append(rs.getDouble("rabat_kwota_pozycji")).append(",");
+                                json.append("\"bonus_ms\":").append(rs.getLong("bonus_ms"));
                                 json.append("}");
                             }
                         }
@@ -1409,6 +1421,7 @@ ResultSet rsRent = stmtRent.executeQuery();
                     String sql =
                         "SELECT si.ID as session_id, si.STARTTIME as data_od, si.STOPTIME as data_do, " +
                         "  si.PRICE as cena, si.PAYMENT as zaplacono, " +
+                        "  si.PERCENTDISCOUNTHIB as rabat_procent, si.VALUEDISCOUNTHIB as rabat_kwota, " +
                         "  ae_equipment.NAME as nazwa_sprzetu, ae_equipment.CODE as kod_sprzetu, " +
                         "  doc.NUMBER as numer_dokumentu " +
                         "FROM SESSIONINFOFGHJ si " +
@@ -1437,6 +1450,8 @@ ResultSet rsRent = stmtRent.executeQuery();
                                 json.append("\"data_do\":").append(rs.getLong("data_do")).append(",");
                                 json.append("\"cena\":").append(rs.getDouble("cena")).append(",");
                                 json.append("\"zaplacono\":").append(rs.getDouble("zaplacono")).append(",");
+                                json.append("\"rabat_procent\":").append(rs.getDouble("rabat_procent")).append(",");
+                                json.append("\"rabat_kwota\":").append(rs.getDouble("rabat_kwota")).append(",");
                                 json.append("\"numer_dokumentu\":\"").append(escapeJson(rs.getString("numer_dokumentu"))).append("\"");
                                 json.append("}");
                             }

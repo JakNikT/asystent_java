@@ -33,6 +33,11 @@ export interface ClientDate {
     // Tylko FireSnow: umowa (RENTDOCUMENT_ID) i jej numer
     dokument_id?: number;
     numer?: string;
+    // Tylko FireSnow: rabat (procent i kwota), dni gratis i uwagi do umowy
+    rabat_procent?: number;
+    rabat_kwota?: number;
+    dni_gratis?: number;
+    uwagi?: string;
 }
 
 /**
@@ -53,6 +58,9 @@ export interface ClientEquipment {
     source: string;
     dlugosc: number | null;
     liczba_dni: number;
+    // Tylko FireSnow: rabat pozycji
+    rabat_procent?: number;
+    rabat_kwota?: number;
 }
 
 /**

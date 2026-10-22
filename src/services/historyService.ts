@@ -119,6 +119,11 @@ export interface DateRange {
   sezon: string;
   dokument_id?: number; // Tylko FireSnow: ID umowy
   numer?: string; // Tylko FireSnow: numer umowy
+  // Tylko FireSnow: rabat umowy (procent i kwota), dni gratis i uwagi do umowy
+  rabat_procent?: number;
+  rabat_kwota?: number;
+  dni_gratis?: number;
+  uwagi?: string;
 }
 
 /**
@@ -155,6 +160,9 @@ export interface HistoryEquipmentData {
   source: 'history' | 'firesnow';
   dlugosc?: number | null;
   liczba_dni?: number;
+  // Tylko FireSnow: rabat pozycji
+  rabat_procent?: number;
+  rabat_kwota?: number;
 }
 
 /**

@@ -95,6 +95,12 @@ export interface FireSnowHistoryContract {
   liczba_pozycji: number;
   cena: number;
   zaplacono: number;
+  uwagi: string | null;
+  rabat_procent_umowy: number; // ułamek: 0.15 = 15%
+  rabat_kwota_umowy: number;
+  rabat_procent_pozycji_max: number; // największy rabat procentowy z pozycji (ułamek)
+  rabat_kwota_pozycji: number; // suma rabatów kwotowych pozycji
+  bonus_ms: number; // dni gratis w ms (86400000 = 1 dzień)
 }
 
 /**
@@ -110,6 +116,8 @@ export interface FireSnowHistoryPosition {
   cena: number;
   zaplacono: number;
   numer_dokumentu: string;
+  rabat_procent: number; // ułamek: 0.15 = 15%
+  rabat_kwota: number;
 }
 
 /**
