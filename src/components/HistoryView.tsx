@@ -5,7 +5,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { HistoryService } from '../services/historyService';
-import type { ClientData, DateRange, HistoryEquipmentData, HistorySource } from '../services/historyService';
+import type { ClientGroup, HistoryDateRange, HistoryEquipmentData, HistorySource } from '../services/historyService';
 import { createLogger } from '../utils/logger';
 
 interface HistoryViewProps {
@@ -21,13 +21,24 @@ const SOURCE_LABELS: Record<HistorySource, string> = {
   mysql: 'Archiwum 2012–2023'
 };
 
+const SourceNotice: React.FC<{ sources: HistorySource[] }> = ({ sources }) => {
+  if (sources.length === 0) return null;
+  return (
+    <div className="bg-yellow-600/30 border border-yellow-500/50 text-yellow-100 p-3 rounded-lg mb-4">
+      {sources.includes('firesnow')
+        ? 'FireSnow niedostępny, pokazano tylko archiwum.'
+        : 'Archiwum 2012–2023 niedostępne, pokazano tylko FireSnow.'}
+    </div>
+  );
+};
+
 export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   const [step, setStep] = useState<HistoryStep>('search');
   const [searchTerm, setSearchTerm] = useState('');
-  const [clients, setClients] = useState<ClientData[]>([]);
-  const [selectedClient, setSelectedClient] = useState<ClientData | null>(null);
-  const [dates, setDates] = useState<DateRange[]>([]);
-  const [selectedDate, setSelectedDate] = useState<DateRange | null>(null);
+  const [clients, setClients] = useState<ClientGroup[]>([]);
+  const [selectedClient, setSelectedClient] = useState<ClientGroup | null>(null);
+  const [dates, setDates] = useState<HistoryDateRange[]>([]);
+  const [selectedDate, setSelectedDate] = useState<HistoryDateRange | null>(null);
   const [equipment, setEquipment] = useState<HistoryEquipmentData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>('');
@@ -63,15 +74,19 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     return () => clearTimeout(timeoutId);
   }, [searchTerm, step]);
 
-  // Pobieranie dat po wybraniu klienta
-  const handleClientSelect = useCallback(async (client: ClientData) => {
+  // Pobieranie dat po wybraniu klienta (okresy z obu źródeł)
+  const handleClientSelect = useCallback(async (client: ClientGroup) => {
     setSelectedClient(client);
     setIsLoading(true);
     setError('');
 
     try {
-      const clientDates = await HistoryService.getClientDates(client);
-      setDates(clientDates);
+      const result = await HistoryService.getClientDates(client);
+      setDates(result.dates);
+      setUnavailableSources(result.unavailableSources);
+      if (result.unavailableSources.length === client.sources.length) {
+        setError('Żadne źródło historii nie jest dostępne. Sprawdź połączenie z bazami danych.');
+      }
       setStep('dates');
     } catch (err) {
       logger.error('Błąd pobierania dat:', err);
@@ -81,16 +96,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     }
   }, []);
 
-  // Pobieranie sprzętu po wybraniu daty
-  const handleDateSelect = useCallback(async (dateRange: DateRange) => {
-    if (!selectedClient) return;
-
+  // Pobieranie sprzętu po wybraniu daty (źródło wynika z okresu)
+  const handleDateSelect = useCallback(async (dateRange: HistoryDateRange) => {
     setSelectedDate(dateRange);
     setIsLoading(true);
     setError('');
 
     try {
-      const clientEquipment = await HistoryService.getClientEquipment(selectedClient, dateRange);
+      const clientEquipment = await HistoryService.getClientEquipment(dateRange);
       setEquipment(clientEquipment);
       setStep('equipment');
     } catch (err) {
@@ -99,7 +112,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
     } finally {
       setIsLoading(false);
     }
-  }, [selectedClient]);
+  }, []);
 
   // Funkcja powrotu do poprzedniego kroku
   const handleBack = () => {
@@ -116,7 +129,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
   };
 
   // FireSnow zwraca cenę per pozycja (sumujemy), archiwum MySQL kwotę całej umowy w każdym wierszu
-  const totalPrice = selectedClient?.source === 'firesnow'
+  const totalPrice = selectedDate?.source === 'firesnow'
     ? String(Math.round(equipment.reduce((sum, item) => sum + (parseFloat(item.cena) || 0), 0) * 100) / 100)
     : equipment[0]?.cena || '0';
 
@@ -142,7 +155,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                 {step === 'search' && 'Wyszukaj klienta po nazwisku'}
                 {step === 'dates' && selectedClient && `Klient: ${selectedClient.pelna_nazwa}`}
                 {step === 'equipment' && selectedClient && selectedDate &&
-                  `Klient: ${selectedClient.pelna_nazwa} - ${selectedDate.od} - ${selectedDate.do}`}
+                  `Klient: ${selectedClient.pelna_nazwa} - ${selectedDate.od} - ${selectedDate.do} (${SOURCE_LABELS[selectedDate.source]})`}
               </p>
             </div>
 
@@ -193,13 +206,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               </div>
             )}
 
-            {error === '' && unavailableSources.length > 0 && (
-              <div className="bg-yellow-600/30 border border-yellow-500/50 text-yellow-100 p-3 rounded-lg mb-4">
-                {unavailableSources.includes('firesnow')
-                  ? 'FireSnow niedostępny, pokazano tylko archiwum.'
-                  : 'Archiwum 2012–2023 niedostępne, pokazano tylko FireSnow.'}
-              </div>
-            )}
+            {error === '' && <SourceNotice sources={unavailableSources} />}
 
             {isLoading && (
               <div className="text-white text-center py-4">
@@ -214,7 +221,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                 </h3>
                 {clients.map((client) => (
                   <button
-                    key={`${client.source}-${client.id}`}
+                    key={client.key}
                     onClick={() => handleClientSelect(client)}
                     className="w-full text-left p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 transition-all shadow-sm"
                   >
@@ -222,9 +229,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
                       <div className="text-white font-semibold">
                         {client.pelna_nazwa}
                       </div>
-                      <span className="text-xs uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-[#A6C2EF] whitespace-nowrap">
-                        {SOURCE_LABELS[client.source]}
-                      </span>
+                      <div className="flex gap-1">
+                        {client.sources.map((source) => (
+                          <span key={source} className="text-xs uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-[#A6C2EF] whitespace-nowrap">
+                            {SOURCE_LABELS[source]}
+                          </span>
+                        ))}
+                      </div>
                     </div>
                     {client.telefon && (
                       <div className="text-[#A6C2EF] text-sm mt-1">
@@ -257,6 +268,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               </div>
             )}
 
+            {error === '' && <SourceNotice sources={unavailableSources} />}
+
             {isLoading && (
               <div className="text-white text-center py-4">
                 Pobieranie dat...
@@ -267,12 +280,17 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
               <div className="space-y-2">
                 {dates.map((dateRange, index) => (
                   <button
-                    key={`${dateRange.dokument_id ?? ''}-${dateRange.od}-${dateRange.do}-${index}`}
+                    key={`${dateRange.source}-${dateRange.client_id}-${dateRange.dokument_id ?? ''}-${dateRange.od}-${dateRange.do}-${index}`}
                     onClick={() => handleDateSelect(dateRange)}
                     className="w-full text-left p-4 bg-[#0f2744]/50 rounded-lg border border-white/5 hover:bg-[#0f2744]/70 hover:border-white/20 transition-all shadow-sm"
                   >
-                    <div className="text-white font-semibold">
-                      {dateRange.numer ? `${dateRange.numer}: ` : ''}Od: {dateRange.od} - Do: {dateRange.do} {dateRange.sezon ? `(Sezon: ${dateRange.sezon})` : ''}
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-white font-semibold">
+                        {dateRange.numer ? `${dateRange.numer}: ` : ''}Od: {dateRange.od} - Do: {dateRange.do} {dateRange.sezon ? `(Sezon: ${dateRange.sezon})` : ''}
+                      </div>
+                      <span className="text-xs uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-[#A6C2EF] whitespace-nowrap">
+                        {SOURCE_LABELS[dateRange.source]}
+                      </span>
                     </div>
                     <div className="text-[#A6C2EF] text-sm mt-1">
                       {dateRange.liczba_pozycji} {dateRange.liczba_pozycji === 1 ? 'pozycja' : 'pozycji'}
@@ -293,8 +311,11 @@ export const HistoryView: React.FC<HistoryViewProps> = ({ onBack }) => {
         {/* Krok 3: Wyświetlenie sprzętu */}
         {step === 'equipment' && selectedClient && selectedDate && (
           <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6">
-            <h3 className="text-white font-semibold mb-4 text-lg">
+            <h3 className="text-white font-semibold mb-4 text-lg flex items-center gap-2">
               Wypożyczony sprzęt:
+              <span className="text-xs uppercase tracking-wider px-2 py-1 rounded bg-white/10 text-[#A6C2EF] whitespace-nowrap">
+                {SOURCE_LABELS[selectedDate.source]}
+              </span>
             </h3>
 
             {error && (
