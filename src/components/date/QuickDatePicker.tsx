@@ -33,7 +33,7 @@ export interface QuickDatePickerProps {
   quickFrom?: string;
   /** Wstrzykiwana data "dzisiaj" (testy) */
   today?: Date;
-  /** Etykieta pola, na które przeskoczy fokus po zatwierdzeniu daty (np. 'Data do'); nie po czyszczeniu ani po 4 cyfrach z rokiem auto */
+  /** Etykieta pola, na które przeskoczy fokus po zatwierdzeniu nowej daty (np. 'Data do'); nie po czyszczeniu, po 4 cyfrach z rokiem auto ani po poprawce pojedynczego segmentu istniejącej daty */
   nextFieldLabel?: string;
 }
 
@@ -115,10 +115,10 @@ export const QuickDatePicker: React.FC<QuickDatePickerProps> = ({
     next?.focus();
   };
 
-  const commit = (iso: string) => {
+  const commit = (iso: string, advance = mode === 'full') => {
     onChange(iso);
     close();
-    focusNextField();
+    if (advance) focusNextField();
   };
 
   const resolve = (day: number, month: number) =>
@@ -216,7 +216,7 @@ export const QuickDatePicker: React.FC<QuickDatePickerProps> = ({
     if (buffer.length === 4) {
       onChange(iso); // zapis z rokiem auto, panel zostaje otwarty na ewentualny rok
     } else if (buffer.length === 6 || buffer.length === 8) {
-      commit(iso);
+      commit(iso, true); // applyBuffer ustawia tryb 'full' w tym samym ticku - nie polegamy na stanie
     }
   };
 

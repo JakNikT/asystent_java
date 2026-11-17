@@ -214,5 +214,20 @@ describe('QuickDatePicker', () => {
       for (const key of '15012027') fireEvent.keyDown(fromB, { key });
       expect(document.activeElement).toBe(toB);
     });
+
+    it('poprawka pojedynczego segmentu istniejącej daty nie przenosi fokusu', () => {
+      render(
+        <div>
+          <Controlled spy={vi.fn()} nextFieldLabel="Data do" initial="2027-01-15" />
+          <Controlled spy={vi.fn()} label="Data do" />
+        </div>,
+      );
+      const from = byId('qdp-data-od-field');
+      from.focus();
+      fireEvent.click(byId('qdp-data-od-seg-day'));
+      fireEvent.click(byId('qdp-data-od-day-20'));
+      expect(byId('qdp-data-od-seg-day').textContent).toBe('20');
+      expect(document.activeElement).toBe(from);
+    });
   });
 });
