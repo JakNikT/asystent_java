@@ -160,4 +160,59 @@ describe('QuickDatePicker', () => {
     expect(byId('qdp-data-od-panel')).toBeNull();
     expect(spy).not.toHaveBeenCalled();
   });
+
+  describe('przeskok na "Data do"', () => {
+    const Pair: React.FC = () => (
+      <div>
+        <Controlled spy={vi.fn()} nextFieldLabel="Data do" />
+        <Controlled spy={vi.fn()} label="Data do" />
+      </div>
+    );
+
+    it('po zatwierdzeniu daty od (Enter) fokus ląduje w polu "Data do"', () => {
+      render(<Pair />);
+      const from = byId('qdp-data-od-field');
+      from.focus();
+      for (const key of ['1', '5', '0', '1']) fireEvent.keyDown(from, { key });
+      // 4 cyfry: rok auto, użytkownik może jeszcze dopisać rok - bez przeskoku
+      expect(document.activeElement).toBe(from);
+
+      fireEvent.keyDown(from, { key: 'Enter' });
+      expect(document.activeElement).toBe(byId('qdp-data-do-field'));
+    });
+
+    it('pełna data z rokiem (8 cyfr) przeskakuje od razu', () => {
+      render(<Pair />);
+      const from = byId('qdp-data-od-field');
+      for (const key of '15012027') fireEvent.keyDown(from, { key });
+      expect(document.activeElement).toBe(byId('qdp-data-do-field'));
+    });
+
+    it('czyszczenie daty nie przenosi fokusu', () => {
+      render(<Pair />);
+      const from = byId('qdp-data-od-field');
+      from.focus();
+      fireEvent.keyDown(from, { key: 'Delete' });
+      expect(document.activeElement).toBe(from);
+    });
+
+    it('przy zdublowanych formularzach skacze do "Data do" z tego samego formularza', () => {
+      const { container } = render(
+        <>
+          <div id="a">
+            <Controlled spy={vi.fn()} nextFieldLabel="Data do" />
+            <Controlled spy={vi.fn()} label="Data do" />
+          </div>
+          <div id="b">
+            <Controlled spy={vi.fn()} nextFieldLabel="Data do" />
+            <Controlled spy={vi.fn()} label="Data do" />
+          </div>
+        </>,
+      );
+      const fromB = container.querySelectorAll<HTMLElement>('[id="qdp-data-od-field"]')[1];
+      const toB = container.querySelectorAll<HTMLElement>('[id="qdp-data-do-field"]')[1];
+      for (const key of '15012027') fireEvent.keyDown(fromB, { key });
+      expect(document.activeElement).toBe(toB);
+    });
+  });
 });

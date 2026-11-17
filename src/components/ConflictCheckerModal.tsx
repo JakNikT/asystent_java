@@ -130,6 +130,7 @@ export const ConflictCheckerModal: React.FC<ConflictCheckerModalProps> = ({
             }}
             disabled={isLoading}
             maxDate={dateTo || undefined}
+            nextFieldLabel="Data do"
           />
           
           <DatePickerButton

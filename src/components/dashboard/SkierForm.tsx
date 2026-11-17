@@ -42,6 +42,7 @@ const SkierForm: React.FC<SkierFormProps> = ({
             value={formData.dateFrom}
             onChange={(date) => onDateChange('dateFrom', date)}
             maxDate={formData.dateTo || undefined}
+            nextFieldLabel="Data do"
           />
           <DatePickerButton
             label="Data do"

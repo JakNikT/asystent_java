@@ -31,6 +31,8 @@ interface DatePickerButtonProps {
   disabled?: boolean;
   /** Data bazowa dla skrótów „+N dni” (np. Data od przy polu Data do) – tylko desktop */
   quickFrom?: string;
+  /** Etykieta pola, na które przeskoczy fokus po zatwierdzeniu daty (tylko desktop) */
+  nextFieldLabel?: string;
 }
 
 // src/components/DatePickerButton.tsx: Motyw dopasowany do aplikacji (primary: #386BB2, ciemne tło)
@@ -98,6 +100,7 @@ export const DatePickerButton: React.FC<DatePickerButtonProps> = ({
   maxDate,
   disabled = false,
   quickFrom,
+  nextFieldLabel,
 }) => {
   // src/components/DatePickerButton.tsx: Ekran desktop/tablet (szerokość >= 768px lub mysz) -> szybki wybór DD/MM/RRRR; małe ekrany mobilne -> kalendarz MUI
   const isDesktop = useMediaQuery('(min-width: 768px), (pointer: fine)', { noSsr: true });
@@ -113,6 +116,7 @@ export const DatePickerButton: React.FC<DatePickerButtonProps> = ({
         maxDate={maxDate}
         disabled={disabled}
         quickFrom={quickFrom}
+        nextFieldLabel={nextFieldLabel}
       />
     );
   }

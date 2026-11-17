@@ -33,6 +33,8 @@ export interface QuickDatePickerProps {
   quickFrom?: string;
   /** Wstrzykiwana data "dzisiaj" (testy) */
   today?: Date;
+  /** Etykieta pola, na które przeskoczy fokus po zatwierdzeniu daty (np. 'Data do'); nie po czyszczeniu ani po 4 cyfrach z rokiem auto */
+  nextFieldLabel?: string;
 }
 
 const MONTHS = ['sty', 'lut', 'mar', 'kwi', 'maj', 'cze', 'lip', 'sie', 'wrz', 'paź', 'lis', 'gru'];
@@ -68,6 +70,7 @@ export const QuickDatePicker: React.FC<QuickDatePickerProps> = ({
   disabled = false,
   quickFrom,
   today: todayProp,
+  nextFieldLabel,
 }) => {
   const today = todayProp ?? new Date();
   const todayISO = dateToISO(today);
@@ -101,9 +104,21 @@ export const QuickDatePicker: React.FC<QuickDatePickerProps> = ({
     resetBuffer();
   };
 
+  /** Fokus na najbliższym kolejnym (w kolejności DOM) polu o podanej etykiecie - odporne na zdublowane formularze */
+  const focusNextField = () => {
+    if (!nextFieldLabel || !fieldRef.current) return;
+    const source = fieldRef.current;
+    const nextId = `qdp-${slugify(nextFieldLabel) || 'data'}-field`;
+    const next = Array.from(document.querySelectorAll<HTMLElement>(`[id="${nextId}"]`)).find(
+      (el) => source.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+    next?.focus();
+  };
+
   const commit = (iso: string) => {
     onChange(iso);
     close();
+    focusNextField();
   };
 
   const resolve = (day: number, month: number) =>

@@ -1267,6 +1267,7 @@ export const ReservationsView: React.FC<ReservationsViewProps> = ({ onBackToSear
                         value={dateFrom}
                         onChange={setDateFrom}
                         maxDate={dateTo || undefined}
+                        nextFieldLabel="Data do"
                       />
                     </div>
                     <div className="flex-1">
