@@ -1149,6 +1149,7 @@ ResultSet rsRent = stmtRent.executeQuery();
                     "LEFT JOIN ABSTRACTENTITYCM ae_parent ON rg_parent.ID = ae_parent.ID " +
                     "WHERE rg_parent.ID IN (" + EQUIPMENT_GROUPS + ") " +
                     "  AND (e.REMOVED = '0' OR e.REMOVED IS NULL) " +
+                    "  AND e.ACTIVE = '1' " +  // Tylko sprzęt ze statusem "aktywny" w FireSnow
                     "ORDER BY rg_parent.ID, rg_sub.ID, e.NAME";
                 
                 Statement stmt = conn.createStatement();
