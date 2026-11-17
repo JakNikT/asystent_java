@@ -1,3 +1,5 @@
+# Szablon konfiguracji. Skopiuj do config.properties (plik lokalny, ignorowany przez git)
+# i ustaw db.url na ścieżkę bazy FireSnow na tej maszynie.
 # FireSnow Bridge API - Konfiguracja (readonly file mode)
 db.url=jdbc:hsqldb:file:C:/database/FireSport_database_4;readonly=true;ifexists=true
 db.user=SA

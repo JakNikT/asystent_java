@@ -102,7 +102,7 @@ DB_NAME=sprzet_narciarski
 DB_HISTORY_NAME=history
 ```
 
-FireSnow Bridge config in `FireSnowBridge/config.properties`:
+FireSnow Bridge config in `FireSnowBridge/config.properties` (local per machine, git-ignored; copy from `config.properties.example`):
 ```properties
 api.port=8081
 db.url=jdbc:hsqldb:file:/path/to/FireSport_database_4;readonly=true

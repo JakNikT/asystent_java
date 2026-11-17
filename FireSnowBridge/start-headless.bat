@@ -11,6 +11,10 @@ if not exist "lib\hsqldb.jar" (
     echo Brak pliku lib\hsqldb.jar
     exit /b 1
 )
+if not exist "config.properties" (
+    echo Brak pliku config.properties - skopiuj config.properties.example do config.properties i ustaw db.url
+    exit /b 1
+)
 
 REM Szukanie Javy: portable jdk\ -> JAVA_HOME -> PATH -> stare sciezki
 set "JAVA_CMD="

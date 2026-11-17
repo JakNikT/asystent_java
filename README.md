@@ -285,7 +285,7 @@ LOG_DIR=logs
 
 ### FireSnow Bridge
 
-Konfiguracja w `FireSnowBridge/config.properties`:
+Konfiguracja w `FireSnowBridge/config.properties` (plik lokalny dla maszyny, ignorowany przez git - skopiuj z `config.properties.example` i ustaw `db.url`):
 ```properties
 api.port=8081
 db.url=jdbc:hsqldb:file:C:/FireSoft/FireSnowServer20/database/FireSport_database_4;readonly=true

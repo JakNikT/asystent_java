@@ -74,3 +74,5 @@ FireSnowBridge/lib/*.tmp/
 # Narzędzia AI (scratch)
 .cursor/
 .gemini/
+# Konfiguracja bridge'a jest lokalna dla maszyny (szablon: FireSnowBridge/config.properties.example)
+FireSnowBridge/config.properties
