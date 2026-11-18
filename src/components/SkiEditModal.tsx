@@ -243,7 +243,7 @@ export const SkiEditModal: React.FC<SkiEditModalProps> = ({
               <option value={-1}>✨ Wszystkie ({skisInGroup.length} szt.)</option>
               {skisInGroup.map((s, idx) => (
                 <option key={s.ID} value={idx}>
-                  {idx + 1}/{s.KOD}
+                  {s.NUMER ?? idx + 1}/{s.KOD}
                 </option>
               ))}
             </select>

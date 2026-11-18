@@ -126,6 +126,7 @@ interface ParsedEquipmentName {
     NAZWA: string;  // Marka + model (bez długości, rozmiaru, roku, kodu, typu)
     DLUGOSC: number | null;
     ROK: number | null;
+    NUMER: number | null;  // Numer sztuki z nazwy (//09, /09, #09)
 }
 
 /**
@@ -137,7 +138,8 @@ export function parseEquipmentName(nazwa: string | null | undefined): ParsedEqui
     const result: ParsedEquipmentName = {
         NAZWA: '',  // Marka + model (bez długości, rozmiaru, roku, kodu, typu)
         DLUGOSC: null,
-        ROK: null
+        ROK: null,
+        NUMER: null
     };
 
     if (!nazwa) return result;
@@ -180,6 +182,12 @@ export function parseEquipmentName(nazwa: string | null | undefined): ParsedEqui
         result.ROK = parseInt(yearMatch[1]!);
         // Usuń rok z nazwy
         cleanName = cleanName.replace(/\s*\/\d{4}(?!\d)\s*/g, ' ');
+    }
+
+    // Wyciągnij numer sztuki (np. "//09" → 9) przed jego usunięciem z nazwy
+    const itemNumberMatch = cleanName.match(/(?:\/\/|\/|#)(\d{2,3})(?!\d)/);
+    if (itemNumberMatch) {
+        result.NUMER = parseInt(itemNumberMatch[1]!, 10);
     }
 
     // Usuń numery nart w różnych formatach (2-3 cyfry po "//", "/" lub "#")
@@ -239,6 +247,7 @@ export function mapFireSnowToSkiData(fireSnowItem: FireSnowEquipment): Equipment
         MARKA: marka,  // Tylko pierwsze słowo (np. "HEAD")
         MODEL: modelWithYear,  // Reszta + rocznik (np. "SHAPE 3.0 (2025)")
         DLUGOSC: parsedName.DLUGOSC || 0,
+        NUMER: parsedName.NUMER ?? undefined,
         ILOSC: 1,  // Zawsze 1 (każda sztuka osobno)
         POZIOM: poziomValue,
         PLEC: plec,

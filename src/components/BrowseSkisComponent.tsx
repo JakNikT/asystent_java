@@ -232,6 +232,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       if (group) group.push(s);
       else groups.set(key, [s]);
     }
+    for (const group of groups.values()) {
+      group.sort((a, b) => (a.NUMER ?? Number.MAX_SAFE_INTEGER) - (b.NUMER ?? Number.MAX_SAFE_INTEGER));
+    }
     return groups;
   }, [allSkis]);
 
@@ -415,7 +418,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       }
 
       // Stwórz tooltip z informacjami
-      let tooltip = `Sztuka ${index + 1} - ${statusText}\nKod: ${s.KOD || 'Brak kodu'}`;
+      let tooltip = `Sztuka ${s.NUMER ?? index + 1} - ${statusText}\nKod: ${s.KOD || 'Brak kodu'}`;
 
       if (availabilityInfo) {
         tooltip += `\n\n${statusEmoji} ${availabilityInfo.message}`;
@@ -466,7 +469,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           className={`inline-block w-4 h-4 text-white text-xs font-bold rounded mr-1 ${bgColor}`}
           title={tooltip}
         >
-          {index + 1}
+          {s.NUMER ?? index + 1}
         </span>
       );
     });
@@ -1670,7 +1673,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                                   return (
                                     <div key={s.KOD || `no-code-${index}`} className="flex items-center gap-1 text-xs">
                                       <span className={`inline-block w-5 h-5 text-white text-xs font-bold rounded flex items-center justify-center ${bgColor}`}>
-                                        {index + 1}
+                                        {s.NUMER ?? index + 1}
                                       </span>
                                       <span className="text-white/80 truncate" title={s.KOD || 'Brak kodu'}>
                                         {s.KOD || '-'}

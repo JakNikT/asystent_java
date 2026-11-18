@@ -11,6 +11,7 @@ export interface SkiData {
   MARKA: string;
   MODEL: string;
   DLUGOSC: number;                     // dla butów: rozmiar w cm (długość wkładki)
+  NUMER?: number;                      // numer sztuki z nazwy w FireSnow (np. //09 → 9)
   ILOSC: number;                       // zawsze 1 (każda sztuka osobno)
   POZIOM: string;                      // opcjonalnie puste dla butów/desek
   PLEC: string;                        // M/K/U

@@ -165,6 +165,7 @@ export interface Equipment {
   MARKA: string;
   MODEL: string;
   DLUGOSC: number;
+  NUMER?: number;  // numer sztuki z nazwy w FireSnow (np. //09 → 9)
   ILOSC: number;
   POZIOM?: string;
   PLEC: string;
