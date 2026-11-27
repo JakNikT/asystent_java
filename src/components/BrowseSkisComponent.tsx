@@ -57,6 +57,9 @@ interface SortConfig {
   direction: SortDirection;
 }
 
+/** Kolumna "Akcja" (przycisk Edytuj) w tabeli - tymczasowo wyłączona */
+const SHOW_ACTION_COLUMN = false;
+
 /**
  * Klucz grupy "ten sam model": marka, model, długość, typ sprzętu i kategoria
  */
@@ -1228,7 +1231,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           {/* Dostępność */}
                           <th className="px-4 py-2"></th>
                           {/* Akcja - opcjonalnie */}
-                          {isEmployeeMode && <th className="px-4 py-2"></th>}
+                          {SHOW_ACTION_COLUMN && isEmployeeMode && <th className="px-4 py-2"></th>}
                         </tr>
                         {/* NOWA ZMIANA: Nowy układ kolumn */}
                         <tr>
@@ -1336,7 +1339,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                               </button>
                             </div>
                           </th>
-                          {isEmployeeMode && (
+                          {SHOW_ACTION_COLUMN && isEmployeeMode && (
                             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Akcja</th>
                           )}
                         </tr>
@@ -1393,7 +1396,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             <td className="px-4 py-4 whitespace-nowrap text-sm">
                               {generateAvailabilitySquares(ski)}
                             </td>
-                            {isEmployeeMode && (
+                            {SHOW_ACTION_COLUMN && isEmployeeMode && (
                               <td className="px-4 py-4 whitespace-nowrap text-sm">
                                 <button
                                   onClick={() => handleEdit(ski)}
