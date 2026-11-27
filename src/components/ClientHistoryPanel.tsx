@@ -60,7 +60,7 @@ export const ClientHistoryPanel: React.FC<ClientHistoryPanelProps> = ({ client, 
   }, [client]);
 
   return (
-    <aside className="fixed top-0 right-0 bottom-0 w-full sm:w-[440px] z-40 bg-[#0f2744] border-l-2 border-[#2C699F] shadow-2xl flex flex-col">
+    <aside className="fixed top-0 right-0 bottom-0 w-full sm:w-[380px] z-40 bg-[#0f2744] border-l-2 border-[#2C699F] shadow-2xl flex flex-col">
       <div className="flex items-start justify-between gap-2 p-4 border-b border-white/10">
         <div className="min-w-0">
           <h2 className="text-white font-bold text-lg truncate">📜 {client.pelna_nazwa}</h2>

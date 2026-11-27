@@ -57,6 +57,10 @@ interface BrowseSkisComponentProps {
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
 type SortDirection = 'asc' | 'desc';
 
+/** Zwarta tabela sprzętu przy otwartym panelu historii: mniejsze odstępy i czcionka, zawijanie tekstu */
+const HISTORY_PANEL_COMPACT_TABLE =
+  '[&_th]:!px-1.5 [&_td]:!px-1.5 [&_td]:!py-2 [&_td]:!whitespace-normal [&_td]:!text-xs [&_th]:!text-[10px] [&_th]:!whitespace-normal';
+
 interface SortConfig {
   field: SortField;
   direction: SortDirection;
@@ -104,6 +108,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  // Panel historii zajmuje prawą część ekranu: tabela przechodzi w tryb zwarty, żeby mieściła się cała
+  const isHistoryPanelOpen = !!client && isHistoryOpen;
   // src/components/BrowseSkisComponent.tsx: Stan dla filtrów długości (mobile view dla VIP/TOP)
   const [selectedLengthFilters, setSelectedLengthFilters] = useState<Set<string>>(new Set());
   // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
@@ -1031,7 +1037,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           />
         )}
 
-        <div className={`p-3 lg:p-6 ${client && isHistoryOpen ? 'sm:pr-[460px]' : ''}`}>
+        <div className={`p-3 lg:p-6 ${isHistoryPanelOpen ? 'sm:pr-[400px]' : ''}`}>
           <div className="max-w-8xl mx-auto">
             {/* Header z wyszukiwaniem - responsywny */}
             <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
@@ -1145,7 +1151,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                 {/* Tabela sprzętu - widoczna tylko na desktop */}
                 <div className="hidden lg:block bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
+                    <table className={`w-full ${isHistoryPanelOpen ? HISTORY_PANEL_COMPACT_TABLE : ''}`}>
                       <thead className="bg-[#0f2744]/50 border-b border-white/10">
                         {/* Wiersz z polami edycji nad nagłówkami kolumn */}
                         <tr className="bg-[#0f2744]/70 border-b border-white/10">
@@ -1775,7 +1781,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           />
         )}
 
-        {client && isHistoryOpen && (
+        {isHistoryPanelOpen && client && (
           <ClientHistoryPanel client={client} onClose={() => setIsHistoryOpen(false)} />
         )}
 
