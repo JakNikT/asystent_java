@@ -18,8 +18,7 @@ import type { ClientGroup } from '../services/historyService';
 import {
   validateHeightRealtime,
   validateWeightRealtime,
-  validateLevelRealtime,
-  validateGenderRealtime
+  validateLevelRealtime
 } from '../utils/formValidation';
 
 const logger = createLogger('BrowseSkisComponent');
@@ -54,7 +53,7 @@ interface BrowseSkisComponentProps {
   onClientChange?: (client: ClientGroup | null) => void;
 }
 
-type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
+type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PRZEZNACZENIE' | 'FLEX';
 type SortDirection = 'asc' | 'desc';
 
 interface SortConfig {
@@ -174,14 +173,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // Zmienna pomocnicza do sprawdzania czy wyświetlamy buty (dla ukrywania kolumn)
-  // Dla butów junior, snowboard i dorosłych ukrywamy kolumny: Wzrost, Waga, Poziom, Płeć, Przeznaczenie, Atuty
+  // Dla butów junior, snowboard i dorosłych ukrywamy kolumny: Wzrost, Waga, Poziom, Przeznaczenie, Atuty
   const shouldHideColumns = activeFilter === 'BUTY_JUNIOR' || activeFilter === 'BUTY_SNOWBOARD' || activeFilter === 'DOROSLE';
-  // Dla nart junior ukrywamy tylko: Płeć, Przeznaczenie, Atuty (Wzrost, Waga, Poziom pozostają widoczne)
+  // Dla nart junior ukrywamy tylko: Przeznaczenie, Atuty (Wzrost, Waga, Poziom pozostają widoczne)
   const shouldHideJuniorSkiColumns = activeFilter === 'JUNIOR';
-  // Widok "Narty VIP": dostępność pod pozycją (bez osobnej kolumny) i bez kolumny Płeć
-  const isVipView = activeFilter === 'VIP';
-  const showAvailabilityColumn = !isVipView;
-  const showGenderColumn = !shouldHideColumns && !shouldHideJuniorSkiColumns && !isVipView;
+  // Widoki "Narty VIP" i "Narty TOP": dostępność pod pozycją (bez osobnej kolumny)
+  const isAvailabilityUnderRow = activeFilter === 'VIP' || activeFilter === 'TOP';
+  const showAvailabilityColumn = !isAvailabilityUnderRow;
 
   // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
   useEffect(() => {
@@ -206,9 +204,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     setEditWzrost(browseCriteria.wzrost?.toString() || '');
     setEditWaga(browseCriteria.waga?.toString() || '');
     setEditPoziom(browseCriteria.poziom?.toString() || '');
-    setEditPlec(browseCriteria.plec?.toUpperCase() || '');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [browseCriteria.wzrost, browseCriteria.waga, browseCriteria.poziom, browseCriteria.plec]);
+  }, [browseCriteria.wzrost, browseCriteria.waga, browseCriteria.poziom]);
 
   // NOWY STAN: Modal edycji/dodawania
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -218,11 +215,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // Toast notifications - używamy useToast hook
   const { showSuccess } = useToast();
 
-  // NOWY STAN: Pola edycji kryteriów (wzrost, waga, poziom, płeć)
+  // NOWY STAN: Pola edycji kryteriów (wzrost, waga, poziom)
   const [editWzrost, setEditWzrost] = useState<string>('');
   const [editWaga, setEditWaga] = useState<string>('');
   const [editPoziom, setEditPoziom] = useState<string>('');
-  const [editPlec, setEditPlec] = useState<string>('');
 
   // NOWY STAN: Auto-refresh dostępności
   const [isRefreshingAvailability, setIsRefreshingAvailability] = useState<boolean>(false);
@@ -508,7 +504,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   // NOWE FUNKCJE: Obsługa edycji i dodawania
 
   // src/components/BrowseSkisComponent.tsx: Funkcja obsługi zmian pól edycji kryteriów
-  const handleFieldChange = (field: 'wzrost' | 'waga' | 'poziom' | 'plec', value: string) => {
+  const handleFieldChange = (field: 'wzrost' | 'waga' | 'poziom', value: string) => {
     logger.info(`BrowseSkisComponent: Zmiana pola ${field} - wartość: ${value}`);
 
     // Walidacja w czasie rzeczywistym
@@ -527,10 +523,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       const validation = validateLevelRealtime(value);
       isValid = validation.isValid;
       errorMessage = validation.message;
-    } else if (field === 'plec') {
-      const validation = validateGenderRealtime(value);
-      isValid = validation.isValid;
-      errorMessage = validation.message;
     }
 
     // Jeśli walidacja nie przeszła, nie aktualizuj wartości
@@ -546,8 +538,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       setEditWaga(value);
     } else if (field === 'poziom') {
       setEditPoziom(value);
-    } else if (field === 'plec') {
-      setEditPlec(value.toUpperCase());
     }
 
     // Przygotuj zaktualizowane kryteria
@@ -561,8 +551,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
       updatedCriteria.waga = value ? parseInt(value) : undefined;
     } else if (field === 'poziom') {
       updatedCriteria.poziom = value ? parseInt(value) : undefined;
-    } else if (field === 'plec') {
-      updatedCriteria.plec = value ? (value.toUpperCase() as 'M' | 'K' | 'W') : undefined;
     }
 
     // Wywołaj callback do aktualizacji w Dashboard
@@ -752,7 +740,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         const marka = (ski.MARKA || '').toLowerCase();
         const model = (ski.MODEL || '').toLowerCase();
         const poziom = (ski.POZIOM || '').toLowerCase();
-        const plec = (ski.PLEC || '').toLowerCase();
         const przeznaczenieRaw = (ski.PRZEZNACZENIE || '').toLowerCase();
         // Dodatkowe: sprawdź również pełne nazwy przeznaczenia (dla lepszego wyszukiwania)
         const przeznaczenieFormatted = getPurposeFullName(ski.PRZEZNACZENIE || '');
@@ -763,7 +750,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
         return marka.includes(term) ||
           model.includes(term) ||
           poziom.includes(term) ||
-          plec.includes(term) ||
           przeznaczenieRaw.includes(term) ||
           przeznaczenieFormatted.includes(term) || // Wyszukiwanie po pełnych nazwach (Slalom, Gigant, itp.)
           atuty.includes(term) ||
@@ -917,16 +903,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     return level.replace(/(\d+)([MK])/g, '$1$2 ').trim();
   };
 
-  // Funkcja formatowania płci
-  const formatGender = (gender: string) => {
-    switch (gender) {
-      case 'M': return 'Mężczyzna';
-      case 'K': return 'Kobieta';
-      case 'U': return 'Uniwersalne';
-      default: return gender;
-    }
-  };
-
   // Funkcja formatowania przeznaczenia
   const formatPurpose = (purpose: string) => {
     switch (purpose) {
@@ -951,7 +927,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   };
 
   // NOWA ZMIANA: Funkcja pomocnicza do pobierania klasy koloru
-  const getCellColorClass = (skiId: string, field: 'wzrost' | 'waga' | 'poziom' | 'plec'): string => {
+  const getCellColorClass = (skiId: string, field: 'wzrost' | 'waga' | 'poziom'): string => {
     const details = matchDetails.get(skiId);
     const color = details?.[field]?.color;
 
@@ -967,7 +943,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
-  // Przyciski odświeżania dostępności (w nagłówku kolumny Dostępność albo, w widoku VIP, kolumny Model)
+  // Przyciski odświeżania dostępności (w nagłówku kolumny Dostępność albo, w widokach VIP/TOP, kolumny Model)
   const renderAvailabilityControls = () => (
     <>
       <button
@@ -1191,7 +1167,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           <th colSpan={2} className="px-4 py-2">
                             <Input
                               type="text"
-                              placeholder="Wpisz markę, model, poziom, płeć, przeznaczenie (Slalom, Gigant)..."
+                              placeholder="Wpisz markę, model, poziom, przeznaczenie (Slalom, Gigant)..."
                               value={currentSearchState.searchTerm}
                               onChange={(e) => {
                                 updateSearchState('searchTerm', e.target.value);
@@ -1267,19 +1243,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                               />
                             </th>
                           )}
-                          {/* Pole Płeć - tylko gdy showGenderColumn */}
-                          {showGenderColumn && (
-                            <th className="px-4 py-2">
-                              <Input
-                                type="text"
-                                placeholder="M/K"
-                                value={editPlec}
-                                onChange={(e) => handleFieldChange('plec', e.target.value)}
-                                className="w-20 h-8 text-center font-bold text-sm uppercase bg-primary text-white border-transparent focus:border-blue-400 placeholder:text-white/30 rounded-md shadow-md shadow-black/30"
-                                maxLength={1}
-                              />
-                            </th>
-                          )}
                           {/* Puste komórki dla pozostałych kolumn: Przeznaczenie, Atuty (gdy widoczne) */}
                           {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                             <>
@@ -1308,7 +1271,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           >
                             <div className="flex items-center justify-center gap-2">
                               Model {renderSortIcon('MODEL')}
-                              {isVipView && (
+                              {isAvailabilityUnderRow && (
                                 <span className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
                                   <span className="normal-case text-white/70">Dostępność:</span>
                                   {renderAvailabilityControls()}
@@ -1348,16 +1311,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                               </th>
                             </>
                           )}
-                          {showGenderColumn && (
-                            <th
-                              className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                              onClick={() => handleSort('PLEC')}
-                            >
-                              <div className="flex items-center justify-center gap-2">
-                                Płeć {renderSortIcon('PLEC')}
-                              </div>
-                            </th>
-                          )}
                           {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                             <>
                               <th
@@ -1394,8 +1347,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                               {formatModelName(ski)}
-                              {/* Widok VIP: dostępność pod pozycją; w-0 min-w-full = zawijanie w szerokości komórki */}
-                              {isVipView && (
+                              {/* Widoki VIP/TOP: dostępność pod pozycją; w-0 min-w-full = zawijanie w szerokości komórki */}
+                              {isAvailabilityUnderRow && (
                                 <div className="mt-2 w-0 min-w-full">
                                   {generateAvailabilitySquares(ski)}
                                 </div>
@@ -1427,11 +1380,6 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                                   {formatLevel(ski.POZIOM)}
                                 </td>
                               </>
-                            )}
-                            {showGenderColumn && (
-                              <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
-                                {formatGender(ski.PLEC)}
-                              </td>
                             )}
                             {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                               <>
@@ -1674,15 +1622,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             </>
                           )}
 
-                          {/* Płeć, Przeznaczenie, Atuty - jeśli nie ukryte */}
+                          {/* Przeznaczenie, Atuty - jeśli nie ukryte */}
                           {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                             <>
-                              <div>
-                                <div className="text-white/60 text-xs uppercase">Płeć</div>
-                                <div className={`font-medium ${getCellColorClass(ski.ID, 'plec')}`}>
-                                  {formatGender(ski.PLEC)}
-                                </div>
-                              </div>
                               <div>
                                 <div className="text-white/60 text-xs uppercase">Przeznaczenie</div>
                                 <div className="text-white font-medium">
