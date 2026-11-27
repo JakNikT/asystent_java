@@ -6,6 +6,7 @@
 import { config } from '../config/env.js';
 import logger from '../config/logger.js';
 import { fireSnowService } from './fireSnowService.js';
+import { sortByContractOrder } from '../utils/equipmentOrder.js';
 import type { ClientSearchResult, ClientDate, ClientEquipment } from './historyService.js';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -138,7 +139,7 @@ export const fireSnowHistoryService = {
 
         const positions = await fireSnowService.getHistoryEquipment(clientId, documentId);
 
-        return positions.map(pos => {
+        const items: ClientEquipment[] = positions.map(pos => {
             const returned = pos.data_do !== 0;
             const end = returned ? pos.data_do : now;
             return {
@@ -160,5 +161,7 @@ export const fireSnowHistoryService = {
                 rabat_kwota: roundMoney(pos.rabat_kwota)
             };
         });
+
+        return sortByContractOrder(items);
     }
 };
