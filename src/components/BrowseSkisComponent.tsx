@@ -57,9 +57,9 @@ interface BrowseSkisComponentProps {
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
 type SortDirection = 'asc' | 'desc';
 
-/** Zwarta tabela sprzętu przy otwartym panelu historii: mniejsze odstępy i czcionka, zawijanie tekstu */
+/** Zwarta tabela sprzętu przy otwartym panelu historii: minimalne odstępy między kolumnami, mniejsza czcionka, zawijanie tekstu, pola filtrów dopasowane do kolumny */
 const HISTORY_PANEL_COMPACT_TABLE =
-  '[&_th]:!px-1.5 [&_td]:!px-1.5 [&_td]:!py-2 [&_td]:!whitespace-normal [&_td]:!text-xs [&_th]:!text-[10px] [&_th]:!whitespace-normal';
+  '[&_th]:!px-1 [&_td]:!px-1 [&_td]:!py-2 [&_td]:!whitespace-normal [&_td]:!text-xs [&_th]:!text-[10px] [&_th]:!whitespace-normal [&_th_input]:!w-full [&_th_input]:!min-w-0 [&_th_input]:!px-1 [&_th_.gap-2]:!gap-1';
 
 interface SortConfig {
   field: SortField;
