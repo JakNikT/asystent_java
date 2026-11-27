@@ -1345,11 +1345,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                               {formatBrandName(ski)}
                             </td>
-                            <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
+                            <td className={`px-4 py-4 whitespace-nowrap text-sm text-white font-medium ${isAvailabilityUnderRow ? 'text-center' : ''}`}>
                               {formatModelName(ski)}
-                              {/* Widoki VIP/TOP: dostępność pod pozycją; w-0 min-w-full = zawijanie w szerokości komórki */}
+                              {/* Widoki VIP/TOP: dostępność pod pozycją, wyśrodkowana z modelem; w-0 min-w-full = zawijanie w szerokości komórki */}
                               {isAvailabilityUnderRow && (
-                                <div className="mt-2 w-0 min-w-full">
+                                <div className="mt-2 w-0 min-w-full [&>div]:justify-center">
                                   {generateAvailabilitySquares(ski)}
                                 </div>
                               )}
