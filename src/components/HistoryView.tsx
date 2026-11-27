@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { HistoryService } from '../services/historyService';
+import { HistoryService, SOURCE_LABELS } from '../services/historyService';
 import type { ClientGroup, HistoryDateRange, HistoryEquipmentData, HistorySource } from '../services/historyService';
 import { createLogger } from '../utils/logger';
 
@@ -15,11 +15,6 @@ interface HistoryViewProps {
 type HistoryStep = 'search' | 'dates' | 'equipment';
 
 const logger = createLogger('HistoryView');
-
-const SOURCE_LABELS: Record<HistorySource, string> = {
-  firesnow: 'FireSnow',
-  mysql: 'Archiwum 2012–2023'
-};
 
 const SourceNotice: React.FC<{ sources: HistorySource[] }> = ({ sources }) => {
   if (sources.length === 0) return null;

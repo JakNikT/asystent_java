@@ -12,6 +12,9 @@ import { formatModelName, formatBrandName, extractFlexFromModel } from '../utils
 import { Input } from './ui/Input';
 import { DatePickerButton } from './DatePickerButton';
 import { createLogger } from '../utils/logger';
+import { ClientPickerBar } from './ClientPickerBar';
+import { ClientHistoryPanel } from './ClientHistoryPanel';
+import type { ClientGroup } from '../services/historyService';
 import {
   validateHeightRealtime,
   validateWeightRealtime,
@@ -47,6 +50,8 @@ interface BrowseSkisComponentProps {
   formData?: FormData; // NOWE: Dane formularza z datami
   formErrors?: FormErrors; // NOWE: Błędy walidacji formularza
   onDateChange?: (section: 'dateFrom' | 'dateTo', value: string) => void; // NOWE: Callback do aktualizacji dat
+  client?: ClientGroup | null; // Klient przypisany do aktywnej karty (osoby)
+  onClientChange?: (client: ClientGroup | null) => void;
 }
 
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
@@ -82,7 +87,9 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   hasSelectedGroup = true, // Domyślnie true dla kompatybilności wstecznej
   onGroupSelected,
   formData,
-  onDateChange
+  onDateChange,
+  client = null,
+  onClientChange
 }) => {
   const [sortConfig, setSortConfig] = useState<SortConfig>({
     field: 'DLUGOSC',
@@ -93,6 +100,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const [availabilityStatuses, setAvailabilityStatuses] = useState<Map<string, AvailabilityInfo>>(new Map());
   const [matchDetails, setMatchDetails] = useState<Map<string, MatchDetails>>(new Map());
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   // src/components/BrowseSkisComponent.tsx: Stan dla filtrów długości (mobile view dla VIP/TOP)
   const [selectedLengthFilters, setSelectedLengthFilters] = useState<Set<string>>(new Set());
   // ZMIENIONE: Wyświetl wszystkie wyniki na jednej stronie (paginacja wyłączona)
@@ -1007,7 +1015,20 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           </div>
         )}
 
-        <div className="p-3 lg:p-6">
+        {/* Wybór klienta dla aktywnej osoby + historia (panel boczny) */}
+        {onClientChange && (
+          <ClientPickerBar
+            client={client}
+            onClientChange={(next) => {
+              onClientChange(next);
+              if (!next) setIsHistoryOpen(false);
+            }}
+            isHistoryOpen={isHistoryOpen}
+            onToggleHistory={() => setIsHistoryOpen(open => !open)}
+          />
+        )}
+
+        <div className={`p-3 lg:p-6 ${client && isHistoryOpen ? 'sm:pr-[460px]' : ''}`}>
           <div className="max-w-8xl mx-auto">
             {/* Header z wyszukiwaniem - responsywny */}
             <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
@@ -1749,6 +1770,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
             onClose={handleCloseModal}
             onSave={handleSave}
           />
+        )}
+
+        {client && isHistoryOpen && (
+          <ClientHistoryPanel client={client} onClose={() => setIsHistoryOpen(false)} />
         )}
 
         {/* Toast notifications są teraz obsługiwane przez ToastProvider w App.tsx */}
