@@ -55,6 +55,7 @@ const Dashboard: React.FC = () => {
     handleShowAllEquipment,
     handleQuickFilterInSearch,
     handleToggleEmployeeMode,
+    updateActiveTab,
     handlePasswordSubmit,
     setIsPasswordModalOpen,
     setPasswordError,
@@ -154,7 +155,7 @@ const Dashboard: React.FC = () => {
               browseCriteria={browseCriteria}
               onBack={handleBackToSearch}
               initialFilter={computedInitialFilter}
-              tabs={tabs.map(tab => ({ id: tab.id, label: tab.label }))}
+              tabs={tabs.map(tab => ({ id: tab.id, label: tab.client?.pelna_nazwa ?? tab.label }))}
               activeTabId={activeTabId}
               onTabChange={(tabId) => setActiveTabId(tabId)}
               onAddTab={addNewTab}
@@ -170,6 +171,8 @@ const Dashboard: React.FC = () => {
               formData={formData}
               formErrors={formErrors}
               onDateChange={handleDateChange}
+              client={activeTab.client ?? null}
+              onClientChange={(client) => updateActiveTab({ client })}
             />
           </Suspense>
         </div>

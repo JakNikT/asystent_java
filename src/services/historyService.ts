@@ -15,6 +15,11 @@ const API_BASE_URL = '/api';
  */
 export type HistorySource = 'mysql' | 'firesnow';
 
+export const SOURCE_LABELS: Record<HistorySource, string> = {
+  firesnow: 'FireSnow',
+  mysql: 'Archiwum 2012–2023'
+};
+
 /**
  * Dane klienta z bazy historii
  */

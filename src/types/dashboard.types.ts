@@ -2,6 +2,7 @@
 
 import type { SearchResults, SearchCriteria } from './ski.types';
 import type { FormErrors } from '../utils/formValidation';
+import type { ClientGroup } from '../services/historyService';
 
 /**
  * Stan pól wyszukiwania dla pojedynczego filtra
@@ -43,6 +44,7 @@ export interface TabData {
   id: string;
   label: string; // np. "Osoba 1", "Osoba 2"
   formData: FormData;
+  client?: ClientGroup | null; // klient przypisany do karty (podgląd historii w Przeglądaj)
   selectedStyles: string[];
   searchResults: SearchResults | null;
   currentCriteria: SearchCriteria | null;
