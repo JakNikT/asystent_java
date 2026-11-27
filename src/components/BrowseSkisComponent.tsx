@@ -178,6 +178,10 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
   const shouldHideColumns = activeFilter === 'BUTY_JUNIOR' || activeFilter === 'BUTY_SNOWBOARD' || activeFilter === 'DOROSLE';
   // Dla nart junior ukrywamy tylko: Płeć, Przeznaczenie, Atuty (Wzrost, Waga, Poziom pozostają widoczne)
   const shouldHideJuniorSkiColumns = activeFilter === 'JUNIOR';
+  // Widok "Narty VIP": dostępność pod pozycją (bez osobnej kolumny) i bez kolumny Płeć
+  const isVipView = activeFilter === 'VIP';
+  const showAvailabilityColumn = !isVipView;
+  const showGenderColumn = !shouldHideColumns && !shouldHideJuniorSkiColumns && !isVipView;
 
   // Aktualizuj activeFilter gdy initialFilter się zmienia (np. przy przełączaniu między kartami)
   useEffect(() => {
@@ -963,6 +967,40 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
     }
   };
 
+  // Przyciski odświeżania dostępności (w nagłówku kolumny Dostępność albo, w widoku VIP, kolumny Model)
+  const renderAvailabilityControls = () => (
+    <>
+      <button
+        onClick={handleManualRefresh}
+        disabled={isRefreshingAvailability}
+        className="p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        title={lastRefreshTime
+          ? `Odśwież dostępność (ostatnie: ${Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu)`
+          : 'Odśwież dostępność'}
+      >
+        {isRefreshingAvailability ? (
+          <span className="animate-spin">⟳</span>
+        ) : (
+          <span>🔄</span>
+        )}
+      </button>
+      <button
+        onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
+        className={`p-1 rounded transition-colors ${autoRefreshEnabled
+          ? 'bg-green-500/20 hover:bg-green-500/30'
+          : 'bg-gray-500/20 hover:bg-gray-500/30'
+          }`}
+        title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
+      >
+        {autoRefreshEnabled ? (
+          <span className="text-green-400">⏱️</span>
+        ) : (
+          <span className="text-gray-400">⏸️</span>
+        )}
+      </button>
+    </>
+  );
+
   return (
     <div
       className="min-h-screen bg-cover bg-top bg-no-repeat bg-fixed relative"
@@ -1229,8 +1267,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                               />
                             </th>
                           )}
-                          {/* Pole Płeć - tylko gdy !shouldHideColumns && !shouldHideJuniorSkiColumns */}
-                          {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
+                          {/* Pole Płeć - tylko gdy showGenderColumn */}
+                          {showGenderColumn && (
                             <th className="px-4 py-2">
                               <Input
                                 type="text"
@@ -1250,7 +1288,7 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             </>
                           )}
                           {/* Dostępność */}
-                          <th className="px-4 py-2"></th>
+                          {showAvailabilityColumn && <th className="px-4 py-2"></th>}
                           {/* Akcja - opcjonalnie */}
                           {SHOW_ACTION_COLUMN && isEmployeeMode && <th className="px-4 py-2"></th>}
                         </tr>
@@ -1270,6 +1308,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                           >
                             <div className="flex items-center justify-center gap-2">
                               Model {renderSortIcon('MODEL')}
+                              {isVipView && (
+                                <span className="flex items-center gap-1 ml-2" onClick={(e) => e.stopPropagation()}>
+                                  <span className="normal-case text-white/70">Dostępność:</span>
+                                  {renderAvailabilityControls()}
+                                </span>
+                              )}
                             </div>
                           </th>
                           {hasAdultBoots && (
@@ -1304,16 +1348,18 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                               </th>
                             </>
                           )}
+                          {showGenderColumn && (
+                            <th
+                              className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
+                              onClick={() => handleSort('PLEC')}
+                            >
+                              <div className="flex items-center justify-center gap-2">
+                                Płeć {renderSortIcon('PLEC')}
+                              </div>
+                            </th>
+                          )}
                           {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                             <>
-                              <th
-                                className="px-4 py-3 text-center text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
-                                onClick={() => handleSort('PLEC')}
-                              >
-                                <div className="flex items-center justify-center gap-2">
-                                  Płeć {renderSortIcon('PLEC')}
-                                </div>
-                              </th>
                               <th
                                 className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider cursor-pointer hover:bg-[#0f2744]/70 transition-colors"
                                 onClick={() => handleSort('PRZEZNACZENIE')}
@@ -1327,39 +1373,14 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                               </th>
                             </>
                           )}
-                          <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
-                            <div className="flex items-center gap-2">
-                              <span>Dostępność</span>
-                              <button
-                                onClick={handleManualRefresh}
-                                disabled={isRefreshingAvailability}
-                                className="p-1 rounded hover:bg-white/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                title={lastRefreshTime
-                                  ? `Odśwież dostępność (ostatnie: ${Math.floor((Date.now() - lastRefreshTime.getTime()) / 1000)}s temu)`
-                                  : 'Odśwież dostępność'}
-                              >
-                                {isRefreshingAvailability ? (
-                                  <span className="animate-spin">⟳</span>
-                                ) : (
-                                  <span>🔄</span>
-                                )}
-                              </button>
-                              <button
-                                onClick={() => setAutoRefreshEnabled(!autoRefreshEnabled)}
-                                className={`p-1 rounded transition-colors ${autoRefreshEnabled
-                                  ? 'bg-green-500/20 hover:bg-green-500/30'
-                                  : 'bg-gray-500/20 hover:bg-gray-500/30'
-                                  }`}
-                                title={autoRefreshEnabled ? 'Wyłącz auto-odświeżanie' : 'Włącz auto-odświeżanie'}
-                              >
-                                {autoRefreshEnabled ? (
-                                  <span className="text-green-400">⏱️</span>
-                                ) : (
-                                  <span className="text-gray-400">⏸️</span>
-                                )}
-                              </button>
-                            </div>
-                          </th>
+                          {showAvailabilityColumn && (
+                            <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">
+                              <div className="flex items-center gap-2">
+                                <span>Dostępność</span>
+                                {renderAvailabilityControls()}
+                              </div>
+                            </th>
+                          )}
                           {SHOW_ACTION_COLUMN && isEmployeeMode && (
                             <th className="px-4 py-3 text-left text-xs font-bold text-white uppercase tracking-wider">Akcja</th>
                           )}
@@ -1373,6 +1394,12 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                             </td>
                             <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                               {formatModelName(ski)}
+                              {/* Widok VIP: dostępność pod pozycją; w-0 min-w-full = zawijanie w szerokości komórki */}
+                              {isVipView && (
+                                <div className="mt-2 w-0 min-w-full">
+                                  {generateAvailabilitySquares(ski)}
+                                </div>
+                              )}
                             </td>
                             {hasAdultBoots && (
                               <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
@@ -1401,11 +1428,13 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                                 </td>
                               </>
                             )}
+                            {showGenderColumn && (
+                              <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
+                                {formatGender(ski.PLEC)}
+                              </td>
+                            )}
                             {!shouldHideColumns && !shouldHideJuniorSkiColumns && (
                               <>
-                                <td className={`px-4 py-4 whitespace-nowrap text-sm text-black font-semibold ${getCellColorClass(ski.ID, 'plec')}`}>
-                                  {formatGender(ski.PLEC)}
-                                </td>
                                 <td className="px-4 py-4 whitespace-nowrap text-sm text-white font-medium">
                                   {formatPurpose(ski.PRZEZNACZENIE)}
                                 </td>
@@ -1414,9 +1443,11 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
                                 </td>
                               </>
                             )}
-                            <td className="px-4 py-4 whitespace-nowrap text-sm">
-                              {generateAvailabilitySquares(ski)}
-                            </td>
+                            {showAvailabilityColumn && (
+                              <td className="px-4 py-4 whitespace-nowrap text-sm">
+                                {generateAvailabilitySquares(ski)}
+                              </td>
+                            )}
                             {SHOW_ACTION_COLUMN && isEmployeeMode && (
                               <td className="px-4 py-4 whitespace-nowrap text-sm">
                                 <button
