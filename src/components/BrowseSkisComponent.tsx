@@ -57,9 +57,9 @@ interface BrowseSkisComponentProps {
 type SortField = 'MARKA' | 'MODEL' | 'DLUGOSC' | 'POZIOM' | 'PLEC' | 'PRZEZNACZENIE' | 'FLEX';
 type SortDirection = 'asc' | 'desc';
 
-/** Zwarta tabela sprzętu przy otwartym panelu historii: minimalne odstępy między kolumnami, mniejsza czcionka, zawijanie tekstu, pola filtrów dopasowane do kolumny */
+/** Zwarta tabela sprzętu przy otwartym panelu historii: minimalne odstępy między kolumnami, zawijanie tekstu, pola filtrów dopasowane do kolumny (rozmiar czcionki bez zmian) */
 const HISTORY_PANEL_COMPACT_TABLE =
-  '[&_th]:!px-1 [&_td]:!px-1 [&_td]:!py-2 [&_td]:!whitespace-normal [&_td]:!text-xs [&_th]:!text-[10px] [&_th]:!whitespace-normal [&_th_input]:!w-full [&_th_input]:!min-w-0 [&_th_input]:!px-1 [&_th_.gap-2]:!gap-1';
+  '[&_th]:!px-1 [&_td]:!px-1 [&_td]:!py-2 [&_td]:!whitespace-normal [&_th]:!whitespace-normal [&_th_input]:!w-full [&_th_input]:!min-w-0 [&_th_input]:!px-1';
 
 interface SortConfig {
   field: SortField;
@@ -1037,7 +1037,8 @@ export const BrowseSkisComponent: React.FC<BrowseSkisComponentProps> = ({
           />
         )}
 
-        <div className={`p-3 lg:p-6 ${isHistoryPanelOpen ? 'sm:pr-[400px]' : ''}`}>
+        {/* lg:pr-[400px] osobno: lg:p-6 (skrót padding) nadpisałby sm:pr-[400px] i panel zasłaniałby tabelę */}
+        <div className={`p-3 lg:p-6 ${isHistoryPanelOpen ? 'sm:pr-[400px] lg:pr-[400px]' : ''}`}>
           <div className="max-w-8xl mx-auto">
             {/* Header z wyszukiwaniem - responsywny */}
             <div className="bg-black/20 rounded-xl border border-white/10 shadow-lg backdrop-blur-md p-4 lg:p-6 mb-6">
