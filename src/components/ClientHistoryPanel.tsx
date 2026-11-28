@@ -41,7 +41,7 @@ const ContractPriceSummary: React.FC<{ rental: HistoryDateRange; equipment: Hist
 
   const pricing = summarizeContractPricing(equipment, rental.rabat_procent);
   const freeDays = rental.dni_gratis ?? 0;
-  const rows: Array<[string, string, boolean?]> = [['Cena przed rabatem', formatMoney(pricing.priceBefore)]];
+  const rows: Array<[string, string, boolean?]> = [['Cena', formatMoney(pricing.priceBefore)]];
   if (pricing.discountPercent > 0) rows.push(['Rabat procentowy', `${pricing.discountPercent}%`]);
   if (pricing.discountAmount > 0) rows.push(['Rabat kwotowy', formatMoney(pricing.discountAmount)]);
   if (pricing.hasDiscount) rows.push(['Cena po rabacie', formatMoney(pricing.priceAfter), true]);
