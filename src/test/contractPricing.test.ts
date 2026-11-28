@@ -14,16 +14,16 @@ const item = (overrides: Partial<HistoryEquipmentData>): HistoryEquipmentData =>
 });
 
 describe('summarizeContractPricing', () => {
-  it('rabat procentowy: suma cen przed i po rabacie, procent z umowy', () => {
+  it('rabat procentowy: suma cen przed i po rabacie, procent z umowy i rabat w złotych', () => {
     const result = summarizeContractPricing([
       item({ cena: '300', cena_po_rabacie: 255, rabat_procent: 15 }),
       item({ cena: '100', cena_po_rabacie: 85, rabat_procent: 15 })
     ], 15);
 
-    expect(result).toEqual({ priceBefore: 400, priceAfter: 340, discountPercent: 15, discountAmount: 0, hasDiscount: true });
+    expect(result).toEqual({ priceBefore: 400, priceAfter: 340, discountPercent: 15, discountAmount: 60, hasDiscount: true });
   });
 
-  it('rabat kwotowy: suma rabatów pozycji, procent z największej pozycji gdy umowa go nie podaje', () => {
+  it('rabat kwotowy i procentowy razem: rabat w złotych to różnica cen, procent z największej pozycji gdy umowa go nie podaje', () => {
     const result = summarizeContractPricing([
       item({ cena: '225', cena_po_rabacie: 180, rabat_kwota: 45 }),
       item({ cena: '50', cena_po_rabacie: 38.46, rabat_kwota: 11.54 }),
@@ -32,7 +32,7 @@ describe('summarizeContractPricing', () => {
 
     expect(result.priceBefore).toBe(375);
     expect(result.priceAfter).toBe(308.46);
-    expect(result.discountAmount).toBe(56.54);
+    expect(result.discountAmount).toBe(66.54);
     expect(result.discountPercent).toBe(10);
   });
 
