@@ -198,6 +198,19 @@ describe('fireSnowHistoryService.getClientEquipment', () => {
 
     expect(items.map(i => [i.rabat_procent, i.rabat_kwota])).toEqual([[20, 45], [0, 0]]);
   });
+
+  it('cena po rabacie = cena * (1 - procent) - rabat kwotowy, nie niższa niż 0', async () => {
+    getHistoryEquipment.mockResolvedValue([
+      position({ session_id: 1, cena: 360, rabat_procent: 0.5, rabat_kwota: 0 }),
+      position({ session_id: 2, cena: 50, rabat_procent: 0, rabat_kwota: 11.54 }),
+      position({ session_id: 3, cena: 100, rabat_procent: 0.2, rabat_kwota: 10 }),
+      position({ session_id: 4, cena: 30, rabat_procent: 0, rabat_kwota: 45 })
+    ]);
+
+    const items = await fireSnowHistoryService.getClientEquipment(1, 55);
+
+    expect(items.map(i => i.cena_po_rabacie)).toEqual([180, 38.46, 70, 0]);
+  });
 });
 
 describe('fireSnowHistoryService.searchClients', () => {

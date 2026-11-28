@@ -61,6 +61,7 @@ export interface ClientEquipment {
     // Tylko FireSnow: rabat pozycji
     rabat_procent?: number;
     rabat_kwota?: number;
+    cena_po_rabacie?: number; // cena pozycji po rabacie procentowym i kwotowym
 }
 
 /**

@@ -158,7 +158,9 @@ export const fireSnowHistoryService = {
                 dlugosc: null,
                 liczba_dni: Math.max(0, Math.ceil((end - pos.data_od) / DAY_MS)),
                 rabat_procent: toPercent(pos.rabat_procent),
-                rabat_kwota: roundMoney(pos.rabat_kwota)
+                rabat_kwota: roundMoney(pos.rabat_kwota),
+                // PRICE w FireSnow to cena przed rabatem; po rabacie = PRICE * (1 - procent) - rabat kwotowy (PAYMENT + PREPAID daje to samo)
+                cena_po_rabacie: roundMoney(Math.max(0, (pos.cena || 0) * (1 - (pos.rabat_procent || 0)) - (pos.rabat_kwota || 0)))
             };
         });
     }
