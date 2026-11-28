@@ -5,6 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { HistoryService, SOURCE_LABELS } from '../services/historyService';
+import { summarizeContractPricing } from '../utils/contractPricing';
 import type { ClientGroup, HistoryDateRange, HistoryEquipmentData, HistorySource } from '../services/historyService';
 import { createLogger } from '../utils/logger';
 
@@ -19,6 +20,44 @@ interface RentalWithEquipment {
   rental: HistoryDateRange;
   equipment: HistoryEquipmentData[];
 }
+
+/** Kwota w złotych z przecinkiem, np. "1 234,50 zł" */
+const formatMoney = (amount: number): string =>
+  `${amount.toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} zł`;
+
+/**
+ * Podsumowanie cen umowy na dole karty: cena przed i po rabacie, rabaty, dni gratis (FireSnow).
+ * Archiwum MySQL nie ma danych o rabatach: pokazuje tylko kwotę umowy.
+ */
+const ContractPriceSummary: React.FC<{ rental: HistoryDateRange; equipment: HistoryEquipmentData[] }> = ({ rental, equipment }) => {
+  if (rental.source !== 'firesnow') {
+    return (
+      <div className="mt-3 pt-2 border-t border-white/10 flex justify-between text-sm text-white">
+        <span className="text-[#A6C2EF]">Kwota umowy</span>
+        <span className="font-bold">{formatMoney(parseFloat(equipment[0]?.cena ?? '') || 0)}</span>
+      </div>
+    );
+  }
+
+  const pricing = summarizeContractPricing(equipment, rental.rabat_procent);
+  const freeDays = rental.dni_gratis ?? 0;
+  const rows: Array<[string, string, boolean?]> = [['Cena przed rabatem', formatMoney(pricing.priceBefore)]];
+  if (pricing.discountPercent > 0) rows.push(['Rabat procentowy', `${pricing.discountPercent}%`]);
+  if (pricing.discountAmount > 0) rows.push(['Rabat kwotowy', formatMoney(pricing.discountAmount)]);
+  if (pricing.hasDiscount) rows.push(['Cena po rabacie', formatMoney(pricing.priceAfter), true]);
+  if (freeDays > 0) rows.push(['Dni gratis', `${freeDays} ${freeDays === 1 ? 'dzień' : 'dni'}`]);
+
+  return (
+    <dl className="mt-3 pt-2 border-t border-white/10 grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 text-sm">
+      {rows.map(([label, value, strong]) => (
+        <React.Fragment key={label}>
+          <dt className="text-[#A6C2EF]">{label}</dt>
+          <dd className={`text-right text-white ${strong ? 'font-bold' : ''}`}>{value}</dd>
+        </React.Fragment>
+      ))}
+    </dl>
+  );
+};
 
 export const ClientHistoryPanel: React.FC<ClientHistoryPanelProps> = ({ client, onClose }) => {
   const [rentals, setRentals] = useState<RentalWithEquipment[]>([]);
@@ -134,6 +173,8 @@ export const ClientHistoryPanel: React.FC<ClientHistoryPanelProps> = ({ client, 
             ) : (
               <div className="text-[#A6C2EF] text-xs">Brak danych o sprzęcie</div>
             )}
+
+            {equipment.length > 0 && <ContractPriceSummary rental={rental} equipment={equipment} />}
           </section>
         ))}
       </div>
