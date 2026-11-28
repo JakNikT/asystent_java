@@ -5,7 +5,6 @@
 
 import { getHistoryDBConnection } from '../config/database.js';
 import { convertDateToISO } from '../utils/formatters.js';
-import { sortByContractOrder } from '../utils/equipmentOrder.js';
 import type { QueryResult } from '../types/database.types.js';
 import type { RowDataPacket } from 'mysql2/promise';
 
@@ -176,11 +175,9 @@ export const historyService = {
             params.push(sezon);
         }
 
-        query += ` ORDER BY s.Nazwa, s.Symbol`;
-
         const [rows] = await pool.execute<QueryResult<ClientEquipmentRow>>(query, params);
 
-        const items: ClientEquipment[] = rows.map(row => {
+        return rows.map(row => {
             const oddanaValue = row.Oddana ? String(row.Oddana).trim().toLowerCase() : '';
             let status = '';
             if (['prawda', 'true', '1'].includes(oddanaValue)) status = 'Oddane';
@@ -203,8 +200,6 @@ export const historyService = {
                 liczba_dni: row.Liczba_dni || 0
             };
         });
-
-        return sortByContractOrder(items);
     }
 };
 
