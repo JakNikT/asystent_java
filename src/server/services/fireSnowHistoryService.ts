@@ -138,7 +138,8 @@ export const fireSnowHistoryService = {
 
         const positions = await fireSnowService.getHistoryEquipment(clientId, documentId);
 
-        return positions.map(pos => {
+        // Kolejność z umowy: pozycje dobierane są po kolei dla każdej osoby, więc ID pozycji (rosnące) odtwarza ten porządek
+        return [...positions].sort((a, b) => a.session_id - b.session_id).map(pos => {
             const returned = pos.data_do !== 0;
             const end = returned ? pos.data_do : now;
             return {

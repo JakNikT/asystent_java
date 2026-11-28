@@ -159,6 +159,24 @@ describe('fireSnowHistoryService.getClientEquipment', () => {
     expect(item).toMatchObject({ status: 'Nie oddane', liczba_dni: 3, do: '' });
   });
 
+  it('zachowuje kolejność z umowy (rosnące ID pozycji), a nie alfabetyczną: zestaw narty-buty-kije, potem deska-wiązania-buty', async () => {
+    // Bridge zwraca pozycje alfabetycznie; kolejność dodawania wynika z session_id
+    getHistoryEquipment.mockResolvedValue([
+      position({ session_id: 15, nazwa_sprzetu: 'BUTY SNOWBOARD K2' }),
+      position({ session_id: 11, nazwa_sprzetu: 'BUTY HEAD' }),
+      position({ session_id: 13, nazwa_sprzetu: 'DESKA BURTON' }),
+      position({ session_id: 14, nazwa_sprzetu: 'WIĄZANIA UNION' }),
+      position({ session_id: 10, nazwa_sprzetu: 'NARTY ATOMIC' }),
+      position({ session_id: 12, nazwa_sprzetu: 'KIJE LEKI' })
+    ]);
+
+    const items = await fireSnowHistoryService.getClientEquipment(1, 55);
+
+    expect(items.map(i => i.sprzet)).toEqual([
+      'NARTY ATOMIC', 'BUTY HEAD', 'KIJE LEKI', 'DESKA BURTON', 'WIĄZANIA UNION', 'BUTY SNOWBOARD K2'
+    ]);
+  });
+
   it('numer dokumentu z prefiksem P to PROMOTOR, a WP to STANDARD', async () => {
     getHistoryEquipment.mockResolvedValue([
       position({ numer_dokumentu: 'P 3/12/2025' }),

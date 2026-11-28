@@ -175,8 +175,6 @@ export const historyService = {
             params.push(sezon);
         }
 
-        query += ` ORDER BY s.Nazwa, s.Symbol`;
-
         const [rows] = await pool.execute<QueryResult<ClientEquipmentRow>>(query, params);
 
         return rows.map(row => {
